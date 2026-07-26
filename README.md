@@ -43,7 +43,7 @@ is not required to build or run EveBench.
 Clone EveBench and all adapter submodules in one command:
 
 ```sh
-git clone --recurse-submodules <repository-url> evebench
+git clone --recurse-submodules https://github.com/sfu-db/evebench.git evebench
 cd evebench
 ```
 
