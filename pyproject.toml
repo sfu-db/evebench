@@ -12,7 +12,7 @@ dependencies = [
     "ordered-set>=4.1.0,<5.0.0",
     "parseval",
     "pebble>=5.2.0,<6.0.0",
-    "setuptools>=70.0.0,<81.0.0",
+    "setuptools>=83.0.0,<84.0.0",
     "sqlglot==23.12.1",
     "ujson>=5.10.0,<6.0.0",
     "uvicorn[standard]>=0.35.0,<1.0.0",
