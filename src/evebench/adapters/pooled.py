@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
-from evebench.adapters.core import error_result
+from evebench.adapters.core import error_result, execute_lifecycle
 from evebench.domain.models import (
     CheckOptions,
     CheckResult,
@@ -30,6 +30,10 @@ def execute_adapter(
         from evebench.adapters.parseval import ParsevalAdapter
 
         adapter = ParsevalAdapter(adapter_config)
+    elif adapter_id == "llm":
+        from evebench.adapters.llm import LLMAdapter
+
+        adapter = LLMAdapter(adapter_config)
     elif adapter_id == "sqlsolver":
         from evebench.adapters.sqlsolver import SQLSolverAdapter
 
@@ -44,7 +48,7 @@ def execute_adapter(
         adapter = VeriEQLAdapter(adapter_config)
     else:
         raise ValueError(f"unknown worker adapter: {adapter_id}")
-    return adapter.check(case, options)
+    return execute_lifecycle(adapter, case, options)
 
 
 def cleanup_adapter(adapter_id: str, options: CheckOptions) -> None:

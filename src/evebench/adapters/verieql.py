@@ -11,8 +11,8 @@ from typing import Any
 
 from evebench.adapters.core import (
     AdapterInputError,
+    AdapterLifecycleError,
     duration_ms,
-    error_result,
     normalize_adapter_input,
     parse_last_json_object,
     reject_unknown_options,
@@ -80,14 +80,14 @@ class VeriEQLAdapter:
 
     def __init__(self, config: VeriEQLConfig) -> None:
         self._config = config
-        self._descriptor = verieql_descriptor(config)
+        self.descriptor = verieql_descriptor(config)
 
     def preprocess(
         self,
         case: EquivalenceCase,
         options: CheckOptions,
     ) -> VeriEQLInput:
-        normalized = normalize_adapter_input(case, options, self._descriptor)
+        normalized = normalize_adapter_input(case, options, self.descriptor)
         backend_options = options.for_backend("verieql")
         reject_unknown_options(
             backend_options,
@@ -138,73 +138,7 @@ class VeriEQLAdapter:
             timeout_seconds=max(0.001, options.timeout_ms * 0.95 / 1000),
         )
 
-    def check(
-        self,
-        case: EquivalenceCase,
-        options: CheckOptions,
-    ) -> CheckResult:
-        started = datetime.now(UTC)
-        try:
-            prepared = self.preprocess(case, options)
-        except AdapterInputError as exc:
-            return error_result(
-                self._descriptor,
-                started,
-                exc.status,
-                reason_code=exc.reason_code,
-                message=str(exc),
-            )
-
-        try:
-            completed = self._invoke(prepared)
-        except subprocess.TimeoutExpired:
-            return error_result(
-                self._descriptor,
-                started,
-                ExecutionStatus.TIMEOUT,
-                reason_code="backend_timeout",
-                message="VeriEQL exceeded its subprocess deadline",
-            )
-        except Exception as exc:
-            return error_result(
-                self._descriptor,
-                started,
-                ExecutionStatus.FAILED,
-                reason_code="backend_error",
-                message=f"{type(exc).__name__}: {exc}",
-            )
-
-        raw = completed.stdout.strip()
-        if completed.returncode != 0:
-            return error_result(
-                self._descriptor,
-                started,
-                ExecutionStatus.FAILED,
-                reason_code="backend_error",
-                message=(
-                    completed.stderr.strip()
-                    or f"VeriEQL exited with code {completed.returncode}"
-                ),
-                raw_output=raw or None,
-            )
-
-        try:
-            native = parse_last_json_object(raw)
-        except ValueError as exc:
-            return error_result(
-                self._descriptor,
-                started,
-                ExecutionStatus.FAILED,
-                reason_code="unparseable_output",
-                message=f"Invalid VeriEQL output: {exc}",
-                raw_output=raw or None,
-            )
-        return self._normalize(native, raw, started)
-
-    def _invoke(
-        self,
-        prepared: VeriEQLInput,
-    ) -> subprocess.CompletedProcess[str]:
+    def run(self, prepared: VeriEQLInput) -> subprocess.CompletedProcess[str]:
         payload = {
             "root": self._config.root_path,
             "z3_library_path": (
@@ -240,12 +174,34 @@ class VeriEQLAdapter:
             check=False,
         )
 
-    def _normalize(
+    def postprocess(
         self,
-        native: dict[str, Any],
-        raw: str,
-        started: datetime,
+        completed: subprocess.CompletedProcess[str],
+        *,
+        started_at: datetime | None = None,
     ) -> CheckResult:
+        started = started_at or datetime.now(UTC)
+        raw = completed.stdout.strip()
+        if completed.returncode != 0:
+            raise AdapterLifecycleError(
+                ExecutionStatus.FAILED,
+                "backend_error",
+                (
+                    completed.stderr.strip()
+                    or f"VeriEQL exited with code {completed.returncode}"
+                ),
+                raw_output=raw or None,
+            )
+
+        try:
+            native = parse_last_json_object(raw)
+        except ValueError as exc:
+            raise AdapterLifecycleError(
+                ExecutionStatus.FAILED,
+                "unparseable_output",
+                f"Invalid VeriEQL output: {exc}",
+                raw_output=raw or None,
+            ) from exc
         state = native.get("state")
         status = {
             "equivalent": ExecutionStatus.COMPLETED,
@@ -261,12 +217,10 @@ class VeriEQLAdapter:
             "unknown": Verdict.UNKNOWN,
         }.get(state)
         if status is None:
-            return error_result(
-                self._descriptor,
-                started,
+            raise AdapterLifecycleError(
                 ExecutionStatus.FAILED,
-                reason_code="unparseable_output",
-                message=f"Unknown VeriEQL state: {state!r}",
+                "unparseable_output",
+                f"Unknown VeriEQL state: {state!r}",
                 raw_output=raw,
             )
 
@@ -278,7 +232,7 @@ class VeriEQLAdapter:
             "error": "backend_error",
         }
         return CheckResult(
-            checker=self._descriptor.checker,
+            checker=self.descriptor.checker,
             execution_status=status,
             verdict=verdict,
             duration_ms=duration_ms(started, finished),

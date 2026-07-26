@@ -18,11 +18,13 @@ import importlib.metadata
 
 from evebench.adapters import (
     CheckerRegistry,
+    LLMConfig,
     ParsevalConfig,
     PooledChecker,
     SPESConfig,
     SQLSolverConfig,
     VeriEQLConfig,
+    llm_descriptor,
     parseval_descriptor,
     spes_descriptor,
     sqlsolver_descriptor,
@@ -97,30 +99,53 @@ def default_registry(backend_pool: BackendProcessPool) -> CheckerRegistry:
     parseval_config = ParsevalConfig(
         backend_version=importlib.metadata.version("parseval"),
     )
-    return CheckerRegistry(
-        (
-            PooledChecker(
-                sqlsolver_descriptor(sqlsolver_config),
-                sqlsolver_config,
-                backend_pool,
+    checkers = [
+        PooledChecker(
+            sqlsolver_descriptor(sqlsolver_config),
+            sqlsolver_config,
+            backend_pool,
+        ),
+        PooledChecker(
+            spes_descriptor(spes_config),
+            spes_config,
+            backend_pool,
+        ),
+        PooledChecker(
+            verieql_descriptor(verieql_config),
+            verieql_config,
+            backend_pool,
+        ),
+        PooledChecker(
+            parseval_descriptor(parseval_config),
+            parseval_config,
+            backend_pool,
+        ),
+    ]
+    llm_model = os.environ.get("EVEBENCH_LLM_MODEL", "").strip()
+    if llm_model:
+        llm_config = LLMConfig(
+            model=llm_model,
+            base_url=os.environ.get(
+                "EVEBENCH_LLM_BASE_URL", "https://api.openai.com/v1"
             ),
-            PooledChecker(
-                spes_descriptor(spes_config),
-                spes_config,
-                backend_pool,
+            api_key=os.environ.get(
+                "EVEBENCH_LLM_API_KEY", os.environ.get("OPENAI_API_KEY")
             ),
-            PooledChecker(
-                verieql_descriptor(verieql_config),
-                verieql_config,
-                backend_pool,
+            reasoning_effort=(
+                os.environ.get("EVEBENCH_LLM_REASONING_EFFORT") or None
             ),
-            PooledChecker(
-                parseval_descriptor(parseval_config),
-                parseval_config,
-                backend_pool,
+            max_completion_tokens=int(
+                os.environ.get("EVEBENCH_LLM_MAX_COMPLETION_TOKENS", "4096")
             ),
         )
-    )
+        checkers.append(
+            PooledChecker(
+                llm_descriptor(llm_config),
+                llm_config,
+                backend_pool,
+            )
+        )
+    return CheckerRegistry(checkers)
 
 
 def create_app(

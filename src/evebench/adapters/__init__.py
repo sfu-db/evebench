@@ -1,3 +1,5 @@
+from .core import BackendAdapter
+from .llm import LLMConfig, llm_descriptor
 from .parseval import ParsevalConfig, parseval_descriptor
 from .pooled import PooledChecker
 from .registry import CheckerRegistry
@@ -6,12 +8,15 @@ from .sqlsolver import SQLSolverConfig, sqlsolver_descriptor
 from .verieql import VeriEQLConfig, verieql_descriptor
 
 __all__ = [
+    "BackendAdapter",
     "CheckerRegistry",
+    "LLMConfig",
     "ParsevalConfig",
     "PooledChecker",
     "SPESConfig",
     "SQLSolverConfig",
     "VeriEQLConfig",
+    "llm_descriptor",
     "parseval_descriptor",
     "spes_descriptor",
     "sqlsolver_descriptor",

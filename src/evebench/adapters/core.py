@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import json
+import subprocess
 from dataclasses import replace
 from datetime import UTC, datetime
-from typing import Any, Mapping
+from typing import Any, Mapping, Protocol, TypeVar, runtime_checkable
 
 from evebench.domain.models import (
     CheckOptions,
@@ -24,6 +25,106 @@ class AdapterInputError(ValueError):
         self.status = status
         self.reason_code = reason_code
         super().__init__(message)
+
+
+class AdapterLifecycleError(RuntimeError):
+    """A backend lifecycle failure that can be returned as a normal result."""
+
+    def __init__(
+        self,
+        status: ExecutionStatus,
+        reason_code: str,
+        message: str,
+        *,
+        raw_output: str | None = None,
+    ) -> None:
+        self.status = status
+        self.reason_code = reason_code
+        self.raw_output = raw_output
+        super().__init__(message)
+
+
+PreparedInput = TypeVar("PreparedInput")
+NativeOutput = TypeVar("NativeOutput")
+
+
+@runtime_checkable
+class BackendAdapter(Protocol[PreparedInput, NativeOutput]):
+    """Synchronous worker-side adapter lifecycle."""
+
+    @property
+    def descriptor(self) -> CheckerDescriptor: ...
+
+    def preprocess(
+        self,
+        case: EquivalenceCase,
+        options: CheckOptions,
+    ) -> PreparedInput: ...
+
+    def run(self, prepared: PreparedInput) -> NativeOutput: ...
+
+    def postprocess(
+        self,
+        native: NativeOutput,
+        *,
+        started_at: datetime | None = None,
+    ) -> CheckResult: ...
+
+
+def execute_lifecycle(
+    adapter: BackendAdapter[PreparedInput, NativeOutput],
+    case: EquivalenceCase,
+    options: CheckOptions,
+) -> CheckResult:
+    """Execute preprocess, run, and postprocess as one adapter attempt."""
+    started = datetime.now(UTC)
+    phase = "preprocess"
+    try:
+        prepared = adapter.preprocess(case, options)
+        phase = "run"
+        native = adapter.run(prepared)
+        phase = "postprocess"
+        return adapter.postprocess(native, started_at=started)
+    except AdapterInputError as exc:
+        return error_result(
+            adapter.descriptor,
+            started,
+            exc.status,
+            reason_code=exc.reason_code,
+            message=str(exc),
+        )
+    except AdapterLifecycleError as exc:
+        return error_result(
+            adapter.descriptor,
+            started,
+            exc.status,
+            reason_code=exc.reason_code,
+            message=str(exc),
+            raw_output=exc.raw_output,
+        )
+    except subprocess.TimeoutExpired:
+        return error_result(
+            adapter.descriptor,
+            started,
+            ExecutionStatus.TIMEOUT,
+            reason_code="backend_timeout",
+            message=(
+                f"{adapter.descriptor.display_name} exceeded its backend deadline"
+            ),
+        )
+    except Exception as exc:
+        reason_code = {
+            "preprocess": "preprocess_error",
+            "run": "backend_error",
+            "postprocess": "postprocess_error",
+        }[phase]
+        return error_result(
+            adapter.descriptor,
+            started,
+            ExecutionStatus.FAILED,
+            reason_code=reason_code,
+            message=f"{type(exc).__name__}: {exc}",
+        )
 
 
 def normalize_adapter_input(

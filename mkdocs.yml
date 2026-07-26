@@ -7,6 +7,8 @@ theme:
 nav:
   - Home: index.md
   - Architecture: architecture.md
+  - Development environment: development.md
+  - Deployment: deployment.md
 
 plugins:
   - search

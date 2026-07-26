@@ -8,9 +8,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from evebench.adapters.core import (
-    AdapterInputError,
+    AdapterLifecycleError,
     duration_ms,
-    error_result,
 )
 from evebench.adapters.schema import preprocess_calcite_case
 from evebench.domain.models import (
@@ -60,7 +59,7 @@ class SQLSolverAdapter:
 
     def __init__(self, config: SQLSolverConfig) -> None:
         self._config = config
-        self._descriptor = sqlsolver_descriptor(config)
+        self.descriptor = sqlsolver_descriptor(config)
 
     def preprocess(
         self,
@@ -70,7 +69,7 @@ class SQLSolverAdapter:
         normalized = preprocess_calcite_case(
             case,
             options,
-            self._descriptor,
+            self.descriptor,
         )
         return SQLSolverInput(
             query_left=normalized.query_left,
@@ -79,68 +78,7 @@ class SQLSolverAdapter:
             timeout_seconds=max(1, math.ceil(options.timeout_ms / 1000)),
         )
 
-    def check(
-        self,
-        case: EquivalenceCase,
-        options: CheckOptions,
-    ) -> CheckResult:
-        started = datetime.now(UTC)
-        try:
-            prepared = self.preprocess(case, options)
-        except AdapterInputError as exc:
-            return error_result(
-                self._descriptor,
-                started,
-                exc.status,
-                reason_code=exc.reason_code,
-                message=str(exc),
-            )
-
-        try:
-            native = self._verify(prepared)
-        except Exception as exc:
-            return error_result(
-                self._descriptor,
-                started,
-                ExecutionStatus.FAILED,
-                reason_code="backend_error",
-                message=f"{type(exc).__name__}: {exc}",
-            )
-
-        finished = datetime.now(UTC)
-        duration = duration_ms(started, finished)
-        verdict = {
-            "EQ": Verdict.EQUIVALENT,
-            "NEQ": Verdict.NOT_EQUIVALENT,
-            "UNKNOWN": Verdict.UNKNOWN,
-            "TIMEOUT": None,
-        }.get(native)
-        if native not in {"EQ", "NEQ", "UNKNOWN", "TIMEOUT"}:
-            return error_result(
-                self._descriptor,
-                started,
-                ExecutionStatus.FAILED,
-                reason_code="unparseable_output",
-                message=f"Unknown SQLSolver result: {native!r}",
-                raw_output=native,
-                finished_at=finished,
-            )
-        return CheckResult(
-            checker=self._descriptor.checker,
-            execution_status=(
-                ExecutionStatus.TIMEOUT
-                if native == "TIMEOUT"
-                else ExecutionStatus.COMPLETED
-            ),
-            verdict=verdict,
-            duration_ms=duration,
-            started_at=started,
-            finished_at=finished,
-            reason_code="backend_timeout" if native == "TIMEOUT" else None,
-            raw_output=native,
-        )
-
-    def _verify(self, prepared: SQLSolverInput) -> str:
+    def run(self, prepared: SQLSolverInput) -> str:
         import jpype
 
         if not jpype.isJVMStarted():
@@ -180,3 +118,40 @@ class SQLSolverAdapter:
             os.chdir(previous_directory)
         result = results.get(0)
         return "UNKNOWN" if result is None else str(result)
+
+    def postprocess(
+        self,
+        native: str,
+        *,
+        started_at: datetime | None = None,
+    ) -> CheckResult:
+        started = started_at or datetime.now(UTC)
+        finished = datetime.now(UTC)
+        duration = duration_ms(started, finished)
+        verdict = {
+            "EQ": Verdict.EQUIVALENT,
+            "NEQ": Verdict.NOT_EQUIVALENT,
+            "UNKNOWN": Verdict.UNKNOWN,
+            "TIMEOUT": None,
+        }.get(native)
+        if native not in {"EQ", "NEQ", "UNKNOWN", "TIMEOUT"}:
+            raise AdapterLifecycleError(
+                ExecutionStatus.FAILED,
+                "unparseable_output",
+                f"Unknown SQLSolver result: {native!r}",
+                raw_output=native,
+            )
+        return CheckResult(
+            checker=self.descriptor.checker,
+            execution_status=(
+                ExecutionStatus.TIMEOUT
+                if native == "TIMEOUT"
+                else ExecutionStatus.COMPLETED
+            ),
+            verdict=verdict,
+            duration_ms=duration,
+            started_at=started,
+            finished_at=finished,
+            reason_code="backend_timeout" if native == "TIMEOUT" else None,
+            raw_output=native,
+        )

@@ -10,8 +10,8 @@ from parseval.generator.config import GenerationConfig
 
 from evebench.adapters.core import (
     AdapterInputError,
+    AdapterLifecycleError,
     duration_ms,
-    error_result,
     normalize_adapter_input,
     reject_unknown_options,
 )
@@ -50,6 +50,12 @@ class ParsevalInput:
     timeout_seconds: int
 
 
+@dataclass(frozen=True, slots=True)
+class ParsevalOutput:
+    native: dict
+    connection_string: str
+
+
 def parseval_descriptor(config: ParsevalConfig) -> CheckerDescriptor:
     return CheckerDescriptor(
         checker=CheckerRef("parseval", config.backend_version, config.adapter_version),
@@ -64,14 +70,14 @@ class ParsevalAdapter:
     """Complete ParSEval adapter. Instances live only in pool workers."""
 
     def __init__(self, config: ParsevalConfig) -> None:
-        self._descriptor = parseval_descriptor(config)
+        self.descriptor = parseval_descriptor(config)
 
     def preprocess(
         self,
         case: EquivalenceCase,
         options: CheckOptions,
     ) -> ParsevalInput:
-        normalized = normalize_adapter_input(case, options, self._descriptor)
+        normalized = normalize_adapter_input(case, options, self.descriptor)
         backend_options = dict(options.for_backend("parseval"))
         connection_string = backend_options.pop("connection_string", None)
         reject_unknown_options(
@@ -98,10 +104,30 @@ class ParsevalAdapter:
                 ExecutionStatus.INVALID_INPUT,
                 "invalid_connection_string",
                 connection_error,
-            )
+        )
         if options.seed is not None:
             backend_options["seed"] = options.seed
-        _validate_generation_options(backend_options)
+        boolean_fields = {"bootstrap_negatives"}
+        integer_fields = {
+            item.name for item in fields(GenerationConfig)
+        } - boolean_fields
+        for name in boolean_fields & backend_options.keys():
+            if not isinstance(backend_options[name], bool):
+                raise AdapterInputError(
+                    ExecutionStatus.INVALID_INPUT,
+                    "invalid_backend_options",
+                    f"ParSEval {name} must be a boolean",
+                )
+        for name in integer_fields & backend_options.keys():
+            value = backend_options[name]
+            if name == "max_plan_depth" and value is None:
+                continue
+            if isinstance(value, bool) or not isinstance(value, int):
+                raise AdapterInputError(
+                    ExecutionStatus.INVALID_INPUT,
+                    "invalid_backend_options",
+                    f"ParSEval {name} must be an integer",
+                )
         try:
             generation_config = GenerationConfig(**backend_options)
         except (TypeError, ValueError) as exc:
@@ -121,23 +147,10 @@ class ParsevalAdapter:
             timeout_seconds=max(1, math.ceil(options.timeout_ms / 1000)),
         )
 
-    def check(
+    def run(
         self,
-        case: EquivalenceCase,
-        options: CheckOptions,
-    ) -> CheckResult:
-        started = datetime.now(UTC)
-        try:
-            prepared = self.preprocess(case, options)
-        except AdapterInputError as exc:
-            return error_result(
-                self._descriptor,
-                started,
-                exc.status,
-                reason_code=exc.reason_code,
-                message=str(exc),
-            )
-
+        prepared: ParsevalInput,
+    ) -> ParsevalOutput:
         native_result = None
         backend_error: Exception | None = None
         cleanup_error: Exception | None = None
@@ -161,23 +174,19 @@ class ParsevalAdapter:
                 cleanup_error = exc
 
         if cleanup_error is not None:
-            return error_result(
-                self._descriptor,
-                started,
+            raise AdapterLifecycleError(
                 ExecutionStatus.FAILED,
-                reason_code="cleanup_failed",
-                message=redact_connection(
+                "cleanup_failed",
+                redact_connection(
                     f"{type(cleanup_error).__name__}: {cleanup_error}",
                     prepared.connection_string,
                 ),
             )
         if backend_error is not None:
-            return error_result(
-                self._descriptor,
-                started,
+            raise AdapterLifecycleError(
                 ExecutionStatus.FAILED,
-                reason_code="backend_error",
-                message=redact_connection(
+                "backend_error",
+                redact_connection(
                     f"{type(backend_error).__name__}: {backend_error}",
                     prepared.connection_string,
                 ),
@@ -186,11 +195,25 @@ class ParsevalAdapter:
         assert native_result is not None
         native = native_result.to_dict()
         native.pop("connection_string", None)
+        return ParsevalOutput(
+            native=native,
+            connection_string=prepared.connection_string,
+        )
+
+    def postprocess(
+        self,
+        output: ParsevalOutput,
+        *,
+        started_at: datetime | None = None,
+    ) -> CheckResult:
+        started = started_at or datetime.now(UTC)
+        native = output.native
+        connection_string = output.connection_string
         finished = datetime.now(UTC)
         duration = duration_ms(started, finished)
         raw = redact_connection(
             json.dumps(native, default=str, separators=(",", ":")),
-            prepared.connection_string,
+            connection_string,
         )
         native_verdict = native.get("verdict")
         if native_verdict in {"syntax_error", "runtime_error"}:
@@ -199,30 +222,24 @@ class ParsevalAdapter:
                 if native_verdict == "syntax_error"
                 else ExecutionStatus.FAILED
             )
-            return error_result(
-                self._descriptor,
-                started,
+            raise AdapterLifecycleError(
                 status,
-                reason_code=native_verdict,
-                message=redact_connection(
+                native_verdict,
+                redact_connection(
                     native.get("error_msg") or f"ParSEval returned {native_verdict}",
-                    prepared.connection_string,
+                    connection_string,
                 ),
                 raw_output=raw,
-                finished_at=finished,
             )
         if native_verdict == "timeout":
-            return error_result(
-                self._descriptor,
-                started,
+            raise AdapterLifecycleError(
                 ExecutionStatus.TIMEOUT,
-                reason_code="backend_timeout",
-                message=redact_connection(
+                "backend_timeout",
+                redact_connection(
                     native.get("error_msg") or "ParSEval timed out",
-                    prepared.connection_string,
+                    connection_string,
                 ),
                 raw_output=raw,
-                finished_at=finished,
             )
 
         verdict = {
@@ -231,19 +248,27 @@ class ParsevalAdapter:
             "unknown": Verdict.UNKNOWN,
         }.get(native_verdict)
         if verdict is None:
-            return error_result(
-                self._descriptor,
-                started,
+            raise AdapterLifecycleError(
                 ExecutionStatus.FAILED,
-                reason_code="unparseable_output",
-                message=f"Unknown ParSEval verdict: {native_verdict!r}",
+                "unparseable_output",
+                f"Unknown ParSEval verdict: {native_verdict!r}",
                 raw_output=raw,
-                finished_at=finished,
             )
 
         generation = native.get("generation") or {}
+        witness = None
+        if verdict == Verdict.NOT_EQUIVALENT:
+            q1 = native.get("q1_result") or {}
+            q2 = native.get("q2_result") or {}
+            rows_left = q1.get("rows")
+            rows_right = q2.get("rows")
+            if rows_left is not None or rows_right is not None:
+                witness = {
+                    "query_left_rows": json_safe(rows_left),
+                    "query_right_rows": json_safe(rows_right),
+                }
         return CheckResult(
-            checker=self._descriptor.checker,
+            checker=self.descriptor.checker,
             execution_status=ExecutionStatus.COMPLETED,
             verdict=verdict,
             duration_ms=duration,
@@ -252,16 +277,12 @@ class ParsevalAdapter:
             message=(
                 redact_connection(
                     native["error_msg"],
-                    prepared.connection_string,
+                    connection_string,
                 )
                 if native.get("error_msg")
                 else None
             ),
-            witness=(
-                _counterexample(native)
-                if verdict == Verdict.NOT_EQUIVALENT
-                else None
-            ),
+            witness=witness,
             metrics={
                 "rows_generated": generation.get("rows_generated"),
                 "coverage": generation.get("coverage"),
@@ -269,40 +290,3 @@ class ParsevalAdapter:
             },
             raw_output=raw,
         )
-
-
-def _validate_generation_options(options: dict[str, object]) -> None:
-    boolean_fields = {"bootstrap_negatives"}
-    integer_fields = {
-        item.name for item in fields(GenerationConfig)
-    } - boolean_fields
-    for name in boolean_fields & options.keys():
-        if not isinstance(options[name], bool):
-            raise AdapterInputError(
-                ExecutionStatus.INVALID_INPUT,
-                "invalid_backend_options",
-                f"ParSEval {name} must be a boolean",
-            )
-    for name in integer_fields & options.keys():
-        value = options[name]
-        if name == "max_plan_depth" and value is None:
-            continue
-        if isinstance(value, bool) or not isinstance(value, int):
-            raise AdapterInputError(
-                ExecutionStatus.INVALID_INPUT,
-                "invalid_backend_options",
-                f"ParSEval {name} must be an integer",
-            )
-
-
-def _counterexample(native: dict) -> dict | None:
-    q1 = native.get("q1_result") or {}
-    q2 = native.get("q2_result") or {}
-    rows_left = q1.get("rows")
-    rows_right = q2.get("rows")
-    if rows_left is None and rows_right is None:
-        return None
-    return {
-        "query_left_rows": json_safe(rows_left),
-        "query_right_rows": json_safe(rows_right),
-    }

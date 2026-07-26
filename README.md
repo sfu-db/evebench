@@ -4,7 +4,8 @@ EveBench evaluates SQL query-equivalence cases with a common interface for
 [SQLSolver](https://github.com/SJTU-IPADS/SQLSolver),
 [SPES](https://github.com/georgia-tech-db/spes),
 [VeriEQL](https://github.com/VeriEQL/VeriEQL), and
-[ParSEval](https://github.com/sfu-db/ParSEval). It normalizes each backend's
+[ParSEval](https://github.com/sfu-db/ParSEval), and an optional
+OpenAI-compatible LLM endpoint. It normalizes each backend's
 answer, persists benchmark attempts in SQLite, and exposes the results through
 a CLI summary, HTTP API, and web leaderboard.
 
@@ -16,6 +17,7 @@ a CLI summary, HTTP API, and web leaderboard.
 | `spes` | `baselines/spes` submodule | Build an executable fat JAR | `calcite` |
 | `verieql` | `baselines/VeriEQL` submodule | No compilation | `calcite` |
 | `parseval` | Python wheel pinned in `pyproject.toml` | Installed by `uv sync` | `sqlite` |
+| `llm` | OpenAI-compatible Chat Completions endpoint | Set environment variables | `sqlite` |
 
 The default benchmark profile is
 `configs/benchmarks/bird_baseline.toml`. It evaluates 1,432 BIRD query pairs
@@ -163,6 +165,37 @@ This executes the same non-equivalent query pair through SQLSolver, SPES,
 VeriEQL, and ParSEval. It also checks that VeriEQL and ParSEval return
 counterexamples.
 
+## Benchmark dataset format
+
+EveBench datasets are UTF-8 CSV files with one query-equivalence case per row.
+All benchmark datasets use the same column order and meaning:
+
+| Column | Description |
+| --- | --- |
+| `dbid` | Identifier of the database schema used by the case. |
+| `index` | Case identifier within `dbid`; EveBench records the case as `dbid:index`. |
+| `schema_ddl` | Complete authoritative DDL used to create the schema. Multiple statements are separated by semicolons. |
+| `q1` | First SQL query in the pair. |
+| `q2` | Second SQL query in the pair. |
+| `verieql_label` | VeriEQL result supplied with the source dataset, retained for provenance. |
+| `clean_ddl` | Legacy reduced DDL supplied with the source dataset, retained for comparison. |
+| `parseval_label` | ParSEval result supplied with the source dataset, retained for provenance. |
+| `ground_truth` | Reference equivalence label, normally `EQ` or `NEQ`. |
+
+The header is therefore:
+
+```text
+dbid,index,schema_ddl,q1,q2,verieql_label,clean_ddl,parseval_label,ground_truth
+```
+
+The `(dbid, index)` pair must be unique. SQL and DDL must use normal CSV
+quoting when they contain commas, quotes, or newlines. Benchmark execution
+uses `schema_ddl`; each adapter then performs its own dialect-specific
+normalization. The two verifier-label columns and `clean_ddl` are provenance
+fields and are not used as inputs to the current benchmark run.
+`ground_truth` is persisted with the case for evaluation; it is not shown to
+the verifier.
+
 ## Configure EveBench
 
 The repository-relative defaults work after the setup above. `.env.example`
@@ -187,6 +220,54 @@ Use absolute paths for custom adapter installations.
 Additional overrides include `EVEBENCH_JAVA`,
 `EVEBENCH_VERIEQL_PYTHON`, and the logging settings described in
 `.env.example`.
+
+The optional `llm` checker is registered when `EVEBENCH_LLM_MODEL` is set.
+Configure `EVEBENCH_LLM_BASE_URL` for the provider and either
+`EVEBENCH_LLM_API_KEY` or `OPENAI_API_KEY` when authentication is required.
+Set `EVEBENCH_LLM_REASONING_EFFORT` to use reasoning-mode request parameters;
+when it is omitted, the adapter uses ordinary completion parameters. The
+default counterexample prompt can be replaced per run with
+`backends.llm.options.prompt`.
+
+### LLM verifier profile
+
+Configure the endpoint in `.env`:
+
+```dotenv
+EVEBENCH_LLM_MODEL=your-model-name
+EVEBENCH_LLM_BASE_URL=https://api.openai.com/v1
+EVEBENCH_LLM_API_KEY=your-api-key
+EVEBENCH_LLM_REASONING_EFFORT=medium
+EVEBENCH_LLM_MAX_COMPLETION_TOKENS=4096
+```
+
+For a local endpoint that does not require authentication, leave
+`EVEBENCH_LLM_API_KEY` empty. Add `llm` to the benchmark profile's `checkers`
+array and give it a backend table:
+
+```toml
+checkers = ["sqlsolver", "spes", "verieql", "parseval", "llm"]
+
+[backends.llm]
+dialect = "sqlite"
+
+[backends.llm.options]
+reasoning_effort = "medium"
+max_completion_tokens = 4096
+```
+
+The `llm` options are `reasoning_effort`, `max_completion_tokens`,
+`temperature`, and `prompt`. Profile options override the adapter defaults for
+that run. Omit `reasoning_effort` from both `.env` and the profile for an
+ordinary Chat Completions model; `temperature` is sent only in that mode. A
+custom `prompt` must be a non-empty TOML string containing all three
+placeholders: `{q1}`, `{q2}`, and `{schema}`.
+
+The verifier asks the model for an executable, insert-only counterexample. A
+valid completion is a JSON object containing exactly `explanation`,
+`counterexample_dsp`, and `counterexample`. A valid response is normalized to
+`NOT_EQUIVALENT`; malformed or unreachable responses are recorded as failed
+attempts rather than equivalence evidence.
 
 `EVEBENCH_SQLSOLVER_WORKDIR` must point to the directory containing
 `sqlsolver.properties`. The checked-in file sets SQLSolver's internal Z3
@@ -270,9 +351,7 @@ For a one-off CSV, pass its path positionally:
 uv run --env-file .env python -m evebench benchmark path/to/cases.csv
 ```
 
-The CSV must contain `dbid`, `index`, `q1`, and `q2`, plus either
-`schema_ddl` or `clean_ddl`. An optional `ground_truth` column is persisted
-with each case.
+Custom datasets should follow the canonical CSV format described above.
 
 ## View the results
 
@@ -319,21 +398,6 @@ curl "http://localhost:8000/v1/checkers"
 inputs and backend failures. Their original execution status, reason code, and
 diagnostic message remain available in SQLite.
 
-## Dataset maintenance
-
-`datasets/sqlite/bird_benchmark.csv` combines query pairs and labels from
-`bird_baseline.csv` with the authoritative full SQLite DDL from
-`bird_dev_schema.json`. Rebuild it deterministically after either source
-changes:
-
-```sh
-uv run python scripts/build_bird_dataset.py
-```
-
-Benchmark execution uses `schema_ddl`. Each adapter performs its own
-backend-specific normalization; for example, Calcite adapters remove foreign
-keys that their parsers cannot consume. `clean_ddl` is retained only for
-comparison with earlier reduced-schema evaluations.
 
 ## Development
 

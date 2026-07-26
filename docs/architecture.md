@@ -1,349 +1,435 @@
-# EveBench backend and API design
+# EveBench architecture
+
+EveBench runs heterogeneous SQL query-equivalence checkers behind one domain
+contract. The same execution path serves interactive HTTP checks and
+reproducible CSV benchmark runs.
 
 ## Goals
 
-EveBench runs the same SQL-equivalence case through multiple heterogeneous
-checkers and preserves enough information to:
+EveBench is designed to:
 
-1. return each checker's answer to an API client;
-2. diagnose unsupported inputs, failures, and timeouts;
-3. reproduce a result using the same checker version and configuration; and
-4. compute a fair leaderboard against a versioned, labelled benchmark.
+1. give every checker the same query pair, schema, SQL semantics, and deadline;
+2. distinguish a checker's verdict from failures in executing that checker;
+3. retain diagnostics, raw output, metrics, and counterexamples;
+4. make benchmark runs resumable with an exact configuration snapshot; and
+5. expose comparable four-way outcome summaries through the CLI, API, and
+   leaderboard.
 
-The API maps every backend answer into a small common result without exposing
-backend-specific result classes.
+FastAPI and Pydantic are confined to the HTTP boundary. The application,
+adapters, benchmark runner, and result store exchange framework-independent
+domain dataclasses.
 
-## Core decisions
+## System overview
 
-- Keep FastAPI/Pydantic models at the HTTP boundary. Adapters consume and return
-  framework-independent domain models.
-- Give every backend a small adapter, registered by a stable checker ID.
-- Run all backend attempts through one application-owned Pebble process pool.
-  An API coroutine timeout alone cannot stop Java, Z3, or CPU-bound Python.
-- Store raw backend output as well as the normalized result.
-- Treat benchmark execution as a durable asynchronous job. A process-local
-  FastAPI background task is not durable enough for leaderboard runs.
-- Version inputs, checker artifacts, adapter code, and effective configuration.
-- Compute leaderboard rows from immutable attempts, not from mutable aggregate
-  counters.
+```text
+Interactive client
+      |
+      v
+FastAPI routes -------> CheckService -------> CheckerRegistry
+                                                |
+Benchmark CLI ---> BenchmarkRunner -------------+
+      |                                         |
+      v                                         v
+BenchmarkConfig                           PooledChecker
+                                                |
+                                                v
+                                      shared Pebble process pool
+                                                |
+                                                v
+                                      complete worker-side adapter
+                                  preprocess -> run -> postprocess
+                                                |
+                      +-------------------------+-------------------------+
+                      |              |              |          |         |
+                      v              v              v          v         v
+                  SQLSolver         SPES         VeriEQL    ParSEval    LLM
+
+BenchmarkRunner -----------------> ResultStore -----------------> SQLite
+FastAPI / leaderboard -------------> summary queries ----------------^
+```
+
+All registered checkers use the same lazily started Pebble process pool. A hard
+pool deadline can terminate and replace a worker that is stuck in Java, Z3,
+CPU-bound Python, a child process, or a remote request.
+
+Interactive results are returned directly and are not persisted. Benchmark
+results are committed to SQLite after each dataset case.
 
 ## Domain contract
 
-### Check request
+### Check input
 
 ```python
+@dataclass(frozen=True, slots=True)
 class EquivalenceCase:
-    case_id: str | None
     query_left: str
     query_right: str
     schema_ddl: str
     dialect: str
-    semantics: Literal["bag", "set"]
-    parameters: dict[str, JSONValue]
+    semantics: str
+    case_id: str | None = None
+    parameters: dict[str, JSONValue] = field(default_factory=dict)
 
+@dataclass(frozen=True, slots=True)
 class CheckOptions:
-    timeout_ms: int
-    memory_limit_mb: int | None
-    seed: int | None
-    backend_options: dict[str, dict[str, JSONValue]]
+    timeout_ms: int = 30_000
+    memory_limit_mb: int | None = None
+    seed: int | None = None
+    backend_options: dict[str, dict[str, JSONValue]] = field(
+        default_factory=dict
+    )
 ```
 
-`parameters` is reserved for typed query parameters or future schema metadata;
-it must not become a bag of backend-specific flags. Backend-specific settings
-belong in `backend_options`, keyed by checker ID.
+`parameters` is reserved for bound query parameters. Current adapters reject
+non-empty parameters. Backend-specific settings belong in `backend_options`,
+keyed by stable checker ID.
+
+The HTTP schema accepts a timeout from 100 to 300,000 ms. The
+`memory_limit_mb` field is reserved but rejected because the current process
+pool does not enforce a memory limit.
 
 ### Normalized result
 
-Keep the backend's conclusion separate from whether EveBench successfully ran
-the backend.
+The result separates the backend conclusion from EveBench's ability to execute
+the backend:
 
 ```python
+@dataclass(frozen=True, slots=True)
 class CheckResult:
     checker: CheckerRef
-    execution_status: Literal[
-        "completed", "timeout", "unsupported", "invalid_input", "failed"
-    ]
-    verdict: Literal["equivalent", "not_equivalent", "unknown"] | None
+    execution_status: ExecutionStatus
+    verdict: Verdict | None
     duration_ms: int
     started_at: datetime
     finished_at: datetime
-    reason_code: str | None
-    message: str | None
-    witness: Counterexample | None
-    metrics: dict[str, int | float | str | bool | None]
-    raw: RawArtifactRef | None
+    reason_code: str | None = None
+    message: str | None = None
+    witness: dict[str, JSONValue] | None = None
+    metrics: dict[str, int | float | str | bool | None] = field(
+        default_factory=dict
+    )
+    raw_output: str | None = None
 ```
+
+Execution statuses are `completed`, `timeout`, `unsupported`,
+`invalid_input`, and `failed`. Normal verdicts are `equivalent`,
+`not_equivalent`, and `unknown`. A timeout or execution failure normally has no
+verdict.
 
 Examples:
 
-- A successful SQLSolver `EQ` maps to `equivalent`.
-- A checker `UNKNOWN` is a completed execution with verdict `unknown`.
-- A ParSEval mismatch maps to `not_equivalent` and may include its witness.
-- A ParSEval match maps to `equivalent`.
-- A killed process maps to execution status `timeout` and no verdict.
-- Unsupported SQL maps to `unsupported`, rather than `unknown`, when the
-  adapter can identify that condition.
+- a successful SQLSolver `EQ` becomes `completed` / `equivalent`;
+- a backend `UNKNOWN` becomes `completed` / `unknown`;
+- a ParSEval mismatch becomes `completed` / `not_equivalent` and may include
+  result rows as a witness;
+- unsupported SQL features become `unsupported` with no verdict when the
+  adapter can identify them; and
+- a hard process-pool deadline becomes `timeout` with reason
+  `worker_timeout`.
 
-`reason_code` is a stable, queryable value such as `unsupported_join`,
-`parse_error`, `worker_timeout`, or `backend_crash`. `message` is diagnostic
-text and is not part of the public compatibility contract.
+`reason_code` is intended for stable filtering. `message` and `raw_output`
+retain human-readable and backend-native diagnostics.
 
-## Adapter contract
+## Adapter lifecycle
+
+Worker-side adapters implement a synchronous three-phase lifecycle:
 
 ```python
-class BackendAdapter(Protocol):
-    def check(
+class BackendAdapter(Protocol[PreparedInput, NativeOutput]):
+    @property
+    def descriptor(self) -> CheckerDescriptor: ...
+
+    def preprocess(
         self,
         case: EquivalenceCase,
         options: CheckOptions,
+    ) -> PreparedInput: ...
+
+    def run(self, prepared: PreparedInput) -> NativeOutput: ...
+
+    def postprocess(
+        self,
+        native: NativeOutput,
+        *,
+        started_at: datetime | None = None,
     ) -> CheckResult: ...
 ```
 
-Backend adapters are synchronous because the complete adapter is constructed
-and executed inside a Pebble worker. The API process registers lightweight
-asynchronous `PooledChecker` proxies containing only a descriptor, picklable
-backend configuration, and the shared pool reference.
+The shared lifecycle driver calls these phases in order:
 
-`CheckerDescriptor` includes:
+1. `preprocess()` validates common input, validates backend options, and
+   translates the schema or queries when required;
+2. `run()` invokes the native checker; and
+3. `postprocess()` maps native output to `CheckResult`.
 
-- stable ID, display name, backend version, and adapter version;
+`AdapterInputError` and `AdapterLifecycleError` carry an execution status,
+reason code, message, and optional raw output. Unexpected errors are classified
+by phase as `preprocess_error`, `backend_error`, or `postprocess_error`.
+
+The API process holds only a `PooledChecker`: a descriptor, a picklable adapter
+configuration, and a reference to the shared pool. The worker entry point
+constructs the complete adapter for every task and executes its lifecycle.
+This keeps backend imports, native libraries, JVM state, and blocking work out
+of the API event loop.
+
+`CheckService` validates selected checker IDs and fans out one coroutine per
+checker with `asyncio.gather`. A checker failure is returned as an independent
+result and does not cancel successful sibling checks.
+
+### Registry and configuration
+
+The checker registry is built at application or benchmark startup. Clients
+select stable IDs; they cannot provide arbitrary import paths.
+
+SQLSolver, SPES, VeriEQL, and ParSEval are always registered, with descriptor
+availability reflecting required local artifacts. The optional `llm` checker
+is registered only when `EVEBENCH_LLM_MODEL` is non-empty. Environment
+variables configure backend installations and LLM connection details.
+Benchmark TOML profiles select checkers, dialects, and validated per-backend
+options.
+
+Every descriptor contains:
+
+- checker ID, display name, backend version, and adapter version;
 - supported dialects and bag/set semantics;
-- execution mode (`process_pool` or `remote`);
-- availability and health details.
+- execution mode; and
+- availability plus an unavailable reason.
 
-The adapter returns an `unsupported` result directly when it cannot handle a
-dialect, semantics, feature, or configuration. There is no separate support
-preflight.
+## Backend integrations
 
-Adapters own only backend translation:
+| Checker | Native execution | Dialects | Semantics |
+| --- | --- | --- | --- |
+| `sqlsolver` | JPype call into an embedded JVM | `calcite` | bag |
+| `spes` | executable fat JAR in a child JVM | `calcite` | bag |
+| `verieql` | isolated Python subprocess | Calcite, MySQL/MariaDB, PostgreSQL, Oracle | bag |
+| `parseval` | direct Python `disprove()` call | SQLite, MySQL, PostgreSQL | bag and set |
+| `llm` | OpenAI-compatible Chat Completions HTTP request | SQLite, MySQL, PostgreSQL, Calcite | bag and set |
 
-1. translate the common case and options into backend input;
-2. invoke the backend directly inside the current pool worker;
-3. parse backend output;
-4. normalize it into `CheckResult`.
+### SQLSolver and SPES
 
-They do not select other adapters, write leaderboard records, create HTTP
-responses, or retry non-idempotent work.
+Both Calcite adapters use a shared SQLGlot preprocessing step. It validates the
+case, removes foreign keys that the vendored parsers cannot consume, removes
+unsupported inline constraint names, and adds a default length to bare
+`VARCHAR` columns.
 
-### Registry and execution
+SQLSolver loads its Z3 native libraries, starts one JVM per pool worker when
+needed, and invokes `sqlsolver.api.entry.Verification` through JPype. Its native
+`EQ`, `NEQ`, `UNKNOWN`, and `TIMEOUT` values are normalized directly.
 
-```text
-FastAPI route
-    |
-    v
-Run service -----> checker registry -----> pooled checker proxy
-    |                                              |
-    v                                              v
-run repository                         global backend process pool
-    |                                              |
-    v                                              v
-result/artifact store                    construct + run adapter
-                                         |                 |
-                                         v                 v
-                                  ParSEval call      embedded JVM call
-```
+SPES launches its executable JAR for each attempt and reads the last JSON object
+from standard output. A subprocess timeout is set slightly below the outer pool
+deadline so normal timeout diagnostics can be returned before the worker is
+terminated.
 
-The registry is constructed at application startup from configuration, rather
-than from arbitrary import paths supplied by clients. This keeps checker IDs
-stable and avoids code-loading vulnerabilities.
+### VeriEQL
 
-The run service:
+VeriEQL must use its vendored Python Z3 wrapper and native Z3 version, so it
+runs in an isolated Python subprocess inside the pool worker. SQLGlot converts
+DDL into VeriEQL's table/type dictionary and primary-key, foreign-key, and
+not-null constraints.
 
-- validates checker IDs and request size limits;
-- snapshots the effective checker configuration;
-- fans out one attempt per selected checker;
-- submits all backend attempts to the shared process pool;
-- records each result independently, including partial completion;
-- never cancels completed sibling results because one backend failed.
+`backend_options.verieql` accepts:
 
-The global pool owns concurrency, task timeouts, worker replacement, and worker
-recycling. The whole adapter—not merely a backend helper—runs in the worker.
-ParSEval calls `disprove()` directly. SQLSolver uses JPype to start a JVM inside
-the Python worker and calls the Java verification API directly, so neither
-adapter launches another OS process. Pebble can terminate and replace the
-containing worker when its wall-clock deadline expires.
+- `bound_size`, an integer from 1 to 100; and
+- `use_constraints`, a boolean controlling whether parsed constraints are
+  passed to the verifier.
 
-## API
+Generated counterexamples are stored as normalized witnesses.
 
-### Interactive checks
+### ParSEval
 
-- `GET /v1/checkers` — descriptors, capabilities, versions, and availability.
-- `POST /v1/checks` — run a small case against selected checkers and wait up to
-  a bounded API deadline.
+ParSEval calls its public `disprove()` API directly in the pool worker.
+Generation settings are passed through
+`backend_options.parseval` after validation against `GenerationConfig`; the
+shared benchmark seed overrides its generation seed.
 
-`POST /v1/checks` request:
+ParSEval requires a disposable database connection. During CSV benchmarks,
+`BenchmarkRunner` creates a unique temporary SQLite path for each case/checker
+attempt and injects the connection string. Interactive API callers must provide
+`backend_options.parseval.connection_string`.
+
+The adapter removes or drops the disposable database in a `finally` path and
+redacts the connection string from errors and raw results. If a hard pool
+timeout prevents normal cleanup, `PooledChecker` schedules idempotent cleanup
+in a replacement worker.
+
+### LLM counterexample verifier
+
+The LLM adapter calls an OpenAI-compatible `/chat/completions` endpoint. The
+model, base URL, API key, default reasoning effort, and default completion
+budget are fixed when the registry is constructed. Per-run options may
+override `reasoning_effort`, `max_completion_tokens`, `temperature`, and
+`prompt`.
+
+The prompt must contain `{q1}`, `{q2}`, and `{schema}`. The completion must be a
+JSON object containing exactly:
+
+- `explanation`;
+- `counterexample_dsp`; and
+- `counterexample`.
+
+The `counterexample` field must be empty or parse as only SQL `INSERT`
+statements. A valid completion is normalized to `not_equivalent`; malformed
+responses and endpoint failures are failed attempts. EveBench currently checks
+the response shape and SQL syntax but does not execute the generated inserts
+to independently validate that the two queries return different results.
+Consequently, the LLM adapter is a counterexample-producing disprover, not a
+proof of equivalence.
+
+## Interactive API
+
+The implemented API surface is:
+
+- `GET /v1/checkers` — checker descriptors, versions, capabilities, and
+  availability;
+- `POST /v1/checks` — run one case against selected checkers and return all
+  results; and
+- `GET /v1/benchmarks/summary` — four-way summaries, optionally filtered by
+  `dataset` or `run_id`.
+
+`POST /v1/checks` accepts:
 
 ```json
 {
   "case": {
+    "case_id": "example:1",
     "query_left": "SELECT a FROM t",
     "query_right": "SELECT a FROM t",
     "schema_ddl": "CREATE TABLE t (a INT);",
-    "dialect": "postgres",
+    "dialect": "sqlite",
     "semantics": "bag",
     "parameters": {}
   },
-  "checker_ids": ["sqlsolver", "parseval"],
+  "checker_ids": ["parseval"],
   "options": {
     "timeout_ms": 30000,
-    "backend_options": {}
+    "seed": 1,
+    "backend_options": {
+      "parseval": {
+        "connection_string": "sqlite:////tmp/evebench-case.db"
+      }
+    }
   }
 }
 ```
 
-The response contains one result per checker. A backend timeout or failure is a
-normal per-checker result and does not turn the whole HTTP response into a 5xx.
-Malformed requests, unknown checker IDs, and server-level failures still use
-appropriate HTTP error statuses.
+A backend timeout, unsupported input, or failure remains a normal per-checker
+result and does not turn the response into a 5xx. Pydantic validation errors
+and unknown checker IDs use HTTP validation responses.
 
-### Benchmark runs
+The root routes serve the interactive workbench and leaderboard. Structured
+request logging assigns or validates `x-request-id` and returns it in the
+response header.
 
-- `POST /v1/runs` — enqueue a benchmark snapshot and return `202` plus run ID.
-- `GET /v1/runs/{run_id}` — status and progress counts.
-- `GET /v1/runs/{run_id}/results` — paginated attempt results.
-- `POST /v1/runs/{run_id}/cancel` — request cancellation of queued/running
-  attempts.
-- `GET /v1/leaderboards/{benchmark_id}` — aggregate a completed, published run
-  or a specified set of comparable runs.
+The API does not currently create, cancel, or resume benchmark runs. Benchmark
+execution belongs to the CLI; the API reads persisted summaries.
 
-The initial API can use polling. Server-sent events can be added later without
-changing the run/result model.
+## Benchmark pipeline
 
-## Persistence
+### Profiles
 
-Recommended logical tables:
+`BenchmarkConfig` loads versioned TOML profiles. A profile fixes:
 
-- `benchmark`: named, versioned benchmark metadata;
-- `benchmark_case`: immutable queries, schema, dialect, semantics, expected
-  label, tags, and content hash;
-- `run`: benchmark version, state, environment fingerprint, timestamps;
-- `run_checker`: checker artifact/version plus effective configuration snapshot;
-- `attempt`: one case × checker execution, normalized fields and timings;
-- `artifact`: content-addressed raw output, logs, proof, or counterexample.
+- dataset and SQLite result paths;
+- dataset name;
+- timeout, SQL semantics, and seed;
+- ordered checker IDs;
+- one dialect and options table per checker; and
+- worker count, worker recycling, and progress interval.
 
-Use a unique key on `(run_id, checker_id, case_id, attempt_number)` and an
-idempotency key on run creation. Keep large logs and witnesses in object
-storage; keep their hashes and metadata in the relational database.
+Unknown profile keys are rejected. Relative paths are resolved from the
+profile file. The CLI can override common execution settings, select a subset
+of configured checkers, limit the number of cases, or accept an ad hoc CSV.
 
-Queries and schemas may contain sensitive or adversarial text. Logs should use
-case IDs and hashes by default, with SQL logging explicitly enabled only in a
-trusted deployment.
+### Dataset contract
 
-## Leaderboard semantics
+Canonical datasets are UTF-8 CSV files with this header:
 
-Only compare runs with the same:
+```text
+dbid,index,schema_ddl,q1,q2,verieql_label,clean_ddl,parseval_label,ground_truth
+```
 
-- benchmark content hash and expected-label policy;
-- SQL semantics and dialect policy;
-- timeout/resource class;
-- allowed checker configuration policy.
+Each row is one equivalence case. `(dbid, index)` identifies the case as
+`dbid:index` and must be unique. `schema_ddl` is the authoritative schema,
+while `q1` and `q2` are the query pair. The source verifier labels and
+`clean_ddl` are retained for provenance. `ground_truth` is persisted for
+evaluation but is never passed to a checker.
 
-Publish multiple metrics instead of a single opaque score:
+The runner requires `dbid`, `index`, `q1`, and `q2`, plus `schema_ddl` or the
+legacy `clean_ddl` fallback. The canonical builder emits all nine columns and
+validates non-empty input, schema coverage, and unique case IDs.
 
-- overall accuracy on labelled, eligible cases;
-- equivalent and non-equivalent recall;
-- false-equivalent and false-non-equivalent counts;
-- decisive coverage: conclusive verdicts / eligible cases;
-- attempted coverage: supported cases / total cases;
-- timeout, unsupported, invalid-input, and failure rates;
-- median and p95 duration, plus total compute time;
-- counterexample/proof validation rate when independently checkable.
+### Execution and resume
 
-`unknown`, `unsupported`, `timeout`, and `failed` are not incorrect predictions,
-but they reduce coverage. A separate optional competition score may penalize
-abstention, but its formula must be versioned and displayed.
+`BenchmarkRunner` reads the CSV, applies any case limit, and resolves a dialect
+for every selected checker. For each row it:
 
-## Proposed package layout
+1. creates the base `EquivalenceCase`;
+2. injects a disposable SQLite connection for ParSEval;
+3. runs all pending checkers concurrently through `CheckService`; and
+4. commits the case and its results in one SQLite transaction.
+
+The run snapshot includes the dataset SHA-256, case count after limiting,
+timeout, selected checker IDs, semantics, seed, backend dialects, backend
+options, profile version/path, and worker/progress settings.
+
+To resume, the caller supplies an existing run ID. The store rejects a changed
+dataset hash, case count, timeout, or configuration snapshot. Results already
+present for a case/checker pair are skipped; only missing checker attempts are
+run. The run ends as `completed`, `interrupted`, or `failed`.
+
+## Persistence and summaries
+
+`ResultStore` uses SQLite in WAL mode with foreign keys enabled. It creates
+three tables:
+
+| Table | Purpose |
+| --- | --- |
+| `benchmark_runs` | Dataset identity/hash, total cases, timeout, status, exact configuration JSON, and timestamps. |
+| `benchmark_cases` | Per-run case ID, source row, database ID, ground truth, queries, and schema. |
+| `evaluation_results` | One case/checker result with versions, normalized status/verdict, timing, diagnostics, witness JSON, metrics JSON, and raw output. |
+
+Primary keys enforce one case per `(run_id, case_id)` and one result per
+`(run_id, case_id, checker_id)`. Saving the same result key updates that row;
+there is no separate attempt-history or artifact table. Witnesses, metrics, and
+raw backend output are stored inline.
+
+For leaderboard display, every result is reduced to one of four categories:
+
+- `eq` for an equivalent verdict;
+- `neq` for a non-equivalent verdict;
+- `timeout` for a timeout status or verdict; and
+- `unknown` for an unknown verdict and all other non-verdict outcomes,
+  including unsupported, invalid, and failed executions.
+
+Summary queries report counts and ratios for those categories plus median
+duration. With no `run_id`, the API selects the highest run ID for each
+dataset. These are outcome-distribution metrics, not ground-truth accuracy
+scores.
+
+## Observability
+
+Application events use Python structured logging. Concise console logs and
+rotating JSON Lines file logs share contextual fields such as request ID, run
+ID, case ID, and checker ID. Benchmark progress and lifecycle events are
+logged, while detailed results remain in SQLite.
+
+## Package layout
 
 ```text
 src/evebench/
-  api/
-    app.py
-    dependencies.py
-    routes/checkers.py
-    routes/checks.py
-    routes/runs.py
-    schemas.py
-  domain/
-    models.py
-    ports.py
-    errors.py
-  application/
-    check_service.py
-    run_service.py
-    leaderboard_service.py
-  adapters/
-    registry.py
-    sqlsolver.py
-    parseval.py
-    verieql.py
-  execution/
-    base.py
-    pool.py
-    container.py
-  infrastructure/
-    config.py
-    repositories.py
-    artifacts.py
-  workers/
-    tasks.py
+  adapters/       lifecycle driver, registry, pooled proxies, and backends
+    schema/       Calcite and VeriEQL DDL translation
+  api/            FastAPI app, request/response schemas, and routes
+  application/    checker selection and concurrent fan-out
+  benchmark/      TOML profiles, CSV loading/building, runner, and SQLite store
+  domain/         shared dataclasses and checker protocol
+  execution/      shared Pebble process pool
+  observability/  console and rotating JSONL logging
+  web/            workbench and leaderboard static assets
 ```
 
-`domain/ports.py` contains the checker, repository, executor, and artifact-store
-protocols. This makes adapters unit-testable with fake executors and keeps the
-first implementation from locking the project to a particular queue or
-database.
-
-## Backend-specific notes
-
-### SQLSolver
-
-Use JPype inside the pool worker to call SQLSolver's batch-capable Java API
-directly. Pass both SQL strings, schema DDL, and the timeout overload rather
-than scraping CLI output. Snapshot the JAR hash, Java version, Z3
-version/configuration, Calcite dialect policy, and timeout. Normalize `EQ`,
-`NEQ`, `UNKNOWN`, and `TIMEOUT`, retaining SQLSolver's raw enum result.
-
-### VeriEQL
-
-Run VeriEQL in an isolated Python subprocess because it requires its vendored
-Z3 Python wrapper and a different native Z3 version from ParSEval. Translate
-schema DDL with SQLGlot into VeriEQL's table/type dictionary and integrity
-constraints. The adapter exposes the bounded row count as
-`backend_options.verieql.bound_size` and returns generated counterexamples as
-normalized witnesses.
-
-### ParSEval
-
-Its public `disprove(...)` API accepts queries, schema, connection string,
-dialect, semantics, generation configuration, and timeout. The adapter requires
-`backend_options.parseval.connection_string`, validates its SQLAlchemy backend
-against the requested dialect, and passes it unchanged to `disprove()`. It does
-not create an implicit temporary database. Connection strings are removed from
-raw results to avoid returning credentials. The adapter always deletes the
-SQLite file or drops the PostgreSQL/MySQL database in a `finally` path.
-After a hard worker timeout, the pooled proxy schedules the same idempotent
-cleanup in a replacement worker. System databases are rejected and identifiers
-are dialect-quoted. Cleanup is destructive, so deployments must provision a
-separate disposable database for every concurrent attempt.
-
-### VeriEQL and future backends
-
-Add each as another adapter plus an execution image. Do not add backend fields
-to the common request unless they describe SQL semantics shared by multiple
-tools; use validated backend options for tool-specific tuning.
-
-## Delivery sequence
-
-1. Implement domain models, adapter protocol, registry, fake checker, and
-   interactive `/v1/checkers` + `/v1/checks`.
-2. Add the global Pebble process pool and construct each complete adapter in its
-   workers.
-3. Add the embedded-JVM SQLSolver adapter and enforce its hard pool timeout.
-4. Add durable run/attempt persistence and asynchronous benchmark workers.
-5. Add benchmark import, metric computation, and leaderboard publication.
-6. Add VeriEQL and other adapters using conformance tests.
-
-Every adapter should pass the same contract suite: supported/unsupported input,
-each normalized verdict, invalid input, timeout, crash, oversized output,
-version capture, and cancellation.
+The main extension points are a worker-side adapter, its descriptor and
+picklable configuration, an `execute_adapter` dispatch entry, and registry
+construction. Backend-specific behavior stays in the adapter and its validated
+options rather than expanding the common HTTP or benchmark contracts.

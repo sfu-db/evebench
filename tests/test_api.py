@@ -96,6 +96,21 @@ async def test_frontend_identifies_backends_independently_of_option_inputs(
 
 
 @pytest.mark.asyncio
+async def test_leaderboard_supports_count_toggle_and_column_sorting(
+    client: httpx.AsyncClient,
+) -> None:
+    page = await client.get("/leaderboard")
+    script = await client.get("/assets/leaderboard.js")
+
+    assert 'name="value-mode" value="count"' in page.text
+    assert 'data-sort="neq" aria-sort="descending"' in page.text
+    assert 'let sortColumn = "neq"' in script.text
+    assert 'row[`${verdict}_count`]' in script.text
+    assert 'row[`${sortColumn}_ratio`]' in script.text
+    assert 'querySelectorAll("th[data-sort] button")' in script.text
+
+
+@pytest.mark.asyncio
 async def test_runs_selected_checker(client: httpx.AsyncClient) -> None:
     response = await client.post(
         "/v1/checks",

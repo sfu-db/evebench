@@ -5,6 +5,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import evebench.adapters.verieql as verieql_module
+from evebench.adapters.core import execute_lifecycle
 from evebench.adapters.verieql import VeriEQLAdapter, VeriEQLConfig
 from evebench.adapters.schema import parse_verieql_ddl
 from evebench.domain import CheckOptions, EquivalenceCase
@@ -53,7 +54,7 @@ def test_normalizes_verieql_counterexample(monkeypatch) -> None:
     adapter = verieql_adapter()
     monkeypatch.setattr(
         adapter,
-        "_invoke",
+        "run",
         lambda *args: SimpleNamespace(
             returncode=0,
             stdout=json.dumps(
@@ -69,7 +70,7 @@ def test_normalizes_verieql_counterexample(monkeypatch) -> None:
         ),
     )
 
-    result = adapter.check(verieql_case(), CheckOptions())
+    result = execute_lifecycle(adapter, verieql_case(), CheckOptions())
 
     assert result.execution_status == ExecutionStatus.COMPLETED
     assert result.verdict == Verdict.NOT_EQUIVALENT
@@ -92,7 +93,8 @@ def test_passes_native_schema_and_bound_to_runner(monkeypatch) -> None:
     monkeypatch.setattr(verieql_module.subprocess, "run", fake_run)
     adapter = verieql_adapter()
 
-    result = adapter.check(
+    result = execute_lifecycle(
+        adapter,
         verieql_case(),
         CheckOptions(
             timeout_ms=2_000,
@@ -113,7 +115,8 @@ def test_passes_native_schema_and_bound_to_runner(monkeypatch) -> None:
 
 
 def test_rejects_invalid_bound_size() -> None:
-    result = verieql_adapter().check(
+    result = execute_lifecycle(
+        verieql_adapter(),
         verieql_case(),
         CheckOptions(
             backend_options={"verieql": {"bound_size": 0}},

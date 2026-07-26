@@ -7,6 +7,8 @@ import sys
 import evebench.adapters.parseval as parseval_module
 import evebench.adapters.spes as spes_module
 import evebench.adapters.sqlsolver as sqlsolver_module
+from evebench.adapters import BackendAdapter
+from evebench.adapters.core import execute_lifecycle
 from evebench.adapters.parseval import (
     ParsevalAdapter,
     ParsevalConfig,
@@ -14,6 +16,7 @@ from evebench.adapters.parseval import (
 from evebench.adapters.parseval_database import cleanup_database
 from evebench.adapters.sqlsolver import SQLSolverAdapter, SQLSolverConfig
 from evebench.adapters.spes import SPESAdapter, SPESConfig
+from evebench.adapters.verieql import VeriEQLAdapter, VeriEQLConfig
 from evebench.domain import CheckOptions, EquivalenceCase
 from evebench.domain.models import ExecutionStatus, Verdict
 
@@ -60,11 +63,27 @@ def spes_adapter() -> SPESAdapter:
     )
 
 
+def test_adapters_implement_explicit_lifecycle_protocol() -> None:
+    verieql_root = Path(__file__).parents[1] / "baselines" / "VeriEQL"
+    adapters = (
+        ParsevalAdapter(ParsevalConfig(backend_version="test")),
+        spes_adapter(),
+        sqlsolver_adapter(),
+        VeriEQLAdapter(VeriEQLConfig(root_path=str(verieql_root))),
+    )
+
+    for adapter in adapters:
+        assert isinstance(adapter, BackendAdapter)
+        assert callable(adapter.preprocess)
+        assert callable(adapter.run)
+        assert callable(adapter.postprocess)
+
+
 def test_spes_normalizes_equivalence(monkeypatch) -> None:
     adapter = spes_adapter()
     monkeypatch.setattr(
         adapter,
-        "_invoke",
+        "run",
         lambda prepared: SimpleNamespace(
             returncode=0,
             stdout='{"decision":"true","plan1":"left","plan2":"right"}\n',
@@ -72,7 +91,7 @@ def test_spes_normalizes_equivalence(monkeypatch) -> None:
         ),
     )
 
-    result = adapter.check(spes_case(), CheckOptions())
+    result = execute_lifecycle(adapter, spes_case(), CheckOptions())
 
     assert result.execution_status == ExecutionStatus.COMPLETED
     assert result.verdict == Verdict.EQUIVALENT
@@ -83,7 +102,7 @@ def test_spes_normalizes_unknown_reason(monkeypatch) -> None:
     adapter = spes_adapter()
     monkeypatch.setattr(
         adapter,
-        "_invoke",
+        "run",
         lambda prepared: SimpleNamespace(
             returncode=0,
             stdout='{"decision":"unknown","reason":"unsupported feature"}',
@@ -91,7 +110,7 @@ def test_spes_normalizes_unknown_reason(monkeypatch) -> None:
         ),
     )
 
-    result = adapter.check(spes_case(), CheckOptions())
+    result = execute_lifecycle(adapter, spes_case(), CheckOptions())
 
     assert result.execution_status == ExecutionStatus.COMPLETED
     assert result.verdict == Verdict.UNKNOWN
@@ -124,7 +143,11 @@ def test_spes_passes_case_to_executable_jar(monkeypatch) -> None:
         semantics="bag",
     )
 
-    result = adapter.check(case, CheckOptions(timeout_ms=2_000))
+    result = execute_lifecycle(
+        adapter,
+        case,
+        CheckOptions(timeout_ms=2_000),
+    )
 
     assert result.verdict == Verdict.NOT_EQUIVALENT
     assert captured["command"][-6:] == [
@@ -147,9 +170,9 @@ def test_spes_passes_case_to_executable_jar(monkeypatch) -> None:
 
 def test_sqlsolver_normalizes_equivalence(monkeypatch) -> None:
     adapter = sqlsolver_adapter()
-    monkeypatch.setattr(adapter, "_verify", lambda prepared: "EQ")
+    monkeypatch.setattr(adapter, "run", lambda prepared: "EQ")
 
-    result = adapter.check(sqlsolver_case(), CheckOptions())
+    result = execute_lifecycle(adapter, sqlsolver_case(), CheckOptions())
 
     assert result.execution_status == ExecutionStatus.COMPLETED
     assert result.verdict == Verdict.EQUIVALENT
@@ -158,9 +181,9 @@ def test_sqlsolver_normalizes_equivalence(monkeypatch) -> None:
 
 def test_sqlsolver_normalizes_backend_timeout(monkeypatch) -> None:
     adapter = sqlsolver_adapter()
-    monkeypatch.setattr(adapter, "_verify", lambda prepared: "TIMEOUT")
+    monkeypatch.setattr(adapter, "run", lambda prepared: "TIMEOUT")
 
-    result = adapter.check(sqlsolver_case(), CheckOptions())
+    result = execute_lifecycle(adapter, sqlsolver_case(), CheckOptions())
 
     assert result.execution_status == ExecutionStatus.TIMEOUT
     assert result.verdict is None
@@ -216,7 +239,7 @@ def test_sqlsolver_passes_queries_schema_and_timeout_to_java(monkeypatch) -> Non
     )
 
     prepared = adapter.preprocess(case, CheckOptions(timeout_ms=1_500))
-    native = adapter._verify(prepared)
+    native = adapter.run(prepared)
 
     assert native == "EQ"
     assert captured["verify"] == (
@@ -247,7 +270,8 @@ def test_parseval_rejects_unknown_backend_option() -> None:
         semantics="bag",
     )
 
-    result = adapter.check(
+    result = execute_lifecycle(
+        adapter,
         case,
         CheckOptions(backend_options={"parseval": {"does_not_exist": True}}),
     )
@@ -286,7 +310,8 @@ def test_parseval_receives_all_backend_parameters(monkeypatch, tmp_path) -> None
         semantics="set",
     )
 
-    result = adapter.check(
+    result = execute_lifecycle(
+        adapter,
         case,
         CheckOptions(
             timeout_ms=1_500,
@@ -326,7 +351,7 @@ def test_parseval_requires_connection_string() -> None:
         semantics="bag",
     )
 
-    result = adapter.check(case, CheckOptions())
+    result = execute_lifecycle(adapter, case, CheckOptions())
 
     assert result.execution_status == ExecutionStatus.INVALID_INPUT
     assert result.reason_code == "missing_connection_string"
@@ -342,7 +367,8 @@ def test_parseval_rejects_connection_for_different_dialect() -> None:
         semantics="bag",
     )
 
-    result = adapter.check(
+    result = execute_lifecycle(
+        adapter,
         case,
         CheckOptions(
             backend_options={
@@ -381,7 +407,8 @@ def test_parseval_refuses_protected_database() -> None:
         semantics="bag",
     )
 
-    result = adapter.check(
+    result = execute_lifecycle(
+        adapter,
         case,
         CheckOptions(
             backend_options={

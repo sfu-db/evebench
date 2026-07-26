@@ -7,3 +7,6 @@
 [submodule "baselines/VeriEQL"]
 	path = baselines/VeriEQL
 	url = https://github.com/VeriEQL/VeriEQL.git
+[submodule "baselines/qed/parser"]
+	path = baselines/qed/parser
+	url = https://github.com/qed-solver/parser.git

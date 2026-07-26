@@ -41,19 +41,31 @@
             <option>Loading datasets…</option>
           </select>
         </label>
+        <fieldset class="metric-toggle" aria-label="Verdict value display">
+          <legend>Show</legend>
+          <label>
+            <input type="radio" name="value-mode" value="ratio" checked>
+            <span>Ratio</span>
+          </label>
+          <label>
+            <input type="radio" name="value-mode" value="count">
+            <span>Exact count</span>
+          </label>
+        </fieldset>
         <span class="board-note" id="snapshot-label"></span>
       </div>
       <div class="table-scroll">
         <table>
           <thead>
             <tr>
-              <th>Approach</th>
-              <th>EQ</th>
-              <th>NEQ</th>
-              <th>Unknown</th>
-              <th>Timeout</th>
-              <th>Median time ↓</th>
-              <th>Evaluated</th>
+              <th class="rank-heading" scope="col">Rank</th>
+              <th scope="col" data-sort="display_name"><button type="button">Approach<span class="sort-indicator" aria-hidden="true"></span></button></th>
+              <th scope="col" data-sort="eq"><button type="button">EQ<span class="sort-indicator" aria-hidden="true"></span></button></th>
+              <th scope="col" data-sort="neq" aria-sort="descending"><button type="button">NEQ<span class="sort-indicator" aria-hidden="true">↓</span></button></th>
+              <th scope="col" data-sort="unknown"><button type="button">Unknown<span class="sort-indicator" aria-hidden="true"></span></button></th>
+              <th scope="col" data-sort="timeout"><button type="button">Timeout<span class="sort-indicator" aria-hidden="true"></span></button></th>
+              <th scope="col" data-sort="median_duration_ms"><button type="button">Median time<span class="sort-indicator" aria-hidden="true"></span></button></th>
+              <th scope="col" data-sort="evaluated"><button type="button">Evaluated<span class="sort-indicator" aria-hidden="true"></span></button></th>
             </tr>
           </thead>
           <tbody id="board-body"></tbody>
