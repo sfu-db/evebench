@@ -1,0 +1,6 @@
+[submodule "baselines/SQLSolver"]
+	path = baselines/SQLSolver
+	url = https://github.com/SJTU-IPADS/SQLSolver.git
+[submodule "baselines/spes"]
+	path = baselines/spes
+	url = https://github.com/georgia-tech-db/spes.git
