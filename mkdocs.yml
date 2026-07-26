@@ -1,0 +1,12 @@
+site_name: evebench
+site_description: Benchmark and API for SQL query-equivalence checkers
+
+theme:
+  name: material
+
+nav:
+  - Home: index.md
+  - Architecture: architecture.md
+
+plugins:
+  - search

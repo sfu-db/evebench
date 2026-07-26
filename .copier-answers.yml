@@ -1,0 +1,22 @@
+# Changes here are tracked so `copier update` can keep this project in sync.
+_src_path: "git@github.com:chency87/template-fullstack.git"
+_commit: "a829a0a"
+project_name: "evebench"
+project_slug: "evebench"
+project_description: "A evebench"
+stack_choice: "fullstack"
+ci: "github"
+python_version: "3.11"
+with_gpu: False
+
+use_external_network: True
+
+external_network_name: "shared_network"
+
+
+with_node: True
+
+
+node_version: "24"
+nvm_version: "0.40.3"
+pnpm_version: "latest"

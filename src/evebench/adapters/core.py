@@ -1,0 +1,168 @@
+from __future__ import annotations
+
+import json
+from dataclasses import replace
+from datetime import UTC, datetime
+from typing import Any, Mapping
+
+from evebench.domain.models import (
+    CheckOptions,
+    CheckResult,
+    CheckerDescriptor,
+    EquivalenceCase,
+    ExecutionStatus,
+)
+
+
+class AdapterInputError(ValueError):
+    def __init__(
+        self,
+        status: ExecutionStatus,
+        reason_code: str,
+        message: str,
+    ) -> None:
+        self.status = status
+        self.reason_code = reason_code
+        super().__init__(message)
+
+
+def normalize_adapter_input(
+    case: EquivalenceCase,
+    options: CheckOptions,
+    descriptor: CheckerDescriptor,
+) -> EquivalenceCase:
+    """Validate shared adapter inputs and normalize harmless outer whitespace."""
+    if not descriptor.available:
+        raise AdapterInputError(
+            ExecutionStatus.UNSUPPORTED,
+            "backend_unavailable",
+            descriptor.unavailable_reason
+            or f"{descriptor.display_name} is unavailable",
+        )
+    dialect = case.dialect.strip().lower()
+    if dialect not in descriptor.supported_dialects:
+        raise AdapterInputError(
+            ExecutionStatus.UNSUPPORTED,
+            "unsupported_dialect",
+            f"{descriptor.display_name} does not support dialect {case.dialect!r}",
+        )
+    semantics = case.semantics.strip().lower()
+    if semantics not in descriptor.supported_semantics:
+        raise AdapterInputError(
+            ExecutionStatus.UNSUPPORTED,
+            "unsupported_semantics",
+            f"{descriptor.display_name} does not support semantics "
+            f"{case.semantics!r}",
+        )
+    query_left = case.query_left.strip()
+    query_right = case.query_right.strip()
+    schema_ddl = case.schema_ddl.strip()
+    if not query_left or not query_right:
+        raise AdapterInputError(
+            ExecutionStatus.INVALID_INPUT,
+            "empty_query",
+            "Both SQL queries must be non-empty",
+        )
+    if not schema_ddl:
+        raise AdapterInputError(
+            ExecutionStatus.INVALID_INPUT,
+            "empty_schema",
+            "Schema DDL must be non-empty",
+        )
+    if case.parameters:
+        raise AdapterInputError(
+            ExecutionStatus.UNSUPPORTED,
+            "unsupported_parameters",
+            f"{descriptor.display_name} does not support bound query parameters",
+        )
+    if (
+        isinstance(options.timeout_ms, bool)
+        or not isinstance(options.timeout_ms, int)
+        or options.timeout_ms < 1
+    ):
+        raise AdapterInputError(
+            ExecutionStatus.INVALID_INPUT,
+            "invalid_timeout",
+            "timeout_ms must be a positive integer",
+        )
+    if options.memory_limit_mb is not None:
+        raise AdapterInputError(
+            ExecutionStatus.UNSUPPORTED,
+            "unsupported_memory_limit",
+            "memory_limit_mb is not enforced by the current executor",
+        )
+    if options.seed is not None and (
+        isinstance(options.seed, bool) or not isinstance(options.seed, int)
+    ):
+        raise AdapterInputError(
+            ExecutionStatus.INVALID_INPUT,
+            "invalid_seed",
+            "seed must be an integer or null",
+        )
+    return replace(
+        case,
+        query_left=query_left,
+        query_right=query_right,
+        schema_ddl=schema_ddl,
+        dialect=dialect,
+        semantics=semantics,
+    )
+
+
+def reject_unknown_options(
+    options: Mapping[str, object],
+    *,
+    allowed: set[str],
+    display_name: str,
+) -> None:
+    unknown = sorted(set(options) - allowed)
+    if unknown:
+        raise AdapterInputError(
+            ExecutionStatus.INVALID_INPUT,
+            "invalid_backend_options",
+            f"Unknown {display_name} options: {', '.join(unknown)}",
+        )
+
+
+def error_result(
+    descriptor: CheckerDescriptor,
+    started_at: datetime,
+    status: ExecutionStatus,
+    *,
+    reason_code: str,
+    message: str,
+    raw_output: str | None = None,
+    finished_at: datetime | None = None,
+) -> CheckResult:
+    finished_at = finished_at or datetime.now(UTC)
+    return CheckResult(
+        checker=descriptor.checker,
+        execution_status=status,
+        verdict=None,
+        duration_ms=duration_ms(started_at, finished_at),
+        started_at=started_at,
+        finished_at=finished_at,
+        reason_code=reason_code,
+        message=message,
+        raw_output=raw_output,
+    )
+
+
+def duration_ms(started_at: datetime, finished_at: datetime) -> int:
+    return max(0, int((finished_at - started_at).total_seconds() * 1000))
+
+
+def parse_last_json_object(raw: str) -> dict[str, Any]:
+    """Parse a backend's final non-empty stdout line as a JSON object."""
+    if not raw:
+        raise ValueError("empty stdout")
+    line = next(
+        (line for line in reversed(raw.splitlines()) if line.strip()),
+        None,
+    )
+    if line is None:
+        raise ValueError("empty stdout")
+    value = json.loads(line)
+    if not isinstance(value, dict):
+        raise ValueError("expected a JSON object")
+    return value

@@ -3,4 +3,7 @@
 	url = https://github.com/SJTU-IPADS/SQLSolver.git
 [submodule "baselines/spes"]
 	path = baselines/spes
-	url = https://github.com/georgia-tech-db/spes.git
+	url = https://github.com/sfu-db/spes.git
+[submodule "baselines/VeriEQL"]
+	path = baselines/VeriEQL
+	url = https://github.com/VeriEQL/VeriEQL.git

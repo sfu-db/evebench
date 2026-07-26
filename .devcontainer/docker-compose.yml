@@ -1,0 +1,63 @@
+services:
+  dev:
+    image: evebench-devcontainer
+    build:
+      context: ..
+      dockerfile: .devcontainer/Dockerfile
+      args:
+        USER_UID: ${USER_UID}
+        USER_GID: ${USER_GID}
+
+    container_name: evebench
+    init: true
+
+
+    working_dir: /workspaces/evebench
+
+
+
+    volumes:
+      - ..:/workspaces/evebench:cached
+      - dev_history:/home/user/.history
+      - uv_cache:/home/user/.cache/uv
+
+
+
+
+
+    # run as the same user defined in Dockerfile
+    user: "${USER_UID}:${USER_GID}"
+
+    environment:
+
+      - HOME=/home/user
+      - UV_CACHE_DIR=/home/user/.cache/uv
+
+
+    command: sleep infinity
+
+
+
+
+    networks:
+      - default
+      - external-dev
+
+
+
+    # optional ports (uncomment if needed)
+    # ports:
+    #   - "3000:3000"
+    #   - "8000:8000"
+
+volumes:
+  dev_history:
+    name: dev_history
+  uv_cache:
+    name: uv_cache
+
+
+networks:
+  external-dev:
+    external: true
+    name: shared_network

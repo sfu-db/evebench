@@ -1,0 +1,46 @@
+version = 1
+name = "bird_baseline"
+dataset = "../../datasets/sqlite/bird_benchmark.csv"
+database = "../../data/evebench.sqlite"
+
+timeout_ms = 30000
+semantics = "bag"
+seed = 1
+checkers = ["sqlsolver", "spes", "verieql", "parseval"]
+
+max_workers = 4
+max_tasks_per_worker = 25
+progress_every = 10
+
+[backends.sqlsolver]
+dialect = "calcite"
+
+[backends.spes]
+dialect = "calcite"
+
+[backends.verieql]
+dialect = "calcite"
+
+[backends.verieql.options]
+bound_size = 2
+use_constraints = true
+
+[backends.parseval]
+dialect = "sqlite"
+
+[backends.parseval.options]
+# ParSEval 0.0.6 GenerationConfig defaults, pinned for reproducibility.
+# `seed` is the shared benchmark seed above. `max_plan_depth` remains unlimited.
+bootstrap_rows = 3
+bootstrap_negatives = true
+root_rows = 3
+groups = 3
+rows_per_group = 3
+subquery_rows = 1
+order_competitors = 1
+max_rows_per_table = 128
+max_total_rows = 512
+max_solver_calls = 48
+solver_timeout_ms = 1000
+
+# The disposable SQLite connection string is managed by EveBench per case.

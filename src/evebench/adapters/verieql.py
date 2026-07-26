@@ -1,0 +1,303 @@
+from __future__ import annotations
+
+import json
+import os
+import subprocess
+import sys
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import Any
+
+from evebench.adapters.core import (
+    AdapterInputError,
+    duration_ms,
+    error_result,
+    normalize_adapter_input,
+    parse_last_json_object,
+    reject_unknown_options,
+)
+from evebench.adapters.schema import parse_verieql_ddl
+from evebench.domain.models import (
+    CheckOptions,
+    CheckResult,
+    CheckerDescriptor,
+    CheckerRef,
+    EquivalenceCase,
+    ExecutionStatus,
+    Verdict,
+    json_safe,
+)
+
+
+@dataclass(frozen=True, slots=True)
+class VeriEQLConfig:
+    root_path: str
+    z3_library_path: str | None = None
+    python_command: str = sys.executable
+    default_bound_size: int = 2
+    backend_version: str = "1.0"
+    adapter_version: str = "1"
+
+
+@dataclass(frozen=True, slots=True)
+class VeriEQLInput:
+    query_left: str
+    query_right: str
+    dialect: str
+    schema: dict[str, dict[str, str]]
+    constraints: list[dict[str, Any]]
+    bound_size: int
+    timeout_seconds: float
+
+
+def verieql_descriptor(config: VeriEQLConfig) -> CheckerDescriptor:
+    root = Path(config.root_path)
+    available = (root / "environment.py").is_file()
+    return CheckerDescriptor(
+        checker=CheckerRef(
+            "verieql", config.backend_version, config.adapter_version
+        ),
+        display_name="VeriEQL",
+        supported_dialects=(
+            "calcite",
+            "mysql",
+            "mariadb",
+            "postgresql",
+            "oracle",
+        ),
+        supported_semantics=("bag",),
+        execution_mode="process_pool",
+        available=available,
+        unavailable_reason=(
+            None if available else f"VeriEQL source not found: {root}"
+        ),
+    )
+
+
+class VeriEQLAdapter:
+    """Isolated subprocess adapter for VeriEQL's bounded verifier."""
+
+    def __init__(self, config: VeriEQLConfig) -> None:
+        self._config = config
+        self._descriptor = verieql_descriptor(config)
+
+    def preprocess(
+        self,
+        case: EquivalenceCase,
+        options: CheckOptions,
+    ) -> VeriEQLInput:
+        normalized = normalize_adapter_input(case, options, self._descriptor)
+        backend_options = options.for_backend("verieql")
+        reject_unknown_options(
+            backend_options,
+            allowed={"bound_size", "use_constraints"},
+            display_name="VeriEQL",
+        )
+        bound_size = backend_options.get(
+            "bound_size",
+            self._config.default_bound_size,
+        )
+        if (
+            isinstance(bound_size, bool)
+            or not isinstance(bound_size, int)
+            or not 1 <= bound_size <= 100
+        ):
+            raise AdapterInputError(
+                ExecutionStatus.INVALID_INPUT,
+                "invalid_bound_size",
+                "VeriEQL bound_size must be an integer from 1 to 100",
+            )
+        use_constraints = backend_options.get("use_constraints", True)
+        if not isinstance(use_constraints, bool):
+            raise AdapterInputError(
+                ExecutionStatus.INVALID_INPUT,
+                "invalid_backend_options",
+                "VeriEQL use_constraints must be a boolean",
+            )
+        try:
+            parsed_schema = parse_verieql_ddl(
+                normalized.schema_ddl,
+                normalized.dialect,
+            )
+        except Exception as exc:
+            raise AdapterInputError(
+                ExecutionStatus.INVALID_INPUT,
+                "invalid_schema",
+                str(exc),
+            ) from exc
+        return VeriEQLInput(
+            query_left=normalized.query_left,
+            query_right=normalized.query_right,
+            dialect=normalized.dialect,
+            schema=parsed_schema.tables,
+            constraints=(
+                parsed_schema.constraints if use_constraints else []
+            ),
+            bound_size=bound_size,
+            timeout_seconds=max(0.001, options.timeout_ms * 0.95 / 1000),
+        )
+
+    def check(
+        self,
+        case: EquivalenceCase,
+        options: CheckOptions,
+    ) -> CheckResult:
+        started = datetime.now(UTC)
+        try:
+            prepared = self.preprocess(case, options)
+        except AdapterInputError as exc:
+            return error_result(
+                self._descriptor,
+                started,
+                exc.status,
+                reason_code=exc.reason_code,
+                message=str(exc),
+            )
+
+        try:
+            completed = self._invoke(prepared)
+        except subprocess.TimeoutExpired:
+            return error_result(
+                self._descriptor,
+                started,
+                ExecutionStatus.TIMEOUT,
+                reason_code="backend_timeout",
+                message="VeriEQL exceeded its subprocess deadline",
+            )
+        except Exception as exc:
+            return error_result(
+                self._descriptor,
+                started,
+                ExecutionStatus.FAILED,
+                reason_code="backend_error",
+                message=f"{type(exc).__name__}: {exc}",
+            )
+
+        raw = completed.stdout.strip()
+        if completed.returncode != 0:
+            return error_result(
+                self._descriptor,
+                started,
+                ExecutionStatus.FAILED,
+                reason_code="backend_error",
+                message=(
+                    completed.stderr.strip()
+                    or f"VeriEQL exited with code {completed.returncode}"
+                ),
+                raw_output=raw or None,
+            )
+
+        try:
+            native = parse_last_json_object(raw)
+        except ValueError as exc:
+            return error_result(
+                self._descriptor,
+                started,
+                ExecutionStatus.FAILED,
+                reason_code="unparseable_output",
+                message=f"Invalid VeriEQL output: {exc}",
+                raw_output=raw or None,
+            )
+        return self._normalize(native, raw, started)
+
+    def _invoke(
+        self,
+        prepared: VeriEQLInput,
+    ) -> subprocess.CompletedProcess[str]:
+        payload = {
+            "root": self._config.root_path,
+            "z3_library_path": (
+                self._config.z3_library_path
+                or str(Path(self._config.root_path).parent / "SQLSolver" / "lib")
+            ),
+            "sql1": prepared.query_left,
+            "sql2": prepared.query_right,
+            "schema": prepared.schema,
+            "constraints": prepared.constraints,
+            "bound_size": prepared.bound_size,
+            "dialect": prepared.dialect,
+        }
+        environment = os.environ.copy()
+        python_path = environment.get("PYTHONPATH")
+        environment["PYTHONPATH"] = (
+            self._config.root_path
+            if not python_path
+            else self._config.root_path + os.pathsep + python_path
+        )
+        return subprocess.run(
+            [
+                self._config.python_command,
+                "-m",
+                "evebench.adapters.verieql_runner",
+            ],
+            input=json.dumps(payload, separators=(",", ":")),
+            cwd=self._config.root_path,
+            env=environment,
+            capture_output=True,
+            text=True,
+            timeout=prepared.timeout_seconds,
+            check=False,
+        )
+
+    def _normalize(
+        self,
+        native: dict[str, Any],
+        raw: str,
+        started: datetime,
+    ) -> CheckResult:
+        state = native.get("state")
+        status = {
+            "equivalent": ExecutionStatus.COMPLETED,
+            "not_equivalent": ExecutionStatus.COMPLETED,
+            "unknown": ExecutionStatus.COMPLETED,
+            "syntax_error": ExecutionStatus.INVALID_INPUT,
+            "unsupported": ExecutionStatus.UNSUPPORTED,
+            "error": ExecutionStatus.FAILED,
+        }.get(state)
+        verdict = {
+            "equivalent": Verdict.EQUIVALENT,
+            "not_equivalent": Verdict.NOT_EQUIVALENT,
+            "unknown": Verdict.UNKNOWN,
+        }.get(state)
+        if status is None:
+            return error_result(
+                self._descriptor,
+                started,
+                ExecutionStatus.FAILED,
+                reason_code="unparseable_output",
+                message=f"Unknown VeriEQL state: {state!r}",
+                raw_output=raw,
+            )
+
+        finished = datetime.now(UTC)
+        reason_codes = {
+            "unknown": "backend_unknown",
+            "syntax_error": "syntax_error",
+            "unsupported": "unsupported_feature",
+            "error": "backend_error",
+        }
+        return CheckResult(
+            checker=self._descriptor.checker,
+            execution_status=status,
+            verdict=verdict,
+            duration_ms=duration_ms(started, finished),
+            started_at=started,
+            finished_at=finished,
+            reason_code=reason_codes.get(state),
+            message=(
+                str(native["reason"]) if native.get("reason") else None
+            ),
+            witness=(
+                json_safe(native["counterexample"])
+                if state == "not_equivalent"
+                and isinstance(native.get("counterexample"), dict)
+                else None
+            ),
+            metrics={
+                "bound_size": native.get("bound_size"),
+                "traversing_time_s": native.get("traversing_time_s"),
+                "solving_time_s": native.get("solving_time_s"),
+            },
+            raw_output=raw,
+        )
