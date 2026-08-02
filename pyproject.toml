@@ -5,7 +5,7 @@ description = "Benchmark and API for SQL query-equivalence checkers"
 readme = "README.md"
 requires-python = ">= 3.11"
 dependencies = [
-    "fastapi>=0.116.0,<1.0.0",
+    "fastapi>=0.141.1,<1.0.0",
     "jpype1>=1.6.0,<2.0.0",
     "lark>=1.1.0,<2.0.0",
     "mo-sql-parsing==8.205.22260",
