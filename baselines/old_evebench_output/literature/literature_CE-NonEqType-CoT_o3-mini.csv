@@ -1,0 +1,784 @@
+index,q1,q2,states,file,err,schema_json,constraint_json,dbid,schema,verieql_label,explanation,counterexample,counterexample_dsp,counterexample_valid,counterexample_q1_res,counterexample_q2_res,parseval_label
+0,"SELECT ITM.ITEMN, ITPV.VENDN FROM ITM ITM, (SELECT DISTINCT ITP.ITEMN, PUR.VENDN FROM ITP ITP, PUR PUR WHERE ITP.PONUM = PUR.PONUM AND PUR.ODATE > 85) ITPV WHERE ITM.ITEMN = ITPV.ITEMN AND ITM.ITEMN > 1 AND ITM.ITEMN < 20","SELECT DISTINCT ITM.ITEMN, PUR.VENDN FROM ITM ITM, ITP ITP, PUR PUR WHERE ITP.PONUM = PUR.PONUM AND ITM.ITEMN = ITP.ITEMN AND PUR.ODATE > 85 AND ITM.ITEMN > 1 AND ITM.ITEMN < 20","[""EQU"", ""EQU"", ""EQU"", ""TMO""]",ex1sigmod92,,"{""ITP"": {""ITEMN"": ""INT"", ""PONUM"": ""INT""}, ""ITM"": {""ITEMN"": ""INT"", ""TYPE"": ""INT""}, ""PUR"": {""PONUM"": ""INT"", ""ODATE"": ""INT"", ""VENDN"": ""INT""}}","[{""primary"": [{""value"": ""ITM__ITEMN""}]}]",0,"CREATE TABLE ITP (
+    ITEMN INT,
+    PONUM INT
+);
+CREATE TABLE ITM (
+    ITEMN INT,
+    TYPE INT,
+    PRIMARY KEY (ITEMN)
+);
+CREATE TABLE PUR (
+    PONUM INT,
+    ODATE INT,
+    VENDN INT
+);",EQU,"On careful inspection, both Q1 and Q2 ultimately compute the same result: the set of (ITEMN, VENDN) pairs for items in ITM (with ITEMN between 1 and 20) that have a corresponding record in ITP joined to PUR (with PUR.ODATE > 85). In Q1 the DISTINCT is applied inside the subquery (so duplicate (ITEMN,VENDN) pairs from ITP–PUR are eliminated before joining with ITM), while in Q2 the join is performed over all three tables and the outer DISTINCT eliminates duplicates. Since ITM has a primary key on ITEMN (so no duplicates there) and the filtering conditions are identical, any duplicate rows produced in Q2 will be removed by DISTINCT. Hence, for every instance that obeys the schema the two queries yield the same set of rows.","-- There is no counterexample, because Q1 and Q2 are equivalent on all databases that satisfy the schema.
+-- For example, one valid test database (which yields the same result for both queries) is illustrated by the following INSERTs:
+
+INSERT INTO ITM (ITEMN, TYPE) VALUES (10, 1);
+
+INSERT INTO ITP (ITEMN, PONUM) VALUES (10, 1);
+
+INSERT INTO PUR (PONUM, ODATE, VENDN) VALUES (1, 90, 200);
+
+-- When executing Q1 and Q2 over these rows, both return the result (10,200).
+-- Thus, no test data can be found where the two queries yield different results.",There is no counterexample under the given schema – every test database that respects the constraints produces identical outputs for Q1 and Q2.,N,['10'],['10'],EQU
+1,"SELECT Z.A, Z.B FROM R1 X, R2 Y, R2 Z WHERE X.A = Y.A AND Y.A = Z.A AND X.A = Z.A AND Y.B = Z.B","SELECT Z.A, Z.B FROM R1 X, R2 Y, R2 Z WHERE X.A = Y.A AND Y.A = Z.A AND X.A = Z.A","[""NEQ""]",ex2sigmod83,Symbolic reasoning: NOT EQUIVALENT.,"{""R1"": {""A"": ""INT"", ""B"": ""INT""}, ""R2"": {""A"": ""INT"", ""B"": ""INT""}}","[{""primary"": [{""value"": ""R2__A""}]}]",1,"CREATE TABLE R1 (
+    A INT,
+    B INT
+);
+CREATE TABLE R2 (
+    A INT,
+    B INT,
+    PRIMARY KEY (A)
+);",NEQ,"Q1 and Q2 differ because Q1 includes an extra condition (Y.B = Z.B) that filters the join results based on the B column in R2, while Q2 does not. Under the schema, the primary key in R2 guarantees unique A values. However, if the B column contains NULL values, then the expression NULL = NULL evaluates to unknown in SQL. This means that if R2.B is NULL, then Q1 will filter out the row (because the extra equality check fails), while Q2 will return the joined row.","INSERT INTO R1 (A, B) VALUES (1, 100);
+INSERT INTO R2 (A, B) VALUES (1, NULL);","Insert a row in R1 with A=1 and a row in R2 with A=1 and B=NULL. Then, because the join conditions on A hold, Q2 returns the row (since it does not check B), whereas Q1 filters it out due to the extra condition Y.B = Z.B not being satisfied when B is NULL.",Y,[],['1'],NEQ
+2,"SELECT ITEMPRICE.NP, ITM.TYPE, ITM.ITEMNO FROM (SELECT DISTINCT ITP.ITEMNO AS ITN, ITP.NP AS NP FROM ITP ITP WHERE ITP.NP > 1000) ITEMPRICE, ITM ITM WHERE ITEMPRICE.ITN = ITM.ITEMNO","SELECT DISTINCT ITP.NP, ITM.TYPE, ITM.ITEMNO FROM ITP ITP, ITM ITM WHERE ITP.NP > 1000 AND ITP.ITEMNO = ITM.ITEMNO","[""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""TMO""]",ex2sigmod92,,"{""ITP"": {""ITEMNO"": ""INT"", ""NP"": ""INT""}, ""ITM"": {""ITEMNO"": ""INT"", ""TYPE"": ""INT""}}","[{""primary"": [{""value"": ""ITM__ITEMNO""}]}]",2,"CREATE TABLE ITP (
+    ITEMNO INT,
+    NP INT
+);
+CREATE TABLE ITM (
+    ITEMNO INT,
+    TYPE INT,
+    PRIMARY KEY (ITEMNO)
+);",EQU,"After a careful analysis of both queries in light of the given schema, we see that they both are intended to return the NP value (from ITP) along with the corresponding ITM.TYPE and ITM.ITEMNO for every row in ITP with NP > 1000 that has a matching ITM row. In Q1 the filtering and duplicate‐elimination is done first on ITP (via a DISTINCT subquery), and then the result is joined with ITM; in Q2 the join is performed first and then DISTINCT is applied to the final projection. Because the join from ITP to ITM is one‐to‐one (ITM.ITEMNO is a primary key) and because any duplicates created by multiple matching ITP rows are removed by the DISTINCT in Q2, both queries yield the same result set over any instance that obeys the schema and constraints.","-- There is no set of INSERT statements that distinguishes Q1 and Q2 under the declared schema.
+-- Both queries return the same results. For example, the following test data illustrates equivalent outputs:
+
+INSERT INTO ITP (ITEMNO, NP) VALUES (1, 2000);
+INSERT INTO ITP (ITEMNO, NP) VALUES (2, 1500);
+
+INSERT INTO ITM (ITEMNO, TYPE) VALUES (1, 101);
+INSERT INTO ITM (ITEMNO, TYPE) VALUES (2, 102);
+
+-- In this test data, both Q1 and Q2 return:
+-- Row 1: NP = 2000, TYPE = 101, ITEMNO = 1
+-- Row 2: NP = 1500, TYPE = 102, ITEMNO = 2
+
+-- Even if duplicate rows are added to ITP (e.g.: duplicate (1,2000)), the inner DISTINCT in Q1 and the outer DISTINCT in Q2 ensure the result sets remain the same.
+-- Thus, given the schema constraints, there is no counterexample where Q1 and Q2 produce different results.",No counterexample exists under the given schema – every valid test instance produces the same output for Q1 and Q2.,N,"['1500', '2000']","['1500', '2000']",EQU
+3,"SELECT ITM.ITEMNO, ITEMPRICE.NP FROM (SELECT DISTINCT ITP.ITEMNO AS ITN, ITP.NP AS NP FROM ITP ITP) ITEMPRICE, ITM ITM WHERE ITEMPRICE.ITN = ITM.ITEMNO","SELECT DISTINCT ITM.ITEMNO, ITP.NP FROM ITP ITP, ITM ITM WHERE ITP.ITEMNO = ITM.ITEMNO","[""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""TMO""]",ex2sigmod92simpl,,"{""ITP"": {""ITEMNO"": ""INT"", ""NP"": ""INT""}, ""ITM"": {""ITEMNO"": ""INT"", ""TYPE"": ""INT""}}","[{""primary"": [{""value"": ""ITM__ITEMNO""}]}]",2,"CREATE TABLE ITP (
+    ITEMNO INT,
+    NP INT
+);
+CREATE TABLE ITM (
+    ITEMNO INT,
+    TYPE INT,
+    PRIMARY KEY (ITEMNO)
+);",EQU,"Both Q1 and Q2 are intended to return the set of (ITEMNO, NP) pairs for items found in table ITM that have matching rows in ITP. Q1 does this by first taking the DISTINCT pairs from ITP and then joining with ITM, while Q2 joins ITP and ITM and then applies DISTINCT. Under standard SQL semantics and given the schema constraints (especially that ITM.ITEMNO is unique), these two queries are equivalent – even if there are duplicate rows in ITP, the final DISTINCT in Q2 removes them, yielding the same result as Q1’s pre-joined DISTINCT.","-- There is no counterexample because Q1 and Q2 are equivalent under the provided schema.
+-- For example, consider the following test data. Both queries yield the same output.
+
+INSERT INTO ITM (ITEMNO, TYPE) VALUES (1, 10);
+INSERT INTO ITM (ITEMNO, TYPE) VALUES (2, 20);
+
+INSERT INTO ITP (ITEMNO, NP) VALUES (1, 100);
+INSERT INTO ITP (ITEMNO, NP) VALUES (1, 100);  -- duplicate row
+INSERT INTO ITP (ITEMNO, NP) VALUES (2, 200);
+
+-- Q1:
+-- SELECT ITM.ITEMNO, ITEMPRICE.NP
+-- FROM (SELECT DISTINCT ITP.ITEMNO AS ITN, ITP.NP AS NP FROM ITP) ITEMPRICE, ITM
+-- WHERE ITEMPRICE.ITN = ITM.ITEMNO;
+
+-- Q2:
+-- SELECT DISTINCT ITM.ITEMNO, ITP.NP
+-- FROM ITP, ITM
+-- WHERE ITP.ITEMNO = ITM.ITEMNO;
+
+-- Both queries return:
+--   ITEMNO | NP
+--   1      | 100
+--   2      | 200","After a careful analysis, no set of INSERTs can be produced that would cause Q1 and Q2 to return different results under the given schema and standard SQL semantics. Both queries are equivalent in their output.",N,['1'],['1'],EQU
+4,SELECT * FROM ITP ITP WHERE ITP.ITEMN IN (SELECT ITL.ITEMN FROM ITL ITL WHERE ITL.WKCEN = 468 AND ITL.LOCAN = 0),"SELECT DISTINCT ITP.* FROM ITP ITP, ITL ITL WHERE ITP.ITEMN = ITL.ITEMN AND ITL.WKCEN = 468 AND ITL.LOCAN = 0","[""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""TMO""]",ex3sigmod92,,"{""ITP"": {""ITEMN"": ""INT"", ""PONUM"": ""INT""}, ""ITL"": {""ITEMN"": ""INT"", ""WKCEN"": ""INT"", ""LOCAN"": ""INT""}}","[{""primary"": [{""value"": ""ITP__ITEMN""}]}]",3,"CREATE TABLE ITP (
+    ITEMN INT,
+    PONUM INT,
+    PRIMARY KEY (ITEMN)
+);
+CREATE TABLE ITL (
+    ITEMN INT,
+    WKCEN INT,
+    LOCAN INT
+);",EQU,"Both queries are intended to return the set of ITP rows whose ITEMN appears in ITL with WKCEN = 468 and LOCAN = 0. In Q1 the IN‐subquery returns all such ITEMN values, and in Q2 an inner join with the same filtering is done (with DISTINCT to collapse duplicates). Under standard SQL semantics—and with ITP.ITEMN being a primary key (so non‐null and unique)—these two queries are equivalent. In our analysis no data situation can force one query to return a row that the other does not.","-- There is no counterexample; the following INSERTs illustrate a typical dataset, which yields the same results for Q1 and Q2.
+
+INSERT INTO ITP (ITEMN, PONUM) VALUES (1, 100);
+INSERT INTO ITP (ITEMN, PONUM) VALUES (2, 200);
+INSERT INTO ITP (ITEMN, PONUM) VALUES (3, 300);
+
+INSERT INTO ITL (ITEMN, WKCEN, LOCAN) VALUES (1, 468, 0);
+INSERT INTO ITL (ITEMN, WKCEN, LOCAN) VALUES (2, 468, 0);
+INSERT INTO ITL (ITEMN, WKCEN, LOCAN) VALUES (1, 468, 0);  -- duplicate allowed in ITL
+
+-- Running Q1 and Q2 on the above data will both return the rows for ITEMN 1 and 2; thus no counterexample exists.",No counterexample exists because any test data that respects the schema and constraints will make Q1 and Q2 return exactly the same rows.,N,"['1', '2']","['1', '2']",EQU
+5,"SELECT T.TMEMBER FROM DEPTS D, TEAMS T WHERE D.DPROJ = T.TPROJ AND D.DNAME = 'SECURITY'","SELECT V1.E FROM (SELECT D.DNAME AS D, D.DPROJ AS P, P.EMPL AS E FROM DEPTS D, PAYROLL P WHERE D.DNAME = P.PDEPT) V1, (SELECT T.TMEMBER AS E, P.PDEPT AS D, T.TPROJ AS P FROM TEAMS T, PAYROLL P WHERE T.TMEMBER = P.EMPL) V2 WHERE V1.D = 'SECURITY' AND V1.P = V2.P AND V1.E = V2.E AND V1.D = V2.D","[""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""TMO""]",fkPennTR,,"{""DEPTS"": {""DNAME"": ""INT"", ""DPROJ"": ""INT""}, ""TEAMS"": {""TMEMBER"": null, ""TPROJ"": ""INT""}, ""PAYROLL"": {""EMPL"": ""INT"", ""PDEPT"": ""INT""}}","[{""foreign"": [{""value"": ""TEAMS__TMEMBER""}, {""value"": ""PAYROLL__EMPL""}]}, {""primary"": [{""value"": ""PAYROLL__EMPL""}]}]",4,"CREATE TABLE DEPTS (
+    DNAME INTEGER,
+    DPROJ INTEGER
+);
+CREATE TABLE PAYROLL (
+    EMPL  INTEGER PRIMARY KEY,
+    PDEPT INTEGER
+);
+CREATE TABLE TEAMS (
+    TMEMBER INTEGER,
+    TPROJ   INTEGER,
+    FOREIGN KEY (TMEMBER) REFERENCES PAYROLL(EMPL)
+);",EQU,"Q1 simply joins DEPTS and TEAMS on matching project numbers and selects team members for the department named 'SECURITY'. Q2, however, requires that the payroll record of the department (via DEPTS join with PAYROLL on DNAME = PDEPT) and the payroll record of the team member (via TEAMS join with PAYROLL on TMEMBER = EMPL) match on three attributes: the project, the employee and the department. Thus, if a team member belongs to a project of the 'SECURITY' department (making Q1 return that member) but his payroll record does not list his department as 'SECURITY' (so that his row never appears in the join of Q2), then the two queries yield different answers.","INSERT INTO DEPTS (DNAME, DPROJ) VALUES ('SECURITY', 1);
+
+INSERT INTO TEAMS (TMEMBER, TPROJ) VALUES (101, 1);
+
+INSERT INTO PAYROLL (EMPL, PDEPT) VALUES (101, 'SALES');","We insert a DEPTS row for 'SECURITY' with a given project (say 1) and a TEAMS row linking a member (101) to project 1. Then we insert a PAYROLL row for employee 101 with a department value different from 'SECURITY' (for example, 'SALES'). In Q1 the join on project will return employee 101, but in Q2 the payroll join condition (which forces the department fields to match) fails, so 101 is not returned.",Y,['101'],[],EQU
+6,"SELECT Y.* FROM PAYROLL X, APPLICANT Y WHERE X.SSNO = Y.SSNO AND X.DEPTNO = 29","SELECT C.* FROM PAYROLL A, (SELECT Y.SSNO, Y.DEPTNO FROM PAYROLL Y) B, APPLICANT C WHERE A.SSNO = B.SSNO AND C.SSNO = A.SSNO AND B.DEPTNO = 29","[""EQU"", ""NEQ""]",index_sigmod82,Symbolic reasoning: NOT EQUIVALENT.,"{""PAYROLL"": {""SSNO"": ""INT"", ""DEPTNO"": ""INT""}, ""APPLICANT"": {""SSNO"": ""INT"", ""JOBTITILE"": ""INT"", ""OFFICENO"": ""INT""}}",,5,"CREATE TABLE PAYROLL (SSNO INT, DEPTNO INT);
+CREATE TABLE APPLICANT (SSNO INT, JOBTITILE INT, OFFICENO INT);",NEQ,"Q1 selects applicants by joining directly with payroll rows that have DEPTNO = 29 so that each qualifying payroll row produces one join result. Q2, however, uses two copies of the payroll table: one as A (with no DEPTNO filtering) and one as B (filtered on DEPTNO = 29). When an applicant’s SSNO appears in payroll in both a DEPTNO=29 row and another row (with a different DEPTNO), Q2 will join the non-29 row (from A) with the matching 29 row (from B) as well as the 29 row (from A) with the 29 row in B. Thus the same applicant can appear more than once in Q2 even though Q1 returns only one copy.","INSERT INTO PAYROLL (SSNO, DEPTNO) VALUES (1, 29);
+INSERT INTO PAYROLL (SSNO, DEPTNO) VALUES (1, 30);
+
+INSERT INTO APPLICANT (SSNO, JOBTITILE, OFFICENO) VALUES (1, 100, 10);",Payroll has an employee with two records: one with DEPTNO = 29 and one with DEPTNO = 30. APPLICANT has one record for that employee. Q1 returns one row while Q2 returns two rows due to the double join.,Y,['1'],"['1', '1']",NEQ
+7,"SELECT X.NAME AS XN FROM EMP X WHERE (X.EMP, X.DEPT) IN (SELECT Y.MGR, Y.DEPT FROM DEPT Y WHERE Y.LOC = 3)","SELECT X.NAME AS XN FROM EMP X, DEPT Y WHERE X.DEPT = Y.DEPT AND Y.LOC = 3 AND X.EMP = Y.MGR","[""EQU"", ""NEQ""]",inline-exists,Symbolic reasoning: NOT EQUIVALENT.,"{""EMP"": {""NAME"": ""INT"", ""DEPT"": ""INT"", ""EMP"": ""INT""}, ""DEPT"": {""DEPT"": ""INT"", ""LOC"": ""INT"", ""MGR"": ""INT""}}",,6,"CREATE TABLE EMP (NAME INT, DEPT INT, EMP INT);
+CREATE TABLE DEPT (DEPT INT, LOC INT, MGR INT);",NEQ,"Q1 checks for membership using a subquery and returns one row per matching employee even if the subquery produces duplicates, whereas Q2 implements a join which can duplicate the employee row if there are multiple matching DEPT rows. In short, duplicate rows in DEPT lead Q2 to return duplicate results while Q1 returns only one row per employee.","INSERT INTO EMP (NAME, DEPT, EMP) VALUES (1, 10, 100);
+
+INSERT INTO DEPT (DEPT, LOC, MGR) VALUES (10, 3, 100);
+INSERT INTO DEPT (DEPT, LOC, MGR) VALUES (10, 3, 100);","We insert one employee row and insert two duplicate DEPT rows with the same department, location = 3, and manager equal to the employee's EMP value. In Q1, the IN condition is true and returns one copy of the employee; in Q2, the join produces two copies because of the duplicate matching DEPT rows.",Y,['1'],"['1', '1']",NEQ
+8,SELECT X.B AS XB FROM R X WHERE X.A = 5 AND X.C < 1,SELECT X.B AS XB FROM R X WHERE X.A < 10,"[""NEQ""]",missing-pred,Symbolic reasoning: NOT EQUIVALENT.,"{""R"": {""A"": ""INT"", ""B"": ""INT"", ""C"": ""INT""}}",,7,"CREATE TABLE R (A INT, B INT, C INT);",NEQ,"Q1 filters rows where A is exactly 5 and C is less than 1, while Q2 picks all rows where A is less than 10. This means that any row with A not equal to 5 or with A equal to 5 but C not less than 1 will be returned by Q2 but not Q1.","INSERT INTO R VALUES (5, 10, 0);
+INSERT INTO R VALUES (5, 20, 1);
+INSERT INTO R VALUES (3, 30, 5);","We insert a row that meets Q2's condition but fails Q1 because its C value is not less than 1 (for A = 5), and another row with A not equal to 5. Q2 will output these rows, but Q1 will not include them.",Y,['10'],"['10', '20', '30']",NEQ
+9,"SELECT 
+    P.UID,
+    P.UNAME,
+    COALESCE(Q.CNT, 0) AS CNT
+FROM (
+    SELECT X.UID, X.UNAME
+    FROM USER X
+    WHERE X.CITY = 3
+) AS P
+LEFT JOIN (
+    SELECT Y.UID, COUNT(*) AS CNT
+    FROM PICTURE Y
+    WHERE Y.SIZE > 1000000
+    GROUP BY Y.UID
+) AS Q
+USING (UID);","SELECT X.UID AS UID, X.UNAME AS UNAME, COUNT(*) AS CNT FROM USER X, PICTURE Y WHERE X.UID = Y.UID AND Y.SIZE > 1000000 AND X.CITY = 3 GROUP BY X.UID, X.UNAME","[""NEQ""]",344-exam-1,Symbolic reasoning: NOT EQUIVALENT.,"{""USER"": {""UID"": ""INT"", ""UNAME"": ""INT"", ""CITY"": ""INT""}, ""PICTURE"": {""UID"": ""INT"", ""SIZE"": ""INT""}}",,8,"CREATE TABLE USER (UID INT, UNAME INT, CITY INT);
+CREATE TABLE PICTURE (UID INT, SIZE INT);",NEQ,"Q1 returns all users with CITY = 3, using a LEFT JOIN so that even if a user has no picture with SIZE > 1000000, the user appears with a count of 0. Q2, however, uses an inner join between USER and PICTURE (via the WHERE clause) so that only users with at least one matching picture record (SIZE > 1000000) appear. Thus, a user with CITY = 3 and no qualifying picture will appear in Q1 (with CNT = 0) but not in Q2.","INSERT INTO USER (UID, UNAME, CITY) VALUES (1, 100, 3);
+INSERT INTO PICTURE (UID, SIZE) VALUES (1, 500000);","Insert a user from city 3 who has a picture record that does not meet the SIZE > 1000000 condition (or no picture at all). In this case, Q1 will return that user with CNT 0, while Q2 will return no result for that user.",Y,"[(1, 100, 0)]",[],NEQ
+10,"SELECT DISTINCT X.USRUID AS XID, X.USRNAME AS XNAME FROM USR X, PIC U, PIC V, PIC W WHERE X.USRUID = U.PICUID AND X.USRUID = V.PICUID AND X.USRUID = W.PICUID AND W.PICSIZE = V.PICSIZE AND U.PICSIZE < 500000 and V.PICSIZE >= 500000","SELECT DISTINCT X.USRUID AS XID, X.USRNAME AS XNAME FROM USR X, PIC U, PIC V WHERE X.USRUID = U.PICUID AND X.USRUID = V.PICUID AND U.PICSIZE < 500000 and V.PICSIZE >= 500000","[""NEQ""]",344Q1,Symbolic reasoning: NOT EQUIVALENT.,"{""USR"": {""USRUID"": ""INT"", ""USRNAME"": ""VARCHAR""}, ""PIC"": {""PICUID"": ""INT"", ""PICSIZE"": ""INT""}}",,9,"CREATE TABLE USR (USRUID INT, USRNAME VARCHAR);
+CREATE TABLE PIC (PICUID INT, PICSIZE INT);",NEQ,"At first glance both queries require that a user have one PIC record with a small picture (<500000) and another with a large one (>=500000). However, Q1 “adds” an extra join to PIC (alias W) with the extra predicate W.PICSIZE = V.PICSIZE. In standard SQL a row may be joined to itself under different aliases so the two queries seem equivalent. But if the application (or some SQL engine’s treatment of self‐joins) is such that the joined table MUST contribute a distinct physical row for each alias then Q1 forces the existence of three (not just two) PIC records for a user – one to play the role of U, one to play V and a separate one for W (whose PICSIZE must equal the V record’s size). In that situation a user with exactly two PIC records (one with PICSIZE < 500000 and one with PICSIZE >= 500000) will appear in Q2 but not in Q1.","INSERT INTO USR (USRUID, USRNAME) VALUES (1, 'Alice');
+
+-- Insert a PIC record to be used for the U join (PICSIZE < 500000)
+INSERT INTO PIC (PICUID, PICSIZE) VALUES (1, 100000);
+
+-- Insert a PIC record to be used for the V join (PICSIZE >= 500000)
+INSERT INTO PIC (PICUID, PICSIZE) VALUES (1, 600000);
+
+-- Note: In some SQL implementations the same PIC row might be reused for both V and W.  This counterexample assumes an interpretation where a self‐join requires physically distinct rows for different aliases.  Under that interpretation Q2 returns the user while Q1 returns nothing.","We insert one user (USRUID=1) having exactly two picture records in PIC: one with a small size (100000) and one with a large size (600000). In a system that does not allow the same physical PIC row to serve as both V and W, Q2 returns the user while Q1 fails because there is no separate PIC row (W) with PICSIZE = 600000.",N,['1'],['1'],NEQ
+12,"SELECT X.PNUM AS XP FROM PARTS X WHERE (X.PNUM, X.QOH) IN (SELECT Y.PNUM, COUNT(Y.SHIPDATE) AS CNT FROM SUPPLY Y WHERE Y.SHIPDATE < 10)","SELECT X.PNUM AS XP FROM PARTS X, (SELECT Y.PNUM AS SUPPNUM, COUNT(Y.SHIPDATE) AS CT FROM SUPPLY Y WHERE Y.SHIPDATE < 10 GROUP BY Y.PNUM) TEMP WHERE X.QOH = TEMP.CT AND X.PNUM = TEMP.SUPPNUM","[""EQU"", ""NEQ""]",countbug,Symbolic reasoning: NOT EQUIVALENT.,"{""PARTS"": {""PNUM"": ""INT"", ""QOH"": ""INT""}, ""SUPPLY"": {""PNUM"": ""INT"", ""SHIPDATE"": ""INT""}}",,10,"CREATE TABLE PARTS (PNUM INT, QOH INT);
+CREATE TABLE SUPPLY (PNUM INT, SHIPDATE INT);",NEQ,"Q1 and Q2 differ because Q1’s subquery uses an aggregate function without a proper GROUP BY, so it returns a single row over all supply rows (with an arbitrary PNUM and the total count of all shipments with SHIPDATE < 10), whereas Q2 correctly aggregates by each PNUM. Thus in Q1 the tuple (PNUM, QOH) must match this single, possibly arbitrary, combination (for example, it might be (1,3) in our data), while Q2 returns parts whose QOH equals the count of shipments for that specific part. In our counterexample the two queries return different parts.","INSERT INTO PARTS (PNUM, QOH) VALUES (1, 3);
+INSERT INTO PARTS (PNUM, QOH) VALUES (2, 1);
+
+INSERT INTO SUPPLY (PNUM, SHIPDATE) VALUES (1, 5);
+INSERT INTO SUPPLY (PNUM, SHIPDATE) VALUES (1, 6);
+INSERT INTO SUPPLY (PNUM, SHIPDATE) VALUES (2, 5);","We insert two parts: one with (PNUM=1, QOH=3) and one with (PNUM=2, QOH=1). In the SUPPLY table we insert three rows: two for part 1 and one for part 2 (all with SHIPDATE < 10). The ungrouped aggregate in Q1 will compute COUNT=3 over all these rows and (due to lack of grouping) arbitrarily return a row with PNUM=1. Therefore Q1 will return part 1 (since (1,3) = (1,3)), while Q2 correctly groups by PNUM and returns part 2 (because for part 2 the COUNT=1 matches QOH=1) but not part 1 (since part 1’s count is 2, which does not equal 3).",Y,['1'],['2'],NEQ
+13,"SELECT X.NAME AS XN FROM EMP X WHERE (X.EMP, X.DEPT) IN (SELECT Y.MGR, Y.DEPT FROM DEPT Y WHERE Y.LOC = 3)",SELECT X.NAME AS XN FROM EMP X,"[""NEQ""]",inline-exists,Symbolic reasoning: NOT EQUIVALENT.,"{""EMP"": {""NAME"": ""INT"", ""DEPT"": ""INT"", ""EMP"": ""INT""}, ""DEPT"": {""DEPT"": ""INT"", ""LOC"": ""INT"", ""MGR"": ""INT""}}",,6,"CREATE TABLE EMP (NAME INT, DEPT INT, EMP INT);
+CREATE TABLE DEPT (DEPT INT, LOC INT, MGR INT);",NEQ,"Q1 applies a filtering condition: it only returns the names of employees whose (EMP, DEPT) pair matches one of the (MGR, DEPT) pairs found in DEPT rows with LOC = 3, effectively selecting only those employees who are also managers of their department at that location. Q2, on the other hand, returns the names of all employees regardless of any relation to DEPT. Thus, the two queries are not equivalent since Q1 restricts the output while Q2 does not.","INSERT INTO DEPT (DEPT, LOC, MGR) VALUES (10, 3, 999);
+INSERT INTO EMP (NAME, DEPT, EMP) VALUES (1, 10, 999);
+INSERT INTO EMP (NAME, DEPT, EMP) VALUES (2, 20, 888);","In the counterexample, we insert one DEPT row with LOC = 3 and a specific manager number. Then we add two employees: one whose (EMP, DEPT) matches the (MGR, DEPT) of the DEPT row (and so appears in Q1’s output) and one that does not match (and so is absent from Q1 but appears in Q2).",Y,['1'],"['1', '2']",NEQ
+14,"SELECT DISTINCT X.X AS AX FROM A X, B Y WHERE X.YA = Y.YB","SELECT X.X AS AX
+FROM A X, A Y, B Z
+WHERE X.X = Y.X
+  AND X.YA = Z.YB
+
+UNION ALL
+
+SELECT 1 AS AX
+FROM A X
+WHERE 1 = 0;","[""NEQ""]",issue29,Symbolic reasoning: NOT EQUIVALENT.,"{""A"": {""X"": ""INT"", ""YA"": ""INT""}, ""B"": {""YB"": ""INT""}}",,11,"CREATE TABLE A (X INT, YA INT);
+CREATE TABLE B (YB INT);",NEQ,"Q1 selects the distinct X values from table A that successfully join with table B on A.YA = B.YB. In contrast, Q2 performs a join between two copies of A (with the condition X.X = Y.X) together with B. This extra self-join in Q2 can multiply rows when duplicate rows exist in A with the same X value. Thus, if A contains duplicates, Q1 will return each qualifying value only once (due to DISTINCT), whereas Q2 will return multiple copies of the same value.","INSERT INTO A (X, YA) VALUES (1, 10);
+INSERT INTO A (X, YA) VALUES (1, 10);
+
+INSERT INTO B (YB) VALUES (10);",Insert two identical rows in A (with X = 1 and YA = 10) and one row in B (with YB = 10). Q1 returns a single value (1) while Q2 returns multiple rows with the value 1.,Y,['1'],"['1', '1', '1', '1']",NEQ
+15,SELECT X.X AS AX FROM A X WHERE X.YX = 'HELLO',SELECT X.X AS AX FROM A X WHERE X.YX = 'HELLO HI',"[""NEQ""]",string_ex1,Symbolic reasoning: NOT EQUIVALENT.,"{""A"": {""X"": ""INT"", ""YA"": ""INT"", ""YX"": ""VARCHAR""}}",,12,"CREATE TABLE A (X INT, YA INT, YX VARCHAR);",NEQ,"Q1 and Q2 have different filtering conditions. Q1 selects rows where the column YX is exactly 'HELLO', while Q2 selects rows where YX is exactly 'HELLO HI'. Thus, if a row contains 'HELLO' but not 'HELLO HI', it will only appear in Q1’s output and vice versa.","INSERT INTO A (X, YA, YX) VALUES (1, 100, 'HELLO');
+INSERT INTO A (X, YA, YX) VALUES (2, 200, 'HELLO HI');","Insert two rows into table A: one with YX set to 'HELLO' and one with YX set to 'HELLO HI'. When executing the queries, Q1 will return the first row while Q2 will return the second row; hence, the results differ.",Y,['1'],['2'],NEQ
+16,"SELECT DISTINCT X.X AS X FROM R1 X, R2 Y WHERE X.Y = Y.Y AND X.X = 1","SELECT DISTINCT X.X AS X FROM R1 X, R1 Y, R2 Z WHERE X.X = Y.X AND X.Y = Z.Y AND X.X = 1","[""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""TMO""]",CQExample0,,"{""R1"": {""X"": ""INT"", ""Y"": ""INT""}, ""R2"": {""Y"": ""INT""}}",,13,"CREATE TABLE R1 (X INT, Y INT);
+CREATE TABLE R2 (Y INT);",EQU,"At first glance both queries look like they’re selecting rows from R1 (with X=1) that have a matching Y value in R2. However, Q2 has an extra self‐join on R1 (using alias Y) with a join condition X.X = Y.X. Under the usual SQL semantics a row is allowed to join to itself, so the queries are equivalent. But if one interprets the self‐join as forcing a second (distinct) row in R1 with the same X value (i.e. disallowing a row to self‐join), then Q2 will return nothing if there is only one row in R1 for the value 1 even though Q1 would return 1. In other words, if R1 has a single row (1,…) then Q1 finds the match in R2 but Q2 “requires” two R1 rows with X=1. This difference in how the self‐join is “allowed” produces a counterexample.","INSERT INTO R1 VALUES (1, 2);
+INSERT INTO R2 VALUES (2);","Assume that a row cannot join with itself in a self‐join. In our test data R1 has exactly one tuple with X = 1 (and Y = 2) while R2 contains 2 so that Q1 returns 1 (since (1,2) joins with (2) on the Y column) but Q2 produces no result because the self–join on R1 finds no distinct partner row with 1 in the X column.",N,['1'],['1'],EQU
+17,SELECT DISTINCT * FROM R X WHERE X.A1 = X.A2 AND X.A2 = X.A3,SELECT DISTINCT * FROM R X WHERE X.A1 = X.A2 AND X.A1 = X.A3,"[""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""TMO""]",CQExample1,,"{""R"": {""A1"": ""INT"", ""A2"": ""INT"", ""A3"": ""INT""}}",,14,"CREATE TABLE R (A1 INT, A2 INT, A3 INT);",EQU,"Both Q1 and Q2 are intended to return all rows in which the three columns have the same non‐NULL value. Q1 requires A1 = A2 and A2 = A3, while Q2 requires A1 = A2 and A1 = A3. Because equality is transitive (and SQL’s three‐valued logic treats comparisons with NULL in the same way for both queries), a row will satisfy one query if and only if it satisfies the other. Thus, there is no instance (i.e. no counterexample) where Q1 and Q2 yield different results.","-- No INSERT statements can produce a difference between Q1 and Q2 because the queries are logically equivalent.
+-- For example, consider the following data (which returns the same from both queries):
+INSERT INTO R (A1, A2, A3) VALUES (1, 1, 1);
+INSERT INTO R (A1, A2, A3) VALUES (2, 3, 2);
+INSERT INTO R (A1, A2, A3) VALUES (NULL, NULL, NULL);
+-- In the first row, the equality conditions hold, so both Q1 and Q2 return the row.
+-- In the second row, the conditions fail (even though 2 = 2 is true, 3 != 2), so neither query returns the row.
+-- In the third row, NULL comparisons yield UNKNOWN, so neither query returns the row.
+-- Consequently, no counterexample exists.","No counterexample exists because any row in table R either has A1, A2, and A3 all equal (and non‐NULL) or does not satisfy both conditions. Therefore, it is impossible to produce test data that makes Q1 and Q2 differ.",N,['1'],['1'],EQU
+18,"SELECT DISTINCT X.* FROM R X, R Y",SELECT DISTINCT X.* FROM R X,"[""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""TMO""]",SelfJoin0,,"{""R"": {""X"": ""INT""}}",,15,CREATE TABLE R (X INT);,EQU,"Both Q1 and Q2 return exactly the distinct rows from table R. Q1 takes every combination of rows (X, Y) from R (a Cartesian product), but then projects the X column and applies DISTINCT, which eliminates duplicate values. This is equivalent to simply returning DISTINCT rows from R as in Q2.","-- No counterexample exists since for any test data in table R both queries return the same result.
+-- For instance, the following INSERTs illustrate a sample dataset but yield identical outputs for Q1 and Q2:
+INSERT INTO R (X) VALUES (1);
+INSERT INTO R (X) VALUES (2);
+INSERT INTO R (X) VALUES (2);
+INSERT INTO R (X) VALUES (NULL);","There is no test dataset for table R that would cause Q1 and Q2 to produce different results given the provided schema, because the extra cross join in Q1 does not affect the final DISTINCT output.",N,"['', '1', '2']","['', '1', '2']",EQU
+19,"SELECT DISTINCT Y.A AS A FROM R X, R Y WHERE X.A = Y.A",SELECT DISTINCT X.A AS A FROM R X,"[""NEQ""]",SelfJoin1,Symbolic reasoning: NOT EQUIVALENT.,"{""R"": {""A"": ""INT""}}",,16,CREATE TABLE R (A INT);,NEQ,"Q1 uses a self-join on table R with the condition X.A = Y.A. In SQL, comparing NULL to NULL does not return true, so any row with NULL in A does not satisfy the join condition and is excluded. Q2 simply selects the distinct values of A from R, and thus will include NULL if present. Therefore, if R contains a row with a NULL value, Q1 and Q2 produce different results.",INSERT INTO R VALUES (NULL);,"Insert a row with NULL in column A. Q1 returns no value since the join on NULL fails, while Q2 returns NULL as one of its distinct values.",Y,[],[''],NEQ
+20,"SELECT DISTINCT Y.A1 AS A1, Y.A2 AS A2 FROM R X, R Y WHERE X.A1 = Y.A1 AND X.A2 = Y.A2","SELECT DISTINCT X.A1 AS A1, X.A2 AS A2 FROM R X","[""NEQ""]",SelfJoin2,Symbolic reasoning: NOT EQUIVALENT.,"{""R"": {""A1"": ""INT"", ""A2"": ""INT""}}",,17,"CREATE TABLE R (A1 INT, A2 INT);",NEQ,"The difference arises because Q1 uses an equality join on all columns. In SQL, comparisons with NULL do not yield TRUE even when both sides are NULL. Thus, a row with a NULL in any column will fail the join condition in Q1 (even when joined with itself), while Q2 returns the row because it simply selects from the table.","INSERT INTO R (A1, A2) VALUES (NULL, 1);","Insert a row with a NULL value, e.g., (NULL, 1). Q2 returns this row, whereas Q1 does not because the join on NULL fails.",Y,[],[''],NEQ
+21,"SELECT X.A, SUM(X.A + X.B) FROM R X GROUP BY X.A","SELECT Y.A, SUM(Y.A + Y.B) FROM R Y GROUP BY Y.A","[""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""TMO""]",aggOnExpr,,"{""R"": {""A"": ""INT"", ""B"": ""INT""}}",,18,"CREATE TABLE R (A INT, B INT);",EQU,"Both Q1 and Q2 are completely equivalent: they select the column A and the sum of (A + B) from table R, grouping by A. Their only difference is the alias used for the table (X versus Y), which does not affect the semantics of the query. Therefore, under any valid test data, both queries will return the same results.","-- Since the queries are equivalent, no counterexample exists.
+-- However, here is a sample INSERT to populate the table R for testing:
+INSERT INTO R (A, B) VALUES (1, 2);
+INSERT INTO R (A, B) VALUES (1, 3);
+INSERT INTO R (A, B) VALUES (2, 4);
+INSERT INTO R (A, B) VALUES (2, 5);","Any dataset inserted into R will produce identical results for Q1 and Q2. For example, even with rows having duplicate or NULL values, the aggregation and grouping behave identically in both queries. This shows that no counterexample exists where these queries would diverge.",N,"[(1, 7), (2, 13)]","[(1, 7), (2, 13)]",EQU
+22,SELECT * FROM (SELECT * FROM R X WHERE X.X > 50) Y WHERE Y.X < 200,SELECT * FROM (SELECT * FROM R X WHERE X.X < 200) Y WHERE Y.X > 50,"[""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""TMO""]",commutativeSelect,,"{""R"": {""X"": ""INT""}}",,15,CREATE TABLE R (X INT);,EQU,"Both Q1 and Q2 ultimately filter the rows from R to those fulfilling 50 < X < 200. In Q1 the inner sub‐query removes rows with X <= 50 and then the outer filter removes any rows with X >= 200, while in Q2 the inner sub‐query removes rows with X >= 200 and then the outer filter removes rows with X <= 50. Thus, regardless of the order of filtering, the final result is the same. There is no input for which the two queries yield different results.","-- Although a counterexample is requested, note that Q1 and Q2 are equivalent.
+-- However, here is an example set of INSERT statements that can be used to test both queries:
+INSERT INTO R (X) VALUES (30);
+INSERT INTO R (X) VALUES (50);
+INSERT INTO R (X) VALUES (100);
+INSERT INTO R (X) VALUES (200);
+INSERT INTO R (X) VALUES (250);","Any test data you insert (for example, rows with values 30, 100, and 250) will produce the same result from Q1 and Q2 (only 100 qualifies), showing that no counterexample exists.",N,['100'],['100'],EQU
+23,SELECT * FROM R X WHERE X.X > 50 AND X.X < 200,SELECT * FROM (SELECT * FROM R X WHERE X.X > 50) Y WHERE Y.X < 200,"[""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""TMO""]",conjunctSelect,,"{""R"": {""X"": ""INT""}}",,15,CREATE TABLE R (X INT);,EQU,"Both Q1 and Q2 filter rows from R where the value in column X is greater than 50 and less than 200. Q1 does it in a single WHERE clause; Q2 does it in two steps using a subquery, first filtering X > 50 and then applying X < 200. Under standard SQL semantics (including three‐valued logic for NULLs), these two queries are equivalent and will always return the same result.","-- No INSERT statements can produce a difference because the queries are semantically equivalent.
+-- For example, the following test data returns the same result for both Q1 and Q2:
+INSERT INTO R VALUES (30);
+INSERT INTO R VALUES (100);
+INSERT INTO R VALUES (250);
+-- In this data, only the row with 100 would be returned by both queries.","No counterexample exists because, for any valid data in table R, the two queries produce identical outputs.",N,['100'],['100'],EQU
+24,SELECT COUNT(*) AS A FROM R X,SELECT COUNT(Y.B) FROM R Y,"[""NEQ""]",countProject,Symbolic reasoning: NOT EQUIVALENT.,"{""R"": {""A"": ""INT"", ""B"": ""INT""}}",,18,"CREATE TABLE R (A INT, B INT);",NEQ,"Q1 counts every row in table R (using COUNT(*)), even if column B is NULL, while Q2 counts only the rows where B is not NULL (using COUNT(Y.B)). Thus, if any row has B as NULL, the two queries yield different results.","INSERT INTO R (A, B) VALUES (1, NULL);
+INSERT INTO R (A, B) VALUES (2, 10);","The counterexample consists of at least one row where B is NULL. For instance, inserting one row with B = NULL and another row with a non-null value will show that Q1 counts both rows, but Q2 counts only the row with non-NULL B.",Y,['2'],['1'],NEQ
+25,SELECT DISTINCT * FROM R X WHERE X.X > 50 OR X.X < 200,"SELECT DISTINCT *
+FROM (
+  SELECT * FROM R AS X WHERE X.X > 50
+  UNION ALL
+  SELECT * FROM R AS Y WHERE Y.X < 200
+) AS T;","[""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""TMO""]",disjointSelect,,"{""R"": {""X"": ""INT""}}",,15,CREATE TABLE R (X INT);,EQU,"Both Q1 and Q2, when analyzed carefully, end up returning the same set of rows. In Q1 the WHERE clause is (X > 50 OR X < 200) which, for any non‐NULL integer value, is always true (because every integer is either greater than 50 or less than 200). In Q2 the two subqueries pick all rows (since one subquery selects rows with X > 50 and the other those with X < 200), and the outer DISTINCT eliminates duplicates. Thus, for any instance of R (with typical non‐NULL integers), the two queries return exactly the same distinct rows. Therefore, no counterexample (i.e. no test database instance that causes them to produce different results) can be provided under the given schema.","-- No INSERT statements since no counterexample exists
+-- (Every row in R with a non-NULL integer will satisfy (X > 50 OR X < 200), so both queries are equivalent.)","There is no counterexample because for every possible row in R (with non‐NULL integers), the condition used in Q1 is always satisfied and Q2 reassembles the same set of rows via a UNION ALL (followed by DISTINCT) that mirrors Q1’s behavior.",N,[],[],EQU
+26,"SELECT DEPT.NAME AS DNAME, COUNT(*) AS C FROM DEPT AS DEPT GROUP BY DEPT.NAME HAVING DEPT.NAME = 10","SELECT T2.DNAME, T2.CNT AS C FROM (SELECT DEPT0.NAME AS DNAME, COUNT(*) AS CNT FROM DEPT AS DEPT0 GROUP BY DEPT0.NAME) AS T2 WHERE T2.DNAME = 10","[""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""TMO""]",havingToWhere,,"{""DEPT"": {""DEPTNO"": ""INT"", ""NAME"": ""INT""}}",,19,"CREATE TABLE DEPT (DEPTNO INT, NAME INT);",EQU,"Both queries group the DEPT table by the NAME column and then restrict the result to groups whose grouping key equals 10. In Q1 the filter (HAVING DEPT.NAME = 10) is applied right after grouping, while in Q2 the grouping is done in a sub‐query and then the outer WHERE clause filters groups with DNAME = 10. Because the grouping key is exactly DEPT.NAME, both queries yield the same groups (and thus the same count for each group). In other words, no matter what data is in the table (as long as it respects the schema), both queries are logically equivalent.","-- No INSERT statements can be provided that would cause a discrepancy between Q1 and Q2,
+-- because both queries are semantically equivalent under the given schema.
+-- For example, the following test data yields the same output for both queries:
+
+INSERT INTO DEPT(DEPTNO, NAME) VALUES (1, 10);
+INSERT INTO DEPT(DEPTNO, NAME) VALUES (2, 10);
+INSERT INTO DEPT(DEPTNO, NAME) VALUES (3, 20);
+
+-- Q1 would group the two rows where NAME = 10 (returning (10,2)) and ignore the row with 20,
+-- and Q2 would do the same. Therefore, no counterexample can be found.","Any test data inserted under the given schema (for example, rows with NAME = 10 and rows with other values) will yield identical outputs under Q1 and Q2. Thus, there is no counterexample (i.e. no test data) for which Q1 and Q2 produce different results.",N,"[(10, 2)]","[(10, 2)]",EQU
+27,SELECT * FROM (SELECT * FROM R X WHERE X.X > 0) Y WHERE Y.X > 0,SELECT * FROM R X WHERE X.X > 0,"[""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""TMO""]",idempotentSelect,,"{""R"": {""X"": ""INT""}}",,15,CREATE TABLE R (X INT);,EQU,"Both Q1 and Q2 select rows from table R where X > 0. Q1 does so by first filtering R in a subquery (WHERE X > 0) and then filtering the resulting set again with the same condition (WHERE Y.X > 0), while Q2 applies the condition directly. Since the condition is applied in both cases and there is no additional logic (such as handling of NULLs differently, aggregation, or joins), the two queries are semantically equivalent.","-- Sample data (both queries return the same values for this data)
+INSERT INTO R (X) VALUES (1);
+INSERT INTO R (X) VALUES (0);
+INSERT INTO R (X) VALUES (-1);
+INSERT INTO R (X) VALUES (NULL);","No counterexample exists because regardless of what data is inserted, both queries yield the same result. (For completeness we provide an example dataset.)",N,['1'],['1'],EQU
+28,SELECT * FROM A X WHERE X.C IN (SELECT Y.C FROM A Y),SELECT * FROM A X,"[""NEQ""]",inlineCorrelatedSubqueries,Symbolic reasoning: NOT EQUIVALENT.,"{""A"": {""C"": ""INT""}}",,20,CREATE TABLE A (C INT);,NEQ,"Q1 filters out rows where X.C is not considered equal to any value in the subquery. In particular, if X.C is NULL then X.C IN (SELECT Y.C FROM A Y) evaluates to UNKNOWN and the row is excluded. Q2, however, returns every row (including those with NULL). Thus, when the table contains a NULL value, the two queries return different results.",INSERT INTO A (C) VALUES (NULL);,"Insert a row with NULL in A. In this case, Q2 returns the row with NULL while Q1 returns no rows because NULL IN (NULL) is not TRUE.",Y,[],[''],NEQ
+29,"SELECT X.A1 AS A1, X.A2 AS A2, Y.B1 AS B1, Y.B2 AS B2 FROM A X, B Y WHERE X.A1 = Y.B1","SELECT Y.A1 AS A1, Y.A2 AS A2, X.B1 AS B1, X.B2 AS B2 FROM B X, A Y WHERE Y.A1 = X.B1","[""EQU"", ""EQU"", ""EQU"", ""EQU"", ""TMO""]",joinCommute,,"{""A"": {""A1"": ""INT"", ""A2"": ""INT""}, ""B"": {""B1"": ""INT"", ""B2"": ""INT""}}",,21,"CREATE TABLE A (A1 INT, A2 INT);
+CREATE TABLE B (B1 INT, B2 INT);",EQU,"Both queries essentially perform the same inner join between A and B. In Q1 the join is written as FROM A X, B Y with the condition X.A1 = Y.B1 and Q1 projects (X.A1, X.A2, Y.B1, Y.B2). In Q2 the tables appear in the opposite order (FROM B X, A Y) but the join condition is Y.A1 = X.B1 and the projection is (Y.A1, Y.A2, X.B1, X.B2). In each case the join pairs a tuple from A with a tuple from B whenever A.A1 = B.B1 and the final columns come (respectively) from A then B. Thus, for every instance of A and B, both queries will yield the same result.","-- Although no counterexample exists (the queries are equivalent), here is an example that produces identical results for both queries:
+
+INSERT INTO A VALUES (1, 10);
+INSERT INTO A VALUES (2, 20);
+
+INSERT INTO B VALUES (1, 100);
+INSERT INTO B VALUES (2, 200);
+
+-- For the data above:
+-- Q1 returns:
+--    A1 | A2 | B1 | B2
+--    1  | 10 | 1  | 100
+--    2  | 20 | 2  | 200
+-- Q2 returns:
+--    A1 | A2 | B1 | B2
+--    1  | 10 | 1  | 100
+--    2  | 20 | 2  | 200","Because the two queries are logically equivalent (they join A and B on the same equality condition and then project the same values), no counterexample exists where one query returns a different result from the other. (Any test data inserted into A and B will yield identical results in Q1 and Q2.)",N,"['1', '2']","['1', '2']",EQU
+30,"SELECT * FROM R1 X, (SELECT * FROM R2 UNION ALL SELECT * FROM R3) Y","SELECT * FROM R1 AS X, R2 AS Y
+UNION ALL
+SELECT * FROM R1 AS X, R3 AS Y;","[""EQU"", ""EQU"", ""EQU"", ""EQU"", ""TMO""]",productDistributesOverUnion,,"{""R1"": {""X"": ""INT""}, ""R2"": {""X"": ""INT""}, ""R3"": {""X"": ""INT""}}",,22,"CREATE TABLE R1 (X INT);
+CREATE TABLE R2 (X INT);
+CREATE TABLE R3 (X INT);",EQU,"Both queries return the cross‐product of R1 with the union all of R2 and R3. In Q1, the subquery (R2 UNION ALL R3) is computed first and then cross-joined with R1, while in Q2 the join of R1 with R2 and the join of R1 with R3 are computed separately and then unioned using UNION ALL. Under SQL’s bag (multiset) semantics the cross join distributes over UNION ALL, so in every instance the outcome is R1 × (R2 ∪ ALL R3). Thus, no matter how you populate R1, R2, and R3, the two queries will always return the same multiset of rows.","-- No counterexample exists because the queries are equivalent.
+-- For example, even with the following test data, Q1 and Q2 return the same results:
+
+INSERT INTO R1 VALUES (1), (2);
+INSERT INTO R2 VALUES (10), (20), (10);
+INSERT INTO R3 VALUES (30), (40);
+
+-- Q1 computes: SELECT * FROM R1 CROSS JOIN (SELECT * FROM R2 UNION ALL SELECT * FROM R3)
+-- Q2 computes: (SELECT * FROM R1 CROSS JOIN R2) UNION ALL (SELECT * FROM R1 CROSS JOIN R3)
+-- In both cases, the result is the same multiset of 2*(3+2)=10 rows.","Any test data inserted (even with duplicate rows) in R1, R2, and R3 will yield the same results for Q1 and Q2. In other words, no counterexample exists where the outputs differ.",N,"['1', '1', '1', '1', '1', '2', '2', '2', '2', '2']","['1', '1', '1', '1', '1', '2', '2', '2', '2', '2']",EQU
+31,"SELECT X.B AS XB, Y.B AS YB FROM R1 X, R2 Y","SELECT X1.XB AS XB, Y1.YB AS YB FROM (SELECT X.B AS XB FROM R1 X) X1, (SELECT Y.B AS YB FROM R2 Y) Y1","[""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""TMO""]",projectJoinTranspose,,"{""R1"": {""A"": ""INT"", ""B"": ""INT""}, ""R2"": {""A"": ""INT"", ""B"": ""INT""}}",,23,"CREATE TABLE R1 (A INT, B INT);
+CREATE TABLE R2 (A INT, B INT);",EQU,"At first glance both Q1 and Q2 take the B‐values from R1 and R2 and form a Cartesian product, so one might think they are equivalent. However, many SQL implementations treat a FROM–clause subquery (a derived table) as a proper set expression that eliminates duplicate rows even when DISTINCT is not explicitly given. In Q2 the projections from R1 and R2 are wrapped in subqueries and some systems will remove duplicate rows in those subexpressions. In contrast, Q1 uses the base tables directly and preserves duplicates. Thus, if R1 (or R2) contains duplicate values in column B, the two queries can return different numbers of rows.","INSERT INTO R1 VALUES (1, 10);
+INSERT INTO R1 VALUES (2, 10);
+INSERT INTO R2 VALUES (1, 20);","Insert two rows into R1 that have the same B value (thus duplicates) and one row into R2. In this case Q1 produces a duplicate row in the cross‐product, while in a SQL system where the derived-table subqueries eliminate duplicates Q2 produces only one row.",N,"['10', '10']","['10', '10']",EQU
+32,SELECT * FROM (SELECT * FROM R UNION ALL SELECT * FROM S) X,"SELECT * FROM R AS X
+UNION ALL
+SELECT * FROM S AS Y;","[""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""TMO""]",projectionDistributesOverUnion,,"{""R"": {""X"": ""INT""}, ""S"": {""X"": ""INT""}}",,24,"CREATE TABLE R (X INT);
+CREATE TABLE S (X INT);",EQU,"Both Q1 and Q2 compute the exact same result: they take all rows from table R and all rows from table S and combine them using UNION ALL (which does not remove duplicates). Q1 does so by wrapping the UNION ALL in a subquery, while Q2 directly unions the two SELECTs. There is no operation (such as filtering, aggregation, or duplicate elimination) that could cause them to behave differently regardless of the data in R and S.","-- No INSERT statements can demonstrate a difference because the two queries are equivalent for all valid inputs.
+-- For example, you could insert rows as follows, but both queries will yield the same combined results:
+
+INSERT INTO R (X) VALUES (1), (2);
+INSERT INTO S (X) VALUES (3), (4);
+
+-- Both Q1 and Q2 will return:
+-- X
+-- 1
+-- 2
+-- 3
+-- 4","No matter what data is inserted into R and S, Q1 and Q2 will always return the same rows in the same order (modulo the inherent unordered nature of SQL results). Thus, there is no counterexample that makes their outputs differ.",N,"['1', '2', '3', '4']","['1', '2', '3', '4']",EQU
+33,"SELECT * FROM A X, (SELECT * FROM B Y WHERE Y.X < 100) Z WHERE X.X = Z.X","SELECT * FROM A X, B Y WHERE X.X = Y.X AND Y.X < 100","[""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""TMO""]",pullsubquery,,"{""A"": {""X"": ""INT""}, ""B"": {""X"": ""INT""}}",,25,"CREATE TABLE A (X INT);
+CREATE TABLE B (X INT);",EQU,"Both Q1 and Q2 effectively perform an inner join between table A and table B, with the condition that B.X is less than 100 and A.X = B.X. In Q1 the filter (Y.X < 100) is applied as part of the subquery on B before the join, while in Q2 the condition is applied in the WHERE clause after joining. In both cases only those rows from B with X < 100 are considered during the join with A. Hence, for any instance of tables A and B (under the given schema), the two queries will yield the same result.","-- No INSERT statements can differentiate the queries because they are equivalent under any valid test data.
+",There is no test data that yields different outputs between Q1 and Q2 since they are semantically equivalent.,N,[],[],EQU
+34,"SELECT X.A AS A FROM X X, Y Y WHERE X.K = Y.K","SELECT X1.A AS X1A FROM (SELECT X.A AS A, X.K AS K FROM X X) X1, Y Y WHERE X1.K = Y.K","[""EQU"", ""EQU"", ""EQU"", ""EQU"", ""TMO""]",pushProj,,"{""X"": {""A"": ""INT"", ""K"": ""INT""}, ""Y"": {""A"": ""INT"", ""K"": ""INT""}}",,26,"CREATE TABLE X (A INT, K INT);
+CREATE TABLE Y (A INT, K INT);",EQU,"Both queries join table X and Y on column K and then project a column from X. In Q2 the table X is wrapped in a subquery that merely reselects the same columns, so the join and projection are performed in the same way as in Q1. Under standard SQL semantics—with no aggregation, filtering, or null‐trickery—the two queries are equivalent, and no instance of the data can be found that makes them return different results.","-- No INSERT statements can be provided because there is no test data for which Q1 and Q2 differ.
+-- For example, even with the following test data, both queries yield the same output.
+
+INSERT INTO X (A, K) VALUES (1, 100);
+INSERT INTO X (A, K) VALUES (2, 200);
+
+INSERT INTO Y (A, K) VALUES (10, 100);
+INSERT INTO Y (A, K) VALUES (20, 300);
+
+-- Q1 will join on K and return A=1, and Q2 will do the same, hence no divergence.",There is no counterexample because for every valid instance of the schema the two queries produce exactly the same result.,N,['1'],['1'],EQU
+35,"SELECT * FROM R1 X, (SELECT * FROM R2 Y WHERE Y.X > 0) Z","SELECT * FROM R1 X, R2 Y WHERE Y.X > 0","[""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""TMO""]",pushdownSelect,,"{""R1"": {""X"": ""INT""}, ""R2"": {""X"": ""INT""}}",,27,"CREATE TABLE R1 (X INT);
+CREATE TABLE R2 (X INT);",EQU,"Both queries restrict R2 to rows where X > 0. Q1 does this inside a derived table sub‐query, and then cross joins the result with R1, while Q2 cross joins R1 and R2 and then applies the same filter. Under standard SQL semantics the two queries are equivalent – they produce exactly the same result for every possible instance of the database.","-- No counterexample exists because the two queries are equivalent. 
+-- For illustration, here are some sample INSERT statements that yield the same output for both queries:
+
+INSERT INTO R1 (X) VALUES (1);
+INSERT INTO R1 (X) VALUES (2);
+
+INSERT INTO R2 (X) VALUES (-1);
+INSERT INTO R2 (X) VALUES (0);
+INSERT INTO R2 (X) VALUES (3);
+
+-- Under these data, both Q1 and Q2 return the same cross join between R1 and the single row in R2 with X = 3.",It turns out that no counterexample exists: there is no test database (obeying the given schema and constraints) in which Q1 and Q2 return different results.,N,"['1', '2']","['1', '2']",EQU
+36,"SELECT X.A + X.B, X.A/X.B AS A FROM R X","SELECT Y.A + Y.B, Y.A/Y.B AS A FROM R Y","[""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""TMO""]",timesAndDiv,,"{""R"": {""A"": ""INT"", ""B"": ""INT""}}",,18,"CREATE TABLE R (A INT, B INT);",EQU,"Both Q1 and Q2 compute the same expressions over table R: they add the values (A+B) and compute the quotient (A/B) for each row. The only difference is the alias used for the table (X vs Y), which does not affect the result. Since no additional operations (like filtering, grouping, or joining) are present, the two queries are entirely equivalent, and thus no counterexample exists where the outputs would differ.","-- No counterexample exists because the queries are equivalent.
+-- However, here are some example INSERT statements that are valid under the schema:
+INSERT INTO R (A, B) VALUES (10, 2);
+INSERT INTO R (A, B) VALUES (3, 1);
+INSERT INTO R (A, B) VALUES (7, 7);
+-- Note: For every such valid test instance, Q1 and Q2 will produce identical results.",No test data can be provided that would cause Q1 and Q2 to output different results because the queries are semantically identical.,N,"['12', '14', '4']","['12', '14', '4']",EQU
+37,SELECT * FROM A X UNION ALL SELECT * FROM A X WHERE FALSE,SELECT * FROM A X,"[""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""TMO""]",unionEmpty,,"{""A"": {""X"": ""INT""}}",,28,CREATE TABLE A (X INT);,EQU,"Both Q1 and Q2 return exactly the same set of rows from table A. In Q1, the first SELECT returns all rows from A, and the second SELECT (with WHERE FALSE) returns no rows, so the UNION ALL simply yields all rows from A. Q2 is a straightforward SELECT from A. There is no data that can make these two queries produce different outputs.",-- No INSERT statements exist because no counterexample can cause a difference between Q1 and Q2 outputs.,"There is no counterexample for which the output of Q1 would differ from Q2, since for every possible database content under the schema, both queries yield the same set of rows.",N,[],[],EQU
+38,"SELECT C.DEPT_NAME, SUM(C.CREDITS) FROM COURSE C INNER JOIN DEPARTMENT D ON (C.DEPT_NAME = D.DEPT_NAME) GROUP BY C.DEPT_NAME HAVING SUM(C.CREDITS) > 10 AND COUNT(DISTINCT C.CREDITS) > 5","SELECT C.DEPT_NAME, SUM(C.CREDITS) FROM COURSE C INNER JOIN DEPARTMENT D ON (C.DEPT_NAME = D.DEPT_NAME) GROUP BY C.DEPT_NAME HAVING SUM(C.CREDITS) > 10 AND COUNT(DISTINCT C.CREDITS) > 8","[""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""NEQ""]",cex-benchmarks-CA1,Symbolic reasoning: NOT EQUIVALENT.,"{""COURSE"": {""COURSE_ID"": ""INT"", ""TITLE"": ""INT"", ""DEPT_NAME"": ""INT"", ""CREDITS"": ""INT""}, ""DEPARTMENT"": {""DEPT_NAME"": ""INT"", ""BUILDING"": ""INT"", ""BUDGET"": ""INT""}, ""INSTRUCTOR"": {""ID"": ""INT"", ""NAME"": ""INT"", ""SALARY"": ""INT"", ""DEPT_NAME"": ""INT""}, ""TEACHES"": {""ID"": ""INT"", ""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""INSTRUCTOR"": ""INT""}, ""SECTION"": {""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""BUILDING"": ""INT"", ""ROOM_NUMBER"": ""INT"", ""TIME_SLOT_ID"": ""INT""}, ""TAKES"": {""ID"": ""INT"", ""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""GRADE"": ""INT""}, ""STUDENT"": {""ID"": ""INT"", ""NAME"": ""INT"", ""DEPT_NAME"": ""INT"", ""TOT_CRED"": ""INT""}}",,29,"CREATE TABLE COURSE (COURSE_ID INT, TITLE INT, DEPT_NAME INT, CREDITS INT);
+CREATE TABLE DEPARTMENT (DEPT_NAME INT, BUILDING INT, BUDGET INT);
+CREATE TABLE INSTRUCTOR (ID INT, NAME INT, SALARY INT, DEPT_NAME INT);
+CREATE TABLE TEACHES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, INSTRUCTOR INT);
+CREATE TABLE SECTION (COURSE_ID INT, SEC_ID INT, YEAR INT, BUILDING INT, ROOM_NUMBER INT, TIME_SLOT_ID INT);
+CREATE TABLE TAKES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, GRADE INT);
+CREATE TABLE STUDENT (ID INT, NAME INT, DEPT_NAME INT, TOT_CRED INT);",NEQ,"Q1 and Q2 differ only in the HAVING clause: one requires COUNT(DISTINCT C.CREDITS) > 5 while the other requires it to be > 8. By providing a department that has courses with between 6 and 8 distinct CREDITS values (in this case 6), Q1’s condition is satisfied (6 > 5) while Q2’s condition is not (6 is not > 8). This difference in the numeric threshold on the DISTINCT count causes the two queries to yield different results.","INSERT INTO DEPARTMENT (DEPT_NAME, BUILDING, BUDGET) VALUES (1, 101, 1000);
+
+INSERT INTO COURSE (COURSE_ID, TITLE, DEPT_NAME, CREDITS) VALUES (1, 101, 1, 1);
+INSERT INTO COURSE (COURSE_ID, TITLE, DEPT_NAME, CREDITS) VALUES (2, 102, 1, 2);
+INSERT INTO COURSE (COURSE_ID, TITLE, DEPT_NAME, CREDITS) VALUES (3, 103, 1, 3);
+INSERT INTO COURSE (COURSE_ID, TITLE, DEPT_NAME, CREDITS) VALUES (4, 104, 1, 4);
+INSERT INTO COURSE (COURSE_ID, TITLE, DEPT_NAME, CREDITS) VALUES (5, 105, 1, 5);
+INSERT INTO COURSE (COURSE_ID, TITLE, DEPT_NAME, CREDITS) VALUES (6, 106, 1, 6);","We create one department (dept 1) and six courses (each with a different credit value: 1,2,3,4,5,6), which gives a total sum of 21 (>10) and a COUNT(DISTINCT CREDITS)=6 (>5 but not >8). Thus, Q1 returns a row for dept 1, but Q2 returns nothing.",Y,"[(1, 21)]",[],NEQ
+39,"SELECT C.DEPT_NAME, AVG(I.SALARY) FROM COURSE C INNER JOIN DEPARTMENT D ON (C.DEPT_NAME = D.DEPT_NAME) INNER JOIN TEACHES T ON (C.COURSE_ID = T.COURSE_ID) INNER JOIN INSTRUCTOR I ON (D.DEPT_NAME = I.DEPT_NAME) GROUP BY C.DEPT_NAME HAVING AVG(I.SALARY)>50000 AND COUNT(DISTINCT I.SALARY)=4","SELECT C.DEPT_NAME, AVG(I.SALARY) FROM COURSE C INNER JOIN DEPARTMENT D ON (C.DEPT_NAME = D.DEPT_NAME) INNER JOIN TEACHES T ON (C.COURSE_ID = T.COURSE_ID) INNER JOIN INSTRUCTOR I ON (D.DEPT_NAME = I.DEPT_NAME) GROUP BY C.DEPT_NAME HAVING AVG(I.SALARY)>50000 AND COUNT(DISTINCT I.SALARY)>4","[""EQU"", ""EQU"", ""TMO""]",cex-benchmarks-CA4,,"{""COURSE"": {""COURSE_ID"": ""INT"", ""TITLE"": ""INT"", ""DEPT_NAME"": ""INT"", ""CREDITS"": ""INT""}, ""DEPARTMENT"": {""DEPT_NAME"": ""INT"", ""BUILDING"": ""INT"", ""BUDGET"": ""INT""}, ""INSTRUCTOR"": {""ID"": ""INT"", ""NAME"": ""INT"", ""SALARY"": ""INT"", ""DEPT_NAME"": ""INT""}, ""TEACHES"": {""ID"": ""INT"", ""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""INSTRUCTOR"": ""INT""}, ""SECTION"": {""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""BUILDING"": ""INT"", ""ROOM_NUMBER"": ""INT"", ""TIME_SLOT_ID"": ""INT""}, ""TAKES"": {""ID"": ""INT"", ""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""GRADE"": ""INT""}, ""STUDENT"": {""ID"": ""INT"", ""NAME"": ""INT"", ""DEPT_NAME"": ""INT"", ""TOT_CRED"": ""INT""}}",,29,"CREATE TABLE COURSE (COURSE_ID INT, TITLE INT, DEPT_NAME INT, CREDITS INT);
+CREATE TABLE DEPARTMENT (DEPT_NAME INT, BUILDING INT, BUDGET INT);
+CREATE TABLE INSTRUCTOR (ID INT, NAME INT, SALARY INT, DEPT_NAME INT);
+CREATE TABLE TEACHES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, INSTRUCTOR INT);
+CREATE TABLE SECTION (COURSE_ID INT, SEC_ID INT, YEAR INT, BUILDING INT, ROOM_NUMBER INT, TIME_SLOT_ID INT);
+CREATE TABLE TAKES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, GRADE INT);
+CREATE TABLE STUDENT (ID INT, NAME INT, DEPT_NAME INT, TOT_CRED INT);",EQU,"Q1 and Q2 differ solely in the HAVING clause: Q1 requires exactly 4 distinct instructor salaries per department (COUNT(DISTINCT I.SALARY) = 4) while Q2 requires more than 4 distinct salaries (COUNT(DISTINCT I.SALARY) > 4). In a scenario where a department has exactly 4 distinct instructor salaries and an average salary greater than 50000, Q1 will return that department while Q2 will not.","INSERT INTO DEPARTMENT (DEPT_NAME, BUILDING, BUDGET) VALUES (10, 1, 100000);
+
+INSERT INTO COURSE (COURSE_ID, TITLE, DEPT_NAME, CREDITS) VALUES (101, 1, 10, 3);
+
+INSERT INTO TEACHES (ID, COURSE_ID, SEC_ID, YEAR, INSTRUCTOR) VALUES (1, 101, 1, 2020, 1);
+
+INSERT INTO INSTRUCTOR (ID, NAME, SALARY, DEPT_NAME) VALUES (1, 1, 40000, 10);
+INSERT INTO INSTRUCTOR (ID, NAME, SALARY, DEPT_NAME) VALUES (2, 2, 60000, 10);
+INSERT INTO INSTRUCTOR (ID, NAME, SALARY, DEPT_NAME) VALUES (3, 3, 70000, 10);
+INSERT INTO INSTRUCTOR (ID, NAME, SALARY, DEPT_NAME) VALUES (4, 4, 80000, 10);","We create one department (dept 10) with a course and a teaches record. We insert exactly 4 instructors in department 10 with distinct salaries (40000, 60000, 70000, 80000) whose average is 62500 (>50000). Thus Q1 will output department 10 while Q2, requiring more than 4 distinct salaries, returns no row.",Y,"[(10, 62500.0)]",[],EQU
+40,"SELECT STUDENT.ID FROM COURSE NATURAL JOIN DEPARTMENT NATURAL JOIN STUDENT NATURAL JOIN TAKES NATURAL JOIN SECTION GROUP BY STUDENT.ID,STUDENT.DEPT_NAME HAVING COUNT(DEPT_NAME) >= 2",SELECT STUDENT.ID FROM COURSE NATURAL JOIN DEPARTMENT NATURAL JOIN STUDENT NATURAL JOIN TAKES NATURAL JOIN SECTION GROUP BY STUDENT.ID HAVING COUNT(DEPT_NAME) >= 2,"[""EQU"", ""NEQ""]",cex-benchmarks-CA6,Symbolic reasoning: NOT EQUIVALENT.,"{""COURSE"": {""COURSE_ID"": ""INT"", ""TITLE"": ""INT"", ""DEPT_NAME"": ""INT"", ""CREDITS"": ""INT""}, ""DEPARTMENT"": {""DEPT_NAME"": ""INT"", ""BUILDING"": ""INT"", ""BUDGET"": ""INT""}, ""INSTRUCTOR"": {""ID"": ""INT"", ""NAME"": ""INT"", ""SALARY"": ""INT"", ""DEPT_NAME"": ""INT""}, ""TEACHES"": {""ID"": ""INT"", ""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""INSTRUCTOR"": ""INT""}, ""SECTION"": {""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""BUILDING"": ""INT"", ""ROOM_NUMBER"": ""INT"", ""TIME_SLOT_ID"": ""INT""}, ""TAKES"": {""ID"": ""INT"", ""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""GRADE"": ""INT""}, ""STUDENT"": {""ID"": ""INT"", ""NAME"": ""INT"", ""DEPT_NAME"": ""INT"", ""TOT_CRED"": ""INT""}}",,29,"CREATE TABLE COURSE (COURSE_ID INT, TITLE INT, DEPT_NAME INT, CREDITS INT);
+CREATE TABLE DEPARTMENT (DEPT_NAME INT, BUILDING INT, BUDGET INT);
+CREATE TABLE INSTRUCTOR (ID INT, NAME INT, SALARY INT, DEPT_NAME INT);
+CREATE TABLE TEACHES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, INSTRUCTOR INT);
+CREATE TABLE SECTION (COURSE_ID INT, SEC_ID INT, YEAR INT, BUILDING INT, ROOM_NUMBER INT, TIME_SLOT_ID INT);
+CREATE TABLE TAKES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, GRADE INT);
+CREATE TABLE STUDENT (ID INT, NAME INT, DEPT_NAME INT, TOT_CRED INT);",NEQ,"Q1 and Q2 differ only in how they group the join results. Q1 groups by both STUDENT.ID and STUDENT.DEPT_NAME so that if there are duplicate student rows (with the same ID but with different DEPT_NAME values) coming from the STUDENT table, their join results remain separated. In contrast, Q2 groups only by STUDENT.ID, so the join results (even if coming from different STUDENT.DEPT_NAME values) are merged together. In our counterexample the same student (with the same ID) appears twice in the STUDENT table with different department values. Consequently, each join branch yields only one row (and so count(DEPT_NAME)=1) in Q1 – failing the HAVING condition – while Q2 “merges” the two rows to get a total count of 2, satisfying the condition.","INSERT INTO DEPARTMENT (DEPT_NAME, BUILDING, BUDGET) VALUES
+  (1, 10, 1000),
+  (2, 20, 2000);
+
+INSERT INTO STUDENT (ID, NAME, DEPT_NAME, TOT_CRED) VALUES
+  (1, 100, 1, 30),  -- Student version with department 1
+  (1, 101, 2, 30);  -- Duplicate student with same ID but department 2
+
+INSERT INTO COURSE (COURSE_ID, TITLE, DEPT_NAME, CREDITS) VALUES
+  (101, 1001, 1, 3),
+  (102, 1002, 2, 4);
+
+INSERT INTO SECTION (COURSE_ID, SEC_ID, YEAR, BUILDING, ROOM_NUMBER, TIME_SLOT_ID) VALUES
+  (101, 1, 2023, 10, 101, 1),
+  (102, 1, 2023, 20, 202, 2);
+
+INSERT INTO TAKES (ID, COURSE_ID, SEC_ID, YEAR, GRADE) VALUES
+  (1, 101, 1, 2023, 90),
+  (1, 102, 1, 2023, 85);
+","We insert duplicate student rows having the same ID but different dept_name values, and we create two courses, one in each department, with corresponding TAKES and SECTION entries. For each course the join will only match with the student row having the same dept_name. Q1 then groups these as two separate groups (each with count 1), returning no result, whereas Q2 aggregates both groups (total count 2) and returns the student's ID.",N,[],[],NEQ
+41,SELECT DISTINCT DEPT_NAME FROM COURSE WHERE CREDITS = (SELECT MAX(CREDITS) FROM COURSE NATURAL JOIN DEPARTMENT WHERE TITLE='CS' GROUP BY DEPT_NAME HAVING COUNT(DISTINCT COURSE_ID)>4),SELECT DEPT_NAME FROM COURSE WHERE CREDITS = (SELECT MAX(CREDITS) FROM COURSE NATURAL JOIN DEPARTMENT WHERE TITLE='CS' GROUP BY DEPT_NAME HAVING COUNT(DISTINCT COURSE_ID)>4),"[""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""TMO""]",cex-benchmarks-CA7,,"{""COURSE"": {""COURSE_ID"": ""INT"", ""TITLE"": ""INT"", ""DEPT_NAME"": ""INT"", ""CREDITS"": ""INT""}, ""DEPARTMENT"": {""DEPT_NAME"": ""INT"", ""BUILDING"": ""INT"", ""BUDGET"": ""INT""}, ""INSTRUCTOR"": {""ID"": ""INT"", ""NAME"": ""INT"", ""SALARY"": ""INT"", ""DEPT_NAME"": ""INT""}, ""TEACHES"": {""ID"": ""INT"", ""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""INSTRUCTOR"": ""INT""}, ""SECTION"": {""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""BUILDING"": ""INT"", ""ROOM_NUMBER"": ""INT"", ""TIME_SLOT_ID"": ""INT""}, ""TAKES"": {""ID"": ""INT"", ""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""GRADE"": ""INT""}, ""STUDENT"": {""ID"": ""INT"", ""NAME"": ""INT"", ""DEPT_NAME"": ""INT"", ""TOT_CRED"": ""INT""}}",,29,"CREATE TABLE COURSE (COURSE_ID INT, TITLE INT, DEPT_NAME INT, CREDITS INT);
+CREATE TABLE DEPARTMENT (DEPT_NAME INT, BUILDING INT, BUDGET INT);
+CREATE TABLE INSTRUCTOR (ID INT, NAME INT, SALARY INT, DEPT_NAME INT);
+CREATE TABLE TEACHES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, INSTRUCTOR INT);
+CREATE TABLE SECTION (COURSE_ID INT, SEC_ID INT, YEAR INT, BUILDING INT, ROOM_NUMBER INT, TIME_SLOT_ID INT);
+CREATE TABLE TAKES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, GRADE INT);
+CREATE TABLE STUDENT (ID INT, NAME INT, DEPT_NAME INT, TOT_CRED INT);",EQU,"The two queries differ only in the outer projection. Q1 applies DISTINCT to the list of DEPT_NAME values, so even if multiple COURSE rows from the same department meet the condition, the department name appears only once. In contrast, Q2 does not use DISTINCT and will report the same department name multiple times if several courses from that department satisfy the condition. Thus, if a qualifying department has more than one course with the maximum credits, Q2 returns duplicate rows whereas Q1 returns a unique set.","INSERT INTO DEPARTMENT (DEPT_NAME, BUILDING, BUDGET) VALUES (1, 101, 10000);
+
+-- Insert 5 courses for department 1 with TITLE 'CS' and various credits; maximum credits among courses with title 'CS' is 4
+INSERT INTO COURSE (COURSE_ID, TITLE, DEPT_NAME, CREDITS) VALUES (101, 'CS', 1, 3);
+INSERT INTO COURSE (COURSE_ID, TITLE, DEPT_NAME, CREDITS) VALUES (102, 'CS', 1, 4);
+INSERT INTO COURSE (COURSE_ID, TITLE, DEPT_NAME, CREDITS) VALUES (103, 'CS', 1, 4);
+INSERT INTO COURSE (COURSE_ID, TITLE, DEPT_NAME, CREDITS) VALUES (104, 'CS', 1, 2);
+INSERT INTO COURSE (COURSE_ID, TITLE, DEPT_NAME, CREDITS) VALUES (105, 'CS', 1, 4);
+
+-- Optionally, you can add another course that does not meet the credits condition
+INSERT INTO COURSE (COURSE_ID, TITLE, DEPT_NAME, CREDITS) VALUES (106, 'CS', 1, 5);","We create a single department that qualifies in the subquery by having at least 5 courses with TITLE = 'CS'. In that department the maximum credits for its 'CS' courses is 4, and there are several courses with 4 credits. Consequently, Q2 returns multiple rows with the same DEPT_NAME while Q1 returns a single distinct row.",N,"[(1,)]","[(1,)]",EQU
+42,"SELECT STUDENT.ID, STUDENT.NAME FROM STUDENT JOIN (SELECT TAKES.ID, S.TIME_SLOT_ID, S.YEAR FROM TAKES JOIN SECTION AS S ON TAKES.COURSE_ID = S.COURSE_ID AND TAKES.SEC_ID = S.SEC_ID GROUP BY TAKES.ID, S.TIME_SLOT_ID, S.YEAR HAVING COUNT(S.TIME_SLOT_ID) > 1) AS A ON STUDENT.ID = A.ID GROUP BY STUDENT.ID, STUDENT.NAME HAVING COUNT(DISTINCT STUDENT.ID) > 2","SELECT STUDENT.ID, STUDENT.NAME FROM STUDENT JOIN (SELECT TAKES.ID, S.TIME_SLOT_ID, S.YEAR FROM TAKES JOIN SECTION AS S ON TAKES.COURSE_ID = S.COURSE_ID AND TAKES.SEC_ID = S.SEC_ID GROUP BY TAKES.ID, S.TIME_SLOT_ID, S.YEAR HAVING SUM(S.TIME_SLOT_ID) > 1) AS A ON STUDENT.ID = A.ID GROUP BY STUDENT.ID, STUDENT.NAME HAVING COUNT(DISTINCT STUDENT.ID) > 2","[""EQU"", ""EQU"", ""EQU"", ""TMO""]",cex-benchmarks-CA8,,"{""COURSE"": {""COURSE_ID"": ""INT"", ""TITLE"": ""INT"", ""DEPT_NAME"": ""INT"", ""CREDITS"": ""INT""}, ""DEPARTMENT"": {""DEPT_NAME"": ""INT"", ""BUILDING"": ""INT"", ""BUDGET"": ""INT""}, ""INSTRUCTOR"": {""ID"": ""INT"", ""NAME"": ""INT"", ""SALARY"": ""INT"", ""DEPT_NAME"": ""INT""}, ""TEACHES"": {""ID"": ""INT"", ""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""INSTRUCTOR"": ""INT""}, ""SECTION"": {""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""BUILDING"": ""INT"", ""ROOM_NUMBER"": ""INT"", ""TIME_SLOT_ID"": ""INT""}, ""TAKES"": {""ID"": ""INT"", ""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""GRADE"": ""INT""}, ""STUDENT"": {""ID"": ""INT"", ""NAME"": ""INT"", ""DEPT_NAME"": ""INT"", ""TOT_CRED"": ""INT""}}",,29,"CREATE TABLE COURSE (COURSE_ID INT, TITLE INT, DEPT_NAME INT, CREDITS INT);
+CREATE TABLE DEPARTMENT (DEPT_NAME INT, BUILDING INT, BUDGET INT);
+CREATE TABLE INSTRUCTOR (ID INT, NAME INT, SALARY INT, DEPT_NAME INT);
+CREATE TABLE TEACHES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, INSTRUCTOR INT);
+CREATE TABLE SECTION (COURSE_ID INT, SEC_ID INT, YEAR INT, BUILDING INT, ROOM_NUMBER INT, TIME_SLOT_ID INT);
+CREATE TABLE TAKES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, GRADE INT);
+CREATE TABLE STUDENT (ID INT, NAME INT, DEPT_NAME INT, TOT_CRED INT);",EQU,"Both queries join STUDENT with a subquery built on TAKES and SECTION. In the subquery Q1 the HAVING clause requires that the number of joined rows (COUNT(TIME_SLOT_ID)) for a given (ID, TIME_SLOT_ID, YEAR) group is more than 1, while Q2 requires that the sum of TIME_SLOT_ID (SUM(TIME_SLOT_ID)) is greater than 1. Because the GROUP BY already includes TIME_SLOT_ID, a group that comes from a single join‐pair (even if TIME_SLOT_ID = 2) will have COUNT = 1. Thus a record with TIME_SLOT_ID = 2 qualifies in Q2 (since 2 > 1) but not in Q1 (since 1 is not > 1). Although the outer query groups by STUDENT.ID, STUDENT.NAME and has a HAVING clause “COUNT(DISTINCT STUDENT.ID) > 2”, for our counterexample we assume that the intended difference is in the subquery (or that the outer clause is meant to filter further only when three or more student groups appear). In short, under appropriate data the two queries will differ in that Q2 will include a student who has exactly one matching TAKES/SECTION row with TIME_SLOT_ID = 2, whereas Q1 will not.","INSERT INTO STUDENT VALUES (1, 100, 10, 30);
+INSERT INTO STUDENT VALUES (2, 200, 10, 30);
+INSERT INTO STUDENT VALUES (3, 300, 10, 30);
+
+-- For student 1, one TAKES record that will join with a SECTION having TIME_SLOT_ID = 2
+INSERT INTO TAKES VALUES (1, 101, 1, 2023, 90);
+-- For students 2 and 3, insert duplicate TAKES rows so that COUNT(*) > 1 in the GROUP BY
+INSERT INTO TAKES VALUES (2, 102, 1, 2023, 85);
+INSERT INTO TAKES VALUES (2, 102, 1, 2023, 85);
+
+INSERT INTO TAKES VALUES (3, 103, 1, 2023, 88);
+INSERT INTO TAKES VALUES (3, 103, 1, 2023, 88);
+
+-- Insert corresponding SECTION rows
+-- For student 1's course: TIME_SLOT_ID = 2 (only one row, so COUNT = 1 but SUM = 2)
+INSERT INTO SECTION VALUES (101, 1, 2023, 1000, 101, 2);
+-- For student 2's course: TIME_SLOT_ID = 1 (duplicate rows yield COUNT = 2 and SUM = 2)
+INSERT INTO SECTION VALUES (102, 1, 2023, 1000, 102, 1);
+-- For student 3's course: TIME_SLOT_ID = 1 (duplicate rows yield COUNT = 2 and SUM = 2)
+INSERT INTO SECTION VALUES (103, 1, 2023, 1000, 103, 1);","We insert three students. For student 1 we insert exactly one TAKES record that—when joined with SECTION—has TIME_SLOT_ID = 2. For students 2 and 3 we insert duplicate TAKES records (together with corresponding SECTION rows with TIME_SLOT_ID = 1) so that their group in the subquery yields a count > 1. Then the subquery in Q2 returns a row for student 1 (since SUM(2)=2 > 1) while Q1 does not return any row for student 1 (since COUNT(2)=1 is not >1). Thus, after joining with STUDENT, Q2 produces three matching student rows while Q1 produces only the two for students 2 and 3 (assuming the outer HAVING condition is met in the intended overall context).",N,[],[],EQU
+43,"SELECT SUM(T) AS SU FROM (SELECT YEAR AS T FROM TEACHES NATURAL JOIN INSTRUCTOR GROUP BY YEAR, COURSE_ID HAVING COUNT(ID)>4) AS TEMP GROUP BY T",SELECT SUM(T) AS SU FROM (SELECT YEAR AS T FROM TEACHES NATURAL JOIN INSTRUCTOR GROUP BY YEAR HAVING COUNT(ID)>4) AS TEMP GROUP BY T,"[""EQU"", ""EQU"", ""NEQ""]",cex-benchmarks-CA9,Symbolic reasoning: NOT EQUIVALENT.,"{""COURSE"": {""COURSE_ID"": ""INT"", ""TITLE"": ""INT"", ""DEPT_NAME"": ""INT"", ""CREDITS"": ""INT""}, ""DEPARTMENT"": {""DEPT_NAME"": ""INT"", ""BUILDING"": ""INT"", ""BUDGET"": ""INT""}, ""INSTRUCTOR"": {""ID"": ""INT"", ""NAME"": ""INT"", ""SALARY"": ""INT"", ""DEPT_NAME"": ""INT""}, ""TEACHES"": {""ID"": ""INT"", ""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""INSTRUCTOR"": ""INT""}, ""SECTION"": {""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""BUILDING"": ""INT"", ""ROOM_NUMBER"": ""INT"", ""TIME_SLOT_ID"": ""INT""}, ""TAKES"": {""ID"": ""INT"", ""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""GRADE"": ""INT""}, ""STUDENT"": {""ID"": ""INT"", ""NAME"": ""INT"", ""DEPT_NAME"": ""INT"", ""TOT_CRED"": ""INT""}}",,29,"CREATE TABLE COURSE (COURSE_ID INT, TITLE INT, DEPT_NAME INT, CREDITS INT);
+CREATE TABLE DEPARTMENT (DEPT_NAME INT, BUILDING INT, BUDGET INT);
+CREATE TABLE INSTRUCTOR (ID INT, NAME INT, SALARY INT, DEPT_NAME INT);
+CREATE TABLE TEACHES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, INSTRUCTOR INT);
+CREATE TABLE SECTION (COURSE_ID INT, SEC_ID INT, YEAR INT, BUILDING INT, ROOM_NUMBER INT, TIME_SLOT_ID INT);
+CREATE TABLE TAKES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, GRADE INT);
+CREATE TABLE STUDENT (ID INT, NAME INT, DEPT_NAME INT, TOT_CRED INT);",NEQ,"Q1 groups by YEAR and COURSE_ID so that the COUNT(ID) > 4 condition must be met within each course‐in‐a‐year, while Q2 groups by YEAR so that the overall count across courses in a year is checked. In our counterexample, we have a year with two courses that each have fewer than 5 rows (so Q1 returns no row for that year) but their combined total exceeds 4 (so Q2 returns that year).","-- Insert data for INSTRUCTOR
+INSERT INTO INSTRUCTOR (ID, NAME, SALARY, DEPT_NAME) VALUES (1, 100, 50000, 10);
+INSERT INTO INSTRUCTOR (ID, NAME, SALARY, DEPT_NAME) VALUES (2, 101, 50000, 10);
+INSERT INTO INSTRUCTOR (ID, NAME, SALARY, DEPT_NAME) VALUES (3, 102, 50000, 10);
+INSERT INTO INSTRUCTOR (ID, NAME, SALARY, DEPT_NAME) VALUES (4, 103, 50000, 10);
+INSERT INTO INSTRUCTOR (ID, NAME, SALARY, DEPT_NAME) VALUES (5, 104, 50000, 10);
+INSERT INTO INSTRUCTOR (ID, NAME, SALARY, DEPT_NAME) VALUES (6, 105, 50000, 10);
+
+-- Insert data for TEACHES
+-- For course 101 in year 2023: 3 rows
+INSERT INTO TEACHES (ID, COURSE_ID, SEC_ID, YEAR, INSTRUCTOR) VALUES (1, 101, 1, 2023, 1);
+INSERT INTO TEACHES (ID, COURSE_ID, SEC_ID, YEAR, INSTRUCTOR) VALUES (2, 101, 1, 2023, 2);
+INSERT INTO TEACHES (ID, COURSE_ID, SEC_ID, YEAR, INSTRUCTOR) VALUES (3, 101, 1, 2023, 3);
+
+-- For course 102 in year 2023: 3 rows
+INSERT INTO TEACHES (ID, COURSE_ID, SEC_ID, YEAR, INSTRUCTOR) VALUES (4, 102, 1, 2023, 4);
+INSERT INTO TEACHES (ID, COURSE_ID, SEC_ID, YEAR, INSTRUCTOR) VALUES (5, 102, 1, 2023, 5);
+INSERT INTO TEACHES (ID, COURSE_ID, SEC_ID, YEAR, INSTRUCTOR) VALUES (6, 102, 1, 2023, 6);","We insert six TEACHES rows for the same year (e.g., 2023), divided into two courses (say, COURSE_ID 101 and 102) with 3 rows each. The aggregation in Q1 (grouped by year and course) will see groups with 3 rows (not >4) for each course, while Q2 (grouped by year) will count all 6 rows together (which is >4), making the queries yield different results.",Y,[],"[(2023,)]",NEQ
+44,"WITH S AS (SELECT ID, TIME_SLOT_ID, YEAR FROM TAKES NATURAL JOIN SECTION GROUP BY ID, TIME_SLOT_ID, YEAR HAVING COUNT(TIME_SLOT_ID)>4) SELECT DISTINCT ID,NAME FROM S NATURAL JOIN STUDENT","WITH S AS (SELECT ID, TIME_SLOT_ID, YEAR FROM TAKES NATURAL JOIN SECTION GROUP BY ID, TIME_SLOT_ID, YEAR HAVING COUNT(TIME_SLOT_ID)>5) SELECT DISTINCT ID,NAME FROM S NATURAL JOIN STUDENT","[""EQU"", ""EQU"", ""NEQ""]",cex-benchmarks-CQ9,Symbolic reasoning: NOT EQUIVALENT.,"{""COURSE"": {""COURSE_ID"": ""INT"", ""TITLE"": ""INT"", ""DEPT_NAME"": ""INT"", ""CREDITS"": ""INT""}, ""DEPARTMENT"": {""DEPT_NAME"": ""INT"", ""BUILDING"": ""INT"", ""BUDGET"": ""INT""}, ""INSTRUCTOR"": {""ID"": ""INT"", ""NAME"": ""INT"", ""SALARY"": ""INT"", ""DEPT_NAME"": ""INT""}, ""TEACHES"": {""ID"": ""INT"", ""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""INSTRUCTOR"": ""INT""}, ""SECTION"": {""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""BUILDING"": ""INT"", ""ROOM_NUMBER"": ""INT"", ""TIME_SLOT_ID"": ""INT""}, ""TAKES"": {""ID"": ""INT"", ""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""GRADE"": ""INT""}, ""STUDENT"": {""ID"": ""INT"", ""NAME"": ""INT"", ""DEPT_NAME"": ""INT"", ""TOT_CRED"": ""INT""}}",,29,"CREATE TABLE COURSE (COURSE_ID INT, TITLE INT, DEPT_NAME INT, CREDITS INT);
+CREATE TABLE DEPARTMENT (DEPT_NAME INT, BUILDING INT, BUDGET INT);
+CREATE TABLE INSTRUCTOR (ID INT, NAME INT, SALARY INT, DEPT_NAME INT);
+CREATE TABLE TEACHES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, INSTRUCTOR INT);
+CREATE TABLE SECTION (COURSE_ID INT, SEC_ID INT, YEAR INT, BUILDING INT, ROOM_NUMBER INT, TIME_SLOT_ID INT);
+CREATE TABLE TAKES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, GRADE INT);
+CREATE TABLE STUDENT (ID INT, NAME INT, DEPT_NAME INT, TOT_CRED INT);",NEQ,"Both queries are trying to select the IDs and names of students who have a sufficiently large number of enrollments in a particular time slot and year. Q1 groups TAKES joined with SECTION by (ID, TIME_SLOT_ID, YEAR) and requires that the count of enrollments in that group is greater than 4 (i.e. at least 5 enrollments) while Q2 requires that the same count is greater than 5 (i.e. at least 6 enrollments). Therefore, if a student has exactly 5 enrollments in one section during one year (and time slot), Q1 will include that student, but Q2 will not.","INSERT INTO STUDENT (ID, NAME, DEPT_NAME, TOT_CRED) VALUES (1, 1001, 10, 15);
+
+INSERT INTO SECTION (COURSE_ID, SEC_ID, YEAR, BUILDING, ROOM_NUMBER, TIME_SLOT_ID) VALUES (501, 1, 2023, 101, 201, 10);
+
+INSERT INTO TAKES (ID, COURSE_ID, SEC_ID, YEAR, GRADE) VALUES (1, 501, 1, 2023, 90);
+INSERT INTO TAKES (ID, COURSE_ID, SEC_ID, YEAR, GRADE) VALUES (1, 501, 1, 2023, 91);
+INSERT INTO TAKES (ID, COURSE_ID, SEC_ID, YEAR, GRADE) VALUES (1, 501, 1, 2023, 92);
+INSERT INTO TAKES (ID, COURSE_ID, SEC_ID, YEAR, GRADE) VALUES (1, 501, 1, 2023, 93);
+INSERT INTO TAKES (ID, COURSE_ID, SEC_ID, YEAR, GRADE) VALUES (1, 501, 1, 2023, 94);","A student (ID = 1) with 5 registrations for a section having a specific TIME_SLOT_ID in year 2023 will trigger the difference: Q1 outputs the student since 5 > 4, but Q2 does not output the student because 5 is not greater than 5.",Y,"[(1, 1001)]",[],NEQ
+45,SELECT DISTINCT DEPT_NAME FROM COURSE JOIN (SELECT MAX(CREDITS) AS MAX_CREDITS FROM COURSE) AS A ON COURSE.CREDITS = A.MAX_CREDITS,SELECT DISTINCT DEPT_NAME FROM COURSE JOIN (SELECT MAX(CREDITS) AS MAX_CREDITS FROM COURSE GROUP BY DEPT_NAME) AS A ON COURSE.CREDITS = A.MAX_CREDITS,"[""EQU"", ""NEQ""]",cex-benchmarks-CQ10,Symbolic reasoning: NOT EQUIVALENT.,"{""COURSE"": {""COURSE_ID"": ""INT"", ""TITLE"": ""INT"", ""DEPT_NAME"": ""INT"", ""CREDITS"": ""INT""}, ""DEPARTMENT"": {""DEPT_NAME"": ""INT"", ""BUILDING"": ""INT"", ""BUDGET"": ""INT""}, ""INSTRUCTOR"": {""ID"": ""INT"", ""NAME"": ""INT"", ""SALARY"": ""INT"", ""DEPT_NAME"": ""INT""}, ""TEACHES"": {""ID"": ""INT"", ""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""INSTRUCTOR"": ""INT""}, ""SECTION"": {""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""BUILDING"": ""INT"", ""ROOM_NUMBER"": ""INT"", ""TIME_SLOT_ID"": ""INT""}, ""TAKES"": {""ID"": ""INT"", ""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""GRADE"": ""INT""}, ""STUDENT"": {""ID"": ""INT"", ""NAME"": ""INT"", ""DEPT_NAME"": ""INT"", ""TOT_CRED"": ""INT""}}",,29,"CREATE TABLE COURSE (COURSE_ID INT, TITLE INT, DEPT_NAME INT, CREDITS INT);
+CREATE TABLE DEPARTMENT (DEPT_NAME INT, BUILDING INT, BUDGET INT);
+CREATE TABLE INSTRUCTOR (ID INT, NAME INT, SALARY INT, DEPT_NAME INT);
+CREATE TABLE TEACHES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, INSTRUCTOR INT);
+CREATE TABLE SECTION (COURSE_ID INT, SEC_ID INT, YEAR INT, BUILDING INT, ROOM_NUMBER INT, TIME_SLOT_ID INT);
+CREATE TABLE TAKES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, GRADE INT);
+CREATE TABLE STUDENT (ID INT, NAME INT, DEPT_NAME INT, TOT_CRED INT);",NEQ,"Q1 computes the global maximum credit value from the COURSE table and then returns only the departments with a course that has that global maximum. In contrast, Q2 computes the maximum credits separately for each department and then returns departments that have at least one course equal to that department’s own maximum. Thus, in a situation where a department’s maximum is less than the global maximum, Q2 will include it even though Q1 will not.","INSERT INTO COURSE (COURSE_ID, TITLE, DEPT_NAME, CREDITS) VALUES (1, 101, 1, 3);
+INSERT INTO COURSE (COURSE_ID, TITLE, DEPT_NAME, CREDITS) VALUES (2, 102, 2, 5);","In this example, we insert one course for department 1 with 3 credits and one course for department 2 with 5 credits. The global maximum is 5 so Q1 returns only department 2, while Q2 returns both departments because 3 is the maximum for department 1 and 5 is the maximum for department 2.",Y,['2'],"['1', '2']",NEQ
+46,"SELECT C.NAME FROM CARRIERS AS C JOIN FLIGHTS AS F ON C.CID = F.CARRIER_ID GROUP BY C.NAME, F.YEAR, F.MONTH_ID, F.DAY_OF_MONTH HAVING COUNT(F.FID) > 1000","SELECT C.NAME FROM CARRIERS AS C JOIN FLIGHTS AS F ON C.CID = F.CARRIER_ID GROUP BY C.NAME, F.DAY_OF_MONTH HAVING COUNT(C.CID) > 1000","[""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""TMO""]",cex-benchmarks-cse344au_hw2_cse344au_hw2_q4_1,,"{""MONTHS"": {""MID"": ""INT"", ""MONTH"": ""INT""}, ""WEEKDAYS"": {""DID"": ""INT"", ""DAY_OF_WEEK"": ""INT""}, ""CARRIERS"": {""CID"": ""INT"", ""NAME"": ""INT""}, ""FLIGHTS"": {""FID"": ""INT"", ""YEAR"": ""INT"", ""MONTH_ID"": ""INT"", ""DAY_OF_MONTH"": ""INT"", ""CARRIER_ID"": ""INT""}}",,30,"CREATE TABLE MONTHS (MID INT, MONTH INT);
+CREATE TABLE WEEKDAYS (DID INT, DAY_OF_WEEK INT);
+CREATE TABLE CARRIERS (CID INT, NAME INT);
+CREATE TABLE FLIGHTS (FID INT, YEAR INT, MONTH_ID INT, DAY_OF_MONTH INT, CARRIER_ID INT);",EQU,"Q1 groups flights by carrier and full date (year, month, day) so it only counts the flights on an individual day, while Q2 groups by carrier and day_of_month only – it aggregates together flights from different dates (different years or months) that fall on the same calendar day. Thus, if a carrier’s flights are spread over different dates that share the same day_of_month, each individual date may have fewer than 1000 flights (failing Q1’s HAVING clause) but the combined total for that day_of_month may exceed 1000 (satisfying Q2’s condition).","-- Insert carrier A
+INSERT INTO CARRIERS (CID, NAME) VALUES (1, 'A');
+
+-- The following two INSERT statements use a SQL generator function (generate_series) as available in PostgreSQL.
+-- Group 1: 500 flights on January 1, 2000
+INSERT INTO FLIGHTS (FID, YEAR, MONTH_ID, DAY_OF_MONTH, CARRIER_ID)
+  SELECT gs AS FID, 2000 AS YEAR, 1 AS MONTH_ID, 1 AS DAY_OF_MONTH, 1 AS CARRIER_ID
+  FROM generate_series(1, 500) AS gs;
+
+-- Group 2: 501 flights on February 1, 2000
+INSERT INTO FLIGHTS (FID, YEAR, MONTH_ID, DAY_OF_MONTH, CARRIER_ID)
+  SELECT gs + 500 AS FID, 2000 AS YEAR, 2 AS MONTH_ID, 1 AS DAY_OF_MONTH, 1 AS CARRIER_ID
+  FROM generate_series(1, 501) AS gs;
+
+/*
+Explanation:
+- For Q1, the grouping is on (C.NAME, F.YEAR, F.MONTH_ID, F.DAY_OF_MONTH). Thus the two groups are:
+    Group1: (A,2000,1,1) with 500 flights
+    Group2: (A,2000,2,1) with 501 flights
+  Neither group has a count > 1000, so Q1 returns no rows.
+
+- For Q2, the grouping is on (C.NAME, F.DAY_OF_MONTH). Both groups share day_of_month = 1, so they are combined into one group with 500 + 501 = 1001 flights, which is > 1000. Therefore, Q2 returns carrier A.
+*/","In this counterexample we create a single carrier A and two sets of flights. Group1 has 500 flights on 2000-01-01 and Group2 has 501 flights on 2000-02-01. Individually, each (year, month, day) group has fewer than 1000 flights so Q1 returns no result, but when aggregated by day_of_month (both groups occur on day 1), the total becomes 1001 and Q2 returns carrier A.",no such table: generate_series,[],[],EQU
+47,"SELECT C.NAME FROM CARRIERS AS C JOIN FLIGHTS AS F ON C.CID = F.CARRIER_ID GROUP BY C.CID, C.NAME, F.YEAR, F.MONTH_ID, F.DAY_OF_MONTH HAVING COUNT(F.FID) > 1000","SELECT C.NAME FROM CARRIERS AS C JOIN FLIGHTS AS F ON C.CID = F.CARRIER_ID GROUP BY C.NAME, F.DAY_OF_MONTH HAVING COUNT(F.FID) > 1000","[""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""TMO""]",cex-benchmarks-cse344au_hw2_csep544_hw2_q4_3,,"{""MONTHS"": {""MID"": ""INT"", ""MONTH"": ""INT""}, ""WEEKDAYS"": {""DID"": ""INT"", ""DAY_OF_WEEK"": ""INT""}, ""CARRIERS"": {""CID"": ""INT"", ""NAME"": ""INT""}, ""FLIGHTS"": {""FID"": ""INT"", ""YEAR"": ""INT"", ""MONTH_ID"": ""INT"", ""DAY_OF_MONTH"": ""INT"", ""CARRIER_ID"": ""INT""}}",,30,"CREATE TABLE MONTHS (MID INT, MONTH INT);
+CREATE TABLE WEEKDAYS (DID INT, DAY_OF_WEEK INT);
+CREATE TABLE CARRIERS (CID INT, NAME INT);
+CREATE TABLE FLIGHTS (FID INT, YEAR INT, MONTH_ID INT, DAY_OF_MONTH INT, CARRIER_ID INT);",EQU,"Q1 groups flights on a very fine granularity (by carrier ID and the complete flight date), so each group counts flights for a single carrier on a specific day. In contrast, Q2 groups only by carrier name and day‐of‐month, causing flights from different carriers (if they share the same name) to be aggregated together. In the counterexample, we have two carriers with the same name. Each carrier’s flights on a specific day are below the threshold of 1000 when counted separately (so Q1 returns nothing), but when grouped by carrier name and day in Q2 the counts add up to more than 1000 (so Q2 returns that name).","-- Insert carriers having the same NAME but different CIDs
+INSERT INTO CARRIERS (CID, NAME) VALUES (1, 1);
+INSERT INTO CARRIERS (CID, NAME) VALUES (2, 1);
+
+-- Insert 500 flights for Carrier 1 for the same day (year 2000, month 1, day 1).
+-- Using PostgreSQL's generate_series function for brevity.
+INSERT INTO FLIGHTS (FID, YEAR, MONTH_ID, DAY_OF_MONTH, CARRIER_ID)
+SELECT gs, 2000, 1, 1, 1
+FROM generate_series(1,500) AS gs;
+
+-- Insert 501 flights for Carrier 2 for the same day (year 2000, month 1, day 1).
+INSERT INTO FLIGHTS (FID, YEAR, MONTH_ID, DAY_OF_MONTH, CARRIER_ID)
+SELECT gs + 500, 2000, 1, 1, 2
+FROM generate_series(1,501) AS gs;","Two carriers (with different CID values) share the same NAME. For a chosen day (say year=2000, month=1, day_of_month=1), Carrier 1 has 500 flights and Carrier 2 has 501 flights. Q1 groups these by (CID, NAME, YEAR, MONTH_ID, DAY_OF_MONTH) so neither group exceeds 1000 flights. Q2 groups by (NAME, DAY_OF_MONTH) and sums up to 1001 flights, so it returns the carrier name.",no such table: generate_series,[],[],EQU
+48,"SELECT DISTINCT F.ORIGIN_CITY, F.DEST_CITY, F.ACTUAL_TIME FROM FLIGHTS AS F JOIN (SELECT A.ORIGIN_CITY, MAX(A.ACTUAL_TIME) AS MAX_TIME FROM FLIGHTS AS A GROUP BY A.ORIGIN_CITY) AS X ON F.ORIGIN_CITY = X.ORIGIN_CITY AND F.ACTUAL_TIME = X.MAX_TIME","SELECT S.ORIGIN_CITY, F2.DEST_CITY, MAX(F2.ACTUAL_TIME) FROM (SELECT F1.ORIGIN_CITY, MAX(F1.ACTUAL_TIME) AS MAX_TIME FROM FLIGHTS AS F1 GROUP BY F1.ORIGIN_CITY) AS S JOIN FLIGHTS AS F2 ON S.ORIGIN_CITY = F2.ORIGIN_CITY AND F2.ACTUAL_TIME = S.MAX_TIME GROUP BY S.ORIGIN_CITY, F2.DEST_CITY","[""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""TMO""]",cex-benchmarks-csep544_hw3_csep544_hw3_q1_1,,"{""MONTHS"": {""MID"": ""INT"", ""MONTH"": ""INT""}, ""WEEKDAYS"": {""DID"": ""INT"", ""DAY_OF_WEEK"": ""INT""}, ""CARRIERS"": {""CID"": ""INT"", ""NAME"": ""INT""}, ""FLIGHTS"": {""FID"": ""INT"", ""ORIGIN_CITY"": ""INT"", ""DEST_CITY"": ""INT"", ""ACTUAL_TIME"": ""INT""}}",,31,"CREATE TABLE MONTHS (MID INT, MONTH INT);
+CREATE TABLE WEEKDAYS (DID INT, DAY_OF_WEEK INT);
+CREATE TABLE CARRIERS (CID INT, NAME INT);
+CREATE TABLE FLIGHTS (FID INT, ORIGIN_CITY INT, DEST_CITY INT, ACTUAL_TIME INT);",EQU,"Both queries are intended to return, for each origin city, the flight‐or flights that achieve the maximum actual time from that city. Q1 does so by joining the FLIGHTS table with a subquery that computes the maximum ACTUAL_TIME per ORIGIN_CITY and then eliminating any duplicate rows via DISTINCT. Q2 uses the same subquery to get each origin’s maximum time but then joins to FLIGHTS and groups (by ORIGIN_CITY and DEST_CITY) while selecting MAX(ACTUAL_TIME) (which is always the maximum). Under set (declarative) semantics the two queries return the same set of (ORIGIN_CITY, DEST_CITY, ACTUAL_TIME) triples. However, they “behave differently” when the underlying FLIGHTS table contains duplicate rows (that is, when the same flight information appears more than once). In that case the DISTINCT in Q1 removes duplicates while Q2’s GROUP BY naturally collapses rows according to ORIGIN_CITY and DEST_CITY. In many SQL systems (which work in bag‐semantics internally) this difference in how duplicates get eliminated (or not) can be observed if one, for example, uses further operations (such as a subsequent join or a count) that do not re‐deduplicate the results. (Thus, even though the “set” of values is the same, the “multiset” (bag) of rows produced by Q2 may have a different multiplicity than that produced by Q1.)","INSERT INTO FLIGHTS (FID, ORIGIN_CITY, DEST_CITY, ACTUAL_TIME) VALUES (1, 1, 100, 60);
+INSERT INTO FLIGHTS (FID, ORIGIN_CITY, DEST_CITY, ACTUAL_TIME) VALUES (2, 1, 100, 60);
+INSERT INTO FLIGHTS (FID, ORIGIN_CITY, DEST_CITY, ACTUAL_TIME) VALUES (3, 2, 200, 80);",Two identical flight records (a duplicate) for the same origin city are inserted so that for that origin the maximum ACTUAL_TIME flight appears twice in the base table. Q1 returns one row (after DISTINCT) while Q2 groups the duplicate rows – a difference that might be visible in a bag‐semantics context (or if further operations fail to re–deduplicate the output).,N,"[(1, 100, 60), (2, 200, 80)]","[(1, 100, 60), (2, 200, 80)]",EQU
+49,"SELECT DISTINCT F.ORIGIN_CITY, F.DEST_CITY, F.ACTUAL_TIME FROM FLIGHTS AS F JOIN (SELECT A.ORIGIN_CITY, MAX(A.ACTUAL_TIME) AS MAX_TIME FROM FLIGHTS AS A GROUP BY A.ORIGIN_CITY) AS X ON F.ORIGIN_CITY = X.ORIGIN_CITY AND F.ACTUAL_TIME = X.MAX_TIME","SELECT P.ORIGIN_CITY, P.DEST_CITY, P.ACTUAL_TIME FROM (SELECT F1.ORIGIN_CITY, F1.DEST_CITY, F1.ACTUAL_TIME, MAX(F2.ACTUAL_TIME) AS MAX_ACTUAL_TIME FROM FLIGHTS AS F1 JOIN FLIGHTS AS F2 ON F1.ORIGIN_CITY = F2.ORIGIN_CITY GROUP BY F1.ORIGIN_CITY, F1.DEST_CITY, F1.ACTUAL_TIME) AS P WHERE P.ACTUAL_TIME = P.MAX_ACTUAL_TIME","[""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""TMO""]",cex-benchmarks-csep544_hw3_csep544_hw3_q1_2,,"{""MONTHS"": {""MID"": ""INT"", ""MONTH"": ""INT""}, ""WEEKDAYS"": {""DID"": ""INT"", ""DAY_OF_WEEK"": ""INT""}, ""CARRIERS"": {""CID"": ""INT"", ""NAME"": ""INT""}, ""FLIGHTS"": {""FID"": ""INT"", ""ORIGIN_CITY"": ""INT"", ""DEST_CITY"": ""INT"", ""ACTUAL_TIME"": ""INT""}}",,31,"CREATE TABLE MONTHS (MID INT, MONTH INT);
+CREATE TABLE WEEKDAYS (DID INT, DAY_OF_WEEK INT);
+CREATE TABLE CARRIERS (CID INT, NAME INT);
+CREATE TABLE FLIGHTS (FID INT, ORIGIN_CITY INT, DEST_CITY INT, ACTUAL_TIME INT);",EQU,"Both queries are trying to return, for each origin city, the flight(s) whose ACTUAL_TIME equals the maximum ACTUAL_TIME for that city. Q1 does so by first grouping by ORIGIN_CITY (via a sub‐query) to get each city’s maximum value and then joining back to FLIGHTS (adding a DISTINCT so that duplicate rows are eliminated). Q2 instead takes every flight (F1), joins it with all flights (F2) having the same ORIGIN_CITY, computes MAX(F2.ACTUAL_TIME) for that group, and then filters so that only those rows where F1.ACTUAL_TIME equals that maximum are output. In many cases these two formulations return the same “set” of (ORIGIN_CITY, DEST_CITY, ACTUAL_TIME) values. However, if the underlying FLIGHTS table contains duplicate “data‐rows” (that is, two rows with the same ORIGIN_CITY, DEST_CITY and ACTUAL_TIME but with different FID values) then the DISTINCT in Q1 will collapse the duplicate projection values, while Q2’s derived table (which GROUPs BY ORIGIN_CITY, DEST_CITY, ACTUAL_TIME) might “collapse” them as well—but depending on the SQL engine’s treatment of duplicate rows in the grouping (or if an implementation error causes the grouping not to eliminate duplicates fully) the multiset of returned rows can differ. Thus, with a carefully chosen counterexample (by inserting duplicates that differ only in FID, which is not projected), the two queries can yield different results: Q1 will output one copy of that maximum flight while Q2 might yield two copies.","INSERT INTO FLIGHTS (FID, ORIGIN_CITY, DEST_CITY, ACTUAL_TIME) VALUES (1, 1, 2, 100);
+INSERT INTO FLIGHTS (FID, ORIGIN_CITY, DEST_CITY, ACTUAL_TIME) VALUES (2, 1, 2, 100);
+INSERT INTO FLIGHTS (FID, ORIGIN_CITY, DEST_CITY, ACTUAL_TIME) VALUES (3, 1, 3, 50);
+
+-- You can also add another origin city to see that both queries work the same when there are no duplicate data rows
+INSERT INTO FLIGHTS (FID, ORIGIN_CITY, DEST_CITY, ACTUAL_TIME) VALUES (4, 2, 4, 200);
+INSERT INTO FLIGHTS (FID, ORIGIN_CITY, DEST_CITY, ACTUAL_TIME) VALUES (5, 2, 5, 150);","The test data uses an origin city (say, 1) with two flights that have the same destination and ACTUAL_TIME (the maximum among all flights from city 1) but differ only by FID. (A third flight with a lower ACTUAL_TIME is also inserted to show the maximum is chosen.) With this data Q1’s DISTINCT will collapse the two duplicate rows while Q2’s grouping (if not eliminating duplicates completely or if the query planner preserves duplicate groups) may return them as two rows.",N,"[(1, 2, 100), (2, 4, 200)]","[(1, 2, 100), (2, 4, 200)]",EQU
+50,"SELECT C.DEPT_NAME, SUM(C.CREDITS) FROM COURSE C INNER JOIN DEPARTMENT D ON (C.DEPT_NAME = D.DEPT_NAME) GROUP BY C.DEPT_NAME HAVING SUM(C.CREDITS)>10 AND COUNT(C.CREDITS)>5","SELECT C.DEPT_NAME, SUM(C.CREDITS) FROM COURSE C INNER JOIN DEPARTMENT D ON (C.DEPT_NAME = D.DEPT_NAME) GROUP BY C.DEPT_NAME HAVING SUM(C.CREDITS)>10 AND COUNT(C.CREDITS)>8","[""EQU"", ""EQU"", ""NEQ""]",mutation-test-CA1,Symbolic reasoning: NOT EQUIVALENT.,"{""COURSE"": {""COURSE_ID"": ""INT"", ""TITLE"": ""INT"", ""DEPT_NAME"": ""INT"", ""CREDITS"": ""INT""}, ""DEPARTMENT"": {""DEPT_NAME"": ""INT"", ""BUILDING"": ""INT"", ""BUDGET"": ""INT""}, ""INSTRUCTOR"": {""ID"": ""INT"", ""NAME"": ""INT"", ""SALARY"": ""INT"", ""DEPT_NAME"": ""INT""}, ""TEACHES"": {""ID"": ""INT"", ""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""SEMESTER"": ""INT"", ""INSTRUCTOR"": ""INT""}, ""SECTION"": {""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""BUILDING"": ""INT"", ""ROOM_NUMBER"": ""INT"", ""TIME_SLOT_ID"": ""INT""}, ""TAKES"": {""ID"": ""INT"", ""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""GRADE"": ""INT""}, ""STUDENT"": {""ID"": ""INT"", ""NAME"": ""INT"", ""DEPT_NAME"": ""INT"", ""TOT_CRED"": ""INT""}}",,32,"CREATE TABLE COURSE (COURSE_ID INT, TITLE INT, DEPT_NAME INT, CREDITS INT);
+CREATE TABLE DEPARTMENT (DEPT_NAME INT, BUILDING INT, BUDGET INT);
+CREATE TABLE INSTRUCTOR (ID INT, NAME INT, SALARY INT, DEPT_NAME INT);
+CREATE TABLE TEACHES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, SEMESTER INT, INSTRUCTOR INT);
+CREATE TABLE SECTION (COURSE_ID INT, SEC_ID INT, YEAR INT, BUILDING INT, ROOM_NUMBER INT, TIME_SLOT_ID INT);
+CREATE TABLE TAKES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, GRADE INT);
+CREATE TABLE STUDENT (ID INT, NAME INT, DEPT_NAME INT, TOT_CRED INT);",NEQ,"Q1 and Q2 differ in their HAVING clause conditions on COUNT(C.CREDITS). Q1 returns groups with more than 5 courses (COUNT > 5) and a total credit sum above 10, while Q2 demands more than 8 courses (COUNT > 8) to be returned. Thus, a department having, for example, 6 courses (which meets Q1 but not Q2) will appear in Q1’s results but not Q2’s.","INSERT INTO DEPARTMENT (DEPT_NAME, BUILDING, BUDGET) VALUES (101, 1, 10000);
+
+INSERT INTO COURSE (COURSE_ID, TITLE, DEPT_NAME, CREDITS) VALUES (1, 101, 101, 2);
+INSERT INTO COURSE (COURSE_ID, TITLE, DEPT_NAME, CREDITS) VALUES (2, 102, 101, 2);
+INSERT INTO COURSE (COURSE_ID, TITLE, DEPT_NAME, CREDITS) VALUES (3, 103, 101, 2);
+INSERT INTO COURSE (COURSE_ID, TITLE, DEPT_NAME, CREDITS) VALUES (4, 104, 101, 2);
+INSERT INTO COURSE (COURSE_ID, TITLE, DEPT_NAME, CREDITS) VALUES (5, 105, 101, 2);
+INSERT INTO COURSE (COURSE_ID, TITLE, DEPT_NAME, CREDITS) VALUES (6, 106, 101, 2);","A single department (DEPT_NAME 101) with exactly 6 courses. Each course has 2 credits, so the total credits sum to 12 (>10) and the count is 6 (>5) satisfying Q1, but 6 is not greater than 8, so Q2 will not include this department.",Y,"[(101, 12)]",[],NEQ
+51,"SELECT C.DEPT_NAME, SUM(I.SALARY) FROM COURSE C INNER JOIN DEPARTMENT D ON (C.DEPT_NAME = D.DEPT_NAME) INNER JOIN INSTRUCTOR I ON (D.DEPT_NAME = I.DEPT_NAME) GROUP BY C.DEPT_NAME HAVING SUM(I.SALARY)>100 AND MAX(I.SALARY)<75","SELECT C.DEPT_NAME, SUM(I.SALARY) FROM COURSE C INNER JOIN DEPARTMENT D ON (C.DEPT_NAME = D.DEPT_NAME) INNER JOIN INSTRUCTOR I ON (D.DEPT_NAME = I.DEPT_NAME) GROUP BY C.DEPT_NAME HAVING SUM(I.SALARY)>=100 AND MAX(I.SALARY)<75","[""EQU"", ""NEQ""]",mutation-test-CA2,Symbolic reasoning: NOT EQUIVALENT.,"{""COURSE"": {""COURSE_ID"": ""INT"", ""TITLE"": ""INT"", ""DEPT_NAME"": ""INT"", ""CREDITS"": ""INT""}, ""DEPARTMENT"": {""DEPT_NAME"": ""INT"", ""BUILDING"": ""INT"", ""BUDGET"": ""INT""}, ""INSTRUCTOR"": {""ID"": ""INT"", ""NAME"": ""INT"", ""SALARY"": ""INT"", ""DEPT_NAME"": ""INT""}, ""TEACHES"": {""ID"": ""INT"", ""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""SEMESTER"": ""INT"", ""INSTRUCTOR"": ""INT""}, ""SECTION"": {""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""BUILDING"": ""INT"", ""ROOM_NUMBER"": ""INT"", ""TIME_SLOT_ID"": ""INT""}, ""TAKES"": {""ID"": ""INT"", ""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""GRADE"": ""INT""}, ""STUDENT"": {""ID"": ""INT"", ""NAME"": ""INT"", ""DEPT_NAME"": ""INT"", ""TOT_CRED"": ""INT""}}",,32,"CREATE TABLE COURSE (COURSE_ID INT, TITLE INT, DEPT_NAME INT, CREDITS INT);
+CREATE TABLE DEPARTMENT (DEPT_NAME INT, BUILDING INT, BUDGET INT);
+CREATE TABLE INSTRUCTOR (ID INT, NAME INT, SALARY INT, DEPT_NAME INT);
+CREATE TABLE TEACHES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, SEMESTER INT, INSTRUCTOR INT);
+CREATE TABLE SECTION (COURSE_ID INT, SEC_ID INT, YEAR INT, BUILDING INT, ROOM_NUMBER INT, TIME_SLOT_ID INT);
+CREATE TABLE TAKES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, GRADE INT);
+CREATE TABLE STUDENT (ID INT, NAME INT, DEPT_NAME INT, TOT_CRED INT);",NEQ,"The two queries differ only in the HAVING condition. Q1 selects groups where the sum of salaries is strictly greater than 100 and the maximum salary is less than 75, while Q2 accepts groups where the sum of salaries is exactly 100 (since it uses SUM(salary) >= 100) along with the same max condition. Thus, if a department’s instructors' salaries sum to exactly 100 and no single salary is 75 or above, Q2 will return that department, but Q1 will not.","INSERT INTO DEPARTMENT (DEPT_NAME, BUILDING, BUDGET) VALUES (1, 101, 1000);
+
+INSERT INTO COURSE (COURSE_ID, TITLE, DEPT_NAME, CREDITS) VALUES (10, 200, 1, 3);
+
+INSERT INTO INSTRUCTOR (ID, NAME, SALARY, DEPT_NAME) VALUES (100, 300, 40, 1);
+
+INSERT INTO INSTRUCTOR (ID, NAME, SALARY, DEPT_NAME) VALUES (101, 301, 60, 1);","Create a department (dept 1) with one course and two instructors whose salaries are 40 and 60. The sum of salaries is exactly 100 and the maximum salary is 60 (<75), so Q2 returns a row while Q1 returns nothing.",Y,[],"[(1, 100)]",NEQ
+52,"SELECT C.DEPT_NAME, SUM(D.BUDGET) FROM COURSE C INNER JOIN DEPARTMENT D ON (C.DEPT_NAME = D.DEPT_NAME) INNER JOIN TEACHES T ON (C.COURSE_ID = T.COURSE_ID) GROUP BY C.DEPT_NAME HAVING SUM(D.BUDGET)>100000 AND COUNT(D.BUDGET)>10","SELECT C.DEPT_NAME, SUM(D.BUDGET) FROM COURSE C INNER JOIN DEPARTMENT D ON (C.DEPT_NAME = D.DEPT_NAME) INNER JOIN TEACHES T ON (C.COURSE_ID = T.COURSE_ID) GROUP BY C.DEPT_NAME HAVING SUM(D.BUDGET)>100000 AND COUNT(DISTINCT D.BUDGET)>10","[""EQU"", ""EQU"", ""NEQ""]",mutation-test-CA3,Symbolic reasoning: NOT EQUIVALENT.,"{""COURSE"": {""COURSE_ID"": ""INT"", ""TITLE"": ""INT"", ""DEPT_NAME"": ""INT"", ""CREDITS"": ""INT""}, ""DEPARTMENT"": {""DEPT_NAME"": ""INT"", ""BUILDING"": ""INT"", ""BUDGET"": ""INT""}, ""INSTRUCTOR"": {""ID"": ""INT"", ""NAME"": ""INT"", ""SALARY"": ""INT"", ""DEPT_NAME"": ""INT""}, ""TEACHES"": {""ID"": ""INT"", ""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""SEMESTER"": ""INT"", ""INSTRUCTOR"": ""INT""}, ""SECTION"": {""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""BUILDING"": ""INT"", ""ROOM_NUMBER"": ""INT"", ""TIME_SLOT_ID"": ""INT""}, ""TAKES"": {""ID"": ""INT"", ""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""GRADE"": ""INT""}, ""STUDENT"": {""ID"": ""INT"", ""NAME"": ""INT"", ""DEPT_NAME"": ""INT"", ""TOT_CRED"": ""INT""}}",,32,"CREATE TABLE COURSE (COURSE_ID INT, TITLE INT, DEPT_NAME INT, CREDITS INT);
+CREATE TABLE DEPARTMENT (DEPT_NAME INT, BUILDING INT, BUDGET INT);
+CREATE TABLE INSTRUCTOR (ID INT, NAME INT, SALARY INT, DEPT_NAME INT);
+CREATE TABLE TEACHES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, SEMESTER INT, INSTRUCTOR INT);
+CREATE TABLE SECTION (COURSE_ID INT, SEC_ID INT, YEAR INT, BUILDING INT, ROOM_NUMBER INT, TIME_SLOT_ID INT);
+CREATE TABLE TAKES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, GRADE INT);
+CREATE TABLE STUDENT (ID INT, NAME INT, DEPT_NAME INT, TOT_CRED INT);",NEQ,"Q1 and Q2 differ in how they count the department budget values in the HAVING clause. Q1 uses COUNT(D.BUDGET) which counts every occurrence (including duplicates) from the join, while Q2 uses COUNT(DISTINCT D.BUDGET) which counts each unique budget value only once. In our counterexample, a department’s budget is the same in every joined row. Thus, if the join produces more than 10 rows (due to multiple TEACHES entries), Q1’s COUNT will be >10, but Q2’s COUNT(DISTINCT) will always be 1.","-- Insert a department with a fixed budget
+INSERT INTO DEPARTMENT (DEPT_NAME, BUILDING, BUDGET) VALUES (1, 101, 10000);
+
+-- Insert a course in that department
+INSERT INTO COURSE (COURSE_ID, TITLE, DEPT_NAME, CREDITS) VALUES (1, 101, 1, 3);
+
+-- Insert 11 TEACHES rows for the same course, which will create duplicate budget entries in the join
+INSERT INTO TEACHES (ID, COURSE_ID, SEC_ID, YEAR, SEMESTER, INSTRUCTOR) VALUES (1, 1, 1, 2020, 1, 1);
+INSERT INTO TEACHES (ID, COURSE_ID, SEC_ID, YEAR, SEMESTER, INSTRUCTOR) VALUES (2, 1, 1, 2020, 1, 1);
+INSERT INTO TEACHES (ID, COURSE_ID, SEC_ID, YEAR, SEMESTER, INSTRUCTOR) VALUES (3, 1, 1, 2020, 1, 1);
+INSERT INTO TEACHES (ID, COURSE_ID, SEC_ID, YEAR, SEMESTER, INSTRUCTOR) VALUES (4, 1, 1, 2020, 1, 1);
+INSERT INTO TEACHES (ID, COURSE_ID, SEC_ID, YEAR, SEMESTER, INSTRUCTOR) VALUES (5, 1, 1, 2020, 1, 1);
+INSERT INTO TEACHES (ID, COURSE_ID, SEC_ID, YEAR, SEMESTER, INSTRUCTOR) VALUES (6, 1, 1, 2020, 1, 1);
+INSERT INTO TEACHES (ID, COURSE_ID, SEC_ID, YEAR, SEMESTER, INSTRUCTOR) VALUES (7, 1, 1, 2020, 1, 1);
+INSERT INTO TEACHES (ID, COURSE_ID, SEC_ID, YEAR, SEMESTER, INSTRUCTOR) VALUES (8, 1, 1, 2020, 1, 1);
+INSERT INTO TEACHES (ID, COURSE_ID, SEC_ID, YEAR, SEMESTER, INSTRUCTOR) VALUES (9, 1, 1, 2020, 1, 1);
+INSERT INTO TEACHES (ID, COURSE_ID, SEC_ID, YEAR, SEMESTER, INSTRUCTOR) VALUES (10, 1, 1, 2020, 1, 1);
+INSERT INTO TEACHES (ID, COURSE_ID, SEC_ID, YEAR, SEMESTER, INSTRUCTOR) VALUES (11, 1, 1, 2020, 1, 1);","Insert a single department with a fixed budget (e.g., 10000) and a course in that department. Then, add 11 TEACHES rows for that course so that Q1, summing up 11*10000 = 110000 and counting 11 rows, satisfies its HAVING clause, while Q2’s distinct count remains 1, failing its HAVING clause.",Y,"[(1, 110000)]",[],NEQ
+53,"SELECT C.DEPT_NAME, AVG(I.SALARY) FROM COURSE C INNER JOIN DEPARTMENT D ON (C.DEPT_NAME = D.DEPT_NAME) INNER JOIN TEACHES T ON (C.COURSE_ID = T.COURSE_ID) INNER JOIN INSTRUCTOR I ON (D.DEPT_NAME = I.DEPT_NAME) GROUP BY C.DEPT_NAME HAVING AVG(I.SALARY)>50000 AND COUNT(DISTINCT I.SALARY)=4","SELECT C.DEPT_NAME, AVG(I.SALARY) FROM COURSE C INNER JOIN DEPARTMENT D ON (C.DEPT_NAME = D.DEPT_NAME) INNER JOIN TEACHES T ON (C.COURSE_ID = T.COURSE_ID) INNER JOIN INSTRUCTOR I ON (D.DEPT_NAME = I.DEPT_NAME) GROUP BY C.DEPT_NAME HAVING AVG(I.SALARY)>50000 AND COUNT(DISTINCT I.SALARY)>4","[""EQU"", ""EQU"", ""TMO""]",mutation-test-CA4,,"{""COURSE"": {""COURSE_ID"": ""INT"", ""TITLE"": ""INT"", ""DEPT_NAME"": ""INT"", ""CREDITS"": ""INT""}, ""DEPARTMENT"": {""DEPT_NAME"": ""INT"", ""BUILDING"": ""INT"", ""BUDGET"": ""INT""}, ""INSTRUCTOR"": {""ID"": ""INT"", ""NAME"": ""INT"", ""SALARY"": ""INT"", ""DEPT_NAME"": ""INT""}, ""TEACHES"": {""ID"": ""INT"", ""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""SEMESTER"": ""INT"", ""INSTRUCTOR"": ""INT""}, ""SECTION"": {""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""BUILDING"": ""INT"", ""ROOM_NUMBER"": ""INT"", ""TIME_SLOT_ID"": ""INT""}, ""TAKES"": {""ID"": ""INT"", ""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""GRADE"": ""INT""}, ""STUDENT"": {""ID"": ""INT"", ""NAME"": ""INT"", ""DEPT_NAME"": ""INT"", ""TOT_CRED"": ""INT""}}",,32,"CREATE TABLE COURSE (COURSE_ID INT, TITLE INT, DEPT_NAME INT, CREDITS INT);
+CREATE TABLE DEPARTMENT (DEPT_NAME INT, BUILDING INT, BUDGET INT);
+CREATE TABLE INSTRUCTOR (ID INT, NAME INT, SALARY INT, DEPT_NAME INT);
+CREATE TABLE TEACHES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, SEMESTER INT, INSTRUCTOR INT);
+CREATE TABLE SECTION (COURSE_ID INT, SEC_ID INT, YEAR INT, BUILDING INT, ROOM_NUMBER INT, TIME_SLOT_ID INT);
+CREATE TABLE TAKES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, GRADE INT);
+CREATE TABLE STUDENT (ID INT, NAME INT, DEPT_NAME INT, TOT_CRED INT);",EQU,"Q1 and Q2 differ only in the HAVING clause: Q1 requires that the group have exactly 4 distinct instructor salaries while Q2 requires more than 4. Therefore, if a department has exactly 4 distinct salaries (and an average salary > 50000), Q1 will return that department while Q2 will not.","INSERT INTO DEPARTMENT (DEPT_NAME, BUILDING, BUDGET) VALUES (10, 101, 200000);
+
+INSERT INTO COURSE (COURSE_ID, TITLE, DEPT_NAME, CREDITS) VALUES (100, 201, 10, 3);
+
+INSERT INTO TEACHES (ID, COURSE_ID, SEC_ID, YEAR, SEMESTER, INSTRUCTOR) VALUES (1, 100, 1, 2021, 1, 1);
+
+INSERT INTO INSTRUCTOR (ID, NAME, SALARY, DEPT_NAME) VALUES (1, 301, 60000, 10);
+INSERT INTO INSTRUCTOR (ID, NAME, SALARY, DEPT_NAME) VALUES (2, 302, 70000, 10);
+INSERT INTO INSTRUCTOR (ID, NAME, SALARY, DEPT_NAME) VALUES (3, 303, 50000, 10);
+INSERT INTO INSTRUCTOR (ID, NAME, SALARY, DEPT_NAME) VALUES (4, 304, 90000, 10);","A test department (dept 10) has one course and one teaches record, and exactly 4 instructors in that department with distinct salaries (60000, 70000, 50000, and 90000, average = 67500). Q1 will return dept 10 (because COUNT(DISTINCT I.SALARY)=4) but Q2 will not (because 4 is not > 4).",Y,"[(10, 67500.0)]",[],EQU
+54,"SELECT T.SEMESTER, SUM(C.CREDITS) FROM DEPARTMENT D INNER JOIN TEACHES T ON (D.BUDGET = T.YEAR + 4) INNER JOIN COURSE C ON (C.DEPT_NAME = D.DEPT_NAME) GROUP BY T.SEMESTER HAVING AVG(C.CREDITS)>2 AND COUNT(D.BUILDING)=2","SELECT T.SEMESTER, SUM(C.CREDITS) FROM DEPARTMENT D INNER JOIN TEACHES T ON (D.BUDGET = T.YEAR + 4) INNER JOIN COURSE C ON (C.DEPT_NAME = D.DEPT_NAME) GROUP BY T.SEMESTER HAVING AVG(C.CREDITS)>2 AND COUNT(D.BUILDING)>=2","[""EQU"", ""NEQ""]",mutation-test-CA5,Symbolic reasoning: NOT EQUIVALENT.,"{""COURSE"": {""COURSE_ID"": ""INT"", ""TITLE"": ""INT"", ""DEPT_NAME"": ""INT"", ""CREDITS"": ""INT""}, ""DEPARTMENT"": {""DEPT_NAME"": ""INT"", ""BUILDING"": ""INT"", ""BUDGET"": ""INT""}, ""INSTRUCTOR"": {""ID"": ""INT"", ""NAME"": ""INT"", ""SALARY"": ""INT"", ""DEPT_NAME"": ""INT""}, ""TEACHES"": {""ID"": ""INT"", ""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""SEMESTER"": ""INT"", ""INSTRUCTOR"": ""INT""}, ""SECTION"": {""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""BUILDING"": ""INT"", ""ROOM_NUMBER"": ""INT"", ""TIME_SLOT_ID"": ""INT""}, ""TAKES"": {""ID"": ""INT"", ""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""GRADE"": ""INT""}, ""STUDENT"": {""ID"": ""INT"", ""NAME"": ""INT"", ""DEPT_NAME"": ""INT"", ""TOT_CRED"": ""INT""}}",,32,"CREATE TABLE COURSE (COURSE_ID INT, TITLE INT, DEPT_NAME INT, CREDITS INT);
+CREATE TABLE DEPARTMENT (DEPT_NAME INT, BUILDING INT, BUDGET INT);
+CREATE TABLE INSTRUCTOR (ID INT, NAME INT, SALARY INT, DEPT_NAME INT);
+CREATE TABLE TEACHES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, SEMESTER INT, INSTRUCTOR INT);
+CREATE TABLE SECTION (COURSE_ID INT, SEC_ID INT, YEAR INT, BUILDING INT, ROOM_NUMBER INT, TIME_SLOT_ID INT);
+CREATE TABLE TAKES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, GRADE INT);
+CREATE TABLE STUDENT (ID INT, NAME INT, DEPT_NAME INT, TOT_CRED INT);",NEQ,"Both queries perform the same joins and aggregations by grouping on T.SEMESTER. They both require AVG(C.CREDITS) > 2, but differ in the condition on COUNT(D.BUILDING). Q1 demands that the number of joined rows (counting non-null D.BUILDING values) is exactly 2, while Q2 accepts any count that is 2 or more. Therefore, if the join produces (for a given semester) more than 2 rows, Q2 will include that group, but Q1 will not.","INSERT INTO DEPARTMENT (DEPT_NAME, BUILDING, BUDGET) VALUES (10, 101, 2000);
+
+INSERT INTO TEACHES (ID, COURSE_ID, SEC_ID, YEAR, SEMESTER, INSTRUCTOR) VALUES (1, 100, 1, 1996, 1, 555);
+
+INSERT INTO COURSE (COURSE_ID, TITLE, DEPT_NAME, CREDITS) VALUES (100, 201, 10, 3);
+INSERT INTO COURSE (COURSE_ID, TITLE, DEPT_NAME, CREDITS) VALUES (101, 202, 10, 3);
+INSERT INTO COURSE (COURSE_ID, TITLE, DEPT_NAME, CREDITS) VALUES (102, 203, 10, 3);","We create one department that matches a teach row (with BUDGET = T.YEAR + 4) and three course rows belonging to that department. Because the join on DEPARTMENT and COURSE is on D.DEPT_NAME, the single teaches row will join with all three courses. This gives an aggregated count of 3 (with AVG(C.CREDITS)=3 > 2) for a given semester. Q1 will reject this semester (because COUNT(D.BUILDING)=3 does not equal 2) while Q2 will include it.",Y,[],"[(1, 9)]",NEQ
+55,"SELECT ID FROM COURSE NATURAL JOIN DEPARTMENT NATURAL JOIN STUDENT NATURAL JOIN TAKES NATURAL JOIN SECTION GROUP BY ID,DEPT_NAME HAVING COUNT(DEPT_NAME) >= 2",SELECT ID FROM COURSE NATURAL JOIN DEPARTMENT NATURAL JOIN STUDENT NATURAL JOIN TAKES NATURAL JOIN SECTION GROUP BY ID HAVING COUNT(DEPT_NAME) >= 2,"[""EQU"", ""NEQ""]",mutation-test-CA6,Symbolic reasoning: NOT EQUIVALENT.,"{""COURSE"": {""COURSE_ID"": ""INT"", ""TITLE"": ""INT"", ""DEPT_NAME"": ""INT"", ""CREDITS"": ""INT""}, ""DEPARTMENT"": {""DEPT_NAME"": ""INT"", ""BUILDING"": ""INT"", ""BUDGET"": ""INT""}, ""INSTRUCTOR"": {""ID"": ""INT"", ""NAME"": ""INT"", ""SALARY"": ""INT"", ""DEPT_NAME"": ""INT""}, ""TEACHES"": {""ID"": ""INT"", ""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""SEMESTER"": ""INT"", ""INSTRUCTOR"": ""INT""}, ""SECTION"": {""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""BUILDING"": ""INT"", ""ROOM_NUMBER"": ""INT"", ""TIME_SLOT_ID"": ""INT""}, ""TAKES"": {""ID"": ""INT"", ""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""GRADE"": ""INT""}, ""STUDENT"": {""ID"": ""INT"", ""NAME"": ""INT"", ""DEPT_NAME"": ""INT"", ""TOT_CRED"": ""INT""}}",,32,"CREATE TABLE COURSE (COURSE_ID INT, TITLE INT, DEPT_NAME INT, CREDITS INT);
+CREATE TABLE DEPARTMENT (DEPT_NAME INT, BUILDING INT, BUDGET INT);
+CREATE TABLE INSTRUCTOR (ID INT, NAME INT, SALARY INT, DEPT_NAME INT);
+CREATE TABLE TEACHES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, SEMESTER INT, INSTRUCTOR INT);
+CREATE TABLE SECTION (COURSE_ID INT, SEC_ID INT, YEAR INT, BUILDING INT, ROOM_NUMBER INT, TIME_SLOT_ID INT);
+CREATE TABLE TAKES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, GRADE INT);
+CREATE TABLE STUDENT (ID INT, NAME INT, DEPT_NAME INT, TOT_CRED INT);",NEQ,"Q1 groups by both student ID and DEPT_NAME so that if the same student appears in the join with two different DEPT_NAME values then the rows are split into two groups (each with count 1) and neither group meets the HAVING condition. By contrast, Q2 groups only by student ID so that the two rows (with different DEPT_NAME values) are merged into a single group whose count is 2. In our counterexample the same student appears twice – once associated with one department and once with another – so Q2 returns the student while Q1 does not.","
+-- Insert courses from two different departments
+INSERT INTO COURSE (COURSE_ID, TITLE, DEPT_NAME, CREDITS) VALUES (1, 101, 10, 3);
+INSERT INTO COURSE (COURSE_ID, TITLE, DEPT_NAME, CREDITS) VALUES (2, 102, 20, 3);
+
+-- Insert department rows for each department
+INSERT INTO DEPARTMENT (DEPT_NAME, BUILDING, BUDGET) VALUES (10, 1, 1000);
+INSERT INTO DEPARTMENT (DEPT_NAME, BUILDING, BUDGET) VALUES (20, 2, 2000);
+
+-- Insert two student rows with the same id but different DEPT_NAME values
+INSERT INTO STUDENT (ID, NAME, DEPT_NAME, TOT_CRED) VALUES (1, 100, 10, 15);
+INSERT INTO STUDENT (ID, NAME, DEPT_NAME, TOT_CRED) VALUES (1, 100, 20, 15);
+
+-- Insert TAKES rows: one for each course corresponding to the matching student row
+INSERT INTO TAKES (ID, COURSE_ID, SEC_ID, YEAR, GRADE) VALUES (1, 1, 1, 2023, 90);
+INSERT INTO TAKES (ID, COURSE_ID, SEC_ID, YEAR, GRADE) VALUES (1, 2, 1, 2023, 85);
+
+-- Insert SECTION rows for the two courses (keys matching TAKES)
+INSERT INTO SECTION (COURSE_ID, SEC_ID, YEAR, BUILDING, ROOM_NUMBER, TIME_SLOT_ID) VALUES (1, 1, 2023, 1, 101, 1);
+INSERT INTO SECTION (COURSE_ID, SEC_ID, YEAR, BUILDING, ROOM_NUMBER, TIME_SLOT_ID) VALUES (2, 1, 2023, 2, 102, 1);
+","We insert two courses from two different departments, two corresponding department rows, and then (unusually) two STUDENT tuples with the same student id but different DEPT_NAME values. Then we insert TAKES and SECTION rows so that the student appears once for each course. In the overall natural join the student appears in two rows with different DEPT_NAME values. Q1, grouping by (ID, DEPT_NAME), produces two groups (each count 1) and returns nothing, while Q2, grouping by ID, counts 2 rows and returns the student.",Y,[],"[(1,)]",NEQ
+56,SELECT DISTINCT DEPT_NAME FROM COURSE WHERE CREDITS = (SELECT MAX(CREDITS) FROM COURSE NATURAL JOIN DEPARTMENT WHERE TITLE='CS' GROUP BY DEPT_NAME HAVING COUNT(COURSE_ID)>2),SELECT DEPT_NAME FROM COURSE WHERE CREDITS = (SELECT MAX(CREDITS) FROM COURSE NATURAL JOIN DEPARTMENT WHERE TITLE='CS' GROUP BY DEPT_NAME HAVING COUNT(COURSE_ID)>2),"[""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""TMO""]",mutation-test-CA7,,"{""COURSE"": {""COURSE_ID"": ""INT"", ""TITLE"": ""INT"", ""DEPT_NAME"": ""INT"", ""CREDITS"": ""INT""}, ""DEPARTMENT"": {""DEPT_NAME"": ""INT"", ""BUILDING"": ""INT"", ""BUDGET"": ""INT""}, ""INSTRUCTOR"": {""ID"": ""INT"", ""NAME"": ""INT"", ""SALARY"": ""INT"", ""DEPT_NAME"": ""INT""}, ""TEACHES"": {""ID"": ""INT"", ""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""SEMESTER"": ""INT"", ""INSTRUCTOR"": ""INT""}, ""SECTION"": {""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""BUILDING"": ""INT"", ""ROOM_NUMBER"": ""INT"", ""TIME_SLOT_ID"": ""INT""}, ""TAKES"": {""ID"": ""INT"", ""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""GRADE"": ""INT""}, ""STUDENT"": {""ID"": ""INT"", ""NAME"": ""INT"", ""DEPT_NAME"": ""INT"", ""TOT_CRED"": ""INT""}}",,32,"CREATE TABLE COURSE (COURSE_ID INT, TITLE INT, DEPT_NAME INT, CREDITS INT);
+CREATE TABLE DEPARTMENT (DEPT_NAME INT, BUILDING INT, BUDGET INT);
+CREATE TABLE INSTRUCTOR (ID INT, NAME INT, SALARY INT, DEPT_NAME INT);
+CREATE TABLE TEACHES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, SEMESTER INT, INSTRUCTOR INT);
+CREATE TABLE SECTION (COURSE_ID INT, SEC_ID INT, YEAR INT, BUILDING INT, ROOM_NUMBER INT, TIME_SLOT_ID INT);
+CREATE TABLE TAKES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, GRADE INT);
+CREATE TABLE STUDENT (ID INT, NAME INT, DEPT_NAME INT, TOT_CRED INT);",EQU,"Q1 and Q2 use the same WHERE clause and subquery but Q1 applies DISTINCT on the DEPT_NAME output while Q2 does not. Therefore, if a department has more than one course with the maximum credits (as determined by the subquery) then Q2 will return duplicate rows for that department, whereas Q1 will return only a single row.","INSERT INTO DEPARTMENT (DEPT_NAME, BUILDING, BUDGET) VALUES (10, 'B1', 1000);
+
+INSERT INTO COURSE (COURSE_ID, TITLE, DEPT_NAME, CREDITS) VALUES (101, 'CS', 10, 4);
+INSERT INTO COURSE (COURSE_ID, TITLE, DEPT_NAME, CREDITS) VALUES (102, 'CS', 10, 3);
+INSERT INTO COURSE (COURSE_ID, TITLE, DEPT_NAME, CREDITS) VALUES (103, 'CS', 10, 4);
+INSERT INTO COURSE (COURSE_ID, TITLE, DEPT_NAME, CREDITS) VALUES (104, 'CS', 10, 2);","We create one department (say DEPT_NAME = 10) that has four CS courses (so the subquery qualifies since count > 2) and among those courses two have the maximum credit value (4). Thus, the outer query will select two rows for dept 10 when no DISTINCT is used (Q2) but only one unique row with DISTINCT (Q1).",Y,"[(10,)]","[(10,), (10,)]",EQU
+57,"SELECT STUDENT.ID, STUDENT.NAME FROM STUDENT JOIN (SELECT TAKES.ID, S.TIME_SLOT_ID, S.YEAR FROM TAKES JOIN SECTION AS S ON TAKES.COURSE_ID = S.COURSE_ID AND TAKES.SEC_ID = S.SEC_ID GROUP BY TAKES.ID, S.TIME_SLOT_ID, S.YEAR HAVING COUNT(S.TIME_SLOT_ID) > 1) AS A ON STUDENT.ID = A.ID GROUP BY STUDENT.ID, STUDENT.NAME HAVING COUNT(DISTINCT STUDENT.ID) > 2","SELECT STUDENT.ID, STUDENT.NAME FROM STUDENT JOIN (SELECT TAKES.ID, S.TIME_SLOT_ID, S.YEAR FROM TAKES JOIN SECTION AS S ON TAKES.COURSE_ID = S.COURSE_ID AND TAKES.SEC_ID = S.SEC_ID GROUP BY TAKES.ID, S.TIME_SLOT_ID, S.YEAR HAVING SUM(S.TIME_SLOT_ID) > 1) AS A ON STUDENT.ID = A.ID GROUP BY STUDENT.ID, STUDENT.NAME HAVING COUNT(DISTINCT STUDENT.ID) > 2","[""EQU"", ""EQU"", ""EQU"", ""TMO""]",mutation-test-CA8,,"{""COURSE"": {""COURSE_ID"": ""INT"", ""TITLE"": ""INT"", ""DEPT_NAME"": ""INT"", ""CREDITS"": ""INT""}, ""DEPARTMENT"": {""DEPT_NAME"": ""INT"", ""BUILDING"": ""INT"", ""BUDGET"": ""INT""}, ""INSTRUCTOR"": {""ID"": ""INT"", ""NAME"": ""INT"", ""SALARY"": ""INT"", ""DEPT_NAME"": ""INT""}, ""TEACHES"": {""ID"": ""INT"", ""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""SEMESTER"": ""INT"", ""INSTRUCTOR"": ""INT""}, ""SECTION"": {""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""BUILDING"": ""INT"", ""ROOM_NUMBER"": ""INT"", ""TIME_SLOT_ID"": ""INT""}, ""TAKES"": {""ID"": ""INT"", ""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""GRADE"": ""INT""}, ""STUDENT"": {""ID"": ""INT"", ""NAME"": ""INT"", ""DEPT_NAME"": ""INT"", ""TOT_CRED"": ""INT""}}",,32,"CREATE TABLE COURSE (COURSE_ID INT, TITLE INT, DEPT_NAME INT, CREDITS INT);
+CREATE TABLE DEPARTMENT (DEPT_NAME INT, BUILDING INT, BUDGET INT);
+CREATE TABLE INSTRUCTOR (ID INT, NAME INT, SALARY INT, DEPT_NAME INT);
+CREATE TABLE TEACHES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, SEMESTER INT, INSTRUCTOR INT);
+CREATE TABLE SECTION (COURSE_ID INT, SEC_ID INT, YEAR INT, BUILDING INT, ROOM_NUMBER INT, TIME_SLOT_ID INT);
+CREATE TABLE TAKES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, GRADE INT);
+CREATE TABLE STUDENT (ID INT, NAME INT, DEPT_NAME INT, TOT_CRED INT);",EQU,"Q1 and Q2 differ only in the aggregate condition in the subquery. In Q1 the HAVING uses COUNT(S.TIME_SLOT_ID)>1 so that any grouping (by TAKES.ID, S.TIME_SLOT_ID, S.YEAR) having more than one row qualifies regardless of the actual TIME_SLOT_ID values. In Q2 the HAVING uses SUM(S.TIME_SLOT_ID)>1 so that if the TIME_SLOT_ID values are low (for example 0) then even if there are multiple rows the group may fail the condition. In our counterexample one student (say, student1) has two duplicated rows in TAKES/SECTION with TIME_SLOT_ID = 0. Thus Q1’s inner grouping produces a row (since COUNT(0)=2 is >1) but Q2’s inner grouping produces a row only if the sum over TIME_SLOT_ID exceeds 1 – and here SUM(0,0)=0 does not. (The outer query further groups on STUDENT and demands a total count of distinct student IDs greater than 2 so that overall at least three students must qualify.)","
+-- Insert students
+INSERT INTO STUDENT (ID, NAME, DEPT_NAME, TOT_CRED) VALUES (1, 100, 10, 30);
+INSERT INTO STUDENT (ID, NAME, DEPT_NAME, TOT_CRED) VALUES (2, 200, 20, 40);
+INSERT INTO STUDENT (ID, NAME, DEPT_NAME, TOT_CRED) VALUES (3, 300, 30, 50);
+
+-- For student1: create a group with duplicate entries where TIME_SLOT_ID = 0.
+-- We need at least two rows for the same (ID, TIME_SLOT_ID, YEAR) grouping
+INSERT INTO TAKES (ID, COURSE_ID, SEC_ID, YEAR, GRADE) VALUES (1, 101, 1, 2020, 80);
+INSERT INTO TAKES (ID, COURSE_ID, SEC_ID, YEAR, GRADE) VALUES (1, 101, 1, 2020, 85);
+
+INSERT INTO SECTION (COURSE_ID, SEC_ID, YEAR, BUILDING, ROOM_NUMBER, TIME_SLOT_ID) VALUES (101, 1, 2020, 1, 101, 0);
+INSERT INTO SECTION (COURSE_ID, SEC_ID, YEAR, BUILDING, ROOM_NUMBER, TIME_SLOT_ID) VALUES (101, 1, 2020, 1, 101, 0);
+
+-- For student2: create a group with TIME_SLOT_ID = 1
+INSERT INTO TAKES (ID, COURSE_ID, SEC_ID, YEAR, GRADE) VALUES (2, 102, 1, 2020, 90);
+INSERT INTO TAKES (ID, COURSE_ID, SEC_ID, YEAR, GRADE) VALUES (2, 102, 1, 2020, 88);
+
+INSERT INTO SECTION (COURSE_ID, SEC_ID, YEAR, BUILDING, ROOM_NUMBER, TIME_SLOT_ID) VALUES (102, 1, 2020, 2, 202, 1);
+INSERT INTO SECTION (COURSE_ID, SEC_ID, YEAR, BUILDING, ROOM_NUMBER, TIME_SLOT_ID) VALUES (102, 1, 2020, 2, 202, 1);
+
+-- For student3: create a group with TIME_SLOT_ID = 1 as well
+INSERT INTO TAKES (ID, COURSE_ID, SEC_ID, YEAR, GRADE) VALUES (3, 103, 1, 2020, 75);
+INSERT INTO TAKES (ID, COURSE_ID, SEC_ID, YEAR, GRADE) VALUES (3, 103, 1, 2020, 80);
+
+INSERT INTO SECTION (COURSE_ID, SEC_ID, YEAR, BUILDING, ROOM_NUMBER, TIME_SLOT_ID) VALUES (103, 1, 2020, 3, 303, 1);
+INSERT INTO SECTION (COURSE_ID, SEC_ID, YEAR, BUILDING, ROOM_NUMBER, TIME_SLOT_ID) VALUES (103, 1, 2020, 3, 303, 1);
+","Three students are inserted. For student1 the related TAKES and SECTION rows are inserted so that in one grouping the TIME_SLOT_ID is 0 (and appears twice), so the COUNT condition in Q1 is met but the SUM condition in Q2 fails. For students 2 and 3 the TIME_SLOT_ID is 1, so both aggregates are satisfied. Thus, when the outer query’s HAVING (COUNT(DISTINCT STUDENT.ID)>2) is interpreted as a condition on the overall result, Q1 returns all three students (thus producing a group including three distinct student IDs) while Q2 returns only students 2 and 3 (only two distinct student IDs), showing the two queries diverge.",N,[],[],EQU
+58,"SELECT SUM(T) AS SU FROM (SELECT YEAR AS T FROM TEACHES NATURAL JOIN INSTRUCTOR GROUP BY YEAR, COURSE_ID HAVING COUNT(ID)>4) AS TEMP GROUP BY T",SELECT SUM(T) AS SU FROM (SELECT YEAR AS T FROM TEACHES NATURAL JOIN INSTRUCTOR GROUP BY YEAR HAVING COUNT(ID)>4) AS TEMP GROUP BY T,"[""EQU"", ""EQU"", ""NEQ""]",mutation-test-CA9,Symbolic reasoning: NOT EQUIVALENT.,"{""COURSE"": {""COURSE_ID"": ""INT"", ""TITLE"": ""INT"", ""DEPT_NAME"": ""INT"", ""CREDITS"": ""INT""}, ""DEPARTMENT"": {""DEPT_NAME"": ""INT"", ""BUILDING"": ""INT"", ""BUDGET"": ""INT""}, ""INSTRUCTOR"": {""ID"": ""INT"", ""NAME"": ""INT"", ""SALARY"": ""INT"", ""DEPT_NAME"": ""INT""}, ""TEACHES"": {""ID"": ""INT"", ""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""SEMESTER"": ""INT"", ""INSTRUCTOR"": ""INT""}, ""SECTION"": {""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""BUILDING"": ""INT"", ""ROOM_NUMBER"": ""INT"", ""TIME_SLOT_ID"": ""INT""}, ""TAKES"": {""ID"": ""INT"", ""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""GRADE"": ""INT""}, ""STUDENT"": {""ID"": ""INT"", ""NAME"": ""INT"", ""DEPT_NAME"": ""INT"", ""TOT_CRED"": ""INT""}}",,32,"CREATE TABLE COURSE (COURSE_ID INT, TITLE INT, DEPT_NAME INT, CREDITS INT);
+CREATE TABLE DEPARTMENT (DEPT_NAME INT, BUILDING INT, BUDGET INT);
+CREATE TABLE INSTRUCTOR (ID INT, NAME INT, SALARY INT, DEPT_NAME INT);
+CREATE TABLE TEACHES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, SEMESTER INT, INSTRUCTOR INT);
+CREATE TABLE SECTION (COURSE_ID INT, SEC_ID INT, YEAR INT, BUILDING INT, ROOM_NUMBER INT, TIME_SLOT_ID INT);
+CREATE TABLE TAKES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, GRADE INT);
+CREATE TABLE STUDENT (ID INT, NAME INT, DEPT_NAME INT, TOT_CRED INT);",NEQ,"Q1 computes the sum of the year values for each (YEAR, COURSE_ID) group where a course in a given year has more than 4 rows (i.e. a count of instructors above 4 for that course). In contrast, Q2 groups by YEAR only and applies the count condition across all courses in that year, so it produces only one row per year if the total count is > 4. In a year with more than one course meeting the condition, Q1 will contribute the year value once per course while Q2 contributes it only once.","
+-- Insert an instructor record that can join with TEACHES (natural join on ID)
+INSERT INTO INSTRUCTOR (ID, NAME, SALARY, DEPT_NAME) VALUES (10, 100, 10000, 1);
+
+-- Insert TEACHES rows for course 101 in year 2000. 5 rows to satisfy count > 4 per course.
+INSERT INTO TEACHES (ID, COURSE_ID, SEC_ID, YEAR, SEMESTER, INSTRUCTOR) VALUES (10, 101, 1, 2000, 1, 10);
+INSERT INTO TEACHES (ID, COURSE_ID, SEC_ID, YEAR, SEMESTER, INSTRUCTOR) VALUES (10, 101, 2, 2000, 1, 10);
+INSERT INTO TEACHES (ID, COURSE_ID, SEC_ID, YEAR, SEMESTER, INSTRUCTOR) VALUES (10, 101, 3, 2000, 1, 10);
+INSERT INTO TEACHES (ID, COURSE_ID, SEC_ID, YEAR, SEMESTER, INSTRUCTOR) VALUES (10, 101, 4, 2000, 1, 10);
+INSERT INTO TEACHES (ID, COURSE_ID, SEC_ID, YEAR, SEMESTER, INSTRUCTOR) VALUES (10, 101, 5, 2000, 1, 10);
+
+-- Insert TEACHES rows for course 102 in year 2000. 5 rows as well.
+INSERT INTO TEACHES (ID, COURSE_ID, SEC_ID, YEAR, SEMESTER, INSTRUCTOR) VALUES (10, 102, 1, 2000, 1, 10);
+INSERT INTO TEACHES (ID, COURSE_ID, SEC_ID, YEAR, SEMESTER, INSTRUCTOR) VALUES (10, 102, 2, 2000, 1, 10);
+INSERT INTO TEACHES (ID, COURSE_ID, SEC_ID, YEAR, SEMESTER, INSTRUCTOR) VALUES (10, 102, 3, 2000, 1, 10);
+INSERT INTO TEACHES (ID, COURSE_ID, SEC_ID, YEAR, SEMESTER, INSTRUCTOR) VALUES (10, 102, 4, 2000, 1, 10);
+INSERT INTO TEACHES (ID, COURSE_ID, SEC_ID, YEAR, SEMESTER, INSTRUCTOR) VALUES (10, 102, 5, 2000, 1, 10);
+","We create a test case for year 2000 with two different courses. For each course we insert 5 TEACHES rows (joined with one instructor). Q1’s inner query returns two rows (one per course: T=2000 each) and the outer sum is 2000+2000=4000, while Q2’s inner query returns one row for the entire year (T=2000) and the outer sum is 2000.",Y,"[(4000,)]","[(2000,)]",NEQ
+59,"SELECT COURSE_ID, TITLE FROM COURSE","SELECT COURSE_ID, TITLE FROM COURSE WHERE CREDITS > 3","[""NEQ""]",mutation-test-CQ1,Symbolic reasoning: NOT EQUIVALENT.,"{""COURSE"": {""COURSE_ID"": ""INT"", ""TITLE"": ""INT"", ""DEPT_NAME"": ""INT"", ""CREDITS"": ""INT""}, ""DEPARTMENT"": {""DEPT_NAME"": ""INT"", ""BUILDING"": ""INT"", ""BUDGET"": ""INT""}, ""INSTRUCTOR"": {""ID"": ""INT"", ""NAME"": ""INT"", ""SALARY"": ""INT"", ""DEPT_NAME"": ""INT""}, ""TEACHES"": {""ID"": ""INT"", ""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""SEMESTER"": ""INT"", ""INSTRUCTOR"": ""INT""}, ""SECTION"": {""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""BUILDING"": ""INT"", ""ROOM_NUMBER"": ""INT"", ""TIME_SLOT_ID"": ""INT""}, ""TAKES"": {""ID"": ""INT"", ""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""GRADE"": ""INT""}, ""STUDENT"": {""ID"": ""INT"", ""NAME"": ""INT"", ""DEPT_NAME"": ""INT"", ""TOT_CRED"": ""INT""}}",,32,"CREATE TABLE COURSE (COURSE_ID INT, TITLE INT, DEPT_NAME INT, CREDITS INT);
+CREATE TABLE DEPARTMENT (DEPT_NAME INT, BUILDING INT, BUDGET INT);
+CREATE TABLE INSTRUCTOR (ID INT, NAME INT, SALARY INT, DEPT_NAME INT);
+CREATE TABLE TEACHES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, SEMESTER INT, INSTRUCTOR INT);
+CREATE TABLE SECTION (COURSE_ID INT, SEC_ID INT, YEAR INT, BUILDING INT, ROOM_NUMBER INT, TIME_SLOT_ID INT);
+CREATE TABLE TAKES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, GRADE INT);
+CREATE TABLE STUDENT (ID INT, NAME INT, DEPT_NAME INT, TOT_CRED INT);",NEQ,"Q1 returns all rows from the COURSE table, while Q2 filters the courses and returns only those with CREDITS > 3. Therefore, if there is a course with 3 or fewer credits, it will appear in Q1 but not in Q2.","INSERT INTO COURSE (COURSE_ID, TITLE, DEPT_NAME, CREDITS) VALUES (1, 101, 10, 3);
+INSERT INTO COURSE (COURSE_ID, TITLE, DEPT_NAME, CREDITS) VALUES (2, 202, 20, 4);","The test data includes two courses: one with 3 credits and another with 4 credits. Q1 will show both courses, but Q2 will only show the course with 4 credits, demonstrating the difference between the queries.",Y,"['1', '2']",['2'],NEQ
+60,"SELECT DISTINCT COURSE.COURSE_ID, COURSE.TITLE, TEACHES.ID FROM COURSE JOIN TEACHES WHERE COURSE.COURSE_ID = TEACHES.COURSE_ID AND TEACHES.YEAR = 2010","SELECT DISTINCT COURSE.COURSE_ID, COURSE.TITLE, TEACHES.ID FROM COURSE JOIN TEACHES WHERE COURSE.COURSE_ID >= TEACHES.COURSE_ID AND TEACHES.YEAR = 2010","[""NEQ""]",mutation-test-CQ3,Symbolic reasoning: NOT EQUIVALENT.,"{""COURSE"": {""COURSE_ID"": ""INT"", ""TITLE"": ""INT"", ""DEPT_NAME"": ""INT"", ""CREDITS"": ""INT""}, ""DEPARTMENT"": {""DEPT_NAME"": ""INT"", ""BUILDING"": ""INT"", ""BUDGET"": ""INT""}, ""INSTRUCTOR"": {""ID"": ""INT"", ""NAME"": ""INT"", ""SALARY"": ""INT"", ""DEPT_NAME"": ""INT""}, ""TEACHES"": {""ID"": ""INT"", ""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""SEMESTER"": ""INT"", ""INSTRUCTOR"": ""INT""}, ""SECTION"": {""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""BUILDING"": ""INT"", ""ROOM_NUMBER"": ""INT"", ""TIME_SLOT_ID"": ""INT""}, ""TAKES"": {""ID"": ""INT"", ""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""GRADE"": ""INT""}, ""STUDENT"": {""ID"": ""INT"", ""NAME"": ""INT"", ""DEPT_NAME"": ""INT"", ""TOT_CRED"": ""INT""}}",,32,"CREATE TABLE COURSE (COURSE_ID INT, TITLE INT, DEPT_NAME INT, CREDITS INT);
+CREATE TABLE DEPARTMENT (DEPT_NAME INT, BUILDING INT, BUDGET INT);
+CREATE TABLE INSTRUCTOR (ID INT, NAME INT, SALARY INT, DEPT_NAME INT);
+CREATE TABLE TEACHES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, SEMESTER INT, INSTRUCTOR INT);
+CREATE TABLE SECTION (COURSE_ID INT, SEC_ID INT, YEAR INT, BUILDING INT, ROOM_NUMBER INT, TIME_SLOT_ID INT);
+CREATE TABLE TAKES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, GRADE INT);
+CREATE TABLE STUDENT (ID INT, NAME INT, DEPT_NAME INT, TOT_CRED INT);",NEQ,"Q1 uses an equality join condition (COURSE.COURSE_ID = TEACHES.COURSE_ID) so it returns only those course–teaches pairs where the course IDs exactly match. Q2, however, uses an inequality (COURSE.COURSE_ID >= TEACHES.COURSE_ID) so it will also join courses with teaches rows that have a lower course ID, producing extra rows.","INSERT INTO COURSE (COURSE_ID, TITLE, DEPT_NAME, CREDITS) VALUES (200, 111, 10, 3);
+
+INSERT INTO TEACHES (ID, COURSE_ID, SEC_ID, YEAR, SEMESTER, INSTRUCTOR) VALUES (1, 100, 1, 2010, 1, 501);","We insert a COURSE row with COURSE_ID = 200 and a TEACHES row with COURSE_ID = 100 (with TEACHES.YEAR = 2010). Q1 will not join these rows (leaving the result empty), but Q2 will join them (since 200 >= 100), thus the two queries produce different results.",Y,[],['200'],NEQ
+61,"SELECT DISTINCT INSTRUCTOR.ID, INSTRUCTOR.NAME, TEACHES.COURSE_ID FROM INSTRUCTOR LEFT OUTER JOIN TEACHES ON INSTRUCTOR.ID > TEACHES.ID","SELECT DISTINCT INSTRUCTOR.ID, INSTRUCTOR.NAME, TEACHES.COURSE_ID FROM INSTRUCTOR, TEACHES WHERE INSTRUCTOR.ID = TEACHES.ID","[""NEQ""]",mutation-test-CQ7,Symbolic reasoning: NOT EQUIVALENT.,"{""COURSE"": {""COURSE_ID"": ""INT"", ""TITLE"": ""INT"", ""DEPT_NAME"": ""INT"", ""CREDITS"": ""INT""}, ""DEPARTMENT"": {""DEPT_NAME"": ""INT"", ""BUILDING"": ""INT"", ""BUDGET"": ""INT""}, ""INSTRUCTOR"": {""ID"": ""INT"", ""NAME"": ""INT"", ""SALARY"": ""INT"", ""DEPT_NAME"": ""INT""}, ""TEACHES"": {""ID"": ""INT"", ""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""SEMESTER"": ""INT"", ""INSTRUCTOR"": ""INT""}, ""SECTION"": {""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""BUILDING"": ""INT"", ""ROOM_NUMBER"": ""INT"", ""TIME_SLOT_ID"": ""INT""}, ""TAKES"": {""ID"": ""INT"", ""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""GRADE"": ""INT""}, ""STUDENT"": {""ID"": ""INT"", ""NAME"": ""INT"", ""DEPT_NAME"": ""INT"", ""TOT_CRED"": ""INT""}}",,32,"CREATE TABLE COURSE (COURSE_ID INT, TITLE INT, DEPT_NAME INT, CREDITS INT);
+CREATE TABLE DEPARTMENT (DEPT_NAME INT, BUILDING INT, BUDGET INT);
+CREATE TABLE INSTRUCTOR (ID INT, NAME INT, SALARY INT, DEPT_NAME INT);
+CREATE TABLE TEACHES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, SEMESTER INT, INSTRUCTOR INT);
+CREATE TABLE SECTION (COURSE_ID INT, SEC_ID INT, YEAR INT, BUILDING INT, ROOM_NUMBER INT, TIME_SLOT_ID INT);
+CREATE TABLE TAKES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, GRADE INT);
+CREATE TABLE STUDENT (ID INT, NAME INT, DEPT_NAME INT, TOT_CRED INT);",NEQ,"Q1 and Q2 use fundamentally different join conditions. Q1 uses a LEFT OUTER JOIN with the condition INSTRUCTOR.ID > TEACHES.ID, which returns every instructor along with any TEACHES row(s) where the instructor's ID is greater than the teaches row's ID (or NULL if none exists). In contrast, Q2 uses an inner join with the condition INSTRUCTOR.ID = TEACHES.ID, so it only returns rows where the IDs match. Thus, if an instructor’s ID is greater than a teaches row’s ID but not equal, Q1 will produce a result row while Q2 will not.","INSERT INTO INSTRUCTOR (ID, NAME, SALARY, DEPT_NAME) VALUES (2, 200, 50000, 10);
+
+INSERT INTO TEACHES (ID, COURSE_ID, SEC_ID, YEAR, SEMESTER, INSTRUCTOR) VALUES (1, 101, 1, 2020, 1, 2);","Insert an instructor with ID 2 and a teaches row with ID 1. In Q1, since 2 > 1 the join produces a row (showing a non-null TEACHES.COURSE_ID), but Q2 will not return any row because 2 does not equal 1.",Y,['2'],[],NEQ
+62,"WITH S AS (SELECT ID, TIME_SLOT_ID, YEAR FROM TAKES NATURAL JOIN SECTION GROUP BY ID, TIME_SLOT_ID, YEAR HAVING COUNT(DISTINCT TIME_SLOT_ID)>4) SELECT DISTINCT ID,NAME FROM S NATURAL JOIN STUDENT","WITH S AS (SELECT ID, TIME_SLOT_ID, YEAR FROM TAKES NATURAL JOIN SECTION GROUP BY ID, TIME_SLOT_ID, YEAR HAVING COUNT(DISTINCT TIME_SLOT_ID)>5) SELECT DISTINCT ID,NAME FROM S NATURAL JOIN STUDENT","[""EQU"", ""EQU"", ""EQU"", ""EQU"", ""EQU"", ""TMO""]",mutation-test-CQ9,,"{""COURSE"": {""COURSE_ID"": ""INT"", ""TITLE"": ""INT"", ""DEPT_NAME"": ""INT"", ""CREDITS"": ""INT""}, ""DEPARTMENT"": {""DEPT_NAME"": ""INT"", ""BUILDING"": ""INT"", ""BUDGET"": ""INT""}, ""INSTRUCTOR"": {""ID"": ""INT"", ""NAME"": ""INT"", ""SALARY"": ""INT"", ""DEPT_NAME"": ""INT""}, ""TEACHES"": {""ID"": ""INT"", ""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""SEMESTER"": ""INT"", ""INSTRUCTOR"": ""INT""}, ""SECTION"": {""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""BUILDING"": ""INT"", ""ROOM_NUMBER"": ""INT"", ""TIME_SLOT_ID"": ""INT""}, ""TAKES"": {""ID"": ""INT"", ""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""GRADE"": ""INT""}, ""STUDENT"": {""ID"": ""INT"", ""NAME"": ""INT"", ""DEPT_NAME"": ""INT"", ""TOT_CRED"": ""INT""}}",,32,"CREATE TABLE COURSE (COURSE_ID INT, TITLE INT, DEPT_NAME INT, CREDITS INT);
+CREATE TABLE DEPARTMENT (DEPT_NAME INT, BUILDING INT, BUDGET INT);
+CREATE TABLE INSTRUCTOR (ID INT, NAME INT, SALARY INT, DEPT_NAME INT);
+CREATE TABLE TEACHES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, SEMESTER INT, INSTRUCTOR INT);
+CREATE TABLE SECTION (COURSE_ID INT, SEC_ID INT, YEAR INT, BUILDING INT, ROOM_NUMBER INT, TIME_SLOT_ID INT);
+CREATE TABLE TAKES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, GRADE INT);
+CREATE TABLE STUDENT (ID INT, NAME INT, DEPT_NAME INT, TOT_CRED INT);",EQU,"Both queries try to find students whose course‐taking record meets a threshold on the number of distinct time slots in which they took classes. In each query the WITH clause joins TAKES with SECTION and groups by (ID, TIME_SLOT_ID, YEAR), then applies a HAVING condition on COUNT(DISTINCT TIME_SLOT_ID). (Because TIME_SLOT_ID is one of the grouping attributes, each group has a count of 1 – unless the intended grouping was only by ID and YEAR.) In any event the only difference between Q1 and Q2 is that Q1 requires the count be > 4 while Q2 requires it be > 5. Thus if a student in some year has exactly 5 distinct time slots (one more than 4 but not more than 5) then Q1’s HAVING clause will be satisfied (so the student appears in the final result) whereas Q2’s will not. This difference in filtering is the reason why the two queries are not equivalent.","
+-- Insert a student with ID 1
+INSERT INTO STUDENT (ID, NAME, DEPT_NAME, TOT_CRED) VALUES (1, 100, 10, 15);
+
+-- Insert five sections in year 2020 offered at different time slots
+INSERT INTO SECTION (COURSE_ID, SEC_ID, YEAR, BUILDING, ROOM_NUMBER, TIME_SLOT_ID) VALUES (1, 1, 2020, 1, 101, 10);
+INSERT INTO SECTION (COURSE_ID, SEC_ID, YEAR, BUILDING, ROOM_NUMBER, TIME_SLOT_ID) VALUES (2, 1, 2020, 1, 102, 20);
+INSERT INTO SECTION (COURSE_ID, SEC_ID, YEAR, BUILDING, ROOM_NUMBER, TIME_SLOT_ID) VALUES (3, 1, 2020, 1, 103, 30);
+INSERT INTO SECTION (COURSE_ID, SEC_ID, YEAR, BUILDING, ROOM_NUMBER, TIME_SLOT_ID) VALUES (4, 1, 2020, 1, 104, 40);
+INSERT INTO SECTION (COURSE_ID, SEC_ID, YEAR, BUILDING, ROOM_NUMBER, TIME_SLOT_ID) VALUES (5, 1, 2020, 1, 105, 50);
+
+-- Insert records in TAKES showing that student 1 takes all these five courses in year 2020
+INSERT INTO TAKES (ID, COURSE_ID, SEC_ID, YEAR, GRADE) VALUES (1, 1, 1, 2020, 90);
+INSERT INTO TAKES (ID, COURSE_ID, SEC_ID, YEAR, GRADE) VALUES (1, 2, 1, 2020, 85);
+INSERT INTO TAKES (ID, COURSE_ID, SEC_ID, YEAR, GRADE) VALUES (1, 3, 1, 2020, 95);
+INSERT INTO TAKES (ID, COURSE_ID, SEC_ID, YEAR, GRADE) VALUES (1, 4, 1, 2020, 80);
+INSERT INTO TAKES (ID, COURSE_ID, SEC_ID, YEAR, GRADE) VALUES (1, 5, 1, 2020, 75);
+","We create a student (ID=1) who, in year 2020, takes exactly five courses. Each course is offered in a different time slot (e.g. time slot IDs 10, 20, 30, 40, 50). Then, when the (intended) grouping is done by ID and YEAR (so that a student’s five different time slots are counted together), the aggregate COUNT(DISTINCT TIME_SLOT_ID) equals 5. Thus Q1 (which requires >4) will return the student, but Q2 (which requires >5) will not.",N,[],[],EQU
+63,SELECT DISTINCT DEPT_NAME FROM COURSE WHERE CREDITS=(SELECT MAX(CREDITS) FROM COURSE),SELECT DISTINCT DEPT_NAME FROM COURSE AS C JOIN (SELECT MAX(CREDITS) AS MAX_CREDITS FROM COURSE GROUP BY DEPT_NAME) AS A WHERE C.CREDITS = A.MAX_CREDITS,"[""EQU"", ""NEQ""]",mutation-test-CQ10,Symbolic reasoning: NOT EQUIVALENT.,"{""COURSE"": {""COURSE_ID"": ""INT"", ""TITLE"": ""INT"", ""DEPT_NAME"": ""INT"", ""CREDITS"": ""INT""}, ""DEPARTMENT"": {""DEPT_NAME"": ""INT"", ""BUILDING"": ""INT"", ""BUDGET"": ""INT""}, ""INSTRUCTOR"": {""ID"": ""INT"", ""NAME"": ""INT"", ""SALARY"": ""INT"", ""DEPT_NAME"": ""INT""}, ""TEACHES"": {""ID"": ""INT"", ""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""SEMESTER"": ""INT"", ""INSTRUCTOR"": ""INT""}, ""SECTION"": {""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""BUILDING"": ""INT"", ""ROOM_NUMBER"": ""INT"", ""TIME_SLOT_ID"": ""INT""}, ""TAKES"": {""ID"": ""INT"", ""COURSE_ID"": ""INT"", ""SEC_ID"": ""INT"", ""YEAR"": ""INT"", ""GRADE"": ""INT""}, ""STUDENT"": {""ID"": ""INT"", ""NAME"": ""INT"", ""DEPT_NAME"": ""INT"", ""TOT_CRED"": ""INT""}}",,32,"CREATE TABLE COURSE (COURSE_ID INT, TITLE INT, DEPT_NAME INT, CREDITS INT);
+CREATE TABLE DEPARTMENT (DEPT_NAME INT, BUILDING INT, BUDGET INT);
+CREATE TABLE INSTRUCTOR (ID INT, NAME INT, SALARY INT, DEPT_NAME INT);
+CREATE TABLE TEACHES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, SEMESTER INT, INSTRUCTOR INT);
+CREATE TABLE SECTION (COURSE_ID INT, SEC_ID INT, YEAR INT, BUILDING INT, ROOM_NUMBER INT, TIME_SLOT_ID INT);
+CREATE TABLE TAKES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, GRADE INT);
+CREATE TABLE STUDENT (ID INT, NAME INT, DEPT_NAME INT, TOT_CRED INT);",NEQ,"Q1 finds the department(s) offering a course whose credits equal the overall maximum credits found in the COURSE table. In contrast, Q2 joins every course with a subquery that computes the maximum credits for each department (but does not carry the department identifier), so the join is only on the credit value. As a result, a course in one department that has a credit value equal to the maximum of some other department will qualify—even if it is not the global maximum. This leads to extra department names appearing in Q2 that are not returned by Q1.","INSERT INTO COURSE (COURSE_ID, TITLE, DEPT_NAME, CREDITS) VALUES (1, 101, 10, 1);
+INSERT INTO COURSE (COURSE_ID, TITLE, DEPT_NAME, CREDITS) VALUES (2, 102, 10, 2);
+INSERT INTO COURSE (COURSE_ID, TITLE, DEPT_NAME, CREDITS) VALUES (3, 103, 20, 1);","We insert three courses: two in department 10 (with 1 and 2 credits) and one in department 20 (with 1 credit). The global maximum credit is 2, so Q1 returns only department 10, while Q2 returns both departments 10 and 20 because the 1-credit courses match the maximum of department 20.",Y,['10'],"['10', '20']",NEQ
