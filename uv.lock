@@ -236,7 +236,7 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.116.0,<1.0.0" },
     { name = "jpype1", specifier = ">=1.6.0,<2.0.0" },
     { name = "lark", specifier = ">=1.1.0,<2.0.0" },
-    { name = "mo-sql-parsing", specifier = "==8.205.22260" },
+    { name = "mo-sql-parsing", specifier = "==11.697.25301" },
     { name = "ordered-set", specifier = ">=4.1.0,<5.0.0" },
     { name = "pandas", specifier = ">=2.2.0,<4.0.0" },
     { name = "parseval", url = "https://github.com/sfu-db/ParSEval/releases/download/v0.0.7/parseval-0.0.7-py3-none-any.whl" },
@@ -671,42 +671,54 @@ wheels = [
 
 [[package]]
 name = "mo-dots"
-version = "9.189.22201"
+version = "10.685.25166"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "mo-future" },
     { name = "mo-imports" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e3/4f/ae502809276136e09e27c3daf8a1aea305d04362dc77e1e87ce1354cb75f/mo-dots-9.189.22201.tar.gz", hash = "sha256:cb332611b9662499d564400612f9b3a5c90a2b473128e2068224a34f2d2bf3c9", size = 23405, upload-time = "2022-07-20T02:48:35.316Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/12/b3/1e77f95df6fbe62a9d61fdb2bb24485da5e694508b780ecadbec9d4ad8b7/mo_dots-10.685.25166.tar.gz", hash = "sha256:bd045742d11289fc9b48e1211e30a54119cbf5b97f1f558be0c8d812db2e2336", size = 25087, upload-time = "2025-06-15T16:47:26.378Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c8/bc/65251c706740a8a4624d11f4e19eafd5ab7ceb175163e39a1e1a803c06a3/mo_dots-10.685.25166-py3-none-any.whl", hash = "sha256:03ad99f800fc74e82f9b96a91b456ca6a6cca7bfd46909027ac2b33cc858cb8b", size = 27306, upload-time = "2025-06-15T16:47:24.98Z" },
+]
 
 [[package]]
 name = "mo-future"
-version = "6.2.21303"
+version = "7.685.25166"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/c2/c9/dd112371f8442b5caf850a7d9af367d729d72fc110df9192364486461357/mo-future-6.2.21303.tar.gz", hash = "sha256:1594c1c126b4a7fabc01867ea7be181bcda2b32ac21065dae75b02c19c54b816", size = 10850, upload-time = "2021-10-30T16:36:01.609Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/97/3d/b786f81ab44df988875797746b227c4743c35a1bb8d5009d6bdf02215501/mo_future-7.685.25166.tar.gz", hash = "sha256:0846fc97bb12a688f44d98b246dab69a5757ab68b46ed1a641f2df317d455bed", size = 10503, upload-time = "2025-06-15T16:41:18.647Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/1c/81/27b4857b508f62a0e715b995b2a406eff618a1ad217538d330cf0b4d06be/mo_future-7.685.25166-py3-none-any.whl", hash = "sha256:a1b30ae9331094ccf33780fe8726bf947f6250f8a1ae65568c3d632a7fbcfdd3", size = 11208, upload-time = "2025-06-15T16:41:17.412Z" },
+]
 
 [[package]]
 name = "mo-imports"
-version = "7.187.22201"
+version = "7.685.25166"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "mo-future" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/64/ce/0a074cc7ded0b15863d011bbe8979298986d63482f4be0c172ac50760ce8/mo-imports-7.187.22201.tar.gz", hash = "sha256:a9779b9e63017b68fb079df0158b772de300770722e51497f5bf64476802a893", size = 11433, upload-time = "2022-07-20T02:37:28.942Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/0c/63/38af1440ee68413e8b8965070e0939b9dbce68fced5a3a0073a4ffea64c9/mo_imports-7.685.25166.tar.gz", hash = "sha256:d5c44eca0f5db99f7443548759f49094f1c1d5c348176826c460a8ba37429202", size = 12162, upload-time = "2025-06-15T16:42:53.082Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/55/5d/efb6a6b25ccdd359d12ae34c71dc39a1edf267524eb77fa6a5e58aa88693/mo_imports-7.685.25166-py3-none-any.whl", hash = "sha256:e98ecf92f88402fb2a1f9693955c8451419260c6e54ee9037c1a857ebc80b774", size = 11753, upload-time = "2025-06-15T16:42:52.016Z" },
+]
 
 [[package]]
 name = "mo-parsing"
-version = "8.204.22252"
+version = "8.694.25301"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "mo-dots" },
     { name = "mo-future" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e7/e7/725e20be700bbf14676134595e2fca492e4b0aab7f106d476497b3cb8e41/mo-parsing-8.204.22252.tar.gz", hash = "sha256:df1ef04b4c6ac036295992add7d6e384b10ae594d6a81c3b6e526efe4829286b", size = 58502, upload-time = "2022-09-09T16:11:40.267Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c7/b1/fe75894e24d8f59017706699242c624f9c748804178addcfa41b04a99187/mo_parsing-8.694.25301.tar.gz", hash = "sha256:552d904d2524408ef74609fb2368392664230c8ffdd0ff4ece414d84c0653051", size = 59140, upload-time = "2025-10-28T01:35:00.07Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/09/27/99f848137a9381fbf963fff409d3bd89814693381c28b42968916baa86de/mo_parsing-8.694.25301-py3-none-any.whl", hash = "sha256:08223b71a2a938c775eba2f9c5b51bb4957dd2e36dd8956f44ff495d06d9ea86", size = 62679, upload-time = "2025-10-28T01:34:58.514Z" },
+]
 
 [[package]]
 name = "mo-sql-parsing"
-version = "8.205.22260"
+version = "11.697.25301"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "mo-dots" },
@@ -714,7 +726,10 @@ dependencies = [
     { name = "mo-imports" },
     { name = "mo-parsing" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/65/f6/e88cff43023b875d06fccb57bd3a3a3a616870431f837264244904fc0371/mo-sql-parsing-8.205.22260.tar.gz", hash = "sha256:d7e244cd05a9cfdca214c4a326ff4ab4e12145167ceeb629c1a10c7e612c50bb", size = 35723, upload-time = "2022-09-17T13:17:24.76Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a9/9d/993e90623dcbc2d5a2e8c533e799cad0fb66e474d9078e7c767dc268ac44/mo_sql_parsing-11.697.25301.tar.gz", hash = "sha256:364b62673c623a6bd6e4ece933b0521de8be0357212019371cf658b943e8081d", size = 47147, upload-time = "2025-10-28T03:48:43.296Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/15/16/379ea6c2b8e0ef1d6f0bdde0c4c051b2db374c8f23db81bb8b136a0a199a/mo_sql_parsing-11.697.25301-py3-none-any.whl", hash = "sha256:c1755550c73a29aeda0e6483ee208f660dd3fb25dfad0658464a69c352842a3e", size = 44679, upload-time = "2025-10-28T03:48:42.257Z" },
+]
 
 [[package]]
 name = "numpy"
