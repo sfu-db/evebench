@@ -1,1 +1,1 @@
-datasets/**/*.csv text eol=crlf
+datasets/**/*.csv text eol=lf

@@ -12,7 +12,6 @@ CONFIG_VERSION = 1
 
 @dataclass(frozen=True, slots=True)
 class BackendBenchmarkConfig:
-    dialect: str
     options: dict[str, JSONValue] = field(default_factory=dict)
 
 
@@ -29,6 +28,7 @@ class BenchmarkConfig:
     max_workers: int
     max_tasks_per_worker: int
     progress_every: int
+    strip_shared_order_by_limit: bool = False
     source_path: Path | None = None
     version: int = CONFIG_VERSION
 
@@ -80,6 +80,7 @@ class BenchmarkConfig:
             "max_workers",
             "max_tasks_per_worker",
             "progress_every",
+            "strip_shared_order_by_limit",
             "backends",
         }
         _reject_unknown(raw, allowed, "benchmark")
@@ -90,14 +91,10 @@ class BenchmarkConfig:
                 f"expected {CONFIG_VERSION}"
             )
         name = _nonempty_string(raw, "name")
-        dataset_path = _relative_path(
-            source_path, _nonempty_string(raw, "dataset")
-        )
+        dataset_path = _relative_path(source_path, _nonempty_string(raw, "dataset"))
         if not dataset_path.is_file():
             raise ValueError(f"benchmark dataset does not exist: {dataset_path}")
-        database_path = _relative_path(
-            source_path, _nonempty_string(raw, "database")
-        )
+        database_path = _relative_path(source_path, _nonempty_string(raw, "database"))
         timeout_ms = _integer(raw, "timeout_ms")
         if not 100 <= timeout_ms <= 300_000:
             raise ValueError("timeout_ms must be between 100 and 300000")
@@ -105,9 +102,7 @@ class BenchmarkConfig:
         if semantics not in {"bag", "set"}:
             raise ValueError("semantics must be 'bag' or 'set'")
         seed = raw.get("seed")
-        if seed is not None and (
-            isinstance(seed, bool) or not isinstance(seed, int)
-        ):
+        if seed is not None and (isinstance(seed, bool) or not isinstance(seed, int)):
             raise ValueError("seed must be an integer or omitted")
         checker_ids = _string_tuple(raw, "checkers")
         if not checker_ids:
@@ -115,7 +110,7 @@ class BenchmarkConfig:
         if len(set(checker_ids)) != len(checker_ids):
             raise ValueError("checkers must not contain duplicates")
 
-        backend_raw = raw.get("backends")
+        backend_raw = raw.get("backends", {})
         if not isinstance(backend_raw, dict):
             raise ValueError("backends must be a table")
         backends: dict[str, BackendBenchmarkConfig] = {}
@@ -124,34 +119,21 @@ class BenchmarkConfig:
                 raise ValueError(f"backends.{checker_id} must be a table")
             _reject_unknown(
                 value,
-                {"dialect", "options"},
+                {"options"},
                 f"backends.{checker_id}",
             )
             options = value.get("options", {})
             if not isinstance(options, dict):
-                raise ValueError(
-                    f"backends.{checker_id}.options must be a table"
-                )
-            if checker_id == "parseval" and "connection_string" in options:
-                raise ValueError(
-                    "ParSEval connection_string is managed by the runner"
-                )
+                raise ValueError(f"backends.{checker_id}.options must be a table")
             backends[str(checker_id)] = BackendBenchmarkConfig(
-                dialect=_nonempty_string(value, "dialect").lower(),
-                options={
-                    str(key): json_safe(item)
-                    for key, item in options.items()
-                },
+                options={str(key): json_safe(item) for key, item in options.items()},
             )
-        missing = sorted(set(checker_ids) - set(backends))
-        if missing:
-            raise ValueError(
-                "missing backend configuration for: " + ", ".join(missing)
-            )
-
         max_workers = _integer(raw, "max_workers")
         max_tasks = _integer(raw, "max_tasks_per_worker")
         progress_every = _integer(raw, "progress_every")
+        strip_shared_order_by_limit = raw.get("strip_shared_order_by_limit", False)
+        if not isinstance(strip_shared_order_by_limit, bool):
+            raise ValueError("strip_shared_order_by_limit must be a boolean")
         if max_workers < 1:
             raise ValueError("max_workers must be positive")
         if max_tasks < 0:
@@ -171,14 +153,9 @@ class BenchmarkConfig:
             max_workers=max_workers,
             max_tasks_per_worker=max_tasks,
             progress_every=progress_every,
+            strip_shared_order_by_limit=strip_shared_order_by_limit,
             source_path=source_path,
         )
-
-    def backend_dialects(self) -> dict[str, str]:
-        return {
-            checker_id: config.dialect
-            for checker_id, config in self.backends.items()
-        }
 
     def backend_options(self) -> dict[str, dict[str, JSONValue]]:
         return {
@@ -194,9 +171,7 @@ def _reject_unknown(
 ) -> None:
     unknown = sorted(set(value) - allowed)
     if unknown:
-        raise ValueError(
-            f"unknown {location} option(s): {', '.join(unknown)}"
-        )
+        raise ValueError(f"unknown {location} option(s): {', '.join(unknown)}")
 
 
 def _nonempty_string(value: dict[str, Any], key: str) -> str:

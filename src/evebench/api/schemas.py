@@ -148,3 +148,58 @@ class CheckResultResponse(StrictModel):
 
 class CheckResponse(StrictModel):
     results: list[CheckResultResponse]
+
+
+class GeneratedPairResponse(StrictModel):
+    query_left: str
+    query_right: str
+    explanation: str | None
+    metadata: dict[str, Any]
+
+
+class QualityGateResponse(StrictModel):
+    accepted: bool
+    reason_code: str | None
+    message: str | None
+
+
+class PairEvaluationResponse(StrictModel):
+    index: int
+    pair: GeneratedPairResponse
+    quality_gate: QualityGateResponse
+    results: list[CheckResultResponse]
+
+
+class GenerateEvaluateRequest(StrictModel):
+    schema_ddl: str = Field(min_length=1, max_length=500_000)
+    dialect: str = Field(min_length=1, max_length=50)
+    semantics: Literal["bag", "set"] = "bag"
+    num_pairs: int = Field(default=10, ge=1, le=50)
+    complexity: Literal["simple", "medium", "complex"] = "medium"
+    checker_ids: list[str] | None = Field(default=None, max_length=32)
+    options: CheckOptionsRequest = Field(default_factory=CheckOptionsRequest)
+    teacher_options: dict[str, Any] = Field(default_factory=dict)
+    include_rejected: bool = True
+
+    @field_validator("dialect")
+    @classmethod
+    def normalize_generation_dialect(cls, value: str) -> str:
+        return value.strip().lower()
+
+    @field_validator("checker_ids")
+    @classmethod
+    def validate_generation_checker_ids(
+        cls, value: list[str] | None
+    ) -> list[str] | None:
+        if value is not None and not value:
+            raise ValueError("checker_ids must contain at least one checker")
+        return value
+
+
+class GenerateEvaluateResponse(StrictModel):
+    model: str
+    requested_pairs: int
+    generated_pairs: int
+    accepted_pairs: int
+    rejected_pairs: int
+    evaluations: list[PairEvaluationResponse]

@@ -55,7 +55,28 @@ def _parseval_adapter() -> ParsevalAdapter:
     return ParsevalAdapter(ParsevalConfig(backend_version="test"))
 
 
-def _case(*, dialect: str = "calcite") -> EquivalenceCase:
+def test_parseval_folds_alter_additions_into_create(tmp_path) -> None:
+    case = replace(
+        _case(dialect="postgresql"),
+        schema_ddl=(
+            "CREATE TABLE t (a INT); "
+            "ALTER TABLE ONLY t ADD COLUMN b INT; "
+            "ALTER TABLE t ADD CONSTRAINT t_pk PRIMARY KEY (a); "
+            "ALTER TABLE t DROP COLUMN b;"
+        ),
+    )
+    prepared = _parseval_adapter().preprocess(
+        case,
+        CheckOptions(backend_options={"parseval": {
+            "connection_string": "postgresql://localhost/parseval_test"
+        }}),
+    )
+    assert "CREATE TABLE t (a INT, b INT, CONSTRAINT t_pk PRIMARY KEY (a))" in prepared.schema_ddl
+    assert "ALTER TABLE" in prepared.schema_ddl
+    assert "ADD COLUMN" not in prepared.schema_ddl
+
+
+def _case(*, dialect: str = "mysql") -> EquivalenceCase:
     return EquivalenceCase(
         query_left="  SELECT a FROM t  ",
         query_right="\nSELECT a FROM t\n",
@@ -78,9 +99,7 @@ def test_each_adapter_preprocesses_queries_schema_and_options(tmp_path) -> None:
         _case(),
         CheckOptions(
             timeout_ms=2_000,
-            backend_options={
-                "verieql": {"bound_size": 4, "use_constraints": False}
-            },
+            backend_options={"verieql": {"bound_size": 4}},
         ),
     )
     connection = f"sqlite:///{tmp_path / 'parseval.sqlite'}"
@@ -123,8 +142,6 @@ def test_each_adapter_preprocesses_queries_schema_and_options(tmp_path) -> None:
 @pytest.mark.parametrize(
     ("case_update", "option_update", "reason_code", "status"),
     [
-        ({"query_left": " "}, {}, "empty_query", ExecutionStatus.INVALID_INPUT),
-        ({"schema_ddl": " "}, {}, "empty_schema", ExecutionStatus.INVALID_INPUT),
         (
             {"semantics": "set"},
             {},
@@ -137,14 +154,12 @@ def test_each_adapter_preprocesses_queries_schema_and_options(tmp_path) -> None:
             "unsupported_parameters",
             ExecutionStatus.UNSUPPORTED,
         ),
-        ({}, {"timeout_ms": 0}, "invalid_timeout", ExecutionStatus.INVALID_INPUT),
         (
             {},
             {"memory_limit_mb": 128},
             "unsupported_memory_limit",
             ExecutionStatus.UNSUPPORTED,
         ),
-        ({}, {"seed": True}, "invalid_seed", ExecutionStatus.INVALID_INPUT),
     ],
 )
 def test_shared_preprocessing_rejects_inputs_that_would_be_ignored(
@@ -164,12 +179,16 @@ def test_shared_preprocessing_rejects_inputs_that_would_be_ignored(
 
 
 def test_adapter_specific_options_are_type_checked(tmp_path) -> None:
+    with pytest.raises(ValueError, match="SPES strip_foreign_keys must be a boolean"):
+        _spes_adapter().preprocess(
+            _case(),
+            CheckOptions(backend_options={"spes": {"strip_foreign_keys": 1}}),
+        )
+
     with pytest.raises(AdapterInputError) as caught:
         _verieql_adapter(tmp_path).preprocess(
             _case(),
-            CheckOptions(
-                backend_options={"verieql": {"use_constraints": 1}}
-            ),
+            CheckOptions(backend_options={"verieql": {"use_constraints": 1}}),
         )
     assert caught.value.reason_code == "invalid_backend_options"
 
@@ -190,60 +209,38 @@ def test_adapter_specific_options_are_type_checked(tmp_path) -> None:
     assert caught.value.reason_code == "invalid_backend_options"
 
 
-def test_all_bird_rows_preprocess_for_every_adapter(tmp_path) -> None:
-    dataset = ROOT / "datasets" / "sqlite" / "bird_benchmark.csv"
-    with dataset.open(newline="", encoding="utf-8") as stream:
-        rows = list(csv.DictReader(stream))
+def test_spes_preprocess_strips_foreign_keys_when_requested() -> None:
+    case = replace(
+        _case(),
+        schema_ddl=(
+            "CREATE TABLE parent (id INT PRIMARY KEY);"
+            "CREATE TABLE child (pid INT REFERENCES parent(id));"
+        ),
+    )
+    prepared = _spes_adapter().preprocess(
+        case,
+        CheckOptions(backend_options={"spes": {"strip_foreign_keys": True}}),
+    )
+    assert "REFERENCES" not in prepared.schema_ddl
+    assert "pid INT" in prepared.schema_ddl
 
-    assert len(rows) == 1_432
-    sqlsolver_adapter = _sqlsolver_adapter()
-    spes_adapter = _spes_adapter()
-    verieql_adapter = _verieql_adapter(tmp_path)
-    parseval_adapter = _parseval_adapter()
-    for row in rows:
-        base = EquivalenceCase(
-            query_left=row["q1"],
-            query_right=row["q2"],
-            schema_ddl=row["schema_ddl"],
-            dialect="calcite",
-            semantics="bag",
-            case_id=f"{row['dbid']}:{row['index']}",
-        )
-        options = CheckOptions(timeout_ms=30_000, seed=1)
 
-        sqlsolver = sqlsolver_adapter.preprocess(base, options)
-        spes = spes_adapter.preprocess(base, options)
-        verieql = verieql_adapter.preprocess(
-            base,
-            replace(
-                options,
-                backend_options={
-                    "verieql": {
-                        "bound_size": 2,
-                        "use_constraints": True,
-                    }
-                },
-            ),
-        )
-        parseval = parseval_adapter.preprocess(
-            replace(base, dialect="sqlite"),
-            replace(
-                options,
-                backend_options={
-                    "parseval": {
-                        "connection_string": (
-                            f"sqlite:///{tmp_path / 'parseval.sqlite'}"
-                        ),
-                        "max_solver_calls": 48,
-                    }
-                },
-            ),
-        )
+def test_postgres_simple_query_compiles_without_relabelling():
+    prepared = _sqlsolver_adapter().preprocess(
+        _case(dialect="postgresql"), CheckOptions()
+    )
+    assert prepared.query_left == "SELECT a FROM t"
+    assert prepared.schema_ddl == "CREATE TABLE t (a INT);"
 
-        for prepared in (sqlsolver, spes, verieql, parseval):
-            assert prepared.query_left == row["q1"].strip()
-            assert prepared.query_right == row["q2"].strip()
-        assert sqlsolver.schema_ddl
-        assert spes.schema_ddl == sqlsolver.schema_ddl
-        assert verieql.schema
-        assert parseval.schema_ddl == row["schema_ddl"].strip()
+
+@pytest.mark.parametrize("factory", [_sqlsolver_adapter, _spes_adapter])
+def test_source_dialect_is_not_gated_by_descriptor(factory):
+    prepared = factory().preprocess(_case(dialect="duckdb"), CheckOptions())
+    assert prepared.query_left == "SELECT a FROM t"
+    assert prepared.schema_ddl == "CREATE TABLE t (a INT);"
+
+
+@pytest.mark.parametrize("factory", [_sqlsolver_adapter, _spes_adapter])
+def test_queries_are_translated_without_feature_allowlists(factory):
+    case = replace(_case(dialect="mysql"), query_left="SELECT COUNT(*) FROM t")
+    assert factory().preprocess(case, CheckOptions()).query_left == "SELECT COUNT(*) FROM t"

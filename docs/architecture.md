@@ -185,7 +185,7 @@ SQLSolver, SPES, VeriEQL, and ParSEval are always registered, with descriptor
 availability reflecting required local artifacts. The optional `llm` checker
 is registered only when `EVEBENCH_LLM_MODEL` is non-empty. Environment
 variables configure backend installations and LLM connection details.
-Benchmark TOML profiles select checkers, dialects, and validated per-backend
+Benchmark TOML profiles select checkers and validated per-backend
 options.
 
 Every descriptor contains:
@@ -199,18 +199,20 @@ Every descriptor contains:
 
 | Checker | Native execution | Dialects | Semantics |
 | --- | --- | --- | --- |
-| `sqlsolver` | JPype call into an embedded JVM | `calcite` | bag |
-| `spes` | executable fat JAR in a child JVM | `calcite` | bag |
-| `verieql` | isolated Python subprocess | Calcite, MySQL/MariaDB, PostgreSQL, Oracle | bag |
+| `sqlsolver` | JPype call into an embedded JVM | PostgreSQL, MySQL, SQLite | bag |
+| `spes` | executable fat JAR in a child JVM | PostgreSQL, MySQL, SQLite | bag |
+| `verieql` | isolated Python subprocess | MySQL/MariaDB, PostgreSQL, Oracle | bag |
 | `parseval` | direct Python `disprove()` call | SQLite, MySQL, PostgreSQL | bag and set |
-| `llm` | OpenAI-compatible Chat Completions HTTP request | SQLite, MySQL, PostgreSQL, Calcite | bag and set |
+| `llm` | OpenAI-compatible Chat Completions HTTP request | SQLite, MySQL, PostgreSQL | bag and set |
 
 ### SQLSolver and SPES
 
-Both Calcite adapters use a shared SQLGlot preprocessing step. It validates the
-case, removes foreign keys that the vendored parsers cannot consume, removes
-unsupported inline constraint names, and adds a default length to bare
-`VARCHAR` columns.
+QED, SQLSolver, and SPES own schema and query conversion in their backend
+packages. They share SQLGlot source-DDL parsing under `adapters/common/schema/`.
+The parser folds separate constraints into table declarations and preserves
+other statements. Each adapter renders the target format, calls its backend,
+and reports the response. Dialect metadata is descriptive; it does not gate
+execution. There are no SQL feature, column type, or schema-reference allowlists.
 
 SQLSolver loads its Z3 native libraries, starts one JVM per pool worker when
 needed, and invokes `sqlsolver.api.entry.Verification` through JPype. Its native
@@ -230,9 +232,11 @@ not-null constraints.
 
 `backend_options.verieql` accepts:
 
-- `bound_size`, an integer from 1 to 100; and
-- `use_constraints`, a boolean controlling whether parsed constraints are
-  passed to the verifier.
+- `bound_size`, an integer from 1 to 100.
+
+Parsed types and constraints are passed to the backend. A conversion error is
+reported if an input cannot be represented in the native dictionary format,
+such as a composite foreign key; it is never silently split into independent keys.
 
 Generated counterexamples are stored as normalized witnesses.
 
@@ -334,7 +338,7 @@ execution belongs to the CLI; the API reads persisted summaries.
 - dataset name;
 - timeout, SQL semantics, and seed;
 - ordered checker IDs;
-- one dialect and options table per checker; and
+- an options table per checker; and
 - worker count, worker recycling, and progress interval.
 
 Unknown profile keys are rejected. Relative paths are resolved from the
@@ -343,26 +347,21 @@ of configured checkers, limit the number of cases, or accept an ad hoc CSV.
 
 ### Dataset contract
 
-Canonical datasets are UTF-8 CSV files with this header:
+Datasets are UTF-8 CSV files with exactly seven columns:
 
 ```text
-dbid,index,schema_ddl,q1,q2,verieql_label,clean_ddl,parseval_label,ground_truth
+dbid,index,schema_ddl,q1,q2,dialect,ground_truth
 ```
 
-Each row is one equivalence case. `(dbid, index)` identifies the case as
-`dbid:index` and must be unique. `schema_ddl` is the authoritative schema,
-while `q1` and `q2` are the query pair. The source verifier labels and
-`clean_ddl` are retained for provenance. `ground_truth` is persisted for
-evaluation but is never passed to a checker.
-
-The runner requires `dbid`, `index`, `q1`, and `q2`, plus `schema_ddl` or the
-legacy `clean_ddl` fallback. The canonical builder emits all nine columns and
-validates non-empty input, schema coverage, and unique case IDs.
+Column order is unrestricted. The loader validates nonempty values, supported
+source dialect identifiers, EQ/NEQ labels, and unique `(dbid, index)` pairs.
+It preserves SQL text and never discovers schemas or reads legacy columns.
+Ground truth is stored for evaluation and never passed to checkers.
 
 ### Execution and resume
 
-`BenchmarkRunner` reads the CSV, applies any case limit, and resolves a dialect
-for every selected checker. For each row it:
+`BenchmarkRunner` reads the CSV and applies any case limit. The row supplies the source
+dialect for every selected checker. For each row it:
 
 1. creates the base `EquivalenceCase`;
 2. injects a disposable SQLite connection for ParSEval;
@@ -370,7 +369,7 @@ for every selected checker. For each row it:
 4. commits the case and its results in one SQLite transaction.
 
 The run snapshot includes the dataset SHA-256, case count after limiting,
-timeout, selected checker IDs, semantics, seed, backend dialects, backend
+timeout, selected checker IDs, semantics, seed, backend
 options, profile version/path, and worker/progress settings.
 
 To resume, the caller supplies an existing run ID. The store rejects a changed
@@ -419,7 +418,8 @@ logged, while detailed results remain in SQLite.
 ```text
 src/evebench/
   adapters/       lifecycle driver, registry, pooled proxies, and backends
-    schema/       Calcite and VeriEQL DDL translation
+    common/       internal schema parser and shared compilation mechanics
+    <backend>/    adapter, configuration, schema compiler, runtime helpers
   api/            FastAPI app, request/response schemas, and routes
   application/    checker selection and concurrent fan-out
   benchmark/      TOML profiles, CSV loading/building, runner, and SQLite store

@@ -4,10 +4,10 @@ import json
 from pathlib import Path
 from types import SimpleNamespace
 
-import evebench.adapters.verieql as verieql_module
+import evebench.adapters.verieql.adapter as verieql_module
 from evebench.adapters.core import execute_lifecycle
 from evebench.adapters.verieql import VeriEQLAdapter, VeriEQLConfig
-from evebench.adapters.schema import parse_verieql_ddl
+from evebench.adapters.verieql.schema import parse_verieql_ddl
 from evebench.domain import CheckOptions, EquivalenceCase
 from evebench.domain.models import ExecutionStatus, Verdict
 
@@ -23,7 +23,7 @@ def verieql_case() -> EquivalenceCase:
                 parent_id INT REFERENCES parent(id)
             );
         """,
-        dialect="calcite",
+        dialect="mysql",
         semantics="bag",
     )
 
@@ -34,7 +34,7 @@ def verieql_adapter() -> VeriEQLAdapter:
 
 
 def test_translates_ddl_to_verieql_schema_and_constraints() -> None:
-    parsed = parse_verieql_ddl(verieql_case().schema_ddl, "calcite")
+    parsed = parse_verieql_ddl(verieql_case().schema_ddl, "mysql")
 
     assert parsed.tables == {
         "PARENT": {"ID": "INT"},
@@ -110,7 +110,7 @@ def test_passes_native_schema_and_bound_to_runner(monkeypatch) -> None:
     assert captured["kwargs"]["timeout"] == 1.9
     assert captured["command"][-2:] == [
         "-m",
-        "evebench.adapters.verieql_runner",
+        "evebench.adapters.verieql.runner",
     ]
 
 
@@ -125,3 +125,28 @@ def test_rejects_invalid_bound_size() -> None:
 
     assert result.execution_status == ExecutionStatus.INVALID_INPUT
     assert result.reason_code == "invalid_bound_size"
+
+
+def test_alter_table_constraints_match_inline_constraints() -> None:
+    inline = """
+        CREATE TABLE parent (id INT, tenant INT, PRIMARY KEY (id, tenant));
+        CREATE TABLE child (parent_id INT, FOREIGN KEY (parent_id) REFERENCES parent(id));
+    """
+    separate = """
+        CREATE TABLE parent (id INT, tenant INT);
+        CREATE TABLE child (parent_id INT);
+        ALTER TABLE ONLY parent ADD CONSTRAINT parent_pk PRIMARY KEY (id, tenant);
+        ALTER TABLE child ADD CONSTRAINT child_fk FOREIGN KEY (parent_id) REFERENCES parent(id);
+    """
+    assert parse_verieql_ddl(separate, "postgresql") == parse_verieql_ddl(
+        inline, "postgresql"
+    )
+
+
+def test_alter_table_unsupported_constraints_are_not_ignored() -> None:
+    for constraint in ("UNIQUE (id)", "CHECK (id > 0)"):
+        parsed = parse_verieql_ddl(
+            f"CREATE TABLE t (id INT); ALTER TABLE t ADD CONSTRAINT c {constraint};",
+            "postgresql",
+        )
+        assert any("unsupported_schema" in item for item in parsed.constraints)

@@ -20,6 +20,7 @@ class Verdict(StrEnum):
     EQUIVALENT = "equivalent"
     NOT_EQUIVALENT = "not_equivalent"
     UNKNOWN = "unknown"
+    UNSUPPORTED = "unsupported"
     TIMEOUT = "timeout"
 
 

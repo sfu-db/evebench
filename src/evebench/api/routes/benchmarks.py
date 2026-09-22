@@ -14,5 +14,14 @@ async def benchmark_summary(
     dataset: Annotated[str | None, Query()] = None,
     run_id: Annotated[int | None, Query(ge=1)] = None,
 ) -> list[dict[str, object]]:
-    """Return four-way outcome ratios for the latest run of each dataset."""
+    """Return outcome counts and ratios for the latest run of each dataset."""
     return store.summary_dicts(dataset=dataset, run_id=run_id)
+
+
+@router.get("/unsupported-reasons")
+async def benchmark_unsupported_reasons(
+    store: Annotated[ResultStore, Depends(get_result_store)],
+    run_id: Annotated[int, Query(ge=1)],
+) -> list[dict[str, object]]:
+    """Return unsupported reason counts for one benchmark run."""
+    return store.unsupported_reasons(run_id=run_id)

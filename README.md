@@ -11,11 +11,12 @@ a CLI summary, HTTP API, and web leaderboard.
 
 ## What is included
 
-| Checker ID | Backend source | Preparation | Default dialect |
+| Checker ID | Backend source | Preparation | Example source dialects |
 | --- | --- | --- | --- |
-| `sqlsolver` | `baselines/SQLSolver` submodule | Build a fat JAR | `calcite` |
-| `spes` | `baselines/spes` submodule | Build an executable fat JAR | `calcite` |
-| `verieql` | `baselines/VeriEQL` submodule | No compilation | `calcite` |
+| `sqlsolver` | `baselines/SQLSolver` submodule | Build a fat JAR | PostgreSQL, MySQL, SQLite |
+| `spes` | `baselines/spes` submodule | Build an executable fat JAR | PostgreSQL, MySQL, SQLite |
+| `qed` | `baselines/qed` | Build the parser JAR and Rust prover | PostgreSQL, MySQL, SQLite |
+| `verieql` | `baselines/VeriEQL` submodule | No compilation | MySQL/MariaDB, PostgreSQL, Oracle |
 | `parseval` | Python wheel pinned in `pyproject.toml` | Installed by `uv sync` | `sqlite` |
 | `llm` | OpenAI-compatible Chat Completions endpoint | Set environment variables | `sqlite` |
 
@@ -67,7 +68,7 @@ git submodule update --init baselines/VeriEQL
 
 Use `git submodule update --init --recursive` rather than cloning the upstream
 repositories directly. This keeps each adapter at the revision tested with
-EveBench. Confirm that all three were initialized:
+EveBench. Confirm that the requested submodules were initialized:
 
 ```sh
 git submodule status
@@ -164,11 +165,80 @@ uv run --env-file .env pytest tests/test_real_backends.py -q
 This executes the same non-equivalent query pair through SQLSolver, SPES,
 VeriEQL, and ParSEval. It also checks that VeriEQL and ParSEval return
 counterexamples.
+### QED parser
+Build the qed parser with:
+```sh
+cd baselines/qed/parser
+JAVA_HOME="$JAVA19_HOME" PATH="$JAVA19_HOME/bin:$PATH" \
+  mvn clean package -DskipTests
+```
+
+Run it with:
+```sh
+"$JAVA19_HOME/bin/java" --enable-preview \
+  --add-opens=java.base/java.lang.reflect=ALL-UNNAMED \
+  -jar target/qed-parser-1.0-SNAPSHOT-jar-with-dependencies.jar \
+  example.sql
+
+```
+
+
+### QED prover and adapter
+
+
+The QED prover is available in `baselines/qed/prover`. The `qed` adapter runs
+the parser on the schema and query pair, then passes the generated JSON to the
+prover. It compiles PostgreSQL, MySQL, and SQLite inputs for its parser with `bag` semantics. A successful proof
+returns `equivalent`; "not provable" returns `unknown`, not `not_equivalent`.
+Both stages share the request timeout and use a temporary directory.
+QED keeps foreign keys in the emitted schema by default. Its parser cannot
+parse them, so cases with foreign keys can fail at the parser stage. For a
+benchmark that intentionally ignores foreign keys, set
+`backends.qed.options.strip_foreign_keys = true` in the benchmark TOML (or
+`backend_options.qed.strip_foreign_keys = true` in an API request). Record this
+choice with the benchmark results because it changes the schema QED sees.
+
+Initialize its pinned source from the repository root:
+
+```sh
+git submodule update --init --recursive baselines/qed/prover
+```
+```sh
+cargo +nightly build --release --manifest-path baselines/qed/prover/Cargo.toml
+```
+
+This produces `baselines/qed/prover/target/release/qed-prover`. Check that both
+runtime solvers are on `PATH`, then run the bundled Calcite cases:
+
+```sh
+z3 --version
+cvc5 --version
+baselines/qed/prover/target/release/qed-prover baselines/qed/prover/tests/calcite/
+```
+
+You can also pass individual QED JSON files. Raw SQL must first be converted
+with the [QED parser](baselines/qed/parser/README.md). Set `QED_SMT_TIMEOUT` to
+change the per-SMT-request timeout in milliseconds (default: `10000`), or
+`RUST_LOG=info` for verbose output.
+
+Set `JAVA19_HOME` or `EVEBENCH_QED_JAVA` to select Java 19 for the adapter.
+Select checker `qed` in API requests or pass `--checker qed` to the CLI.
+Run `uv run pytest tests/test_qed.py -q` to test the adapter, including real
+parser/prover checks when its build artifacts and runtime commands are present.
+
+Common build errors:
+
+- **`Unable to find libclang`**: install `libclang-dev`. If Clang is installed
+  in a custom location, set `LIBCLANG_PATH` to the directory containing
+  `libclang.so`; the variable cannot replace installing the library.
+- **`E0554: #![feature] may not be used on the stable release channel`**: use
+  `cargo +nightly` as above. The pinned prover still declares nightly feature
+  attributes, which stable Rust rejects even when those features have stabilized.
 
 ## Benchmark dataset format
 
 EveBench datasets are UTF-8 CSV files with one query-equivalence case per row.
-All benchmark datasets use the same column order and meaning:
+The loader requires exactly these columns (column order is unrestricted):
 
 | Column | Description |
 | --- | --- |
@@ -177,22 +247,20 @@ All benchmark datasets use the same column order and meaning:
 | `schema_ddl` | Complete authoritative DDL used to create the schema. Multiple statements are separated by semicolons. |
 | `q1` | First SQL query in the pair. |
 | `q2` | Second SQL query in the pair. |
-| `verieql_label` | VeriEQL result supplied with the source dataset, retained for provenance. |
-| `clean_ddl` | Legacy reduced DDL supplied with the source dataset, retained for comparison. |
-| `parseval_label` | ParSEval result supplied with the source dataset, retained for provenance. |
+| `dialect` | Source SQL dialect for both schema and queries, e.g. `postgresql` or `sqlite`. |
 | `ground_truth` | Reference equivalence label, normally `EQ` or `NEQ`. |
 
 The header is therefore:
 
 ```text
-dbid,index,schema_ddl,q1,q2,verieql_label,clean_ddl,parseval_label,ground_truth
+dbid,index,schema_ddl,q1,q2,dialect,ground_truth
 ```
 
 The `(dbid, index)` pair must be unique. SQL and DDL must use normal CSV
 quoting when they contain commas, quotes, or newlines. Benchmark execution
 uses `schema_ddl`; each adapter then performs its own dialect-specific
-normalization. The two verifier-label columns and `clean_ddl` are provenance
-fields and are not used as inputs to the current benchmark run.
+compilation. Unknown columns, empty values, duplicate cases, and labels other
+than `EQ`/`NEQ` are rejected. No schema discovery or legacy fallback is performed.
 `ground_truth` is persisted with the case for evaluation; it is not shown to
 the verifier.
 
@@ -210,6 +278,9 @@ Use absolute paths for custom adapter installations.
 | `EVEBENCH_SPES_JAR` | `baselines/spes/build/libs/equitas-1.0-SNAPSHOT.jar` |
 | `EVEBENCH_SPES_LIB` | `baselines/SQLSolver/lib` |
 | `EVEBENCH_SPES_WORKDIR` | `baselines/spes` |
+| `EVEBENCH_QED_PARSER_JAR` | `baselines/qed/parser/target/qed-parser-1.0-SNAPSHOT-jar-with-dependencies.jar` |
+| `EVEBENCH_QED_PROVER` | `baselines/qed/prover/target/release/qed-prover` |
+| `EVEBENCH_QED_JAVA` | `$JAVA19_HOME/bin/java`, falling back to `EVEBENCH_JAVA` or `java` |
 | `EVEBENCH_VERIEQL_ROOT` | `baselines/VeriEQL` |
 | `EVEBENCH_VERIEQL_Z3_LIB` | `baselines/SQLSolver/lib` |
 | `EVEBENCH_VERIEQL_BOUND_SIZE` | `2` |
@@ -249,7 +320,6 @@ array and give it a backend table:
 checkers = ["sqlsolver", "spes", "verieql", "parseval", "llm"]
 
 [backends.llm]
-dialect = "sqlite"
 
 [backends.llm.options]
 reasoning_effort = "medium"
@@ -273,9 +343,14 @@ attempts rather than equivalence evidence.
 `sqlsolver.properties`. The checked-in file sets SQLSolver's internal Z3
 timeout to 10,000 ms. The benchmark's outer per-checker deadline is configured
 separately with `timeout_ms` in its TOML profile or `--timeout-ms` on the CLI.
-SPES has no per-run adapter options. VeriEQL's `bound_size` and
-`use_constraints`, and ParSEval's data-generation settings, live under their
+SPES has no per-run adapter options. VeriEQL's `bound_size` and ParSEval's data-generation settings, live under their
 respective `[backends.<checker>.options]` tables in the benchmark profile.
+Set `strip_shared_order_by_limit = true` at the top level of a benchmark profile
+to remove matching top-level `ORDER BY`, `LIMIT`, and `OFFSET` clauses from both
+queries before checking them. When both queries have the same `LIMIT` and
+`OFFSET` but different `ORDER BY` clauses, the orders remain. The default is
+`false`; this option changes the queries being evaluated, so dataset ground-truth labels may
+no longer apply.
 
 EveBench does not load `.env` implicitly. The examples below use
 `uv run --env-file .env ...` so that the file is applied consistently.
@@ -288,11 +363,12 @@ Start with a small end-to-end run:
 uv run --env-file .env python -m evebench benchmark --limit 10
 ```
 
-With no dataset or `--config` argument, the CLI loads
+Provide a dataset CSV or `--config`; no dataset is selected implicitly.
+The example profile is
 `configs/benchmarks/bird_baseline.toml`. That profile fixes:
 
 - the generated BIRD dataset and SQLite result paths;
-- checker order and per-checker SQL dialect;
+- checker order and backend options;
 - the timeout, semantics, seed, and worker-pool settings; and
 - VeriEQL bounds and ParSEval generation options.
 
@@ -372,7 +448,7 @@ Then open:
 - benchmark leaderboard: <http://localhost:8000/leaderboard>
 - OpenAPI documentation: <http://localhost:8000/docs>
 
-In the workbench, use the `calcite` dialect override for SQLSolver and SPES.
+In the workbench, select the source dialect once; adapters own target compilation.
 ParSEval requires a disposable database URL such as
 `sqlite:////tmp/evebench-case.db`; it deletes the named SQLite file, or drops
 the named PostgreSQL/MySQL database, after every attempt.
@@ -431,3 +507,25 @@ datasets/sqlite/          bundled and generated BIRD data
 baselines/                pinned adapter submodules
 tests/                    unit and real-backend integration tests
 ```
+
+### Adapter package boundaries
+
+Each backend is a package under `src/evebench/adapters/`, containing its
+configuration and lifecycle implementation. Backend schema compilers live in
+`sqlsolver/schema.py`, `spes/schema.py`, `qed/schema.py`, and `verieql/schema.py`.
+Shared source-DDL parsing lives in `adapters/common/schema/`; the loader and
+runner never inspect its catalog. VeriEQL's subprocess runner and ParSEval's
+database lifecycle live inside their respective packages.
+
+The SQLGlot schema frontend folds separate `ALTER TABLE ... ADD CONSTRAINT`
+statements into table definitions. Each adapter renders its backend's input
+format directly. Adapters do not gate source dialects or preflight SQL features,
+column types, or schema references; the backend determines whether it can process
+the input and returns the result. Parsing and native-format encoding errors are
+reported when conversion itself fails.
+
+Configure a disposable `connection_string` in the ParSEval backend options
+with an engine matching the dataset dialect. The bundled BIRD and PostgreSQL
+profiles use SQLite and PostgreSQL URLs, respectively. The adapter removes
+the named database after each attempt, so do not point it at an existing
+database or share it between concurrent runs.

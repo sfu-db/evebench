@@ -21,19 +21,27 @@ from evebench.adapters import (
     LLMConfig,
     ParsevalConfig,
     PooledChecker,
+    QEDConfig,
     SPESConfig,
     SQLSolverConfig,
     VeriEQLConfig,
     llm_descriptor,
     parseval_descriptor,
+    qed_descriptor,
     spes_descriptor,
     sqlsolver_descriptor,
     verieql_descriptor,
 )
-from evebench.api.routes import benchmarks_router, checkers_router, checks_router
+from evebench.api.routes import (
+    benchmarks_router,
+    checkers_router,
+    checks_router,
+    generation_router,
+)
 from evebench.application import CheckService
 from evebench.benchmark import ResultStore
 from evebench.execution import BackendProcessPool
+from evebench.generator import GenerationService, LLMTeacher, LLMTeacherConfig
 from evebench.observability import configure_logging, get_logger, log_context
 
 logger = get_logger(__name__)
@@ -78,6 +86,28 @@ def default_registry(backend_pool: BackendProcessPool) -> CheckerRegistry:
         ),
         java_command=os.environ.get("EVEBENCH_JAVA", "java"),
     )
+    qed_root = repository_root / "baselines" / "qed"
+    java19_home = os.environ.get("JAVA19_HOME")
+    qed_config = QEDConfig(
+        parser_jar_path=os.environ.get(
+            "EVEBENCH_QED_PARSER_JAR",
+            str(
+                qed_root / "parser" / "target"
+                / "qed-parser-1.0-SNAPSHOT-jar-with-dependencies.jar"
+            ),
+        ),
+        prover_path=os.environ.get(
+            "EVEBENCH_QED_PROVER",
+            str(qed_root / "prover/target/release/qed-prover"),
+        ),
+        java_command=os.environ.get(
+            "EVEBENCH_QED_JAVA",
+            (
+                str(Path(java19_home) / "bin/java")
+                if java19_home else os.environ.get("EVEBENCH_JAVA", "java")
+            ),
+        ),
+    )
     verieql_root = repository_root / "baselines" / "VeriEQL"
     verieql_config = VeriEQLConfig(
         root_path=os.environ.get(
@@ -100,6 +130,7 @@ def default_registry(backend_pool: BackendProcessPool) -> CheckerRegistry:
         backend_version=importlib.metadata.version("parseval"),
     )
     checkers = [
+        PooledChecker(qed_descriptor(qed_config), qed_config, backend_pool),
         PooledChecker(
             sqlsolver_descriptor(sqlsolver_config),
             sqlsolver_config,
@@ -192,6 +223,29 @@ def create_app(
     )
     app.state.backend_pool = backend_pool
     app.state.check_service = CheckService(registry)
+    llmgen_model = os.environ.get("EVEBENCH_LLMGEN_MODEL", "").strip() or os.environ.get(
+        "EVEBENCH_LLM_MODEL", ""
+    ).strip()
+    llmgen_config = LLMTeacherConfig(
+        model=llmgen_model,
+        base_url=os.environ.get(
+            "EVEBENCH_LLMGEN_BASE_URL",
+            os.environ.get("EVEBENCH_LLM_BASE_URL", "https://api.openai.com/v1"),
+        ),
+        api_key=os.environ.get(
+            "EVEBENCH_LLMGEN_API_KEY",
+            os.environ.get("EVEBENCH_LLM_API_KEY", os.environ.get("OPENAI_API_KEY")),
+        ),
+        reasoning_effort=os.environ.get("EVEBENCH_LLMGEN_REASONING_EFFORT") or None,
+        max_completion_tokens=int(
+            os.environ.get("EVEBENCH_LLMGEN_MAX_COMPLETION_TOKENS", "4096")
+        ),
+    )
+    app.state.generation_service = GenerationService(
+        app.state.check_service,
+        LLMTeacher(llmgen_config),
+        max_concurrency=int(os.environ.get("EVEBENCH_GENERATION_CONCURRENCY", "2")),
+    )
     app.state.result_store = result_store or ResultStore(
         os.environ.get("EVEBENCH_RESULTS_DB", "data/evebench.sqlite")
     )
@@ -249,6 +303,7 @@ def create_app(
     app.include_router(benchmarks_router)
     app.include_router(checkers_router)
     app.include_router(checks_router)
+    app.include_router(generation_router)
 
     web_root = Path(__file__).resolve().parents[1] / "web"
     app.mount("/assets", StaticFiles(directory=web_root / "assets"), name="assets")

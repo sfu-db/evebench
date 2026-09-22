@@ -18,6 +18,13 @@ from evebench.domain import (
     ExecutionStatus,
     Verdict,
 )
+from evebench.generator import GenerationUnavailableError, GenerationValidationError
+from evebench.generator.models import (
+    GenerateAndEvaluateResult,
+    GeneratedPair,
+    PairEvaluation,
+    QualityGateResult,
+)
 
 
 class APIStubChecker:
@@ -43,12 +50,51 @@ class APIStubChecker:
         )
 
 
+class APIFakeGenerationService:
+    async def generate_and_evaluate(self, request):
+        if request.teacher_options.get("mode") == "validation_error":
+            raise GenerationValidationError("invalid teacher options")
+        if request.teacher_options.get("mode") == "unavailable":
+            raise GenerationUnavailableError("llm unavailable")
+
+        now = datetime.now(UTC)
+        result = CheckResult(
+            checker=APIStubChecker.descriptor.checker,
+            execution_status=ExecutionStatus.COMPLETED,
+            verdict=Verdict.EQUIVALENT,
+            duration_ms=1,
+            started_at=now,
+            finished_at=now,
+        )
+        return GenerateAndEvaluateResult(
+            model="fake-model",
+            requested_pairs=request.num_pairs,
+            generated_pairs=1,
+            accepted_pairs=1,
+            rejected_pairs=0,
+            evaluations=[
+                PairEvaluation(
+                    index=1,
+                    pair=GeneratedPair(
+                        query_left="SELECT a FROM t",
+                        query_right="SELECT a FROM t",
+                        explanation="same projection",
+                        metadata={"shape": "projection"},
+                    ),
+                    quality_gate=QualityGateResult(accepted=True),
+                    results=[result],
+                )
+            ],
+        )
+
+
 @pytest_asyncio.fixture
 async def client(tmp_path):
     app = create_app(
         CheckerRegistry((APIStubChecker(),)),
         result_store=ResultStore(tmp_path / "results.sqlite"),
     )
+    app.state.generation_service = APIFakeGenerationService()
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=app),
         base_url="http://test",
@@ -103,11 +149,23 @@ async def test_leaderboard_supports_count_toggle_and_column_sorting(
     script = await client.get("/assets/leaderboard.js")
 
     assert 'name="value-mode" value="count"' in page.text
-    assert 'data-sort="neq" aria-sort="descending"' in page.text
-    assert 'let sortColumn = "neq"' in script.text
+    assert 'data-sort="accuracy" aria-sort="descending"' in page.text
+    assert 'let sortColumn = "accuracy"' in script.text
     assert 'row[`${verdict}_count`]' in script.text
     assert 'row[`${sortColumn}_ratio`]' in script.text
     assert 'querySelectorAll("th[data-sort] button")' in script.text
+    assert 'id="unsupported-reasons"' in page.text
+    assert "/v1/benchmarks/unsupported-reasons?run_id=" in script.text
+
+
+@pytest.mark.asyncio
+async def test_unsupported_reasons_endpoint_requires_run_id(client: httpx.AsyncClient) -> None:
+    missing = await client.get("/v1/benchmarks/unsupported-reasons")
+    empty = await client.get("/v1/benchmarks/unsupported-reasons?run_id=1")
+
+    assert missing.status_code == 422
+    assert empty.status_code == 200
+    assert empty.json() == []
 
 
 @pytest.mark.asyncio
@@ -191,3 +249,58 @@ async def test_request_id_is_preserved_or_safely_replaced(
     assert valid.headers["x-request-id"] == "request-123"
     assert invalid.headers["x-request-id"] != "bad id"
     assert len(invalid.headers["x-request-id"]) == 32
+
+
+@pytest.mark.asyncio
+async def test_generate_evaluate_runs_teacher_examiner_pipeline(
+    client: httpx.AsyncClient,
+) -> None:
+    response = await client.post(
+        "/v1/generation/generate-evaluate",
+        json={
+            "schema_ddl": "CREATE TABLE t (a INT);",
+            "dialect": "sqlite",
+            "num_pairs": 1,
+            "checker_ids": ["stub"],
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["model"] == "fake-model"
+    assert payload["accepted_pairs"] == 1
+    assert payload["evaluations"][0]["results"][0]["checker"]["checker_id"] == "stub"
+
+
+@pytest.mark.asyncio
+async def test_generate_evaluate_returns_validation_error(
+    client: httpx.AsyncClient,
+) -> None:
+    response = await client.post(
+        "/v1/generation/generate-evaluate",
+        json={
+            "schema_ddl": "CREATE TABLE t (a INT);",
+            "dialect": "sqlite",
+            "teacher_options": {"mode": "validation_error"},
+        },
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"]["code"] == "invalid_generation_request"
+
+
+@pytest.mark.asyncio
+async def test_generate_evaluate_returns_unavailable_error(
+    client: httpx.AsyncClient,
+) -> None:
+    response = await client.post(
+        "/v1/generation/generate-evaluate",
+        json={
+            "schema_ddl": "CREATE TABLE t (a INT);",
+            "dialect": "sqlite",
+            "teacher_options": {"mode": "unavailable"},
+        },
+    )
+
+    assert response.status_code == 503
+    assert response.json()["detail"]["code"] == "generation_unavailable"

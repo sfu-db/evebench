@@ -392,7 +392,7 @@ textarea:focus, select:focus, input:focus { border-color: #86b5f7; box-shadow: 0
 .verdict { padding: 6px 9px; border-radius: 999px; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
 .verdict.equivalent { color: var(--green); background: var(--green-soft); }
 .verdict.not_equivalent { color: var(--red); background: var(--red-soft); }
-.verdict.unknown, .verdict.error { color: var(--amber); background: var(--amber-soft); }
+.verdict.unknown, .verdict.unsupported, .verdict.error { color: var(--amber); background: var(--amber-soft); }
 .result-meta { display: flex; gap: 18px; margin-top: 13px; padding-top: 12px; border-top: 1px solid #eff0f2; color: var(--muted); font-size: 11px; }
 .result-message { margin: 12px 0 0; color: #565c65; font-size: 12px; line-height: 1.55; }
 .error-box { padding: 14px; border-radius: 12px; color: var(--red); background: var(--red-soft); font-size: 13px; line-height: 1.5; }
@@ -450,11 +450,24 @@ tbody tr:hover { background: #fafcff; }
 .score.best { color: var(--blue); font-weight: 700; }
 .outcome-eq { color: var(--green); }
 .outcome-neq { color: var(--red); }
-.outcome-unknown, .outcome-timeout { color: var(--amber); }
+.outcome-unknown, .outcome-unsupported, .outcome-timeout { color: var(--amber); }
 .empty-board { padding: 44px 18px; color: var(--muted); text-align: center !important; }
 .coverage { display: inline-flex; align-items: center; justify-content: center; min-width: 54px; padding: 5px 7px; border-radius: 7px; background: var(--wash); font: 11px "DM Mono"; }
 .top-row { background: #f9fbff; }
 .top-row .rank { color: var(--blue); font-weight: 700; }
+
+.reason-section { margin-top: 42px; }
+.reason-section .section-head { margin-bottom: 18px; }
+.reason-section h2 { font-size: 24px; }
+.reason-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+.reason-card { padding: 18px; border: 1px solid var(--line); border-radius: 14px; background: white; }
+.reason-card h3 { margin: 0 0 4px; font-size: 15px; }
+.reason-card p { margin: 0 0 14px; color: var(--muted); font-size: 12px; }
+.reason-card ul { margin: 0; padding: 0; list-style: none; }
+.reason-card li { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-top: 1px solid var(--line); font-size: 12px; }
+.reason-card code { overflow-wrap: anywhere; }
+.reason-card .reason-count { flex: none; color: var(--amber); font: 500 12px "DM Mono"; }
+.reason-empty { grid-column: 1 / -1; padding: 24px; border: 1px solid var(--line); border-radius: 14px; color: var(--muted); text-align: center; font-size: 13px; }
 
 .metric-guide { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; max-width: 1180px; margin: 24px auto 0; }
 .metric-card { padding: 18px; border: 1px solid var(--line); border-radius: 14px; }

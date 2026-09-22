@@ -12,6 +12,7 @@ from evebench.domain.models import (
     CheckerDescriptor,
     EquivalenceCase,
     ExecutionStatus,
+    Verdict,
 )
 
 
@@ -132,7 +133,7 @@ def normalize_adapter_input(
     options: CheckOptions,
     descriptor: CheckerDescriptor,
 ) -> EquivalenceCase:
-    """Validate shared adapter inputs and normalize harmless outer whitespace."""
+    """Normalize validated inputs and check backend capabilities."""
     if not descriptor.available:
         raise AdapterInputError(
             ExecutionStatus.UNSUPPORTED,
@@ -141,64 +142,27 @@ def normalize_adapter_input(
             or f"{descriptor.display_name} is unavailable",
         )
     dialect = case.dialect.strip().lower()
-    if dialect not in descriptor.supported_dialects:
-        raise AdapterInputError(
-            ExecutionStatus.UNSUPPORTED,
-            "unsupported_dialect",
-            f"{descriptor.display_name} does not support dialect {case.dialect!r}",
-        )
     semantics = case.semantics.strip().lower()
     if semantics not in descriptor.supported_semantics:
         raise AdapterInputError(
             ExecutionStatus.UNSUPPORTED,
             "unsupported_semantics",
-            f"{descriptor.display_name} does not support semantics "
-            f"{case.semantics!r}",
+            f"{descriptor.display_name} does not support semantics {case.semantics!r}",
         )
     query_left = case.query_left.strip()
     query_right = case.query_right.strip()
     schema_ddl = case.schema_ddl.strip()
-    if not query_left or not query_right:
-        raise AdapterInputError(
-            ExecutionStatus.INVALID_INPUT,
-            "empty_query",
-            "Both SQL queries must be non-empty",
-        )
-    if not schema_ddl:
-        raise AdapterInputError(
-            ExecutionStatus.INVALID_INPUT,
-            "empty_schema",
-            "Schema DDL must be non-empty",
-        )
     if case.parameters:
         raise AdapterInputError(
             ExecutionStatus.UNSUPPORTED,
             "unsupported_parameters",
             f"{descriptor.display_name} does not support bound query parameters",
         )
-    if (
-        isinstance(options.timeout_ms, bool)
-        or not isinstance(options.timeout_ms, int)
-        or options.timeout_ms < 1
-    ):
-        raise AdapterInputError(
-            ExecutionStatus.INVALID_INPUT,
-            "invalid_timeout",
-            "timeout_ms must be a positive integer",
-        )
     if options.memory_limit_mb is not None:
         raise AdapterInputError(
             ExecutionStatus.UNSUPPORTED,
             "unsupported_memory_limit",
             "memory_limit_mb is not enforced by the current executor",
-        )
-    if options.seed is not None and (
-        isinstance(options.seed, bool) or not isinstance(options.seed, int)
-    ):
-        raise AdapterInputError(
-            ExecutionStatus.INVALID_INPUT,
-            "invalid_seed",
-            "seed must be an integer or null",
         )
     return replace(
         case,
@@ -239,7 +203,7 @@ def error_result(
     return CheckResult(
         checker=descriptor.checker,
         execution_status=status,
-        verdict=None,
+        verdict=Verdict.UNSUPPORTED if status == ExecutionStatus.UNSUPPORTED else None,
         duration_ms=duration_ms(started_at, finished_at),
         started_at=started_at,
         finished_at=finished_at,
@@ -255,8 +219,6 @@ def duration_ms(started_at: datetime, finished_at: datetime) -> int:
 
 def parse_last_json_object(raw: str) -> dict[str, Any]:
     """Parse a backend's final non-empty stdout line as a JSON object."""
-    if not raw:
-        raise ValueError("empty stdout")
     line = next(
         (line for line in reversed(raw.splitlines()) if line.strip()),
         None,
