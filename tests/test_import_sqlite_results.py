@@ -1,24 +1,14 @@
-import importlib.util
-from pathlib import Path
-import sys
 import sqlite3
 
 import pytest
 
 from evebench.benchmark.store import ResultStore
 
-SCRIPTS = Path(__file__).resolve().parents[1] / "scripts"
-spec = importlib.util.spec_from_file_location("sqlite_import", SCRIPTS / "import_sqlite_results.py")
-importer = importlib.util.module_from_spec(spec)
-sys.path.insert(0, str(SCRIPTS))
-try:
-    spec.loader.exec_module(importer)
-finally:
-    sys.path.pop(0)
+import scripts.results.import_sqlite_results as importer
 
 
 def make_sources(root):
-    from analyze_sqlite_results import write_csv
+    from scripts.results.analyze_sqlite_results import write_csv
     (root / "evebench").mkdir(parents=True)
     for dataset, (filename, folder) in importer.SOURCES.items():
         (root / folder).mkdir(parents=True, exist_ok=True)
@@ -50,7 +40,7 @@ def test_import_is_idempotent_and_leaderboard_matches_analysis(tmp_path):
 
 
 def test_import_rolls_back_all_datasets_on_invalid_case(tmp_path):
-    from analyze_sqlite_results import read_csv, write_csv
+    from scripts.results.analyze_sqlite_results import read_csv, write_csv
     root, database = tmp_path / "sources", tmp_path / "results.sqlite"
     make_sources(root)
     path = root / "evebench/literature.csv"

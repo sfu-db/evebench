@@ -3,7 +3,7 @@
 Run from the repository root (Python standard library only):
 
 ```bash
-python scripts/analyze_sqlite_results.py
+python -m scripts.results.analyze_sqlite_results
 ```
 
 Optional flags: `--sqlite-dir PATH` selects a directory containing `evebench/`,
@@ -53,7 +53,7 @@ taken from stored outputs, not revalidated against today's schema.
 With EveBench installed in the active Python environment, run:
 
 ```bash
-python scripts/import_sqlite_results.py --database data/evebench.sqlite
+python -m scripts.results.import_sqlite_results --database data/evebench.sqlite
 ```
 
 The default database is `EVEBENCH_RESULTS_DB` if set in the shell, otherwise

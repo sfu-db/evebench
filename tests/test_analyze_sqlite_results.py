@@ -1,10 +1,4 @@
-import importlib.util
-from pathlib import Path
-
-MODULE = Path(__file__).resolve().parents[1] / "scripts/analyze_sqlite_results.py"
-spec = importlib.util.spec_from_file_location("analysis", MODULE)
-analysis = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(analysis)
+import scripts.results.analyze_sqlite_results as analysis
 
 
 def test_predictions_do_not_infer_equivalence_from_failed_counterexample():

@@ -1,27 +1,23 @@
-import importlib.util
-from pathlib import Path
-
 import pandas as pd
 import psycopg2
 
-SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "convert_postgres_datasets.py"
-spec = importlib.util.spec_from_file_location("convert_postgres_datasets", SCRIPT)
-module = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(module)
-convert_files = module.convert_files
+import scripts.datasets.convert_postgres_datasets as module
 
 
-def test_remove_line_comments_preserves_quoted_double_dashes():
+def test_normalize_query_removes_comments_and_preserves_quoted_double_dashes():
     query = "SELECT '-- text', \"-- column\" -- explanation\nFROM t -- trailing\nWHERE a = 1"
-    assert module.remove_line_comments(query) == (
-        "SELECT '-- text', \"-- column\" \nFROM t \nWHERE a = 1"
+    assert module.normalize_query(query) == (
+        "SELECT '-- text', \"-- column\" FROM t WHERE a = 1"
     )
 
 
 def test_normalized_queries_match_checks_every_statement():
-    assert module.normalized_queries_match("select 1; SELECT 2", "SELECT 1 ; select 2", "postgres")
-    assert not module.normalized_queries_match("SELECT 1; SELECT 2", "SELECT 1; SELECT 3", "postgres")
-    assert not module.normalized_queries_match("SELECT (", "SELECT 1", "postgres")
+    assert module.normalize_query("select 1; SELECT 2") == module.normalize_query(
+        "SELECT 1 ; select 2"
+    )
+    assert module.normalize_query("SELECT 1; SELECT 2") != module.normalize_query(
+        "SELECT 1; SELECT 3"
+    )
 
 
 def test_convert_files_drops_failing_pairs_and_skips_imdb(tmp_path, monkeypatch):
@@ -52,26 +48,27 @@ def test_convert_files_drops_failing_pairs_and_skips_imdb(tmp_path, monkeypatch)
         def cursor(self):
             return Cursor()
 
-        def rollback(self):
-            rollbacks.append(True)
-
         def close(self):
             closed.append(True)
 
-    executed, rollbacks, closed, dsns = [], [], [], []
+    executed, closed, dsns = [], [], []
 
     def connect(dsn):
         dsns.append(dsn)
         return Connection()
 
     monkeypatch.setattr(psycopg2, "connect", connect)
-    assert convert_files([source], {"tpch": "CREATE TABLE t (a int)"}, output,
-                         connection_string="postgresql://localhost/{dbid}") == (2, 4)
+    assert module.convert_files(
+        [source],
+        {"tpch": "CREATE TABLE t (a int)"},
+        output,
+        connection_string="postgresql://localhost/{dbid}",
+    ) == (2, 4)
     assert dsns == ["postgresql://localhost/postgres"]
     assert [query for query in executed if query.startswith("SELECT")] == [
         "SELECT 1", "SELECT 2", "SELECT bad", "SELECT 4", "SELECT bad",
-        "SELECT 5", "SELECT 6"]
-    assert len(rollbacks) == 1
+        "SELECT 5", "SELECT 6",
+    ]
     assert closed == [True]
     result = pd.read_csv(output)
     assert result["index"].tolist() == [1, 2]

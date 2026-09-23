@@ -477,6 +477,9 @@ diagnostic message remain available in SQLite.
 
 ## Development
 
+See [maintenance scripts](scripts/README.md) for dataset preprocessing, pair reduction,
+and result analysis commands.
+
 Run the full test suite:
 
 ```sh

@@ -1,11 +1,4 @@
-import importlib.util
-from pathlib import Path
-
-
-MODULE = Path(__file__).resolve().parents[1] / "scripts/analyze_postgres_llm_results.py"
-SPEC = importlib.util.spec_from_file_location("postgres_llm_analysis", MODULE)
-analysis = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(analysis)
+import scripts.results.analyze_postgres_llm_results as analysis
 
 
 def test_prediction_requires_validated_counterexample_for_neq():

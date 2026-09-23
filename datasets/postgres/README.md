@@ -1,7 +1,7 @@
 Convert the source CSVs from the repository root:
 
 ```sh
-python scripts/convert_postgres_datasets.py --skip-missing-queries
+python -m scripts.datasets.convert_postgres_datasets --skip-missing-queries
 ```
 
 By default, schemas are loaded from `datasets/schema/<dbid>.sql`, followed
@@ -20,7 +20,8 @@ The script combines all source CSVs into `datasets/postgres/evebench/postgres.cs
 with columns `dbid,index,source_index,schema_ddl,q1,q2,dialect,ground_truth,source`.
 The `source` column contains the original CSV filename. It maps `db_id` to `dbid`,
 `val_id` to `source_index`, `original_sql`/`rewritten_sql` to `q1`/`q2`, and
-`equiv=True/False` to `EQ/NEQ`. SQL query text is preserved.
+`equiv=True/False` to `EQ/NEQ`. Queries are parsed as PostgreSQL and rendered
+without comments by SQLGlot.
 The `index` column numbers the accepted output rows consecutively from 1,
 after skipped and duplicate rows are removed.
 
@@ -31,9 +32,8 @@ from different sources remain separate. Source CSVs are preserved; reruns
 replace the combined file. Labels come directly from the source exports
 and are not independently verified.
 
-Pairs whose SQL strings match after SQLGlot parses and normalizes all statements
-are also skipped, regardless of their source label. Pairs that SQLGlot cannot
-parse remain eligible for PostgreSQL validation.
+Pairs whose SQL strings match after that normalization are also skipped,
+regardless of their source label. SQLGlot parse failures stop conversion.
 
 Both queries in each remaining pair are executed against PostgreSQL. A pair is
 skipped when either query raises a PostgreSQL error. The converter connects to
@@ -49,3 +49,15 @@ the output file.
 Use `--schema-dir PATH`, `--input-dir PATH`, `--output-dir PATH`, or
 `--output-file PATH` to override the defaults. Run benchmarks on the generated
 file with the PostgreSQL dialect.
+
+After conversion, apply the newer PostgreSQL 16 labels from
+`datasets/raw/SPA_datasets/*_pg16.tsv` with:
+
+```sh
+python -m scripts.datasets.relabel_postgres_dataset
+```
+
+The relabeler matches rows by source filename, database ID, and source index,
+then replaces `ground_truth` with `pg16_equiv_total` where it is populated.
+Rows without a final label revert to the TSV's original `equiv` value. Sources
+without a matching TSV, such as `GPT-5.4.csv`, keep their existing labels.

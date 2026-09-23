@@ -7,6 +7,9 @@ theme:
 nav:
   - Home: index.md
   - Architecture: architecture.md
+  - LeetCode pair sampling: leetcode-pair-sampling.md
+  - Bird pair sampling: bird-pair-sampling.md
+  - Pair sampling methods paper: leetcode-pair-sampling-paper.md
   - Development environment: development.md
   - Deployment: deployment.md
 

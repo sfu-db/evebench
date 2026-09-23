@@ -1,11 +1,4 @@
-import importlib.util
-from pathlib import Path
-
-
-MODULE = Path(__file__).resolve().parents[1] / "scripts/compare_adapters_llm.py"
-SPEC = importlib.util.spec_from_file_location("adapter_llm_comparison", MODULE)
-comparison = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(comparison)
+import scripts.results.compare_adapters_llm as comparison
 
 
 def test_correctness_relation_is_existential_within_each_ensemble():
