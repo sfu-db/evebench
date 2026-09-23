@@ -68,3 +68,5 @@ dist/
 .vscode/
 
 # Default template
+
+tmp/

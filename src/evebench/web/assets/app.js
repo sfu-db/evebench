@@ -33,37 +33,23 @@ function loadExample() {
 }
 
 function backendOptions(id) {
-  const dialectOverride = `<div class="field">
-    <label for="dialect-${id}">Dialect override <span>optional</span></label>
-    <select id="dialect-${id}">
-      <option value="">Use case dialect</option>
-      <option value="calcite">Calcite</option>
-      <option value="sqlite">SQLite</option>
-      <option value="postgresql">PostgreSQL</option>
-      <option value="mysql">MySQL</option>
-    </select>
-  </div>`;
   if (id === "verieql") {
-    return `${dialectOverride}<div class="advanced-grid">
+    return `<div class="advanced-grid">
       <div class="field">
         <label for="verieql-bound">Row bound <span>1–100</span></label>
         <input id="verieql-bound" type="number" value="2" min="1" max="100">
       </div>
-      <label class="toggle-field" for="verieql-constraints">
-        <input id="verieql-constraints" type="checkbox" checked>
-        <span class="check-ui">✓</span>
-        Use schema constraints
-      </label>
+
     </div>`;
   }
   if (id === "parseval") {
-    return `${dialectOverride}<div class="field">
+    return `<div class="field">
       <label for="parseval-connection">Disposable database URL <span>required</span></label>
       <input id="parseval-connection" type="text" placeholder="sqlite:////tmp/evebench-case.db" autocomplete="off">
       <small class="danger-note">The named database is removed after each attempt.</small>
     </div>`;
   }
-  return `${dialectOverride}<p class="config-note">No other per-run configuration is required. This backend uses the server's configured runtime.</p>`;
+  return `<p class="config-note">No other per-run configuration is required. This backend uses the server's configured runtime.</p>`;
 }
 
 function toggleBackendCard(input) {
@@ -145,7 +131,6 @@ function optionsForBackend(id) {
   if (id === "verieql") {
     return {
       bound_size: Number($("#verieql-bound").value),
-      use_constraints: $("#verieql-constraints").checked,
     };
   }
   if (id === "parseval") {
@@ -157,8 +142,7 @@ function optionsForBackend(id) {
 
 async function runBackend(id, baseCase, timeoutMs) {
   const descriptor = state.checkers.find((item) => item.checker.checker_id === id);
-  const dialectOverride = $(`#dialect-${id}`)?.value;
-  const dialect = dialectOverride || baseCase.dialect;
+  const dialect = baseCase.dialect;
   const payload = {
     case: {
       ...baseCase,

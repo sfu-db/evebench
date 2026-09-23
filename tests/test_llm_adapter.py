@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-import evebench.adapters.llm as llm_module
+import evebench.adapters.llm.adapter as llm_module
 from evebench.adapters.core import execute_lifecycle
 from evebench.adapters.llm import (
     LLMAdapter,

@@ -42,6 +42,10 @@ def execute_adapter(
         from evebench.adapters.spes import SPESAdapter
 
         adapter = SPESAdapter(adapter_config)
+    elif adapter_id == "qed":
+        from evebench.adapters.qed import QEDAdapter
+
+        adapter = QEDAdapter(adapter_config)
     elif adapter_id == "verieql":
         from evebench.adapters.verieql import VeriEQLAdapter
 
@@ -55,7 +59,7 @@ def cleanup_adapter(adapter_id: str, options: CheckOptions) -> None:
     """Worker entry point for recovery cleanup after a hard task timeout."""
     if adapter_id != "parseval":
         return
-    from evebench.adapters.parseval_database import cleanup_database
+    from evebench.adapters.parseval.database import cleanup_database
 
     connection_string = options.for_backend("parseval").get("connection_string")
     if isinstance(connection_string, str) and connection_string:

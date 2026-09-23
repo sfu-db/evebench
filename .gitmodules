@@ -10,3 +10,6 @@
 [submodule "baselines/qed/parser"]
 	path = baselines/qed/parser
 	url = https://github.com/qed-solver/parser.git
+[submodule "baselines/qed/prover"]
+	path = baselines/qed/prover
+	url = https://github.com/qed-solver/prover.git

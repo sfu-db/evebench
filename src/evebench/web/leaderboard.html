@@ -22,7 +22,7 @@
   <header class="hero">
     <div class="eyebrow">Reproducible evaluation</div>
     <h1>How approaches compare,<br>case by case.</h1>
-    <p>Explore the share of equivalent, non-equivalent, unknown, and timed-out results returned by every checker.</p>
+    <p>Explore the share of equivalent, non-equivalent, unknown, unsupported, and timed-out results returned by every checker.</p>
     <div class="hero-actions">
       <a class="pill-link" href="#leaderboard">Explore results ↓</a>
       <a class="pill-link light" href="/">Try your own queries</a>
@@ -32,7 +32,7 @@
   <main class="leaderboard-wrap" id="leaderboard">
     <div class="section-head">
       <h2>Benchmark results</h2>
-      <p>Comparable runs under a shared timeout and execution environment.</p>
+      <p>Accuracy and verdict counts for each dataset. Historical imports have no recorded execution times.</p>
     </div>
     <section class="board-card" aria-label="Approach leaderboard">
       <div class="board-tools">
@@ -60,9 +60,11 @@
             <tr>
               <th class="rank-heading" scope="col">Rank</th>
               <th scope="col" data-sort="display_name"><button type="button">Approach<span class="sort-indicator" aria-hidden="true"></span></button></th>
+              <th scope="col" data-sort="accuracy" aria-sort="descending"><button type="button">Accuracy<span class="sort-indicator" aria-hidden="true">↓</span></button></th>
               <th scope="col" data-sort="eq"><button type="button">EQ<span class="sort-indicator" aria-hidden="true"></span></button></th>
-              <th scope="col" data-sort="neq" aria-sort="descending"><button type="button">NEQ<span class="sort-indicator" aria-hidden="true">↓</span></button></th>
+              <th scope="col" data-sort="neq"><button type="button">NEQ<span class="sort-indicator" aria-hidden="true"></span></button></th>
               <th scope="col" data-sort="unknown"><button type="button">Unknown<span class="sort-indicator" aria-hidden="true"></span></button></th>
+              <th scope="col" data-sort="unsupported"><button type="button">Unsupported<span class="sort-indicator" aria-hidden="true"></span></button></th>
               <th scope="col" data-sort="timeout"><button type="button">Timeout<span class="sort-indicator" aria-hidden="true"></span></button></th>
               <th scope="col" data-sort="median_duration_ms"><button type="button">Median time<span class="sort-indicator" aria-hidden="true"></span></button></th>
               <th scope="col" data-sort="evaluated"><button type="button">Evaluated<span class="sort-indicator" aria-hidden="true"></span></button></th>
@@ -72,9 +74,18 @@
         </table>
       </div>
     </section>
+    <section class="reason-section" aria-labelledby="reason-heading">
+      <div class="section-head">
+        <h2 id="reason-heading">Unsupported reasons</h2>
+        <p>Why each checker could not evaluate cases in the selected run.</p>
+      </div>
+      <div id="unsupported-reasons" class="reason-grid" aria-live="polite"></div>
+    </section>
     <div class="metric-guide">
+      <div class="metric-card"><strong>Accuracy</strong><span>Correct verdicts divided by labeled cases. Unknown results count as incorrect; verdict shares alone do not measure accuracy.</span></div>
       <div class="metric-card"><strong>EQ / NEQ</strong><span>The checker returned a conclusive equivalent or non-equivalent verdict.</span></div>
-      <div class="metric-card"><strong>Unknown</strong><span>No conclusive verdict, including unsupported, invalid, and failed evaluations.</span></div>
+      <div class="metric-card"><strong>Unknown</strong><span>A proof was attempted but no conclusive verdict was established, or an evaluation failed.</span></div>
+      <div class="metric-card"><strong>Unsupported</strong><span>The checker could not handle the input or requested capability.</span></div>
       <div class="metric-card"><strong>Timeout</strong><span>The checker or EveBench reached the configured deadline.</span></div>
     </div>
   </main>

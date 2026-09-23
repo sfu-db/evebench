@@ -1,8 +1,10 @@
 let summaries = [];
 let selectedDataset = "";
 let valueMode = "ratio";
-let sortColumn = "neq";
+let sortColumn = "accuracy";
 let sortDirection = "desc";
+const reasonsByRun = new Map();
+let reasonRequest = 0;
 
 function percent(value) {
   return `${(value * 100).toFixed(1)}%`;
@@ -26,7 +28,7 @@ function displayVerdict(row, verdict) {
 }
 
 function sortValue(row) {
-  if (["eq", "neq", "unknown", "timeout"].includes(sortColumn)) {
+  if (["eq", "neq", "unknown", "unsupported", "timeout"].includes(sortColumn)) {
     return row[`${sortColumn}_ratio`];
   }
   return row[sortColumn];
@@ -68,17 +70,22 @@ function renderBoard(dataset) {
   const body = document.querySelector("#board-body");
   updateSortHeaders();
   if (!rows.length) {
-    body.innerHTML = `<tr><td colspan="8" class="empty-board">No persisted evaluations yet.</td></tr>`;
+    reasonRequest += 1;
+    body.innerHTML = `<tr><td colspan="10" class="empty-board">No persisted evaluations yet.</td></tr>`;
     document.querySelector("#snapshot-label").textContent = "";
+    document.querySelector("#unsupported-reasons").innerHTML =
+      `<div class="reason-empty">No persisted evaluations yet.</div>`;
     return;
   }
   body.innerHTML = rows.map((row, index) => `
     <tr>
       <td class="rank">${index + 1}</td>
       <td class="method">${escapeHtml(row.display_name)}<small>${escapeHtml(row.checker_id)}</small></td>
+      <td class="score">${row.accuracy === null ? "—" : percent(row.accuracy)}</td>
       <td class="score outcome-eq">${displayVerdict(row, "eq")}</td>
       <td class="score outcome-neq">${displayVerdict(row, "neq")}</td>
       <td class="score outcome-unknown">${displayVerdict(row, "unknown")}</td>
+      <td class="score outcome-unsupported">${displayVerdict(row, "unsupported")}</td>
       <td class="score outcome-timeout">${displayVerdict(row, "timeout")}</td>
       <td class="score">${row.median_duration_ms === null ? "—" : `${row.median_duration_ms.toFixed(0)}ms`}</td>
       <td><span class="coverage">${row.evaluated} / ${row.total_cases}</span></td>
@@ -87,6 +94,50 @@ function renderBoard(dataset) {
   const state = first.run_status === "completed" ? "complete" : first.run_status;
   document.querySelector("#snapshot-label").textContent =
     `run ${first.run_id} · ${state} · ${rows.length} backends`;
+  loadReasons(first.run_id, rows);
+}
+
+function renderReasons(reasons, rows) {
+  const container = document.querySelector("#unsupported-reasons");
+  const grouped = new Map();
+  reasons.forEach((reason) => {
+    if (!grouped.has(reason.checker_id)) grouped.set(reason.checker_id, []);
+    grouped.get(reason.checker_id).push(reason);
+  });
+  const supportedRows = rows.filter((row) => row.unsupported_count > 0);
+  if (!supportedRows.length) {
+    container.innerHTML = `<div class="reason-empty">No unsupported results in this run.</div>`;
+    return;
+  }
+  container.innerHTML = supportedRows.map((row) => {
+    const items = grouped.get(row.checker_id) || [];
+    return `<article class="reason-card">
+      <h3>${escapeHtml(row.display_name)}</h3>
+      <p>${row.unsupported_count.toLocaleString()} unsupported of ${row.evaluated.toLocaleString()} evaluated (${percent(row.unsupported_ratio)})</p>
+      <ul>${items.map((item) => `<li><code>${escapeHtml(item.reason_code)}</code><span class="reason-count">${item.count.toLocaleString()} · ${percent(item.count / row.unsupported_count)}</span></li>`).join("")}</ul>
+    </article>`;
+  }).join("");
+}
+
+async function loadReasons(runId, rows) {
+  const request = ++reasonRequest;
+  const container = document.querySelector("#unsupported-reasons");
+  if (reasonsByRun.has(runId)) {
+    renderReasons(reasonsByRun.get(runId), rows);
+    return;
+  }
+  container.innerHTML = `<div class="reason-empty">Loading unsupported reasons…</div>`;
+  try {
+    const response = await fetch(`/v1/benchmarks/unsupported-reasons?run_id=${runId}`);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const reasons = await response.json();
+    reasonsByRun.set(runId, reasons);
+    if (request === reasonRequest) renderReasons(reasons, rows);
+  } catch (error) {
+    if (request === reasonRequest) {
+      container.innerHTML = `<div class="reason-empty">Could not load unsupported reasons.</div>`;
+    }
+  }
 }
 
 async function loadBoard() {
@@ -103,8 +154,10 @@ async function loadBoard() {
   } catch (error) {
     select.innerHTML = "<option>Unavailable</option>";
     document.querySelector("#board-body").innerHTML =
-      `<tr><td colspan="8" class="empty-board">Could not load benchmark results.</td></tr>`;
+      `<tr><td colspan="10" class="empty-board">Could not load benchmark results.</td></tr>`;
     document.querySelector("#snapshot-label").textContent = error.message;
+    document.querySelector("#unsupported-reasons").innerHTML =
+      `<div class="reason-empty">Could not load benchmark results.</div>`;
   }
 }
 

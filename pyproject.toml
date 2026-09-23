@@ -10,8 +10,10 @@ dependencies = [
     "lark>=1.1.0,<2.0.0",
     "mo-sql-parsing==8.205.22260",
     "ordered-set>=4.1.0,<5.0.0",
+    "pandas>=2.2.0,<4.0.0",
     "parseval",
     "pebble>=5.2.0,<6.0.0",
+    "psycopg2-binary>=2.9.13",
     "setuptools>=70.0.0,<81.0.0",
     "sqlglot==23.12.1",
     "ujson>=5.10.0,<6.0.0",
@@ -35,4 +37,4 @@ build-backend = "uv_build"
 testpaths = ["tests"]
 
 [tool.uv.sources]
-parseval = { url = "https://github.com/sfu-db/ParSEval/releases/download/v0.0.6/parseval-0.0.6-py3-none-any.whl" }
+parseval = { url = "https://github.com/sfu-db/ParSEval/releases/download/v0.0.7/parseval-0.0.7-py3-none-any.whl" }

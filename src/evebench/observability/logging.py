@@ -6,11 +6,12 @@ import json
 import logging
 import os
 import time
+from collections.abc import Generator
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 _LOGGER_NAME = "evebench"
 _CONTEXT_FIELDS = ("request_id", "run_id", "case_id", "checker_id")
@@ -118,7 +119,7 @@ def get_logger(name: str | None = None) -> logging.Logger:
 
 
 @contextlib.contextmanager
-def log_context(**values: object) -> Iterator[None]:
+def log_context(**values: object) -> Generator[None, None, None]:
     """Attach safe correlation values to all logs in the current async context."""
     updated = dict(_context.get())
     updated.update(

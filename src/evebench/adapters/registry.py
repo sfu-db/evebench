@@ -18,10 +18,7 @@ class CheckerRegistry:
         self._checkers[checker_id] = checker
 
     def get(self, checker_id: str) -> EquivalenceChecker:
-        try:
-            return self._checkers[checker_id]
-        except KeyError as exc:
-            raise KeyError(f"unknown checker: {checker_id}") from exc
+        return self._checkers[checker_id]
 
     def all(self) -> tuple[EquivalenceChecker, ...]:
         return tuple(self._checkers.values())

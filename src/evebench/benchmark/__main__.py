@@ -16,12 +16,6 @@ from .runner import BenchmarkRunner
 from .store import ResultStore
 
 logger = get_logger(__name__)
-DEFAULT_CONFIG = (
-    Path(__file__).resolve().parents[3]
-    / "configs"
-    / "benchmarks"
-    / "bird_baseline.toml"
-)
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -33,7 +27,7 @@ def main(argv: list[str] | None = None) -> None:
     )
     parser.add_argument(
         "--config",
-        help=f"benchmark TOML profile (default: {DEFAULT_CONFIG})",
+        help="benchmark TOML profile",
     )
     parser.add_argument("--database")
     parser.add_argument("--name")
@@ -68,7 +62,7 @@ def main(argv: list[str] | None = None) -> None:
         elif args.dataset:
             benchmark_config = BenchmarkConfig.ad_hoc(args.dataset)
         else:
-            benchmark_config = BenchmarkConfig.load(DEFAULT_CONFIG)
+            parser.error("provide a dataset CSV or --config")
     except (OSError, ValueError) as exc:
         parser.error(str(exc))
 
@@ -83,9 +77,7 @@ def main(argv: list[str] | None = None) -> None:
         else benchmark_config.database_path
     )
     timeout_ms = (
-        args.timeout_ms
-        if args.timeout_ms is not None
-        else benchmark_config.timeout_ms
+        args.timeout_ms if args.timeout_ms is not None else benchmark_config.timeout_ms
     )
     seed = args.seed if args.seed is not None else benchmark_config.seed
     semantics = args.semantics or benchmark_config.semantics
@@ -142,11 +134,7 @@ def main(argv: list[str] | None = None) -> None:
     runner = BenchmarkRunner(CheckService(default_registry(pool)), store)
 
     def progress(position: int, total: int, run_id: int) -> None:
-        if (
-            position == 1
-            or position == total
-            or position % progress_every == 0
-        ):
+        if position == 1 or position == total or position % progress_every == 0:
             logger.info(
                 "benchmark progress",
                 extra={
@@ -166,13 +154,7 @@ def main(argv: list[str] | None = None) -> None:
                 timeout_ms=timeout_ms,
                 semantics=semantics,
                 seed=seed,
-                backend_dialects={
-                    checker_id: dialect
-                    for checker_id, dialect in (
-                        benchmark_config.backend_dialects().items()
-                    )
-                    if checker_id in selected_checkers
-                },
+                strip_shared_order_by_limit=benchmark_config.strip_shared_order_by_limit,
                 backend_options={
                     checker_id: options
                     for checker_id, options in (
@@ -200,12 +182,13 @@ def main(argv: list[str] | None = None) -> None:
         pool.stop()
 
     print()
-    print("backend       evaluated      eq     neq  unknown  timeout")
+    print("backend       evaluated      eq     neq  unknown  unsupported  timeout")
     for row in store.summaries(run_id=run_id):
         print(
             f"{row.checker_id:<13} {row.evaluated:>5}  "
             f"{row.eq_ratio:>6.1%} {row.neq_ratio:>7.1%} "
-            f"{row.unknown_ratio:>8.1%} {row.timeout_ratio:>8.1%}"
+            f"{row.unknown_ratio:>8.1%} {row.unsupported_ratio:>12.1%} "
+            f"{row.timeout_ratio:>8.1%}"
         )
     print(f"\nSQLite results: {store.path.resolve()} (run {run_id})")
 

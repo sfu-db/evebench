@@ -4,16 +4,18 @@ from pathlib import Path
 from types import SimpleNamespace
 import sys
 
-import evebench.adapters.parseval as parseval_module
-import evebench.adapters.spes as spes_module
-import evebench.adapters.sqlsolver as sqlsolver_module
+import pytest
+
+import evebench.adapters.parseval.adapter as parseval_module
+import evebench.adapters.spes.adapter as spes_module
+import evebench.adapters.sqlsolver.adapter as sqlsolver_module
 from evebench.adapters import BackendAdapter
 from evebench.adapters.core import execute_lifecycle
 from evebench.adapters.parseval import (
     ParsevalAdapter,
     ParsevalConfig,
 )
-from evebench.adapters.parseval_database import cleanup_database
+from evebench.adapters.parseval.database import cleanup_database
 from evebench.adapters.sqlsolver import SQLSolverAdapter, SQLSolverConfig
 from evebench.adapters.spes import SPESAdapter, SPESConfig
 from evebench.adapters.verieql import VeriEQLAdapter, VeriEQLConfig
@@ -26,7 +28,7 @@ def sqlsolver_case() -> EquivalenceCase:
         query_left="SELECT a FROM t",
         query_right="SELECT a FROM t",
         schema_ddl="CREATE TABLE t (a INT);",
-        dialect="calcite",
+        dialect="mysql",
         semantics="bag",
     )
 
@@ -47,7 +49,7 @@ def spes_case() -> EquivalenceCase:
         query_left="SELECT a FROM t",
         query_right="SELECT a FROM t",
         schema_ddl="CREATE TABLE t (a INT);",
-        dialect="calcite",
+        dialect="mysql",
         semantics="bag",
     )
 
@@ -98,7 +100,7 @@ def test_spes_normalizes_equivalence(monkeypatch) -> None:
     assert result.raw_output is not None
 
 
-def test_spes_normalizes_unknown_reason(monkeypatch) -> None:
+def test_spes_normalizes_unsupported_reason(monkeypatch) -> None:
     adapter = spes_adapter()
     monkeypatch.setattr(
         adapter,
@@ -112,9 +114,9 @@ def test_spes_normalizes_unknown_reason(monkeypatch) -> None:
 
     result = execute_lifecycle(adapter, spes_case(), CheckOptions())
 
-    assert result.execution_status == ExecutionStatus.COMPLETED
-    assert result.verdict == Verdict.UNKNOWN
-    assert result.reason_code == "backend_unknown"
+    assert result.execution_status == ExecutionStatus.UNSUPPORTED
+    assert result.verdict == Verdict.UNSUPPORTED
+    assert result.reason_code == "backend_unsupported"
     assert result.message == "unsupported feature"
 
 
@@ -137,9 +139,9 @@ def test_spes_passes_case_to_executable_jar(monkeypatch) -> None:
         query_right="SELECT parent_id FROM child",
         schema_ddl=(
             "CREATE TABLE parent (id INT PRIMARY KEY);"
-            "CREATE TABLE child (parent_id INT REFERENCES parent(id));"
+            "CREATE TABLE child (parent_id INT);"
         ),
-        dialect="calcite",
+        dialect="mysql",
         semantics="bag",
     )
 
@@ -149,17 +151,18 @@ def test_spes_passes_case_to_executable_jar(monkeypatch) -> None:
         CheckOptions(timeout_ms=2_000),
     )
 
-    assert result.verdict == Verdict.NOT_EQUIVALENT
+    assert result.verdict == Verdict.UNKNOWN
+    assert result.reason_code == "equivalence_not_proven"
     assert captured["command"][-6:] == [
         "-sql1",
         case.query_left,
         "-sql2",
         case.query_right,
-            "-schema",
-            (
-                "CREATE TABLE `parent` (`id` INT PRIMARY KEY);\n"
-                "CREATE TABLE `child` (`parent_id` INT);"
-            ),
+        "-schema",
+        (
+            "CREATE TABLE parent (id INT PRIMARY KEY);\n"
+            "CREATE TABLE child (parent_id INT);"
+        ),
     ]
     assert captured["kwargs"]["timeout"] == 1.9
     assert (
@@ -177,6 +180,18 @@ def test_sqlsolver_normalizes_equivalence(monkeypatch) -> None:
     assert result.execution_status == ExecutionStatus.COMPLETED
     assert result.verdict == Verdict.EQUIVALENT
     assert result.raw_output == "EQ"
+
+
+def test_sqlsolver_neq_is_inconclusive(monkeypatch) -> None:
+    adapter = sqlsolver_adapter()
+    monkeypatch.setattr(adapter, "run", lambda prepared: "NEQ")
+
+    result = execute_lifecycle(adapter, sqlsolver_case(), CheckOptions())
+
+    assert result.execution_status == ExecutionStatus.COMPLETED
+    assert result.verdict == Verdict.UNKNOWN
+    assert result.reason_code == "inequivalence_not_confirmed"
+    assert result.raw_output == "NEQ"
 
 
 def test_sqlsolver_normalizes_backend_timeout(monkeypatch) -> None:
@@ -232,9 +247,9 @@ def test_sqlsolver_passes_queries_schema_and_timeout_to_java(monkeypatch) -> Non
         query_right="SELECT parent_id FROM child",
         schema_ddl=(
             "CREATE TABLE parent (id INT PRIMARY KEY);"
-            "CREATE TABLE child (parent_id INT REFERENCES parent(id));"
+            "CREATE TABLE child (parent_id INT);"
         ),
-        dialect="calcite",
+        dialect="mysql",
         semantics="bag",
     )
 
@@ -244,19 +259,16 @@ def test_sqlsolver_passes_queries_schema_and_timeout_to_java(monkeypatch) -> Non
     assert native == "EQ"
     assert captured["verify"] == (
         [case.query_left],
-            [case.query_right],
-            (
-                "CREATE TABLE `parent` (`id` INT PRIMARY KEY);\n"
-                "CREATE TABLE `child` (`parent_id` INT);"
-            ),
+        [case.query_right],
+        (
+            "CREATE TABLE parent (id INT PRIMARY KEY);\n"
+            "CREATE TABLE child (parent_id INT);"
+        ),
         2,
     )
-    assert captured["start_kwargs"]["classpath"] == [
-        adapter._config.jar_path
-    ]
+    assert captured["start_kwargs"]["classpath"] == [adapter._config.jar_path]
     assert (
-        f"-Djava.library.path={adapter._config.library_path}"
-        in captured["start_args"]
+        f"-Djava.library.path={adapter._config.library_path}" in captured["start_args"]
     )
 
 
@@ -421,3 +433,25 @@ def test_parseval_refuses_protected_database() -> None:
 
     assert result.execution_status == ExecutionStatus.INVALID_INPUT
     assert result.reason_code == "invalid_connection_string"
+
+
+@pytest.mark.parametrize("source_dialect", ["postgres", "postgresql"])
+def test_parseval_uses_postgres_dialect_and_relaxes_character_lengths(source_dialect) -> None:
+    adapter = ParsevalAdapter(ParsevalConfig(backend_version="test"))
+    case = EquivalenceCase(
+        query_left="SELECT state FROM t",
+        query_right="SELECT state FROM t",
+        schema_ddl="CREATE TABLE t (state CHAR(2));",
+        dialect=source_dialect,
+        semantics="bag",
+    )
+
+    prepared = adapter.preprocess(
+        case,
+        CheckOptions(backend_options={"parseval": {
+            "connection_string": "postgresql://localhost/evebench_parseval",
+        }}),
+    )
+
+    assert prepared.dialect == "postgres"
+    assert "state TEXT" in prepared.schema_ddl

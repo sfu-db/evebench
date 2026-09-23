@@ -1,0 +1,9 @@
+prompt,dummy,o3-mini,gpt-4o,gpt-5,deepseek-chat,deepseek-reasoner,gemini-2.5-flash,XiYanSQL-7B,QWen2.5-7B
+baseline,N,27,19,32,21,27,24,9,7
+baseline2,N,32,24,35,25,29,30,11,13
+condition-CoT2,N,33,21,33,24,31,30,9,13
+error-type-CoT2,N,31,20,34,24,31,30,10,12
+baseline,Y,,,,,,,,
+baseline2,Y,,,,,,,,
+condition-CoT2,Y,,,,,,,,
+error-type-CoT2,Y,,,,,,,,

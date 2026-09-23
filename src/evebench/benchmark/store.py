@@ -2,14 +2,25 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from collections.abc import Generator, Iterable
+from contextlib import closing, contextmanager
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Iterable
+from statistics import median
 
 from evebench.domain.models import CheckResult, EquivalenceCase, ExecutionStatus
-from evebench.observability import get_logger
 
-logger = get_logger(__name__)
+
+class _Median:
+    def __init__(self) -> None:
+        self.values: list[int] = []
+
+    def step(self, value: int | None) -> None:
+        if value is not None:
+            self.values.append(value)
+
+    def finalize(self) -> float | None:
+        return float(median(self.values)) if self.values else None
 
 
 @dataclass(frozen=True, slots=True)
@@ -23,12 +34,17 @@ class BenchmarkSummary:
     eq_count: int
     neq_count: int
     unknown_count: int
+    unsupported_count: int
     timeout_count: int
     eq_ratio: float
     neq_ratio: float
     unknown_ratio: float
+    unsupported_ratio: float
     timeout_ratio: float
     median_duration_ms: float | None
+    labeled_count: int
+    correct_count: int
+    accuracy: float | None
     run_status: str
     started_at: str
     finished_at: str | None
@@ -42,15 +58,18 @@ class ResultStore:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._initialize()
 
-    def connect(self) -> sqlite3.Connection:
-        connection = sqlite3.connect(self.path, timeout=30)
-        connection.row_factory = sqlite3.Row
-        connection.execute("PRAGMA foreign_keys = ON")
-        connection.execute("PRAGMA journal_mode = WAL")
-        return connection
+    @contextmanager
+    def connect(self) -> Generator[sqlite3.Connection, None, None]:
+        with closing(sqlite3.connect(self.path, timeout=30)) as connection:
+            connection.row_factory = sqlite3.Row
+            connection.execute("PRAGMA foreign_keys = ON")
+            connection.create_aggregate("median", 1, _Median)
+            with connection:
+                yield connection
 
     def _initialize(self) -> None:
         with self.connect() as connection:
+            connection.execute("PRAGMA journal_mode = WAL")
             connection.executescript(
                 """
                 CREATE TABLE IF NOT EXISTS benchmark_runs (
@@ -78,6 +97,7 @@ class ResultStore:
                     query_left TEXT NOT NULL,
                     query_right TEXT NOT NULL,
                     schema_ddl TEXT NOT NULL,
+                    dialect TEXT NOT NULL,
                     PRIMARY KEY (run_id, case_id)
                 );
 
@@ -89,7 +109,7 @@ class ResultStore:
                     backend_version TEXT NOT NULL,
                     adapter_version TEXT NOT NULL,
                     result_category TEXT NOT NULL CHECK (
-                        result_category IN ('eq', 'neq', 'unknown', 'timeout')
+                        result_category IN ('eq', 'neq', 'unknown', 'unsupported', 'timeout')
                     ),
                     execution_status TEXT NOT NULL,
                     verdict TEXT,
@@ -111,27 +131,6 @@ class ResultStore:
                     ON evaluation_results(run_id, checker_id, result_category);
                 """
             )
-            columns = {
-                row["name"]
-                for row in connection.execute(
-                    "PRAGMA table_info(benchmark_runs)"
-                )
-            }
-            if "configuration_json" not in columns:
-                connection.execute(
-                    """
-                    ALTER TABLE benchmark_runs
-                    ADD COLUMN configuration_json TEXT NOT NULL DEFAULT '{}'
-                    """
-                )
-        logger.debug(
-            "result store initialized",
-            extra={
-                "event": "store.initialized",
-                "database_path": str(self.path.resolve()),
-            },
-        )
-
     def create_run(
         self,
         *,
@@ -162,15 +161,9 @@ class ResultStore:
                 ),
             )
             run_id = int(cursor.lastrowid)
-        logger.debug(
-            "benchmark run persisted",
-            extra={"event": "store.run_created", "run_id": run_id},
-        )
         return run_id
 
     def finish_run(self, run_id: int, *, status: str, finished_at: str) -> None:
-        if status not in {"completed", "interrupted", "failed"}:
-            raise ValueError(f"invalid terminal run status: {status}")
         with self.connect() as connection:
             connection.execute(
                 """
@@ -180,15 +173,6 @@ class ResultStore:
                 """,
                 (status, finished_at, run_id),
             )
-        logger.debug(
-            "benchmark run status persisted",
-            extra={
-                "event": "store.run_finished",
-                "run_id": run_id,
-                "status": status,
-            },
-        )
-
     def validate_run(
         self,
         run_id: int,
@@ -216,14 +200,11 @@ class ResultStore:
             mismatches.append("case limit")
         if row["timeout_ms"] != timeout_ms:
             mismatches.append("timeout")
-        if row["configuration_json"] != json.dumps(
-            configuration, sort_keys=True
-        ):
+        if row["configuration_json"] != json.dumps(configuration, sort_keys=True):
             mismatches.append("benchmark options")
         if mismatches:
             raise ValueError(
-                f"cannot resume run {run_id} with a different "
-                + ", ".join(mismatches)
+                f"cannot resume run {run_id} with a different " + ", ".join(mismatches)
             )
 
     def completed_checker_ids(self, run_id: int, case_id: str) -> set[str]:
@@ -235,7 +216,7 @@ class ResultStore:
                 """,
                 (run_id, case_id),
             )
-            return {str(row["checker_id"]) for row in rows}
+            return {row["checker_id"] for row in rows}
 
     def save_results(
         self,
@@ -247,15 +228,13 @@ class ResultStore:
         ground_truth: str | None,
         results: Iterable[tuple[str, CheckResult]],
     ) -> None:
-        if case.case_id is None:
-            raise ValueError("benchmark cases require a case_id")
         with self.connect() as connection:
             connection.execute(
                 """
                 INSERT INTO benchmark_cases (
                     run_id, case_id, dataset_row, db_id, ground_truth,
-                    query_left, query_right, schema_ddl
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    query_left, query_right, schema_ddl, dialect
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(run_id, case_id) DO NOTHING
                 """,
                 (
@@ -267,12 +246,12 @@ class ResultStore:
                     case.query_left,
                     case.query_right,
                     case.schema_ddl,
+                    case.dialect,
                 ),
             )
-            for display_name, result in results:
-                connection.execute(
-                    """
-                    INSERT INTO evaluation_results (
+            connection.executemany(
+                """
+                INSERT INTO evaluation_results (
                         run_id, case_id, checker_id, display_name,
                         backend_version, adapter_version, result_category,
                         execution_status, verdict, duration_ms, started_at,
@@ -294,7 +273,8 @@ class ResultStore:
                         witness_json = excluded.witness_json,
                         metrics_json = excluded.metrics_json,
                         raw_output = excluded.raw_output
-                    """,
+                """,
+                (
                     (
                         run_id,
                         case.case_id,
@@ -317,8 +297,10 @@ class ResultStore:
                         ),
                         json.dumps(result.metrics, sort_keys=True),
                         result.raw_output,
-                    ),
-                )
+                    )
+                    for display_name, result in results
+                ),
+            )
 
     def summaries(
         self,
@@ -341,28 +323,8 @@ class ResultStore:
                     WHERE latest.dataset = r.dataset
                 )"""
             )
-        predicate = f"WHERE {' AND '.join(where)}" if where else ""
+        predicate = f"WHERE {' AND '.join(where)}"
         query = f"""
-            WITH ranked AS (
-                SELECT
-                    run_id, checker_id, duration_ms,
-                    ROW_NUMBER() OVER (
-                        PARTITION BY run_id, checker_id ORDER BY duration_ms
-                    ) AS position,
-                    COUNT(*) OVER (
-                        PARTITION BY run_id, checker_id
-                    ) AS duration_count
-                FROM evaluation_results
-            ),
-            medians AS (
-                SELECT run_id, checker_id, AVG(duration_ms) AS median_duration_ms
-                FROM ranked
-                WHERE position IN (
-                    CAST((duration_count + 1) / 2 AS INTEGER),
-                    CAST((duration_count + 2) / 2 AS INTEGER)
-                )
-                GROUP BY run_id, checker_id
-            )
             SELECT
                 r.id AS run_id, r.dataset, e.checker_id,
                 MAX(e.display_name) AS display_name,
@@ -370,6 +332,7 @@ class ResultStore:
                 SUM(e.result_category = 'eq') AS eq_count,
                 SUM(e.result_category = 'neq') AS neq_count,
                 SUM(e.result_category = 'unknown') AS unknown_count,
+                SUM(e.result_category = 'unsupported') AS unsupported_count,
                 SUM(e.result_category = 'timeout') AS timeout_count,
                 ROUND(1.0 * SUM(e.result_category = 'eq') / COUNT(*), 6)
                     AS eq_ratio,
@@ -377,14 +340,21 @@ class ResultStore:
                     AS neq_ratio,
                 ROUND(1.0 * SUM(e.result_category = 'unknown') / COUNT(*), 6)
                     AS unknown_ratio,
+                ROUND(1.0 * SUM(e.result_category = 'unsupported') / COUNT(*), 6)
+                    AS unsupported_ratio,
                 ROUND(1.0 * SUM(e.result_category = 'timeout') / COUNT(*), 6)
                     AS timeout_ratio,
-                m.median_duration_ms, r.status AS run_status,
+                median(CASE WHEN json_extract(e.metrics_json, '$.timing_available') = 0
+                    THEN NULL ELSE e.duration_ms END) AS median_duration_ms,
+                SUM(CASE WHEN c.ground_truth IN ('EQ', 'NEQ') THEN 1 ELSE 0 END) AS labeled_count,
+                SUM(CASE WHEN e.result_category = LOWER(c.ground_truth) THEN 1 ELSE 0 END) AS correct_count,
+                ROUND(1.0 * SUM(CASE WHEN e.result_category = LOWER(c.ground_truth) THEN 1 ELSE 0 END)
+                    / NULLIF(SUM(CASE WHEN c.ground_truth IN ('EQ', 'NEQ') THEN 1 ELSE 0 END), 0), 6) AS accuracy,
+                r.status AS run_status,
                 r.started_at, r.finished_at
             FROM benchmark_runs AS r
             JOIN evaluation_results AS e ON e.run_id = r.id
-            LEFT JOIN medians AS m
-                ON m.run_id = e.run_id AND m.checker_id = e.checker_id
+            JOIN benchmark_cases AS c ON c.run_id = e.run_id AND c.case_id = e.case_id
             {predicate}
             GROUP BY r.id, e.checker_id
             ORDER BY r.dataset, e.checker_id
@@ -401,18 +371,35 @@ class ResultStore:
     ) -> list[dict[str, object]]:
         return [asdict(item) for item in self.summaries(dataset=dataset, run_id=run_id)]
 
+    def unsupported_reasons(self, *, run_id: int) -> list[dict[str, object]]:
+        """Count unsupported results by checker and recorded reason for one run."""
+        with self.connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT checker_id, MAX(display_name) AS display_name,
+                       COALESCE(NULLIF(reason_code, ''), 'unspecified') AS reason_code,
+                       COUNT(*) AS count
+                FROM evaluation_results
+                WHERE run_id = ? AND result_category = 'unsupported'
+                GROUP BY checker_id, COALESCE(NULLIF(reason_code, ''), 'unspecified')
+                ORDER BY checker_id, count DESC, reason_code
+                """,
+                (run_id,),
+            ).fetchall()
+        return [dict(row) for row in rows]
+
 
 def result_category(result: CheckResult) -> str:
-    if (
-        result.execution_status == ExecutionStatus.TIMEOUT
-        or (result.verdict is not None and result.verdict.value == "timeout")
-    ):
+    if result.execution_status == ExecutionStatus.TIMEOUT:
         return "timeout"
+    if result.execution_status == ExecutionStatus.UNSUPPORTED:
+        return "unsupported"
     if result.verdict is None:
         return "unknown"
     return {
         "equivalent": "eq",
         "not_equivalent": "neq",
         "unknown": "unknown",
+        "unsupported": "unsupported",
         "timeout": "timeout",
     }[result.verdict.value]

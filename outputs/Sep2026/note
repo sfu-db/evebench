@@ -1,0 +1,7 @@
+Std/var for each feature by each model
+Find the most difficult features for LLMs and equivalence provers
+Confirm the root cause of the failures
+Should be beyond “the parser is bad” or “feature X is difficult for SQLSolver”
+E.g., the correctness of certain features may be bad because of efficiency or bad implementation or mismatch in the code and the algorithm
+Or certain features are difficult for multiple provers (validate in both theory and empirical results)
+Check if the failures are different across methods

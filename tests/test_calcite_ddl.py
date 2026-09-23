@@ -1,106 +1,122 @@
-from __future__ import annotations
-
-import sqlglot
-from sqlglot import exp
-
-from evebench.adapters.schema import preprocess_calcite_ddl
+import pytest
+from evebench.adapters.qed.schema import compile_schema as compile_qed
+from evebench.adapters.spes.schema import compile_schema as compile_spes
+from evebench.adapters.sqlsolver.schema import compile_schema as compile_sqlsolver
 
 
-def test_returns_ddl_unchanged_when_there_are_no_foreign_keys() -> None:
-    ddl = "CREATE TABLE t (\n  id INT PRIMARY KEY,\n  name TEXT NOT NULL\n);\n"
+@pytest.fixture(params=[compile_qed, compile_spes, compile_sqlsolver],
+                ids=["qed", "spes", "sqlsolver"])
+def compile_schema(request):
+    return request.param
 
-    assert preprocess_calcite_ddl(ddl) == ddl
 
-
-def test_removes_inline_and_table_foreign_keys() -> None:
-    ddl = """
-    CREATE TABLE parent (
-      id INT PRIMARY KEY
-    );
-    CREATE TABLE child (
-      id INT PRIMARY KEY,
-      parent_id INT NOT NULL REFERENCES parent(id),
-      CONSTRAINT child_parent_fk
-        FOREIGN KEY (parent_id) REFERENCES parent(id),
-      FOREIGN KEY (parent_id) REFERENCES parent(id)
-    );
-    """
-
-    processed = preprocess_calcite_ddl(ddl)
-    statements = sqlglot.parse(processed, read="mysql")
-
-    assert not any(
-        statement.find(exp.ForeignKey) or statement.find(exp.Reference)
-        for statement in statements
+def test_preserves_separate_primary_key_alter(compile_schema):
+    result = compile_schema(
+        "CREATE TABLE t (id INT); ALTER TABLE t ADD PRIMARY KEY (id);", "postgresql"
     )
-    child = statements[1]
-    parent_id = next(
-        column
-        for column in child.find_all(exp.ColumnDef)
-        if column.name == "parent_id"
+    assert "PRIMARY KEY (id)" in result
+    assert "ALTER TABLE" not in result
+
+
+@pytest.mark.parametrize(
+    "ddl",
+    [
+        "CREATE TABLE t (v VARCHAR);",
+        "CREATE TABLE p (id INT PRIMARY KEY); CREATE TABLE t (id INT REFERENCES p(id));",
+        "CREATE TABLE t (id INT CHECK (id > 0));",
+    ],
+)
+def test_renders_constraints_and_types_for_backend(compile_schema, ddl):
+    import sqlglot
+
+    result = compile_schema(ddl, "mysql")
+    if compile_schema is compile_qed and "REFERENCES" in ddl:
+        assert "REFERENCES" in result
+        assert "FOREIGN KEY" in result
+        return
+    if compile_schema is compile_sqlsolver and "v VARCHAR" in ddl:
+        assert "v TEXT" in result
+        return
+    assert sqlglot.parse(result, read="mysql") == sqlglot.parse(ddl, read="mysql")
+
+
+def test_parses_postgresql_character_varying(compile_schema):
+    result = compile_schema(
+        "CREATE TABLE t (label character varying(40));", "postgresql"
     )
-    assert "NOT NULL" in parent_id.sql()
-    assert "REFERENCES" not in parent_id.sql()
-    assert "PRIMARY KEY" in processed
+    assert "VARCHAR(40)" in result
 
 
-def test_removes_foreign_key_alter_statements_but_keeps_other_alters() -> None:
-    ddl = """
-    CREATE TABLE child (id INT, parent_id INT);
-    ALTER TABLE child
-      ADD CONSTRAINT fk_parent
-      FOREIGN KEY (parent_id) REFERENCES parent(id);
-    ALTER TABLE child ADD COLUMN name TEXT;
-    """
+def test_compilation_does_not_mutate_source_catalog(compile_schema):
+    from evebench.adapters.common.schema import parse_schema
 
-    processed = preprocess_calcite_ddl(ddl)
-
-    assert "FOREIGN KEY" not in processed
-    assert "ADD COLUMN `name` TEXT" in processed
+    ddl = "CREATE TABLE MixedCase (ID INT PRIMARY KEY);"
+    assert "MixedCase" in compile_schema(ddl, "postgresql")
+    source = parse_schema(ddl, "postgresql")
+    assert source.tables[0].this.this.name == "MixedCase"
+    assert source.tables[0].this.expressions[0].name == "ID"
 
 
-def test_ignores_empty_statements_between_semicolons() -> None:
-    ddl = "CREATE TABLE t (id INT);;;\n"
-
-    assert preprocess_calcite_ddl(ddl) == ddl
-
-
-def test_adds_length_required_by_calcite_to_bare_varchar() -> None:
-    ddl = """
-    CREATE TABLE FRPM (
-      CDSCODE VARCHAR,
-      `COUNTY NAME` VARCHAR,
-      label VARCHAR(40),
-      PRIMARY KEY (CDSCODE)
-    );
-    """
-
-    processed = preprocess_calcite_ddl(ddl)
-
-    assert "`CDSCODE` VARCHAR(255)" in processed
-    assert "`COUNTY NAME` VARCHAR(255)" in processed
-    assert "`label` VARCHAR(40)" in processed
-    assert "VARCHAR(40)(255)" not in processed
+def test_sqlsolver_folds_postgres_alter_only_and_added_columns():
+    ddl = (
+        "CREATE TABLE t (id INT);"
+        "ALTER TABLE ONLY t ADD COLUMN label VARCHAR(40);"
+        "ALTER TABLE ONLY t ADD CONSTRAINT t_pk PRIMARY KEY (id);"
+    )
+    result = compile_sqlsolver(ddl, "postgresql")
+    assert "ALTER TABLE" not in result
+    assert "label VARCHAR(40)" in result
+    assert "CONSTRAINT t_pk PRIMARY KEY (id)" in result
 
 
-def test_quotes_reserved_table_and_column_names_when_rewriting() -> None:
-    ddl = "CREATE TABLE MATCH (GROUP INT, label VARCHAR);"
+def test_sqlsolver_keeps_unfoldable_alter_actions():
+    result = compile_sqlsolver(
+        "CREATE TABLE t (id INT, old INT); "
+        "ALTER TABLE ONLY t ADD COLUMN label VARCHAR(40); "
+        "ALTER TABLE ONLY t DROP COLUMN old;",
+        "postgresql",
+    )
+    assert "label VARCHAR(40)" in result
+    assert "ALTER TABLE t DROP COLUMN old" in result
+    assert "ADD COLUMN label" not in result
 
-    processed = preprocess_calcite_ddl(ddl)
 
-    assert "CREATE TABLE `MATCH`" in processed
-    assert "`GROUP` INT" in processed
+def test_sqlsolver_converts_unbounded_varchar_without_changing_bounded_varchar():
+    result = compile_sqlsolver(
+        "CREATE TABLE t (a character varying, b character varying(40));",
+        "postgresql",
+    )
+    assert "a TEXT" in result
+    assert "b VARCHAR(40)" in result
 
 
-def test_removes_inline_constraint_name_but_preserves_primary_key() -> None:
-    ddl = """
-    CREATE TABLE event (
-      event_id TEXT CONSTRAINT event_pk PRIMARY KEY,
-      name TEXT
-    );
-    """
+def test_spes_folds_added_columns_and_strips_foreign_keys_on_request():
+    ddl = (
+        "CREATE TABLE parent (id INT PRIMARY KEY);"
+        "CREATE TABLE child (pid INT REFERENCES parent(id), "
+        "other INT, FOREIGN KEY (other) REFERENCES parent(id));"
+        "ALTER TABLE ONLY child ADD COLUMN extra INT REFERENCES parent(id);"
+        "ALTER TABLE ONLY child ADD CONSTRAINT child_fk FOREIGN KEY (pid) REFERENCES parent(id);"
+    )
+    retained = compile_spes(ddl, "postgresql")
+    assert "REFERENCES" in retained
+    assert "extra INT" in retained
 
-    processed = preprocess_calcite_ddl(ddl)
+    stripped = compile_spes(ddl, "postgresql", strip_foreign_keys=True)
+    assert "REFERENCES" not in stripped
+    assert "FOREIGN KEY" not in stripped
+    assert "pid INT" in stripped
+    assert "extra INT" in stripped
+    assert "PRIMARY KEY" in stripped
 
-    assert "CONSTRAINT" not in processed
-    assert "`event_id` TEXT PRIMARY KEY" in processed
+
+def test_spes_folds_constraints_and_keeps_unfoldable_alters():
+    result = compile_spes(
+        "CREATE TABLE t (id INT, old INT); "
+        "ALTER TABLE ONLY t ADD CONSTRAINT t_pk PRIMARY KEY (id); "
+        "ALTER TABLE ONLY t DROP COLUMN old;",
+        "postgresql",
+    )
+    assert "CONSTRAINT t_pk PRIMARY KEY (id)" in result
+    assert "ALTER TABLE t DROP COLUMN old" in result
+    assert "ADD CONSTRAINT" not in result
