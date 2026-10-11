@@ -1,0 +1,61 @@
+{
+  "dbid": "beers",
+  "index": "46",
+  "source_index": "577",
+  "schema_ddl": "CREATE TABLE Bar (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Beer (\n    name VARCHAR NOT NULL,\n    brewer VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Drinker (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Frequents (\n    drinker VARCHAR NOT NULL,\n    bar VARCHAR NOT NULL,\n    times_a_week SMALLINT NOT NULL,\n    PRIMARY KEY (drinker, bar),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (bar) REFERENCES Bar(name)\n);\n\nCREATE TABLE Serves (\n    bar VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    price DECIMAL(5,2) NOT NULL,\n    PRIMARY KEY (bar, beer),\n    FOREIGN KEY (bar) REFERENCES Bar(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);\n\nCREATE TABLE Likes (\n    drinker VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    PRIMARY KEY (drinker, beer),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);",
+  "q1": "SELECT b.name AS bar, COUNT(DISTINCT f.drinker) AS num_drinker, AVG(s.price) AS avg_price, (SELECT f1.drinker FROM frequents AS f1 WHERE f1.bar = b.name ORDER BY f1.times_a_week DESC, f1.drinker ASC LIMIT 1) AS most_reg_drinker FROM bar AS b LEFT JOIN frequents AS f ON b.name = f.bar LEFT JOIN serves AS s ON b.name = s.bar GROUP BY b.name ORDER BY num_drinker DESC, b.name ASC",
+  "q2": "SELECT b.name, COALESCE(COUNT(DISTINCT f.drinker), 0) AS total_num_drinker, AVG(s.price) AS avg_price, (SELECT d.drinker FROM Frequents AS d WHERE d.bar = b.name GROUP BY d.drinker ORDER BY COUNT(d.times_a_week) DESC, d.drinker ASC LIMIT 1) AS most_reg_drinker FROM Bar AS b LEFT JOIN Frequents AS f ON b.name = f.bar LEFT JOIN Serves AS s ON b.name = s.bar GROUP BY b.name ORDER BY total_num_drinker DESC, b.name ASC",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "beers",
+  "q1_prompt_sql": "SELECT b.name AS bar, COUNT(DISTINCT f.drinker) AS num_drinker, AVG(s.price) AS avg_price, (SELECT f1.drinker FROM frequents AS f1 WHERE f1.bar = b.name ORDER BY f1.times_a_week DESC, f1.drinker ASC LIMIT 1) AS most_reg_drinker FROM bar AS b LEFT JOIN frequents AS f ON b.name = f.bar LEFT JOIN serves AS s ON b.name = s.bar GROUP BY b.name ORDER BY num_drinker DESC, b.name ASC",
+  "q2_prompt_sql": "SELECT b.name, COALESCE(COUNT(DISTINCT f.drinker), 0) AS total_num_drinker, AVG(s.price) AS avg_price, (SELECT d.drinker FROM Frequents AS d WHERE d.bar = b.name GROUP BY d.drinker ORDER BY COUNT(d.times_a_week) DESC, d.drinker ASC LIMIT 1) AS most_reg_drinker FROM Bar AS b LEFT JOIN Frequents AS f ON b.name = f.bar LEFT JOIN Serves AS s ON b.name = s.bar GROUP BY b.name ORDER BY total_num_drinker DESC, b.name ASC",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO Bar (name, address) VALUES ('B1', '123 Main');\nINSERT INTO Drinker (name, address) VALUES ('Zack', '456 Oak'), ('Alice', '789 Pine');\nINSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('Zack', 'B1', 5), ('Alice', 'B1', 4);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 differ in how they determine the 'most regular drinker'. Q1 uses the highest 'times_a_week' value directly, while Q2 mistakenly uses COUNT(d.times_a_week) (which is always 1 per drinker-bar pair) leading to alphabetical ordering instead of frequency-based selection.",
+  "counterexample_dsp": "A bar with two drinkers: Zack (5 times/week) and Alice (4 times/week). Q1 selects Zack (higher times), Q2 selects Alice (alphabetical order due to COUNT=1 for all).",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 and Q2 differ in how they determine the 'most regular drinker'. Q1 uses the highest 'times_a_week' value directly, while Q2 mistakenly uses COUNT(d.times_a_week) (which is always 1 per drinker-bar pair) leading to alphabetical ordering instead of frequency-based selection.\",\n\"counterexample_dsp\": \"A bar with two drinkers: Zack (5 times/week) and Alice (4 times/week). Q1 selects Zack (higher times), Q2 selects Alice (alphabetical order due to COUNT=1 for all).\",\n\"counterexample\": \"INSERT INTO Bar (name, address) VALUES ('B1', '123 Main');\\nINSERT INTO Drinker (name, address) VALUES ('Zack', '456 Oak'), ('Alice', '789 Pine');\\nINSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('Zack', 'B1', 5), ('Alice', 'B1', 4);\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem step by step. First, I need to understand what each query is doing and then compare them to see if they're equivalent.\n\nStarting with Q1. The main table is Bar, joined with Frequents and Serves. The SELECT clause includes the bar name, count of distinct drinkers, average price, and a subquery for the most regular drinker. The subquery in Q1 selects the drinker from Frequents where the bar matches, ordered by times_a_week descending and drinker ascending, then takes the first one. The GROUP BY is on bar name, and ordering is by num_drinker descending and bar name ascending.\n\nNow Q2. Similar structure but some differences. The COUNT is using COALESCE to handle possible NULLs, which might be important if there are no entries in Frequents. The subquery for most_reg_drinker in Q2 groups by drinker and orders by COUNT(times_a_week) descending. Wait, the original Q1's subquery orders by times_a_week, but Q2's subquery is ordering by COUNT(times_a_week). That seems different. Also, in Q2, the subquery uses GROUP BY drinker and then orders by COUNT(times_a_week) which would aggregate the times_a_week per drinker. But in Q1, the subquery is ordering by the actual times_a_week value of each entry. \n\nWait, in Q1, the subquery is selecting a single drinker, ordering by times_a_week descending. But since the subquery is in the context of a specific bar, the times_a_week is per entry. So, for each bar, it's looking for the drinker who has the highest times_a_week. But in Q2, the subquery groups by drinker, counts the times_a_week (which would be the total across all entries for that drinker at that bar?), then orders by that count. Wait, but the Frequents table has (drinker, bar) as primary key. So each drinker-bar pair has a single times_a_week. So COUNT(times_a_week) in Q2's subquery would be 1 for each drinker, since each row is unique. That doesn't make sense. Wait, no. The subquery in Q2 is:\n\nSELECT d.drinker FROM Frequents AS d WHERE d.bar = b.name GROUP BY d.drinker ORDER BY COUNT(d.times_a_week) DESC, d.drinker ASC LIMIT 1\n\nBut since each drinker-bar pair is unique, COUNT(d.times_a_week) would be 1 for each group. So ordering by that count would be the same as ordering by 1, which is not useful. That seems like a mistake. But maybe the user intended to order by the sum of times_a_week, but wrote COUNT instead. Alternatively, perhaps they meant to use SUM. But given the current structure, this would not work as intended. \n\nSo Q1's subquery for most_reg_drinker is selecting the drinker with the highest times_a_week (for that bar), whereas Q2's subquery is grouping by drinker, but since each drinker-bar pair is unique, the count would be 1, and ordering by that count would not differentiate between drinkers. Therefore, the subqueries in Q1 and Q2 are fundamentally different. \n\nBut maybe I'm misunderstanding. Let me re-examine the Q2 subquery. The subquery is:\n\nSELECT d.drinker FROM Frequents AS d WHERE d.bar = b.name GROUP BY d.drinker ORDER BY COUNT(d.times_a_week) DESC, d.drinker ASC LIMIT 1\n\nBut since each row in Frequents has a unique (drinker, bar), when grouping by drinker, the COUNT(d.times_a_week) is the number of times the drinker appears in Frequents for that bar. But since the primary key is (drinker, bar), each drinker can appear once per bar. So COUNT would be 1 for each drinker. Therefore, ordering by COUNT would not affect the order. So the subquery would order by 1 (same for all), then by drinker ascending. Therefore, the first drinker alphabetically would be selected. That's not the same as Q1, which orders by times_a_week descending. \n\nSo the main difference is in how the most regular drinker is determined. In Q1, it's based on the highest times_a_week value. In Q2, it's based on the count of times_a_week (which is 1) and then drinker name. So they are not equivalent. \n\nTherefore, the two queries are not equivalent. To create a counterexample, we need a scenario where for a bar, there are multiple drinkers with different times_a_week values. For example, Bar A has two drinkers: Alice with 5 times a week, Bob with 3. In Q1, Alice is selected. In Q2, since COUNT is 1 for both, the subquery would order by drinker name, so Alice would come first if she's alphabetically before Bob. But if the bar has drinkers with same names, but that's not possible as they are unique. Wait, but drinker names are unique in the Drinker table. So in the example, if Alice and Bob are both drinkers, then in Q2, the subquery would order by COUNT (1) and then drinker name. So Alice would be selected if her name is before Bob. However, if the bar has a drinker with a name that comes after another but has a higher times_a_week, then Q1 would select the higher times_a_week, but Q2 would select based on name. \n\nSo to create a counterexample, create a bar with two drinkers. Let's say Bar 'B1' has two drinkers: 'Zack' (times 5) and 'Alice' (times 4). In Q1, Zack is selected because 5>4. In Q2, since COUNT is 1 for both, the subquery would order by drinker name, so Alice comes first (A comes before Z), so Q2 would select Alice. Thus, the most_reg_drinker would differ between Q1 and Q2. \n\nSo the counterexample would involve such a scenario. Let me structure the test data accordingly. Insert a bar, two drinkers, and their frequents entries with different times_a_week. Then check the output of Q1 and Q2 for that bar.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 730,
+    "total_tokens": 2295,
+    "completion_tokens": 1565,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1338
+    },
+    "generation_seconds": 49.891
+  },
+  "started_at": "2026-10-06T09:11:50.456157+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "B1",
+      2,
+      null,
+      "Zack"
+    ]
+  ],
+  "q2_output": [
+    [
+      "B1",
+      2,
+      null,
+      "Alice"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT b.name AS bar, COUNT(DISTINCT f.drinker) AS num_drinker, AVG(s.price) AS avg_price, (SELECT f1.drinker FROM frequents AS f1 WHERE f1.bar = b.name ORDER BY f1.times_a_week DESC, f1.drinker ASC LIMIT 1) AS most_reg_drinker FROM bar AS b LEFT JOIN frequents AS f ON b.name = f.bar LEFT JOIN serves AS s ON b.name = s.bar GROUP BY b.name ORDER BY num_drinker DESC, b.name ASC",
+  "q2_validation_sql": "SELECT b.name, COALESCE(COUNT(DISTINCT f.drinker), 0) AS total_num_drinker, AVG(s.price) AS avg_price, (SELECT d.drinker FROM Frequents AS d WHERE d.bar = b.name GROUP BY d.drinker ORDER BY COUNT(d.times_a_week) DESC, d.drinker ASC LIMIT 1) AS most_reg_drinker FROM Bar AS b LEFT JOIN Frequents AS f ON b.name = f.bar LEFT JOIN Serves AS s ON b.name = s.bar GROUP BY b.name ORDER BY total_num_drinker DESC, b.name ASC"
+}

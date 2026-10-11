@@ -1,0 +1,64 @@
+{
+  "dbid": "beers",
+  "index": "205",
+  "source_index": "5345",
+  "schema_ddl": "CREATE TABLE Bar (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Beer (\n    name VARCHAR NOT NULL,\n    brewer VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Drinker (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Frequents (\n    drinker VARCHAR NOT NULL,\n    bar VARCHAR NOT NULL,\n    times_a_week SMALLINT NOT NULL,\n    PRIMARY KEY (drinker, bar),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (bar) REFERENCES Bar(name)\n);\n\nCREATE TABLE Serves (\n    bar VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    price DECIMAL(5,2) NOT NULL,\n    PRIMARY KEY (bar, beer),\n    FOREIGN KEY (bar) REFERENCES Bar(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);\n\nCREATE TABLE Likes (\n    drinker VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    PRIMARY KEY (drinker, beer),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);",
+  "q1": "SELECT f1.drinker, f2.drinker FROM (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f1, (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f2 WHERE f1.drinker < f2.drinker AND f1.st = f2.st",
+  "q2": "SELECT DISTINCT A.drinker, B.drinker FROM frequents AS A, frequents AS B WHERE A.times_a_week = B.times_a_week",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "beers",
+  "q1_prompt_sql": "SELECT f1.drinker, f2.drinker FROM (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f1, (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f2 WHERE f1.drinker < f2.drinker AND f1.st = f2.st",
+  "q2_prompt_sql": "SELECT DISTINCT A.drinker, B.drinker FROM frequents AS A, frequents AS B WHERE A.times_a_week = B.times_a_week",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO Drinker (name, address) VALUES ('Alice', 'A'), ('Bob', 'B');\nINSERT INTO Bar (name, address) VALUES ('Bar1', '1'), ('Bar2', '2'), ('Bar3', '3');\nINSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('Alice', 'Bar1', 2), ('Alice', 'Bar2', 2), ('Bob', 'Bar3', 2);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 compares total weekly visit sums per drinker, while Q2 compares individual visit records. They can produce different results when drinkers have overlapping individual visit times but differing total sums.",
+  "counterexample_dsp": "Two drinkers with matching individual visit times but different total sums. Alice has two 2x/week visits (total 4), Bob has one 2x/week visit (total 2). Q2 pairs them, Q1 does not.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 compares total weekly visit sums per drinker, while Q2 compares individual visit records. They can produce different results when drinkers have overlapping individual visit times but differing total sums.\",\n\"counterexample_dsp\": \"Two drinkers with matching individual visit times but different total sums. Alice has two 2x/week visits (total 4), Bob has one 2x/week visit (total 2). Q2 pairs them, Q1 does not.\",\n\"counterexample\": \"INSERT INTO Drinker (name, address) VALUES ('Alice', 'A'), ('Bob', 'B');\\nINSERT INTO Bar (name, address) VALUES ('Bar1', '1'), ('Bar2', '2'), ('Bar3', '3');\\nINSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('Alice', 'Bar1', 2), ('Alice', 'Bar2', 2), ('Bob', 'Bar3', 2);\"\n}",
+  "reasoning": "\nOkay, let's see. I need to figure out if Q1 and Q2 are semantically equivalent. Let me start by understanding what each query does.\n\nFirst, the schema: there's a Frequents table that records how often a drinker visits a bar, with times_a_week. The other tables like Bar, Beer, Drinker, Serves, Likes are there but not directly involved in these queries. So Q1 and Q2 are both about the Frequents table.\n\nQ1: It's using two subqueries, f1 and f2. Each subquery groups the Frequents table by drinker and sums their times_a_week. Then, it joins these two subqueries on the condition that f1.drinker is less than f2.drinker and their summed times are equal. The result is pairs of drinkers where their total times per week are the same, and the first drinker's name is lexicographically less than the second. So this gives all unordered pairs (but ordered by drinker names) of drinkers with the same total times.\n\nQ2: It's selecting distinct pairs of drinkers from the Frequents table where their times_a_week are equal. But wait, the problem is that the Frequents table has entries per bar. So A and B are rows in Frequents. So if two different rows (from the same or different drinkers) have the same times_a_week, they are paired. But the DISTINCT is important here. However, this might not be grouping by drinker. For example, if a drinker visits multiple bars, each entry in Frequents for that drinker is a separate row. So Q2 is pairing any two rows (from any drinkers) where their times_a_week are equal. But the query is selecting A.drinker and B.drinker, not the sum.\n\nWait, no. Wait Q2 is selecting A.drinker and B.drinker from frequents A and B where A.times_a_week equals B.times_a_week. So this would pair any two drinkers (could be same or different) where at least one of their visits (to any bar) has the same times_a_week as another visit (could be same or different bar). But the DISTINCT is there, so duplicates are removed.\n\nBut the key difference is that Q1 is about the total sum of times_a_week per drinker, while Q2 is about individual entries in the Frequents table. So for example, if a drinker has multiple entries (visits to different bars) with the same times_a_week, Q2 would pair them, but Q1 would only consider the sum of all their times.\n\nLet me think of a counterexample. Suppose there are two drinkers, Alice and Bob. Alice visits two bars, each 2 times a week. Bob visits one bar 2 times a week. Then, the sum for Alice is 4, Bob is 2. So Q1 would not pair them. However, in Q2, since Alice has two entries with 2 times, and Bob has one entry with 2 times, there would be pairs between Alice's entries and Bob's entry. For example, (Alice, Bob) would appear in Q2 because their individual times match. But Q1 would not pair them because their total sums are different.\n\nWait, but in Q2, the condition is A.times_a_week = B.times_a_week. So if Alice has two entries (each 2) and Bob has one entry (2), then Q2 would have pairs like (Alice, Bob) where A is Alice's first entry and B is Bob's entry. Also, (Alice, Alice) if A and B are same row? But the DISTINCT would remove duplicates. However, the problem is that Q2 is not grouping by drinker, so it's considering individual rows. So Q2 could have pairs where two different drinkers have at least one row with the same times_a_week, even if their total sums are different.\n\nSo the two queries are not equivalent. Let's create a counterexample.\n\nLet's create a test database with two drinkers: Alice and Bob.\n\nFrequents:\n- Alice visits Bar1 2 times a week.\n- Alice visits Bar2 2 times a week.\n- Bob visits Bar3 2 times a week.\n\nIn this case, Q1 would group Alice's total as 4, Bob's as 2. So Q1 would not pair them. But Q2 would have pairs where Alice (from Bar1) and Bob (Bar3) are paired, since 2=2. Similarly, Alice (Bar2) and Bob (Bar3) would also be pairs. Also, Alice's two entries would pair with each other (since same times), but since they are same drinker, but the query allows same drinker? Wait, the Q2 has A.drinker and B.drinker. If A and B are same row, then same drinker. But the DISTINCT would include that. However, the original Q1 has f1.drinker < f2.drinker, which would not include same drinkers. But Q2 could have same drinkers if there are multiple entries with same times.\n\nBut in the example, Q2 would return (Alice, Bob) pairs. But Q1 would not, because their total sums are different. Therefore, this is a counterexample.\n\nSo the answer is not equivalent. The explanation is that Q1 compares the total sum of times per drinker, while Q2 compares individual entries. So even if two drinkers have different total sums, they can have individual entries with same times, leading to Q2 having results not in Q1.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 604,
+    "total_tokens": 1985,
+    "completion_tokens": 1381,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1164
+    },
+    "generation_seconds": 45.641
+  },
+  "started_at": "2026-10-06T09:21:39.602580+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [],
+  "q2_output": [
+    [
+      "Alice",
+      "Alice"
+    ],
+    [
+      "Alice",
+      "Bob"
+    ],
+    [
+      "Bob",
+      "Alice"
+    ],
+    [
+      "Bob",
+      "Bob"
+    ]
+  ],
+  "q1_row_count": 0,
+  "q2_row_count": 4,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT f1.drinker, f2.drinker FROM (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f1, (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f2 WHERE f1.drinker < f2.drinker AND f1.st = f2.st",
+  "q2_validation_sql": "SELECT DISTINCT A.drinker, B.drinker FROM frequents AS A, frequents AS B WHERE A.times_a_week = B.times_a_week"
+}

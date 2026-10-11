@@ -1,0 +1,55 @@
+{
+  "dbid": "thrombosis_prediction",
+  "index": "700",
+  "source_index": "1230",
+  "schema_ddl": "CREATE TABLE Examination\n(\n    ID                 INTEGER          null,\n    `Examination Date` DATE         null,\n    `aCL IgG`          REAL        null,\n    `aCL IgM`          REAL        null,\n    ANA                INTEGER          null,\n    `ANA Pattern`      TEXT null,\n    `aCL IgA`          INTEGER          null,\n    Diagnosis          TEXT null,\n    KCT                TEXT null,\n    RVVT              TEXT null,\n    LAC                TEXT null,\n    Symptoms           TEXT null,\n    Thrombosis         INTEGER          null,\n    foreign key (ID) references Patient (ID)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE Patient\n(\n    ID           INTEGER default 0 not null\n        primary key,\n    SEX          TEXT  null,\n    Birthday     DATE          null,\n    Description  DATE          null,\n    `First Date` DATE          null,\n    Admission    TEXT  null,\n    Diagnosis    TEXT  null\n);\n\nCREATE TABLE Laboratory\n(\n    ID        INTEGER  default 0            not null,\n    Date      DATE default '0000-00-00' not null,\n    GOT       INTEGER                       null,\n    GPT       INTEGER                        null,\n    LDH       INTEGER                        null,\n    ALP       INTEGER                        null,\n    TP        REAL             null,\n    ALB       REAL             null,\n    UA        REAL             null,\n    UN        INTEGER                       null,\n    CRE       REAL             null,\n    `T-BIL`   REAL             null,\n    `T-CHO`   INTEGER                       null,\n    TG        INTEGER                       null,\n    CPK       INTEGER                       null,\n    GLU       INTEGER                       null,\n    WBC       REAL             null,\n    RBC       REAL             null,\n    HGB       REAL             null,\n    HCT       REAL             null,\n    PLT       INTEGER                       null,\n    PT        REAL             null,\n    APTT      INTEGER                       null,\n    FG        REAL             null,\n    PIC       INTEGER                       null,\n    TAT       INTEGER                       null,\n    TAT2      INTEGER                       null,\n    `U-PRO`   TEXT              null,\n    IGG       INTEGER                       null,\n    IGA       INTEGER                       null,\n    IGM       INTEGER                       null,\n    CRP       TEXT              null,\n    RA        TEXT              null,\n    RF        TEXT              null,\n    C3        INTEGER                       null,\n    C4        INTEGER                       null,\n    RNP       TEXT              null,\n    SM        TEXT              null,\n    SC170     TEXT              null,\n    SSA       TEXT              null,\n    SSB       TEXT              null,\n    CENTROMEA TEXT              null,\n    DNA       TEXT              null,\n    `DNA-II`  INTEGER                       null,\n    primary key (ID, Date),\n        foreign key (ID) references Patient (ID)\n            on update cascade on delete cascade\n);",
+  "q1": "SELECT COUNT(DISTINCT T1.ID) FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T2.TG >= 200 AND STRFTIME('%Y', CURRENT_TIMESTAMP) - STRFTIME('%Y', T1.Birthday) > 50",
+  "q2": "SELECT COUNT(T1.ID) FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T2.TG >= 200 AND (STRFTIME('%Y', CURRENT_TIMESTAMP) - STRFTIME('%Y', T1.Birthday)) > 50",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT COUNT(DISTINCT T1.ID) FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T2.TG >= 200 AND STRFTIME('%Y', CURRENT_TIMESTAMP) - STRFTIME('%Y', T1.Birthday) > 50",
+  "q2_prompt_sql": "SELECT COUNT(T1.ID) FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T2.TG >= 200 AND (STRFTIME('%Y', CURRENT_TIMESTAMP) - STRFTIME('%Y', T1.Birthday)) > 50",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO Patient (ID, Birthday) VALUES (1, '1960-01-01');\nINSERT INTO Laboratory (ID, Date, TG) VALUES (1, '2023-01-01', 200);\nINSERT INTO Laboratory (ID, Date, TG) VALUES (1, '2023-02-01', 200);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 uses COUNT(DISTINCT T1.ID) to count unique patients, while Q2 uses COUNT(T1.ID) which counts all matching rows (including duplicates). They differ when patients have multiple Laboratory records meeting the criteria.",
+  "counterexample_dsp": "A patient with ID=1 has two Laboratory records (same ID, different dates) with TG=200. Both records meet the age condition. Q1 counts 1 unique patient, Q2 counts 2 rows.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 uses COUNT(DISTINCT T1.ID) to count unique patients, while Q2 uses COUNT(T1.ID) which counts all matching rows (including duplicates). They differ when patients have multiple Laboratory records meeting the criteria.\",\n\"counterexample_dsp\": \"A patient with ID=1 has two Laboratory records (same ID, different dates) with TG=200. Both records meet the age condition. Q1 counts 1 unique patient, Q2 counts 2 rows.\",\n\"counterexample\": \"INSERT INTO Patient (ID, Birthday) VALUES (1, '1960-01-01');\\nINSERT INTO Laboratory (ID, Date, TG) VALUES (1, '2023-01-01', 200);\\nINSERT INTO Laboratory (ID, Date, TG) VALUES (1, '2023-02-01', 200);\"\n}",
+  "reasoning": "\nOkay, let's take a look at these two SQL queries. The user wants to know if Q1 and Q2 are semantically equivalent. \n\nFirst, I need to understand what each query is doing. Both queries are counting patients from the Patient table joined with Laboratory, where the Laboratory's TG is >= 200. The main difference is in the age calculation part. \n\nQ1 uses COUNT(DISTINCT T1.ID), while Q2 uses COUNT(T1.ID). The WHERE clause in both has the same condition: T2.TG >= 200 and the age difference being more than 50. The age is calculated by subtracting the year of birth from the current year. \n\nWait, the age calculation here is done using STRFTIME('%Y', CURRENT_TIMESTAMP) minus STRFTIME('%Y', T1.Birthday). But this method isn't entirely accurate because it doesn't consider the exact date. For example, if today is March 2023 and the birthday is December 1972, subtracting years would give 50, but the person hasn't turned 51 yet. However, the problem here is that the queries are using the same calculation, so the WHERE condition is the same for both.\n\nThe key difference is COUNT(DISTINCT) vs COUNT(). If there are multiple entries in the Laboratory table for the same Patient ID (T1.ID), then Q1 would count each patient once, whereas Q2 would count each Laboratory entry. \n\nSo, if a patient has multiple Laboratory records that meet the TG condition and age condition, Q1 would count them once, and Q2 would count them multiple times. Therefore, they are not equivalent.\n\nTo create a counterexample, I need a scenario where a patient has multiple Laboratory entries. Let's say Patient A has two Laboratory records with TG >=200 and meets the age condition. Then Q1 would count 1, Q2 would count 2. \n\nNow, checking the schema: The Laboratory table has a composite primary key (ID, Date), so each patient can have multiple entries with different dates. So inserting two entries for the same ID in Laboratory would be valid.\n\nSo the counterexample would involve inserting a Patient with ID 1, birthday such that the age calculation is over 50, and two Laboratory entries for that ID with TG >=200. Then, Q1 would return 1, Q2 would return 2.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 986,
+    "total_tokens": 1703,
+    "completion_tokens": 717,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 506
+    },
+    "generation_seconds": 23.953
+  },
+  "started_at": "2026-10-06T20:52:40.263287+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      1
+    ]
+  ],
+  "q2_output": [
+    [
+      2
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT COUNT(DISTINCT T1.ID) FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T2.TG >= 200 AND STRFTIME('%Y', CURRENT_TIMESTAMP) - STRFTIME('%Y', T1.Birthday) > 50",
+  "q2_validation_sql": "SELECT COUNT(T1.ID) FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T2.TG >= 200 AND (STRFTIME('%Y', CURRENT_TIMESTAMP) - STRFTIME('%Y', T1.Birthday)) > 50"
+}

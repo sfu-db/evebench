@@ -1,0 +1,39 @@
+{
+  "dbid": "182",
+  "index": "102",
+  "source_index": "187",
+  "schema_ddl": "CREATE TABLE PERSON (\n    ID INT,\n    EMAIL VARCHAR(255),\n    PRIMARY KEY (ID)\n);",
+  "q1": "SELECT EMAIL AS EMAIL FROM PERSON GROUP BY EMAIL HAVING COUNT(EMAIL) >1",
+  "q2": "SELECT DISTINCT P.EMAIL AS EMAIL FROM PERSON P JOIN PERSON Q ON P.EMAIL = Q.EMAIL WHERE P.ID != Q.ID",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT EMAIL AS EMAIL FROM PERSON GROUP BY EMAIL HAVING COUNT(EMAIL) >1",
+  "q2_prompt_sql": "SELECT DISTINCT P.EMAIL AS EMAIL FROM PERSON P JOIN PERSON Q ON P.EMAIL = Q.EMAIL WHERE P.ID != Q.ID",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries aim to find email addresses that appear more than once in the PERSON table. Q1 uses GROUP BY with HAVING COUNT(EMAIL) > 1 to identify duplicates. Q2 uses a self-join on EMAIL with P.ID != Q.ID and DISTINCT to achieve the same result. They are logically equivalent.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries aim to find email addresses that appear more than once in the PERSON table. Q1 uses GROUP BY with HAVING COUNT(EMAIL) > 1 to identify duplicates. Q2 uses a self-join on EMAIL with P.ID != Q.ID and DISTINCT to achieve the same result. They are logically equivalent.\"\n}",
+  "reasoning": "\nOkay, let me try to figure out if these two SQL queries are equivalent. So, the first thing I need to do is understand what each query is doing.\n\nStarting with Q1: SELECT EMAIL FROM PERSON GROUP BY EMAIL HAVING COUNT(EMAIL) > 1. This groups all rows by the EMAIL column and then filters groups where the count of emails is more than one. So, this returns all email addresses that appear more than once in the PERSON table. That means any email that's duplicated will be in the result. But since we're grouping by email, each email will appear once in the output, even though there are multiple entries for it.\n\nNow Q2: SELECT DISTINCT P.EMAIL FROM PERSON P JOIN PERSON Q ON P.EMAIL = Q.EMAIL WHERE P.ID != Q.ID. Here, they're joining the PERSON table with itself on the EMAIL column, but only when the IDs are different. Then they select the email and use DISTINCT to avoid duplicates. So, this query is essentially finding emails that have at least two different persons (since P and Q are different rows) sharing the same email. The DISTINCT ensures that each email is listed once even if there are multiple pairs.\n\nAt first glance, both seem to be trying to find emails that are not unique. But I need to check if there's any difference in their results. Let's think about edge cases. Suppose there's an email that appears exactly twice. For Q1, COUNT(EMAIL) would be 2, so it's included. For Q2, joining on email where IDs are different would produce one pair (since two rows, each joined with the other), but DISTINCT would return the email once. So same result here.\n\nWhat about an email that appears three times? Q1 would count 3, so it's included. Q2 would have multiple pairs (each combination of two different IDs), but DISTINCT would still return the email once. So same result again.\n\nWait, but what if there's an email that appears once? Then Q1 would not include it. Q2 would not have any rows because there's no other person with the same email to join with. So that's consistent.\n\nBut wait, what if there's a case where an email is present once but the same person is joined with themselves? But the WHERE clause says P.ID != Q.ID, so that's excluded. So no problem there.\n\nHmm, but maybe there's a case where Q1 and Q2 differ. Let me think again. Suppose there are two persons with the same email. Q1 returns that email once. Q2 joins them, so one pair, DISTINCT gives one email. Same result.\n\nWhat if there are three persons with the same email. Q1 returns it once. Q2 would have three pairs (each possible pair of different IDs) but DISTINCT gives one email. Same again.\n\nWait, maybe there's no difference. So are they equivalent?\n\nWait, but what about if there's a person with an email that appears once. Then Q1 excludes it, Q2 also excludes it. So same.\n\nBut maybe there's a scenario where Q2 returns an email that Q1 doesn't? Or vice versa? I can't think of any. Both queries are essentially finding emails that have duplicates in the table. So, the results should be the same.\n\nWait, but perhaps the HAVING COUNT(EMAIL) > 1 in Q1 is equivalent to the join in Q2. Because the join in Q2 produces a row for each pair of persons with the same email, and DISTINCT gives one row per email. So the set of emails in Q2 is exactly those emails that have at least two persons. Which is the same as Q1.\n\nSo maybe they are equivalent. Therefore, the answer would be \"Y\".\n\nBut wait, I should check for possible edge cases again. Let's take a test case.\n\nSuppose the PERSON table has two rows with the same email. Then Q1 returns that email once. Q2 returns the same. If three rows, same. What if there's a person with email 'a' and another with email 'a', and another with email 'a'. Then Q1 returns 'a'. Q2 returns 'a' once. So same.\n\nAnother case: if there's a person with email 'a' and another with email 'a', but another person with email 'a' and another with email 'a' again. Wait, that's same as before.\n\nWait, but what if there's a person with email 'a' and another person with email 'a', and a third person with email 'a' and a fourth person with email 'a'? Then Q1 returns 'a' once. Q2 returns 'a' once. So same.\n\nIs there any case where they differ? Let me think of a scenario where Q2 returns an email that Q1 doesn't. But that's not possible. Because Q1's condition is that the count is more than 1, which is exactly the condition that Q2's join (with P.ID != Q.ID) would produce at least one row. So both queries are returning the same set of emails.\n\nTherefore, they are equivalent. So the answer is Y.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 320,
+    "total_tokens": 1469,
+    "completion_tokens": 1149,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1068
+    },
+    "generation_seconds": 36.828
+  },
+  "started_at": "2026-10-06T15:31:12.699631+00:00",
+  "elapsed_seconds": 0.0
+}

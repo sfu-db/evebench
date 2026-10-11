@@ -1,0 +1,51 @@
+{
+  "dbid": "beers",
+  "index": "41",
+  "source_index": "484",
+  "schema_ddl": "CREATE TABLE Bar (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Beer (\n    name VARCHAR NOT NULL,\n    brewer VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Drinker (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Frequents (\n    drinker VARCHAR NOT NULL,\n    bar VARCHAR NOT NULL,\n    times_a_week SMALLINT NOT NULL,\n    PRIMARY KEY (drinker, bar),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (bar) REFERENCES Bar(name)\n);\n\nCREATE TABLE Serves (\n    bar VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    price DECIMAL(5,2) NOT NULL,\n    PRIMARY KEY (bar, beer),\n    FOREIGN KEY (bar) REFERENCES Bar(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);\n\nCREATE TABLE Likes (\n    drinker VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    PRIMARY KEY (drinker, beer),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);",
+  "q1": "SELECT name FROM drinker WHERE NOT EXISTS(SELECT f.bar FROM frequents AS f, serves AS s WHERE f.drinker = drinker.name AND f.bar = s.bar AND NOT s.beer IN (SELECT beer FROM likes WHERE drinker = drinker.name))",
+  "q2": "WITH innie AS (SELECT Serves.bar, Serves.beer, Likes.drinker FROM Serves JOIN Likes ON Serves.beer = Likes.beer JOIN Frequents ON Likes.drinker = Frequents.drinker WHERE Serves.bar = Frequents.bar ORDER BY Serves.bar), otherBeers AS (SELECT Serves.bar, Serves.beer, Frequents.drinker FROM Frequents JOIN Serves ON Serves.bar = Frequents.bar ORDER BY Frequents.drinker) SELECT drinker FROM (SELECT * FROM innie) AS pickyDrinkers",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "beers",
+  "q1_prompt_sql": "SELECT name FROM drinker WHERE NOT EXISTS(SELECT f.bar FROM frequents AS f, serves AS s WHERE f.drinker = drinker.name AND f.bar = s.bar AND NOT s.beer IN (SELECT beer FROM likes WHERE drinker = drinker.name))",
+  "q2_prompt_sql": "WITH innie AS (SELECT Serves.bar, Serves.beer, Likes.drinker FROM Serves JOIN Likes ON Serves.beer = Likes.beer JOIN Frequents ON Likes.drinker = Frequents.drinker WHERE Serves.bar = Frequents.bar ORDER BY Serves.bar), otherBeers AS (SELECT Serves.bar, Serves.beer, Frequents.drinker FROM Frequents JOIN Serves ON Serves.bar = Frequents.bar ORDER BY Frequents.drinker) SELECT drinker FROM (SELECT * FROM innie) AS pickyDrinkers",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO Drinker (name, address) VALUES ('Alice', '123 Main');\nINSERT INTO Bar (name, address) VALUES ('B1', '456 Oak');\nINSERT INTO Beer (name, brewer) VALUES ('A', 'Brewer1'), ('B', 'Brewer2');\nINSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('Alice', 'B1', 3);\nINSERT INTO Serves (bar, beer, price) VALUES ('B1', 'A', 2.50), ('B1', 'B', 3.00);\nINSERT INTO Likes (drinker, beer) VALUES ('Alice', 'A');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 selects drinkers where all beers at their frequented bars are liked, while Q2 selects drinkers who have at least one liked beer at a frequented bar. These are logically opposite conditions.",
+  "counterexample_dsp": "A drinker who frequents a bar serving both a liked and disliked beer. Q1 excludes them, Q2 includes them.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 selects drinkers where all beers at their frequented bars are liked, while Q2 selects drinkers who have at least one liked beer at a frequented bar. These are logically opposite conditions.\",\n\"counterexample_dsp\": \"A drinker who frequents a bar serving both a liked and disliked beer. Q1 excludes them, Q2 includes them.\",\n\"counterexample\": \"INSERT INTO Drinker (name, address) VALUES ('Alice', '123 Main');\\nINSERT INTO Bar (name, address) VALUES ('B1', '456 Oak');\\nINSERT INTO Beer (name, brewer) VALUES ('A', 'Brewer1'), ('B', 'Brewer2');\\nINSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('Alice', 'B1', 3);\\nINSERT INTO Serves (bar, beer, price) VALUES ('B1', 'A', 2.50), ('B1', 'B', 3.00);\\nINSERT INTO Likes (drinker, beer) VALUES ('Alice', 'A');\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem step by step. First, I need to understand what each query is doing.\n\nStarting with Q1. The query selects drinkers where there does not exist a bar that the drinker frequents and that bar serves a beer which is not in the likes of the drinker. Breaking it down: the NOT EXISTS clause checks for any bar f.bar where the drinker frequents it, and that bar serves a beer not in the likes of the drinker. If such a bar exists, the drinker is excluded. So Q1 is selecting drinkers who, for every bar they frequent, all the beers served there are ones they like. In other words, the drinker only likes beers served at the bars they go to. If any bar they go to serves a beer they don't like, they are excluded.\n\nNow Q2 uses a Common Table Expression (CTE) called innie. It joins Serves, Likes, and Frequents on certain conditions. The innie CTE seems to find beers that are both liked by a drinker and served at a bar they frequent. Then there's another CTE called otherBeers, which joins Frequents and Serves, possibly to get all beers served at bars the drinker frequents. Then the final SELECT is from pickyDrinkers, which is the innie table. Wait, the final query selects drinker from pickyDrinkers, which is the innie. But innie has Serves.bar, Serves.beer, Likes.drinker. So the SELECT drinker is from that, but the drinker is in the Likes table. However, the final query's structure is a bit unclear. Wait, the final query is SELECT drinker FROM (SELECT * FROM innie) AS pickyDrinkers. But innie has the drinker column from Likes.drinker. So this would select all drinkers who have entries in the innie CTE. But the innie CTE is joining Serves, Likes, and Frequents where Serves.bar = Frequents.bar and Serves.beer = Likes.beer. So innie is for beers that the drinker likes and are served at bars they frequent. Therefore, Q2 is selecting drinkers who have at least one beer that they like and is served at a bar they frequent. Wait, but the original Q1 is selecting drinkers where all beers served at their frequented bars are ones they like. So Q1 is a stricter condition. Q2 seems to be the opposite: it's selecting drinkers who have at least one beer they like that is served at a bar they frequent. That would mean that Q1 and Q2 are not equivalent. Because Q1 is about all beers being liked, while Q2 is about having at least one liked beer available.\n\nWait, maybe I need to re-examine Q2 more carefully. Let me re-express Q2's logic. The innie CTE joins Serves, Likes, and Frequents on Serves.beer = Likes.beer and Likes.drinker = Frequents.drinker and Serves.bar = Frequents.bar. So for a drinker, this is the set of beers that they like and are served at bars they frequent. The otherBeers CTE is joining Frequents and Serves, which gives all beers served at bars the drinker frequents. Then, the final query selects drinker from innie. So the innie is the set of (bar, beer, drinker) where the beer is liked by the drinker and served at a bar they go to. So the final query is selecting all drinkers who have at least one beer in innie. That would be drinkers who have at least one beer they like that is served at a bar they frequent. So Q2 is selecting drinkers who have at least one liked beer available at a bar they go to. Whereas Q1 is selecting drinkers where, for every bar they go to, all beers served there are ones they like. So these are different conditions. Therefore, Q1 and Q2 are not equivalent.\n\nTo confirm, let's think of a counterexample. Suppose there is a drinker who likes at least one beer served at a bar they frequent (so Q2 would include them), but there exists a bar they frequent that serves a beer they don't like. Then Q1 would exclude them, but Q2 would include them. So in this case, the results would differ. For example:\n\nDrinker 'Alice' frequents Bar 'B1'. Bar 'B1' serves Beer 'A' (which Alice likes) and Beer 'B' (which she doesn't). Then Q1 would exclude Alice because there's a beer (B) she doesn't like at a bar she frequents. But Q2 would include her because she has at least one beer (A) she likes at that bar. Therefore, Q1 and Q2 would return different results for Alice.\n\nSo the answer is not equivalent. The counterexample would involve such a scenario.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 665,
+    "total_tokens": 1947,
+    "completion_tokens": 1282,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1034
+    },
+    "generation_seconds": 40.766
+  },
+  "started_at": "2026-10-06T09:11:41.729538+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [],
+  "q2_output": [
+    [
+      "Alice"
+    ]
+  ],
+  "q1_row_count": 0,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT name FROM drinker WHERE NOT EXISTS(SELECT f.bar FROM frequents AS f, serves AS s WHERE f.drinker = drinker.name AND f.bar = s.bar AND NOT s.beer IN (SELECT beer FROM likes WHERE drinker = drinker.name))",
+  "q2_validation_sql": "WITH innie AS (SELECT Serves.bar, Serves.beer, Likes.drinker FROM Serves JOIN Likes ON Serves.beer = Likes.beer JOIN Frequents ON Likes.drinker = Frequents.drinker WHERE Serves.bar = Frequents.bar ORDER BY Serves.bar), otherBeers AS (SELECT Serves.bar, Serves.beer, Frequents.drinker FROM Frequents JOIN Serves ON Serves.bar = Frequents.bar ORDER BY Frequents.drinker) SELECT drinker FROM (SELECT * FROM innie) AS pickyDrinkers"
+}

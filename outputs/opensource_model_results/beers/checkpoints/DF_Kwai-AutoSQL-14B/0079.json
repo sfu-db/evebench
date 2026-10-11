@@ -1,0 +1,61 @@
+{
+  "dbid": "beers",
+  "index": "79",
+  "source_index": "1154",
+  "schema_ddl": "CREATE TABLE Bar (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Beer (\n    name VARCHAR NOT NULL,\n    brewer VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Drinker (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Frequents (\n    drinker VARCHAR NOT NULL,\n    bar VARCHAR NOT NULL,\n    times_a_week SMALLINT NOT NULL,\n    PRIMARY KEY (drinker, bar),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (bar) REFERENCES Bar(name)\n);\n\nCREATE TABLE Serves (\n    bar VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    price DECIMAL(5,2) NOT NULL,\n    PRIMARY KEY (bar, beer),\n    FOREIGN KEY (bar) REFERENCES Bar(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);\n\nCREATE TABLE Likes (\n    drinker VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    PRIMARY KEY (drinker, beer),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);",
+  "q1": "SELECT f1.drinker, f2.drinker FROM (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f1, (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f2 WHERE f1.drinker < f2.drinker AND f1.st = f2.st",
+  "q2": "SELECT a.name AS drinker1, b.name AS drinker2 FROM (SELECT Drinker.name, SUM(Frequents.times_a_week) AS total_times_a_week FROM Drinker INNER JOIN Frequents ON Frequents.drinker = Drinker.name GROUP BY Drinker.name) AS a INNER JOIN (SELECT Drinker.name, SUM(Frequents.times_a_week) AS total_times_a_week FROM Drinker INNER JOIN Frequents ON Frequents.drinker = Drinker.name GROUP BY Drinker.name) AS b ON a.total_times_a_week = b.total_times_a_week AND a.name <> b.name ORDER BY a.total_times_a_week",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "beers",
+  "q1_prompt_sql": "SELECT f1.drinker, f2.drinker FROM (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f1, (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f2 WHERE f1.drinker < f2.drinker AND f1.st = f2.st",
+  "q2_prompt_sql": "SELECT a.name AS drinker1, b.name AS drinker2 FROM (SELECT Drinker.name, SUM(Frequents.times_a_week) AS total_times_a_week FROM Drinker INNER JOIN Frequents ON Frequents.drinker = Drinker.name GROUP BY Drinker.name) AS a INNER JOIN (SELECT Drinker.name, SUM(Frequents.times_a_week) AS total_times_a_week FROM Drinker INNER JOIN Frequents ON Frequents.drinker = Drinker.name GROUP BY Drinker.name) AS b ON a.total_times_a_week = b.total_times_a_week AND a.name <> b.name ORDER BY a.total_times_a_week",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO Drinker (name, address) VALUES ('Alice', '123 Main');\nINSERT INTO Drinker (name, address) VALUES ('Bob', '456 Oak');\nINSERT INTO Bar (name, address) VALUES ('Bar1', '789 Pine');\nINSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('Alice', 'Bar1', 1);\nINSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('Bob', 'Bar1', 1);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not equivalent. Q1 produces unordered pairs of drinkers with equal total times_a_week where the first drinker's name is lexicographically less than the second (f1.drinker < f2.drinker). Q2 produces all ordered pairs (drinker1, drinker2) where drinker1 != drinker2 and their totals are equal, including both (A,B) and (B,A). This difference leads to distinct output rows in cases with two or more drinkers sharing the same total.",
+  "counterexample_dsp": "Two drinkers (Alice and Bob) with identical total times_a_week. Q1 returns one pair (Alice, Bob), while Q2 returns both (Alice, Bob) and (Bob, Alice).",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 and Q2 are not equivalent. Q1 produces unordered pairs of drinkers with equal total times_a_week where the first drinker's name is lexicographically less than the second (f1.drinker < f2.drinker). Q2 produces all ordered pairs (drinker1, drinker2) where drinker1 != drinker2 and their totals are equal, including both (A,B) and (B,A). This difference leads to distinct output rows in cases with two or more drinkers sharing the same total.\",\n\"counterexample_dsp\": \"Two drinkers (Alice and Bob) with identical total times_a_week. Q1 returns one pair (Alice, Bob), while Q2 returns both (Alice, Bob) and (Bob, Alice).\",\n\"counterexample\": \"INSERT INTO Drinker (name, address) VALUES ('Alice', '123 Main');\\nINSERT INTO Drinker (name, address) VALUES ('Bob', '456 Oak');\\nINSERT INTO Bar (name, address) VALUES ('Bar1', '789 Pine');\\nINSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('Alice', 'Bar1', 1);\\nINSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('Bob', 'Bar1', 1);\"\n}",
+  "reasoning": "\nOkay, let's try to figure out if Q1 and Q2 are equivalent. \n\nFirst, I need to understand what each query is doing. \n\nStarting with Q1: It seems like it's taking two subqueries, both of which aggregate the SUM(times_a_week) per drinker from the Frequents table, grouped by drinker. Then it's doing a cross join between these two subqueries (f1 and f2) and filtering where f1.drinker < f2.drinker and their sums are equal. So the result pairs of drinkers where their total times a week are the same, and the first drinker's name is lexicographically less than the second. The output is two columns, drinker from f1 and drinker from f2.\n\nNow Q2: It's joining two subqueries (a and b) which are the same as the subqueries in Q1 but using explicit JOIN syntax. They are joining on a.total_times_a_week = b.total_times_a_week and a.name <> b.name. Then ordering by a.total_times_a_week. The output columns are drinker1 (a.name) and drinker2 (b.name). \n\nSo both queries are finding pairs of drinkers who have the same total times_a_week, but they differ in how they order the pairs. Q1 uses f1.drinker < f2.drinker to ensure each pair is ordered, which would produce each unordered pair once. Q2 uses a.name <> b.name and orders by total_times_a_week, but the ORDER BY might not affect the uniqueness of the pairs. However, the main difference is in the ordering condition. \n\nWait, Q1's WHERE clause f1.drinker < f2.drinker ensures that each pair is listed once, like (A,B) where A < B. Q2's condition a.name <> b.name would produce both (A,B) and (B,A) if they are both present, unless there's some ordering that prevents that. However, Q2 also has ORDER BY a.total_times_a_week. But the main issue is that Q1's output pairs are unique and ordered, while Q2's might have duplicates if there are multiple drinkers with the same sum. Wait, no. Wait, Q2 uses INNER JOIN, so for each pair (a, b) where their totals are equal and a.name != b.name, it will return that pair. So if two drinkers A and B have the same sum, then Q2 would return (A,B) and (B,A) because both a and b can be swapped. However, Q1 only returns (A,B) where A < B, so each unordered pair is listed once. Therefore, Q1's result set would have each pair once, whereas Q2 would have both (A,B) and (B,A) if A and B have the same sum. \n\nWait, but looking at Q2's ORDER BY a.total_times_a_week. That might not change the fact that both (A,B) and (B,A) would be present. So Q1 and Q2 would produce different results in that case. For example, if there are two drinkers, Alice and Bob, both with the same total times. Then Q1 would return (Alice, Bob) once. Q2 would return both (Alice, Bob) and (Bob, Alice) if the join allows it. Wait, but in Q2's case, since a and b are two copies of the same subquery, when you join a and b on a.total = b.total and a.name != b.name, each pair (a, b) where a.name != b.name and their totals are equal would be present. So for two drinkers, there are two rows: a is Alice and b is Bob, and a is Bob and b is Alice. However, Q1's WHERE clause f1.drinker < f2.drinker would produce only one row. So in this case, Q1 and Q2 are not equivalent.\n\nAnother point: Q1 uses the alias 'drinker' in the subqueries, while Q2 uses 'name'. But the Frequents table's drinker column is the same as the Drinker.name. So the subqueries in Q1 and Q2 are equivalent in terms of the data they produce. The difference is in the join conditions and the ordering.\n\nWait, but Q1's output columns are f1.drinker and f2.drinker, which would be two drinkers with same sum. Q2's output is a.name (drinker1) and b.name (drinker2). So in Q1, each pair is ordered once (A < B), while Q2 would have both (A,B) and (B,A) if they are different. So they are not equivalent.\n\nLet me think of a counterexample. Suppose there are two drinkers, Alice and Bob, both with sum 10. Then Q1 would output Alice, Bob once. Q2 would output Alice, Bob and Bob, Alice. So the results are different. Therefore, they are not equivalent.\n\nAnother case: if there are three drinkers with the same sum. Q1 would produce all pairs where drinker1 < drinker2. Q2 would produce all permutations where a.name != b.name. So the results would be different.\n\nTherefore, the answer is that they are not equivalent. The counterexample would be two drinkers with the same sum. Let me create such a test case.\n\nTest data: two drinkers, Alice and Bob, each frequenting the same bar with times_a_week = 1. Then their sums are both 1. Q1 would return (Alice, Bob). Q2 would return (Alice, Bob) and (Bob, Alice). So the output rows differ. Hence, not equivalent.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 703,
+    "total_tokens": 2194,
+    "completion_tokens": 1491,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1197
+    },
+    "generation_seconds": 47.859
+  },
+  "started_at": "2026-10-06T09:34:30.099877+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "Alice",
+      "Bob"
+    ]
+  ],
+  "q2_output": [
+    [
+      "Alice",
+      "Bob"
+    ],
+    [
+      "Bob",
+      "Alice"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT f1.drinker, f2.drinker FROM (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f1, (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f2 WHERE f1.drinker < f2.drinker AND f1.st = f2.st",
+  "q2_validation_sql": "SELECT a.name AS drinker1, b.name AS drinker2 FROM (SELECT Drinker.name, SUM(Frequents.times_a_week) AS total_times_a_week FROM Drinker INNER JOIN Frequents ON Frequents.drinker = Drinker.name GROUP BY Drinker.name) AS a INNER JOIN (SELECT Drinker.name, SUM(Frequents.times_a_week) AS total_times_a_week FROM Drinker INNER JOIN Frequents ON Frequents.drinker = Drinker.name GROUP BY Drinker.name) AS b ON a.total_times_a_week = b.total_times_a_week AND a.name <> b.name ORDER BY a.total_times_a_week"
+}

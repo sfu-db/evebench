@@ -1,0 +1,54 @@
+{
+  "dbid": "toxicology",
+  "index": "210",
+  "source_index": "316",
+  "schema_ddl": "CREATE TABLE `atom` (\n  `atom_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `element` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `bond` (\n  `bond_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `bond_type` TEXT DEFAULT NULL,\n  PRIMARY KEY (`bond_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `connected` (\n  `atom_id` TEXT NOT NULL,\n  `atom_id2` TEXT NOT NULL,\n  `bond_id` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`,`atom_id2`),\n  FOREIGN KEY (`atom_id`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`atom_id2`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`bond_id`) REFERENCES `bond` (`bond_id`) ON DELETE CASCADE ON UPDATE CASCADE\n);\n\nCREATE TABLE `molecule` (\n  `molecule_id` TEXT NOT NULL,\n  `label` TEXT DEFAULT NULL,\n  PRIMARY KEY (`molecule_id`)\n);",
+  "q1": "SELECT DISTINCT T1.molecule_id FROM atom AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id WHERE T1.element = 'cl' AND T2.label = '+'",
+  "q2": "SELECT DISTINCT T1.molecule_id, T1.label FROM molecule AS T1 INNER JOIN atom AS T2 ON T1.molecule_id = T2.molecule_id WHERE T2.element = 'cl' AND T1.label = '+'",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT DISTINCT T1.molecule_id FROM atom AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id WHERE T1.element = 'cl' AND T2.label = '+'",
+  "q2_prompt_sql": "SELECT DISTINCT T1.molecule_id, T1.label FROM molecule AS T1 INNER JOIN atom AS T2 ON T1.molecule_id = T2.molecule_id WHERE T2.element = 'cl' AND T1.label = '+'",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO molecule (molecule_id, label) VALUES ('m1', '+'), ('m2', '+'); INSERT INTO atom (atom_id, molecule_id, element) VALUES ('a1', 'm1', 'cl'), ('a2', 'm2', 'h');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent because Q1 only selects the distinct molecule_id where an atom with the element 'cl' is present in a molecule with the label '+', while Q2 selects the distinct molecule_id and label of the molecule where an atom with the element 'cl' is present and the molecule has the label '+'. The difference lies in the SELECT clause of the two queries.",
+  "counterexample_dsp": "The test data should have at least one molecule with the label '+' that contains an atom with the element 'cl', and another molecule with the label '+' that does not contain an atom with the element 'cl'. The difference in results will be that Q1 will return the molecule_id of the first molecule, while Q2 will return the molecule_id and label of the first molecule.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent because Q1 only selects the distinct molecule_id where an atom with the element 'cl' is present in a molecule with the label '+', while Q2 selects the distinct molecule_id and label of the molecule where an atom with the element 'cl' is present and the molecule has the label '+'. The difference lies in the SELECT clause of the two queries.\",\n  \"counterexample_dsp\": \"The test data should have at least one molecule with the label '+' that contains an atom with the element 'cl', and another molecule with the label '+' that does not contain an atom with the element 'cl'. The difference in results will be that Q1 will return the molecule_id of the first molecule, while Q2 will return the molecule_id and label of the first molecule.\",\n  \"counterexample\": \"INSERT INTO molecule (molecule_id, label) VALUES ('m1', '+'), ('m2', '+'); INSERT INTO atom (atom_id, molecule_id, element) VALUES ('a1', 'm1', 'cl'), ('a2', 'm2', 'h');\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 579,
+    "total_tokens": 819,
+    "completion_tokens": 240,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 4.469
+  },
+  "started_at": "2026-10-06T15:59:34.692902+00:00",
+  "elapsed_seconds": 0.36,
+  "q1_output": [
+    [
+      "m1"
+    ]
+  ],
+  "q2_output": [
+    [
+      "m1",
+      "+"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DISTINCT T1.molecule_id FROM atom AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id WHERE T1.element = 'cl' AND T2.label = '+'",
+  "q2_validation_sql": "SELECT DISTINCT T1.molecule_id, T1.label FROM molecule AS T1 INNER JOIN atom AS T2 ON T1.molecule_id = T2.molecule_id WHERE T2.element = 'cl' AND T1.label = '+'"
+}

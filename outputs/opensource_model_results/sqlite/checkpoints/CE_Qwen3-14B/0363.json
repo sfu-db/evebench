@@ -1,0 +1,58 @@
+{
+  "dbid": "codebase_community",
+  "index": "363",
+  "source_index": "662",
+  "schema_ddl": "CREATE TABLE badges\n(\n    Id     INTEGER          not null\n        primary key,\n    UserId INTEGER          null,\n    Name   TEXT null,\n    Date   DATETIME     null,\n        foreign key (UserId) references users (Id)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE comments\n(\n    Id              INTEGER          not null\n        primary key,\n    PostId          INTEGER          null,\n    Score           INTEGER          null,\n    Text            TEXT     null,\n    CreationDate    DATETIME     null,\n    UserId          INTEGER          null,\n    UserDisplayName TEXT null,\n        foreign key (PostId) references posts (Id)\n            on update cascade on delete cascade,\n        foreign key (UserId) references users (Id)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE postHistory\n(\n    Id                INTEGER          not null UNIQUE\n        primary key,\n    PostHistoryTypeId INTEGER          null,\n    PostId            INTEGER          null,\n    RevisionGUID      TEXT null,\n    CreationDate      DATETIME     null,\n    UserId            INTEGER          null,\n    Text              TEXT     null,\n    Comment           TEXT         null,\n    UserDisplayName   TEXT null,\n        foreign key (PostId) references posts (Id)\n            on update cascade on delete cascade,\n        foreign key (UserId) references users (Id)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE postLinks\n(\n    Id            INTEGER      not null\n        primary key,\n    CreationDate  DATETIME null,\n    PostId        INTEGER      null,\n    RelatedPostId INTEGER      null,\n    LinkTypeId    INTEGER      null,\n        foreign key (PostId) references posts (Id)\n            on update cascade on delete cascade,\n        foreign key (RelatedPostId) references posts (Id)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE posts\n(\n    Id                    INTEGER          not null UNIQUE\n        primary key,\n    PostTypeId            INTEGER          null,\n    AcceptedAnswerId      INTEGER          null,\n    CreaionDate           DATETIME     null,\n    Score                 INTEGER          null,\n    ViewCount             INTEGER          null,\n    Body                  TEXT     null,\n    OwnerUserId           INTEGER          null,\n    LasActivityDate       DATETIME     null,\n    Title                 TEXT null,\n    Tags                  TEXT null,\n    AnswerCount           INTEGER          null,\n    CommentCount          INTEGER          null,\n    FavoriteCount         INTEGER          null,\n    LastEditorUserId      INTEGER          null,\n    LastEditDate          DATETIME     null,\n    CommunityOwnedDate    DATETIME    null,\n    ParentId              INTEGER          null,\n    ClosedDate            DATETIME     null,\n    OwnerDisplayName      TEXT null,\n    LastEditorDisplayName TEXT null,\n        foreign key (LastEditorUserId) references users (Id)\n            on update cascade on delete cascade,\n        foreign key (OwnerUserId) references users (Id)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE tags\n(\n    Id            INTEGER          not null\n        primary key,\n    TagName       TEXT null,\n    Count         INTEGER          null,\n    ExcerptPostId INTEGER          null,\n    WikiPostId    INTEGER          null,\n    foreign key (ExcerptPostId) references posts (Id)\n        on update cascade on delete cascade\n);\n\nCREATE TABLE users\n(\n    Id              INTEGER          not null UNIQUE\n        primary key,\n    Reputation      INTEGER          null,\n    CreationDate    DATETIME     null,\n    DisplayName     TEXT null,\n    LastAccessDate  DATETIME     null,\n    WebsiteUrl      TEXT null,\n    Location        TEXT null,\n    AboutMe         TEXT     null,\n    Views           INTEGER          null,\n    UpVotes         INTEGER          null,\n    DownVotes       INTEGER          null,\n    AccountId       INTEGER          null,\n    Age             INTEGER          null,\n    ProfileImageUrl TEXT null\n);\n\nCREATE TABLE votes\n(\n    Id           INTEGER  not null\n        primary key,\n    PostId       INTEGER  null,\n    VoteTypeId   INTEGER  null,\n    CreationDate DATE null,\n    UserId       INTEGER  null,\n    BountyAmount INTEGER  null,\n        foreign key (PostId) references posts (Id)\n            on update cascade on delete cascade,\n        foreign key (UserId) references users (Id)\n            on update cascade on delete cascade\n);",
+  "q1": "SELECT Age FROM users WHERE Reputation = (SELECT MAX(Reputation) FROM users)",
+  "q2": "SELECT Age FROM users ORDER BY Reputation DESC LIMIT 1",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT Age FROM users WHERE Reputation = (SELECT MAX(Reputation) FROM users)",
+  "q2_prompt_sql": "SELECT Age FROM users ORDER BY Reputation DESC LIMIT 1",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO users (Id, Reputation, Age) VALUES (1, 1000, 30);\nINSERT INTO users (Id, Reputation, Age) VALUES (2, 1000, 25);\nINSERT INTO users (Id, Reputation, Age) VALUES (3, 900, 40);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 returns all users with the maximum reputation (potentially multiple rows), while Q2 returns only one row (the first in the ordered list). When multiple users share the maximum reputation, Q1 and Q2 will differ.",
+  "counterexample_dsp": "Two users with the same maximum reputation (e.g., 1000) and different ages. Q1 returns both ages, Q2 returns one.",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 returns all users with the maximum reputation (potentially multiple rows), while Q2 returns only one row (the first in the ordered list). When multiple users share the maximum reputation, Q1 and Q2 will differ.\",\n  \"counterexample_dsp\": \"Two users with the same maximum reputation (e.g., 1000) and different ages. Q1 returns both ages, Q2 returns one.\",\n  \"counterexample\": [\n    \"INSERT INTO users (Id, Reputation, Age) VALUES (1, 1000, 30);\",\n    \"INSERT INTO users (Id, Reputation, Age) VALUES (2, 1000, 25);\",\n    \"INSERT INTO users (Id, Reputation, Age) VALUES (3, 900, 40);\"\n  ]\n}",
+  "reasoning": "\nOkay, I need to figure out why Q1 and Q2 are not equivalent and create a counterexample where they return different results. Let me start by understanding the two queries.\n\nQ1: SELECT Age FROM users WHERE Reputation = (SELECT MAX(Reputation) FROM users)\nThis query gets the age(s) of user(s) who have the maximum reputation. If there are multiple users with the same max reputation, all their ages will be returned.\n\nQ2: SELECT Age FROM users ORDER BY Reputation DESC LIMIT 1\nThis query orders all users by reputation in descending order and picks the first one, returning only their age. If there are multiple users with the same max reputation, this will return just one of them (probably the first one in the order, but since the order is by reputation, if they are tied, it's arbitrary which one is picked first).\n\nSo the difference is when there are multiple users with the same maximum reputation. Q1 would return all their ages, while Q2 returns just one. Therefore, if there are two or more users with the same highest reputation, Q1 and Q2 would return different results.\n\nNow, to create a counterexample, I need to set up a test database with at least two users who have the same maximum reputation. Let's say two users with Reputation 1000, and another user with lower reputation. Then Q1 would return both ages, and Q2 would return one age (depending on the order, but since they are tied, the LIMIT 1 would pick one).\n\nBut wait, the LIMIT 1 in Q2 might depend on the database's ordering when there's a tie. However, in SQL, if two rows have the same value in the ORDER BY clause, the order is undefined unless there's a secondary sort. So in this case, if two users have the same max reputation, Q2 might return either one. But Q1 would return both. Therefore, in such a scenario, the results would differ.\n\nSo the counterexample would have two users with the same max reputation. Let me structure that.\n\nFor example:\nUser1: Id=1, Reputation=1000, Age=30\nUser2: Id=2, Reputation=1000, Age=25\nUser3: Id=3, Reputation=900, Age=40\n\nQ1 would return 30 and 25.\nQ2 would return either 30 or 25, depending on the database's ordering. But since the LIMIT is 1, it would return one of them. So in this case, Q1 and Q2 would have different results.\n\nBut wait, the problem says that the counterexample must have different results. So in this case, if Q2 returns one age and Q1 returns two, that's a difference.\n\nTherefore, the test data should have multiple users with the same max reputation. Let me create such a scenario with the INSERT statements.\n\nI need to make sure that the users table is populated with these entries. Also, other tables can be left empty if necessary since the queries don't involve them. The schema allows for that.\n\nSo the counterexample would be inserting three users as described. Then, Q1 would return two ages, Q2 would return one. Therefore, they are not equivalent.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 1101,
+    "total_tokens": 1970,
+    "completion_tokens": 869,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 683
+    },
+    "generation_seconds": 30.094
+  },
+  "started_at": "2026-10-06T16:58:06.635608+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      30
+    ],
+    [
+      25
+    ]
+  ],
+  "q2_output": [
+    [
+      30
+    ]
+  ],
+  "q1_row_count": 2,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT Age FROM users WHERE Reputation = (SELECT MAX(Reputation) FROM users)",
+  "q2_validation_sql": "SELECT Age FROM users ORDER BY Reputation DESC LIMIT 1"
+}

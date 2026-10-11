@@ -1,0 +1,63 @@
+{
+  "dbid": "1113",
+  "index": "302",
+  "source_index": "175",
+  "schema_ddl": "CREATE TABLE ACTIONS (\n    USER_ID INT,\n    POST_ID INT,\n    ACTION_DATE DATE,\n    ACTION ENUM('VIEW', 'LIKE', 'REACTION', 'COMMENT', 'REPORT', 'SHARE'),\n    EXTRA VARCHAR(255),\n    CHECK (ACTION_DATE <= '2019-07-05'),\n    CHECK (ACTION IN ('VIEW', 'LIKE', 'REACTION', 'COMMENT', 'REPORT', 'SHARE'))\n);",
+  "q1": "SELECT EXTRA AS REPORT_REASON, COUNT(DISTINCT POST_ID) AS REPORT_COUNT FROM ACTIONS WHERE ACTION = 'REPORT' AND ACTION_DATE = '2019-07-04' GROUP BY EXTRA",
+  "q2": "SELECT TEMP.EXTRA AS REPORT_REASON, COUNT(*) AS REPORT_COUNT FROM ( SELECT POST_ID,ACTION,EXTRA FROM ACTIONS WHERE ACTION_DATE = '2019-07-04' AND ACTION = 'REPORT' GROUP BY POST_ID,ACTION,EXTRA ) AS TEMP GROUP BY REPORT_REASON",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT EXTRA AS REPORT_REASON, COUNT(DISTINCT POST_ID) AS REPORT_COUNT FROM ACTIONS WHERE ACTION = 'REPORT' AND ACTION_DATE = '2019-07-04' GROUP BY EXTRA",
+  "q2_prompt_sql": "SELECT TEMP.EXTRA AS REPORT_REASON, COUNT(*) AS REPORT_COUNT FROM ( SELECT POST_ID,ACTION,EXTRA FROM ACTIONS WHERE ACTION_DATE = '2019-07-04' AND ACTION = 'REPORT' GROUP BY POST_ID,ACTION,EXTRA ) AS TEMP GROUP BY REPORT_REASON",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO ACTIONS (USER_ID, POST_ID, ACTION_DATE, ACTION, EXTRA) VALUES (1, 101, '2019-07-04', 'REPORT', 'SPAM'), (2, 101, '2019-07-04', 'REPORT', 'ABUSE'), (3, 101, '2019-07-04', 'REPORT', 'SPAM');",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not equivalent because Q1 counts distinct POST_IDs for each REPORT reason, while Q2 counts all rows (including duplicates) for each REPORT reason.",
+  "counterexample_dsp": "A user reports the same post multiple times under different reasons on the same day.",
+  "equiv": "N",
+  "raw_response": "{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 and Q2 are not equivalent because Q1 counts distinct POST_IDs for each REPORT reason, while Q2 counts all rows (including duplicates) for each REPORT reason.\",\n\"counterexample_dsp\": \"A user reports the same post multiple times under different reasons on the same day.\",\n\"counterexample\": \"INSERT INTO ACTIONS (USER_ID, POST_ID, ACTION_DATE, ACTION, EXTRA) VALUES (1, 101, '2019-07-04', 'REPORT', 'SPAM'), (2, 101, '2019-07-04', 'REPORT', 'ABUSE'), (3, 101, '2019-07-04', 'REPORT', 'SPAM');\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 474,
+    "total_tokens": 652,
+    "completion_tokens": 178,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 3.063
+  },
+  "started_at": "2026-10-06T14:33:35.835154+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "ABUSE",
+      1
+    ],
+    [
+      "SPAM",
+      1
+    ]
+  ],
+  "q2_output": [
+    [
+      "SPAM",
+      1
+    ],
+    [
+      "ABUSE",
+      1
+    ]
+  ],
+  "q1_row_count": 2,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT EXTRA AS REPORT_REASON, COUNT(DISTINCT POST_ID) AS REPORT_COUNT FROM ACTIONS WHERE ACTION = 'REPORT' AND ACTION_DATE = '2019-07-04' GROUP BY EXTRA",
+  "q2_validation_sql": "SELECT TEMP.EXTRA AS REPORT_REASON, COUNT(*) AS REPORT_COUNT FROM ( SELECT POST_ID,ACTION,EXTRA FROM ACTIONS WHERE ACTION_DATE = '2019-07-04' AND ACTION = 'REPORT' GROUP BY POST_ID,ACTION,EXTRA ) AS TEMP GROUP BY REPORT_REASON"
+}

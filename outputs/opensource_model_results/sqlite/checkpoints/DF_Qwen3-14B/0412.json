@@ -1,0 +1,39 @@
+{
+  "dbid": "superhero",
+  "index": "412",
+  "source_index": "774",
+  "schema_ddl": "CREATE TABLE alignment\n(\n    id        INTEGER not null\n            primary key,\n    alignment TEXT default NULL\n);\n\nCREATE TABLE attribute\n(\n    id             INTEGER not null\n            primary key,\n    attribute_name TEXT default NULL\n);\n\nCREATE TABLE colour\n(\n    id     INTEGER not null\n            primary key,\n    colour TEXT default NULL\n);\n\nCREATE TABLE gender\n(\n    id     INTEGER not null\n            primary key,\n    gender TEXT default NULL\n);\n\nCREATE TABLE publisher\n(\n    id             INTEGER not null\n            primary key,\n    publisher_name TEXT default NULL\n);\n\nCREATE TABLE race\n(\n    id   INTEGER not null\n            primary key,\n    race TEXT default NULL\n);\n\nCREATE TABLE superhero\n(\n    id             INTEGER not null\n            primary key,\n    superhero_name TEXT default NULL,\n    full_name      TEXT default NULL,\n    gender_id      INTEGER          default NULL,\n    eye_colour_id  INTEGER          default NULL,\n    hair_colour_id INTEGER          default NULL,\n    skin_colour_id INTEGER          default NULL,\n    race_id        INTEGER          default NULL,\n    publisher_id   INTEGER          default NULL,\n    alignment_id   INTEGER          default NULL,\n    height_cm      INTEGER          default NULL,\n    weight_kg      INTEGER          default NULL,\n    foreign key (alignment_id) references alignment(id),\n    foreign key (eye_colour_id) references colour(id),\n    foreign key (gender_id) references gender(id),\n    foreign key (hair_colour_id) references colour(id),\n    foreign key (publisher_id) references publisher(id),\n    foreign key (race_id) references race(id),\n    foreign key (skin_colour_id) references colour(id)\n);\n\nCREATE TABLE hero_attribute\n(\n    hero_id         INTEGER default NULL,\n    attribute_id    INTEGER default NULL,\n    attribute_value INTEGER default NULL,\n    foreign key (attribute_id) references attribute(id),\n    foreign key (hero_id) references superhero(id)\n);\n\nCREATE TABLE superpower\n(\n    id         INTEGER not null\n            primary key,\n    power_name TEXT default NULL\n);\n\nCREATE TABLE hero_power\n(\n    hero_id  INTEGER default NULL,\n    power_id INTEGER default NULL,\n    foreign key (hero_id) references superhero(id),\n    foreign key (power_id) references superpower(id)\n);",
+  "q1": "SELECT T1.superhero_name, T2.publisher_name FROM superhero AS T1 INNER JOIN publisher AS T2 ON T1.publisher_id = T2.id WHERE T1.eye_colour_id = T1.hair_colour_id AND T1.eye_colour_id = T1.skin_colour_id",
+  "q2": "SELECT T1.superhero_name, T5.publisher_name FROM superhero AS T1 INNER JOIN publisher AS T5 ON T1.publisher_id = T5.id WHERE T1.hair_colour_id = T1.skin_colour_id AND T1.hair_colour_id = T1.eye_colour_id",
+  "dialect": "sqlite",
+  "ground_truth": "EQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT T1.superhero_name, T2.publisher_name FROM superhero AS T1 INNER JOIN publisher AS T2 ON T1.publisher_id = T2.id WHERE T1.eye_colour_id = T1.hair_colour_id AND T1.eye_colour_id = T1.skin_colour_id",
+  "q2_prompt_sql": "SELECT T1.superhero_name, T5.publisher_name FROM superhero AS T1 INNER JOIN publisher AS T5 ON T1.publisher_id = T5.id WHERE T1.hair_colour_id = T1.skin_colour_id AND T1.hair_colour_id = T1.eye_colour_id",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "generation_error",
+  "validation_error": "JSONDecodeError: Expecting property name enclosed in double quotes: line 4 column 1 (char 326)",
+  "explanation": "",
+  "counterexample_dsp": "",
+  "equiv": "",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries select superheroes whose eye, hair, and skin colors are all the same. The WHERE clauses are logically equivalent due to the commutative property of equality (A=B and A=C is equivalent to B=C and B=A). The JOIN logic and column aliases (T1/T2 vs T1/T5) do not affect the outcome.\",\n}",
+  "reasoning": "\nOkay, let's take a look at these two SQL queries, Q1 and Q2. The user wants to know if they are semantically equivalent. \n\nFirst, I need to understand what each query is doing. Both queries are selecting superhero names and their publisher names by joining the superhero table with the publisher table on publisher_id. The main difference seems to be in the WHERE clause conditions.\n\nLooking at Q1: The WHERE clause has two conditions. The first is T1.eye_colour_id = T1.hair_colour_id, and the second is T1.eye_colour_id = T1.skin_colour_id. So, this is checking that all three color IDs (eye, hair, skin) are the same. Because if eye equals hair and eye equals skin, then all three are equal.\n\nNow Q2: The WHERE clause has T1.hair_colour_id = T1.skin_colour_id and T1.hair_colour_id = T1.eye_colour_id. Let's break that down. The first condition is hair equals skin, and the second is hair equals eye. So, again, this implies that all three (hair, skin, eye) are equal. \n\nWait a minute, so both queries are checking that all three color IDs are the same. The order of the conditions is different, but logically, they should be equivalent. Because in Q1, eye equals hair and eye equals skin. In Q2, hair equals skin and hair equals eye. Since equality is commutative, these are the same conditions. \n\nSo, the JOIN conditions are the same (superhero.publisher_id = publisher.id), and the WHERE clauses are logically the same. Therefore, the two queries should return the same results. \n\nBut maybe there's a trick here. Let me double-check. Suppose that in some case, the conditions are not equivalent. For example, if the first condition in Q1 is eye = hair, and the second is eye = skin. In Q2, the first is hair = skin, and the second is hair = eye. But logically, if eye = hair and eye = skin, then hair must equal skin. So both conditions are equivalent. Therefore, the WHERE clauses are the same. \n\nTherefore, the queries are semantically equivalent. The only difference is the order of the conditions in the WHERE clause, which doesn't affect the result. \n\nSo the answer should be that they are equivalent. There's no need for a counterexample because the conditions are logically the same.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 826,
+    "total_tokens": 1419,
+    "completion_tokens": 593,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 506
+    },
+    "generation_seconds": 19.532
+  },
+  "started_at": "2026-10-06T20:35:37.743338+00:00",
+  "elapsed_seconds": 0.0
+}

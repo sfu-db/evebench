@@ -1,0 +1,51 @@
+{
+  "dbid": "beers",
+  "index": "145",
+  "source_index": "2795",
+  "schema_ddl": "CREATE TABLE Bar (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Beer (\n    name VARCHAR NOT NULL,\n    brewer VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Drinker (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Frequents (\n    drinker VARCHAR NOT NULL,\n    bar VARCHAR NOT NULL,\n    times_a_week SMALLINT NOT NULL,\n    PRIMARY KEY (drinker, bar),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (bar) REFERENCES Bar(name)\n);\n\nCREATE TABLE Serves (\n    bar VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    price DECIMAL(5,2) NOT NULL,\n    PRIMARY KEY (bar, beer),\n    FOREIGN KEY (bar) REFERENCES Bar(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);\n\nCREATE TABLE Likes (\n    drinker VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    PRIMARY KEY (drinker, beer),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);",
+  "q1": "SELECT bar FROM Serves GROUP BY bar HAVING COUNT(beer) >= 5",
+  "q2": "SELECT S.BAR FROM SERVES AS S GROUP BY S.BAR HAVING COUNT(DISTINCT S.BEER) > 1",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "beers",
+  "q1_prompt_sql": "SELECT bar FROM Serves GROUP BY bar HAVING COUNT(beer) >= 5",
+  "q2_prompt_sql": "SELECT S.BAR FROM SERVES AS S GROUP BY S.BAR HAVING COUNT(DISTINCT S.BEER) > 1",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO Bar (name, address) VALUES ('BarA', '123 Main St');\nINSERT INTO Beer (name, brewer) VALUES ('Beer1', 'BrewerX'), ('Beer2', 'BrewerY');\nINSERT INTO Serves (bar, beer, price) VALUES ('BarA', 'Beer1', 3.50), ('BarA', 'Beer2', 4.00);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 requires bars that serve at least 5 distinct beers (COUNT(beer) >= 5), while Q2 requires bars that serve at least 2 distinct beers (COUNT(DISTINCT beer) > 1). A bar serving exactly 2 beers will appear in Q2's result but not in Q1's.",
+  "counterexample_dsp": "A bar named 'BarA' serves exactly 2 beers (Beer1, Beer2). Q2 returns 'BarA' (COUNT(DISTINCT beer) = 2 > 1), but Q1 does not (COUNT(beer) = 2 < 5).",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 requires bars that serve at least 5 distinct beers (COUNT(beer) >= 5), while Q2 requires bars that serve at least 2 distinct beers (COUNT(DISTINCT beer) > 1). A bar serving exactly 2 beers will appear in Q2's result but not in Q1's.\",\n  \"counterexample_dsp\": \"A bar named 'BarA' serves exactly 2 beers (Beer1, Beer2). Q2 returns 'BarA' (COUNT(DISTINCT beer) = 2 > 1), but Q1 does not (COUNT(beer) = 2 < 5).\",\n  \"counterexample\": [\n    \"INSERT INTO Bar (name, address) VALUES ('BarA', '123 Main St');\",\n    \"INSERT INTO Beer (name, brewer) VALUES ('Beer1', 'BrewerX'), ('Beer2', 'BrewerY');\",\n    \"INSERT INTO Serves (bar, beer, price) VALUES ('BarA', 'Beer1', 3.50), ('BarA', 'Beer2', 4.00);\"\n  ]\n}",
+  "reasoning": "\nOkay, let's see. I need to find a counterexample where Q1 and Q2 return different results. Let me first understand what each query does.\n\nQ1: SELECT bar FROM Serves GROUP BY bar HAVING COUNT(beer) >= 5. So this groups the Serves table by bar and counts the number of beers each bar serves. If that count is 5 or more, the bar is included. The COUNT(beer) here counts all rows in each group, so if a bar serves the same beer multiple times, but wait, no—the Serves table has a composite primary key (bar, beer), so each bar can't serve the same beer more than once. So COUNT(beer) here is the same as the number of distinct beers per bar. Wait, no, because each row in Serves is unique per bar and beer. So COUNT(beer) would be the same as COUNT(*), since each row has a unique beer for that bar. So Q1 is looking for bars that serve at least 5 different beers.\n\nQ2: SELECT S.BAR FROM SERVES AS S GROUP BY S.BAR HAVING COUNT(DISTINCT S.BEER) > 1. This groups by bar and counts distinct beers. The condition is that the count is more than 1, so bars serving at least 2 different beers.\n\nWait, so Q1 requires COUNT(beer) >=5, which is same as COUNT(*) since each row in Serves is unique per bar and beer. So Q1 is bars with 5 or more beers. Q2 is bars with more than 1 beer (so at least 2). Therefore, the two queries are not equivalent. For example, a bar that serves exactly 3 beers would be in Q2's result but not Q1's. Conversely, a bar serving 5 beers would be in both, but Q1's condition is stricter. But the question says that the queries are not semantically equivalent. But the user says they are not equivalent, so I need to find a scenario where they differ.\n\nWait, but the user says Q1 and Q2 are not equivalent. So the difference is that Q1 requires >=5 beers per bar, while Q2 requires >1. So in a scenario where a bar serves 2 beers, Q2 would include it but Q1 would not. Conversely, a bar serving 5 beers would be in both. But the user's example might be looking for a case where they differ. So for example, if there's a bar that serves exactly 2 beers, then Q2 includes it and Q1 does not. Therefore, the counterexample would be a bar with 2 beers. But wait, the user's Q2 has HAVING COUNT(DISTINCT beer) > 1, which is equivalent to >=2. So Q2 returns bars with 2 or more beers. Q1 returns bars with 5 or more beers. So any bar with 2,3,4 beers would be in Q2 but not Q1. So to have different results, create a bar that serves 2 beers. Then Q2 returns it, Q1 does not.\n\nSo the counterexample is to have a bar with exactly 2 beers. Let me create that. Let's say Bar 'BarA' serves Beer1 and Beer2. Then Q2 would return 'BarA' because COUNT(DISTINCT beer) is 2>1. Q1 would not return it because COUNT(beer) is 2 <5. So that's a case where they differ.\n\nBut wait, the user's Q1 is HAVING COUNT(beer) >=5. So if a bar serves 5 beers, both queries would return it. But the question is to find a case where they differ. So the simplest case is a bar with 2 beers. Then Q2 returns it, Q1 doesn't. So the counterexample is a bar with exactly 2 beers. Let me create that.\n\nSo the test data would be inserting into Serves: bar 'BarA' with two beers. Then Q2 returns BarA, Q1 does not. That would be the counterexample.\n\nBut wait, the user's Q1 is using COUNT(beer) >=5. So if a bar has 5 beers, both would return it. So the difference comes when the count is between 2 and 4 inclusive. So for example, if a bar has 3 beers, Q2 includes it (count distinct beer is 3>1), Q1 does not (3<5). So that's the case.\n\nSo the counterexample is a bar that serves exactly 3 beers. Then Q2 includes it, Q1 does not. Therefore, the two queries return different results.\n\nSo the explanation would be that Q1 requires at least 5 beers per bar, while Q2 requires at least 2. So any bar with 2-4 beers would be in Q2 but not Q1. Hence, the counterexample is a bar with 2 or more but less than 5 beers.\n\nNow, the user's schema has the Serves table. So I need to create a small database with that. Let me create a bar named 'BarA' and insert 3 beers for it. Then Q2 returns it, Q1 does not.\n\nSo the INSERT statements would be:\n\nINSERT INTO Serves (bar, beer, price) VALUES ('BarA', 'Beer1', 3.50);\nINSERT INTO Serves (bar, beer, price) VALUES ('BarA', 'Beer2', 4.00);\nINSERT INTO Serves (bar, beer, price) VALUES ('BarA', 'Beer3', 3.75);\n\nThen, Q2 would return 'BarA' because COUNT(DISTINCT beer) is 3>1. Q1 would not return it because COUNT(beer) is 3 <5.\n\nAlternatively, if I have a bar with exactly 5 beers, then both would return it. But if I have a bar with 5 beers and another with 2, then Q1 returns the first, Q2 returns both. But the simplest case is one bar with 2 beers. Let me check again.\n\nWait, the user's Q2 is HAVING COUNT(DISTINCT beer) > 1. So for a bar serving exactly 2 beers, COUNT(DISTINCT beer) is 2, which is >1, so Q2 returns it. Q1's HAVING is COUNT(beer) >=5. Since the count is 2, which is less than 5, Q1 does not return it. So yes, that's a valid counterexample.\n\nSo the counterexample database would have one bar with 2 beers. Let me write that.\n\nBut I also need to make sure that the other tables are properly set up. But since the other tables (Bar, Beer, etc.) are not referenced in the queries, maybe I can just insert into Serves and Bar. Wait, the Bar table's name is part of the Serves table's foreign key. So I need to have the bar's name in the Bar table.\n\nSo, first insert into Bar: INSERT INTO Bar (name, address) VALUES ('BarA', '123 Main St');\n\nThen insert into Serves: three rows for BarA with different beers.\n\nWait, but for the counterexample, inserting 2 beers for BarA would suffice. Let me do that.\n\nSo:\n\nINSERT INTO Bar (name, address) VALUES ('BarA', '123 Main St');\nINSERT INTO Beer (name, brewer) VALUES ('Beer1', 'Brewer1'), ('Beer2', 'Brewer2');\nINSERT INTO Serves (bar, beer, price) VALUES ('BarA', 'Beer1', 3.50), ('BarA', 'Beer2', 4.00);\n\nThen Q2 returns BarA, Q1 does not. That's a valid counterexample.\n\nSo the explanation is that Q1 requires bars serving at least 5 distinct beers, while Q2 requires at least 2. The counterexample is a bar serving exactly 2 beers, which Q2 includes but Q1 excludes.\n\nTherefore, the JSON response would have the explanation, the counterexample description, and the INSERT statements.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 482,
+    "total_tokens": 2458,
+    "completion_tokens": 1976,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1725
+    },
+    "generation_seconds": 64.938
+  },
+  "started_at": "2026-10-06T08:51:49.216670+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [],
+  "q2_output": [
+    [
+      "BarA"
+    ]
+  ],
+  "q1_row_count": 0,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT bar FROM Serves GROUP BY bar HAVING COUNT(beer) >= 5",
+  "q2_validation_sql": "SELECT S.BAR FROM SERVES AS S GROUP BY S.BAR HAVING COUNT(DISTINCT S.BEER) > 1"
+}

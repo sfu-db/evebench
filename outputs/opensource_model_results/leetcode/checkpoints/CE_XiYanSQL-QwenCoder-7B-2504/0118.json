@@ -1,0 +1,53 @@
+{
+  "dbid": "182",
+  "index": "118",
+  "source_index": "142",
+  "schema_ddl": "CREATE TABLE PERSON (\n    ID INT,\n    EMAIL VARCHAR(255),\n    PRIMARY KEY (ID)\n);",
+  "q1": "SELECT EMAIL AS EMAIL FROM PERSON GROUP BY EMAIL HAVING COUNT(EMAIL) >1",
+  "q2": "WITH CTE1 AS (SELECT EMAIL, COUNT(EMAIL) AS COUNT_EMAIL FROM PERSON GROUP BY EMAIL) SELECT EMAIL AS EMAIL FROM CTE1 WHERE COUNT_EMAIL > 1",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT EMAIL AS EMAIL FROM PERSON GROUP BY EMAIL HAVING COUNT(EMAIL) >1",
+  "q2_prompt_sql": "WITH CTE1 AS (SELECT EMAIL, COUNT(EMAIL) AS COUNT_EMAIL FROM PERSON GROUP BY EMAIL) SELECT EMAIL AS EMAIL FROM CTE1 WHERE COUNT_EMAIL > 1",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO PERSON (ID, EMAIL) VALUES (1, 'user1@example.com'), (2, 'user2@example.com'), (3, NULL), (4, 'user1@example.com');",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent because Q1 groups by EMAIL and then filters for COUNT(EMAIL) > 1, which can lead to incorrect results if the EMAIL column contains NULL values. Q2, on the other hand, uses a CTE to first count the occurrences of each EMAIL and then filters for COUNT_EMAIL > 1, which correctly handles NULL values by excluding them from the count.",
+  "counterexample_dsp": "The test data should include at least one NULL value in the EMAIL column to trigger the difference between Q1 and Q2.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent because Q1 groups by EMAIL and then filters for COUNT(EMAIL) > 1, which can lead to incorrect results if the EMAIL column contains NULL values. Q2, on the other hand, uses a CTE to first count the occurrences of each EMAIL and then filters for COUNT_EMAIL > 1, which correctly handles NULL values by excluding them from the count.\",\n  \"counterexample_dsp\": \"The test data should include at least one NULL value in the EMAIL column to trigger the difference between Q1 and Q2.\",\n  \"counterexample\": \"INSERT INTO PERSON (ID, EMAIL) VALUES (1, 'user1@example.com'), (2, 'user2@example.com'), (3, NULL), (4, 'user1@example.com');\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 297,
+    "total_tokens": 471,
+    "completion_tokens": 174,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 2.828
+  },
+  "started_at": "2026-10-06T09:50:13.144903+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "user1@example.com"
+    ]
+  ],
+  "q2_output": [
+    [
+      "user1@example.com"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT EMAIL AS EMAIL FROM PERSON GROUP BY EMAIL HAVING COUNT(EMAIL) >1",
+  "q2_validation_sql": "WITH CTE1 AS (SELECT EMAIL, COUNT(EMAIL) AS COUNT_EMAIL FROM PERSON GROUP BY EMAIL) SELECT EMAIL AS EMAIL FROM CTE1 WHERE COUNT_EMAIL > 1"
+}

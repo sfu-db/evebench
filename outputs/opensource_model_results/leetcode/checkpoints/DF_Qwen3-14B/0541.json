@@ -1,0 +1,39 @@
+{
+  "dbid": "1148",
+  "index": "541",
+  "source_index": "47",
+  "schema_ddl": "CREATE TABLE VIEWS (\n    ARTICLE_ID INT,\n    AUTHOR_ID INT,\n    VIEWER_ID INT,\n    VIEW_DATE DATE\n);",
+  "q1": "SELECT DISTINCT AUTHOR_ID AS ID FROM VIEWS WHERE AUTHOR_ID = VIEWER_ID ORDER BY ID",
+  "q2": "SELECT AUTHOR_ID AS ID FROM VIEWS WHERE AUTHOR_ID=VIEWER_ID GROUP BY AUTHOR_ID HAVING COUNT(*)>=1 ORDER BY ID",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT DISTINCT AUTHOR_ID AS ID FROM VIEWS WHERE AUTHOR_ID = VIEWER_ID ORDER BY ID",
+  "q2_prompt_sql": "SELECT AUTHOR_ID AS ID FROM VIEWS WHERE AUTHOR_ID=VIEWER_ID GROUP BY AUTHOR_ID HAVING COUNT(*)>=1 ORDER BY ID",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries retrieve unique AUTHOR_IDs where AUTHOR_ID equals VIEWER_ID. Q1 uses DISTINCT, while Q2 uses GROUP BY with a redundant HAVING clause that doesn't filter any rows. Both approaches yield the same result set.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries retrieve unique AUTHOR_IDs where AUTHOR_ID equals VIEWER_ID. Q1 uses DISTINCT, while Q2 uses GROUP BY with a redundant HAVING clause that doesn't filter any rows. Both approaches yield the same result set.\"\n}",
+  "reasoning": "\nOkay, let's see. I need to determine if Q1 and Q2 are semantically equivalent. Let me start by understanding each query.\n\nQ1 is selecting distinct AUTHOR_ID as ID from VIEWS where AUTHOR_ID equals VIEWER_ID. Then it orders by ID. So this query is looking for all unique AUTHOR_IDs where the author is also the viewer. The DISTINCT ensures that each AUTHOR_ID is listed once, even if there are multiple entries with the same AUTHOR_ID and VIEWER_ID.\n\nQ2 is selecting AUTHOR_ID as ID from VIEWS where the same condition (AUTHOR_ID = VIEWER_ID), then grouping by AUTHOR_ID. The HAVING COUNT(*) >=1 is a bit redundant because grouping by AUTHOR_ID would have at least one row, so COUNT(*) would be at least 1. So the HAVING clause here doesn't actually filter anything. Then it orders by ID.\n\nSo both queries are trying to get the list of AUTHOR_IDs where the author is also the viewer. The main difference is that Q1 uses DISTINCT and Q2 uses GROUP BY with HAVING COUNT(*) >=1. \n\nBut wait, in Q2, even though the HAVING clause is redundant, the GROUP BY would aggregate the rows. However, since we're selecting AUTHOR_ID and grouping by it, each group would have one AUTHOR_ID. So the result would be the same as Q1, right? Because in both cases, we are getting unique AUTHOR_IDs where the condition holds.\n\nWait, but what if there are multiple entries with the same AUTHOR_ID and VIEWER_ID? For example, if an author viewed their own article multiple times. In Q1, DISTINCT would make sure each ID is listed once. In Q2, grouping by AUTHOR_ID would also result in one row per AUTHOR_ID. So the output should be the same.\n\nBut wait, the HAVING COUNT(*) >=1 is always true. So Q2's HAVING clause doesn't affect the result. So both queries should return the same set of AUTHOR_IDs. Therefore, they are equivalent.\n\nBut maybe I'm missing something. Let me think again. Suppose there are multiple rows with the same AUTHOR_ID and VIEWER_ID. Q1 would return that AUTHOR_ID once, and Q2 would also return it once. So in that case, same result.\n\nAlternatively, what if the WHERE clause is not the same? No, both have the same WHERE condition. So the only difference is how they handle duplicates. But both are eliminating duplicates. So they should be equivalent.\n\nHmm, but maybe the HAVING clause could be different. Wait, the HAVING COUNT(*) >=1 is redundant, but if the HAVING was COUNT(*) = 1, that would be different. But here it's >=1. So in that case, the GROUP BY and HAVING don't filter anything. So Q2 is effectively selecting all AUTHOR_IDs where the condition holds, and grouping them, which would give the same result as DISTINCT.\n\nTherefore, the two queries should be equivalent. So the answer would be \"Y\".\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 330,
+    "total_tokens": 1020,
+    "completion_tokens": 690,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 626
+    },
+    "generation_seconds": 21.313
+  },
+  "started_at": "2026-10-06T15:16:36.070098+00:00",
+  "elapsed_seconds": 0.0
+}

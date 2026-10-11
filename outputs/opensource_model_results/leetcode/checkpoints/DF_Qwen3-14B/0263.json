@@ -1,0 +1,39 @@
+{
+  "dbid": "1141",
+  "index": "263",
+  "source_index": "202",
+  "schema_ddl": "CREATE TABLE ACTIVITY (\n    USER_ID INT,\n    SESSION_ID INT,\n    ACTIVITY_DATE DATE,\n    ACTIVITY_TYPE ENUM('OPEN_SESSION', 'END_SESSION', 'SCROLL_DOWN', 'SEND_MESSAGE'),\n    CHECK (ACTIVITY_TYPE IN ('OPEN_SESSION', 'END_SESSION', 'SCROLL_DOWN', 'SEND_MESSAGE'))\n);",
+  "q1": "SELECT ACTIVITY_DATE AS DAY, COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY WHERE ACTIVITY_DATE BETWEEN '2019-06-28' AND '2019-07-27' GROUP BY ACTIVITY_DATE",
+  "q2": "SELECT ACTIVITY_DATE AS DAY, COUNT( DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY WHERE ACTIVITY_DATE BETWEEN '2019-06-28' AND '2019-07-27' GROUP BY 1 HAVING COUNT(*)>=1",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT ACTIVITY_DATE AS DAY, COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY WHERE ACTIVITY_DATE BETWEEN '2019-06-28' AND '2019-07-27' GROUP BY ACTIVITY_DATE",
+  "q2_prompt_sql": "SELECT ACTIVITY_DATE AS DAY, COUNT( DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY WHERE ACTIVITY_DATE BETWEEN '2019-06-28' AND '2019-07-27' GROUP BY 1 HAVING COUNT(*)>=1",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries group by ACTIVITY_DATE and count distinct users in the same date range. The HAVING clause in Q2 (COUNT(*)>=1) is redundant because the WHERE clause ensures groups have at least one row, making Q1 and Q2 semantically identical.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries group by ACTIVITY_DATE and count distinct users in the same date range. The HAVING clause in Q2 (COUNT(*)>=1) is redundant because the WHERE clause ensures groups have at least one row, making Q1 and Q2 semantically identical.\"\n}",
+  "reasoning": "\nOkay, let's see. I need to check if Q1 and Q2 are semantically equivalent. Let me first understand what each query does.\n\nQ1 selects the activity date as DAY and counts the distinct user IDs for each date where the activity date is between '2019-06-28' and '2019-07-27'. It groups by ACTIVITY_DATE. So for each day in that range, it gives the number of unique users who had any activity that day.\n\nQ2 is similar, but it groups by 1, which refers to the first column in the SELECT list, which is ACTIVITY_DATE. Also, it has a HAVING clause with COUNT(*) >=1. Wait, the HAVING clause here is checking that the count of all rows in the group is at least 1. But since the WHERE clause already filters the dates, the HAVING condition here is redundant. Because if a group exists, it must have at least one row. So the HAVING clause in Q2 doesn't actually filter anything. \n\nWait, but maybe there's a case where the group by 1 would have a group with zero rows? No, because the WHERE clause is already filtering the dates. So the HAVING COUNT(*) >=1 is redundant. So Q2's HAVING clause doesn't affect the result. So both Q1 and Q2 are grouping by the activity date and counting distinct users. So they should be the same. \n\nBut wait, maybe there's a case where the GROUP BY in Q2 is different. Wait, in Q1, the GROUP BY is ACTIVITY_DATE. In Q2, it's GROUP BY 1, which is the same as GROUP BY ACTIVITY_DATE. So the grouping is the same. And the SELECT lists are the same. So the only difference is the HAVING clause. But the HAVING clause in Q2 is COUNT(*) >=1, which is always true because the WHERE clause ensures that the group has at least one row. So the HAVING clause in Q2 doesn't exclude any groups. Therefore, the two queries should be equivalent.\n\nWait, but maybe there's a case where a group has zero rows? But the WHERE clause is filtering the dates between those two dates. So if a group exists, it must have at least one row. So the HAVING condition is redundant. Therefore, Q1 and Q2 are equivalent. So the answer should be Y.\n\nBut wait, maybe there's a case where the GROUP BY in Q2 is different? Let me check the SQL syntax again. In Q2, the GROUP BY 1 refers to the first column in the SELECT list, which is ACTIVITY_DATE. So it's the same as grouping by ACTIVITY_DATE. So both queries are grouping by the same column. So the only difference is the HAVING clause, which doesn't affect the result. Hence, they are equivalent.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 438,
+    "total_tokens": 1112,
+    "completion_tokens": 674,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 603
+    },
+    "generation_seconds": 22.297
+  },
+  "started_at": "2026-10-06T14:57:27.163381+00:00",
+  "elapsed_seconds": 0.0
+}

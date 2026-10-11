@@ -1,0 +1,64 @@
+{
+  "dbid": "beers",
+  "index": "117",
+  "source_index": "1960",
+  "schema_ddl": "CREATE TABLE Bar (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Beer (\n    name VARCHAR NOT NULL,\n    brewer VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Drinker (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Frequents (\n    drinker VARCHAR NOT NULL,\n    bar VARCHAR NOT NULL,\n    times_a_week SMALLINT NOT NULL,\n    PRIMARY KEY (drinker, bar),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (bar) REFERENCES Bar(name)\n);\n\nCREATE TABLE Serves (\n    bar VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    price DECIMAL(5,2) NOT NULL,\n    PRIMARY KEY (bar, beer),\n    FOREIGN KEY (bar) REFERENCES Bar(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);\n\nCREATE TABLE Likes (\n    drinker VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    PRIMARY KEY (drinker, beer),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);",
+  "q1": "SELECT b1.name AS bar1, b2.name AS bar2 FROM bar AS b1, bar AS b2 WHERE NOT EXISTS(SELECT s1.beer FROM serves AS s1 WHERE s1.bar = b1.name AND NOT EXISTS(SELECT 1 FROM serves AS s2 WHERE s2.bar = b2.name AND s2.beer = s1.beer)) AND EXISTS(SELECT s2.beer FROM serves AS s2 WHERE s2.bar = b2.name AND NOT EXISTS(SELECT 1 FROM serves AS s1 WHERE s1.bar = b1.name AND s1.beer = s2.beer))",
+  "q2": "SELECT DISTINCT S1.bar, S2.bar FROM serves AS S1 LEFT JOIN serves AS S2 ON S1.beer = S2.beer",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "beers",
+  "q1_prompt_sql": "SELECT b1.name AS bar1, b2.name AS bar2 FROM bar AS b1, bar AS b2 WHERE NOT EXISTS(SELECT s1.beer FROM serves AS s1 WHERE s1.bar = b1.name AND NOT EXISTS(SELECT 1 FROM serves AS s2 WHERE s2.bar = b2.name AND s2.beer = s1.beer)) AND EXISTS(SELECT s2.beer FROM serves AS s2 WHERE s2.bar = b2.name AND NOT EXISTS(SELECT 1 FROM serves AS s1 WHERE s1.bar = b1.name AND s1.beer = s2.beer))",
+  "q2_prompt_sql": "SELECT DISTINCT S1.bar, S2.bar FROM serves AS S1 LEFT JOIN serves AS S2 ON S1.beer = S2.beer",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO Bar (name, address) VALUES ('A', 'addr1'), ('B', 'addr2');\nINSERT INTO Beer (name, brewer) VALUES ('beer1', 'brewer1');\nINSERT INTO Serves (bar, beer, price) VALUES ('A', 'beer1', 3.5), ('B', 'beer1', 4.0);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 finds pairs of bars where one is a strict superset of the other's beers, while Q2 finds all pairs of bars that share at least one common beer (including equal sets). Q1 is a subset of Q2's results, but Q2 includes cases not covered by Q1.",
+  "counterexample_dsp": "Two bars (A and B) serving the same beer. Q2 returns (A,B) and (B,A), but Q1 returns nothing since neither is a strict superset of the other.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 finds pairs of bars where one is a strict superset of the other's beers, while Q2 finds all pairs of bars that share at least one common beer (including equal sets). Q1 is a subset of Q2's results, but Q2 includes cases not covered by Q1.\",\n\"counterexample_dsp\": \"Two bars (A and B) serving the same beer. Q2 returns (A,B) and (B,A), but Q1 returns nothing since neither is a strict superset of the other.\",\n\"counterexample\": \"INSERT INTO Bar (name, address) VALUES ('A', 'addr1'), ('B', 'addr2');\\nINSERT INTO Beer (name, brewer) VALUES ('beer1', 'brewer1');\\nINSERT INTO Serves (bar, beer, price) VALUES ('A', 'beer1', 3.5), ('B', 'beer1', 4.0);\"\n}",
+  "reasoning": "\nOkay, let's try to figure out if Q1 and Q2 are semantically equivalent. First, I need to understand what each query is doing.\n\nStarting with Q1. It selects pairs of bars (b1, b2) with some conditions. The first part of the WHERE clause uses NOT EXISTS to check that there's no beer served by b1 that isn't served by b2. Wait, no. Let me parse that again. The NOT EXISTS subquery is looking for beers in s1 (served by b1) where there's no s2 (served by b2) with the same beer. So that means for every beer that b1 serves, b2 must serve it too. So that part ensures that b2 serves all beers that b1 serves. Then the second part is EXISTS, which checks that there's a beer in s2 (served by b2) that isn't served by b1. So putting those together, Q1 is looking for pairs where b2 serves all beers of b1 and also has at least one beer that b1 doesn't serve. So b2 is a superset of b1's beers, but not equal. So the pair (b1, b2) is such that b2 serves all of b1's beers plus some more.\n\nNow Q2: It's a SELECT DISTINCT S1.bar, S2.bar FROM serves S1 LEFT JOIN S2 ON S1.beer = S2.beer. Wait, a LEFT JOIN would include all S1 entries and match S2 entries where the beer is the same. But since it's a LEFT JOIN, even if there's no matching S2, it would still include S1.bar and NULL for S2.bar. But the DISTINCT is applied. However, the question is about the pairs (S1.bar, S2.bar). But in a LEFT JOIN, for each beer in S1, we get S2.bar where the beer matches. But if S2.bar is NULL, then the pair would be (S1.bar, NULL). However, the original Q2's output is bar1 and bar2. But in the schema, Serves has bar and beer, so S1.bar is a bar, S2.bar is another bar. The LEFT JOIN on beer would pair bars that serve the same beer. But the query is selecting all such pairs, including when S2 is NULL. However, the DISTINCT would eliminate duplicates.\n\nWait, but the LEFT JOIN would produce rows where S1.bar and S2.bar are the same bar if they serve the same beer, or different bars. For example, if two different bars serve the same beer, then S1.bar and S2.bar would be those two bars. But also, if a bar serves a beer and there's no other bar serving that beer, then S2.bar would be NULL. But the query is selecting S1.bar and S2.bar. So in that case, the pair would be (bar1, NULL). But the original Q1 is selecting pairs of bars where b2 serves all of b1's beers plus more. So Q2 seems to be generating all pairs of bars that share at least one common beer, but also includes pairs where one bar serves a beer and the other doesn't (but that would have S2.bar as NULL). However, the DISTINCT would remove duplicates.\n\nBut Q1 is looking for pairs where one bar is a strict superset of the other's beers. So these are different conditions. For example, if bar A serves beer X and Y, and bar B serves X, Y, Z. Then Q1 would include (A, B) because B serves all of A's beers and has an extra. But Q2 would include (A, B) because they share X and Y. Also, (B, A) would be included if there's a beer that B serves that A doesn't (but since B serves Z, which A doesn't, but in Q2, the LEFT JOIN would have S1 as B's beer and S2 as A's beer. Wait, no. Q2 is S1 LEFT JOIN S2 ON S1.beer = S2.beer. So S1 is from serves, S2 is from serves. So for each beer in S1, we look for bars in S2 that serve the same beer. So if S1 is a row (bar1, beer1), and S2 is a row (bar2, beer1), then the pair (bar1, bar2) is generated. So Q2 would generate all pairs of bars that share at least one beer. But also, if a bar serves a beer and there's no other bar serving that beer, then S2.bar would be NULL, leading to (bar1, NULL). But since the original Q1 is looking for pairs where one bar is a strict superset of the other, the two queries are not the same.\n\nSo for example, consider a case where bar1 serves beer1, and bar2 serves beer1. Then Q2 would include (bar1, bar2) and (bar2, bar1). But Q1 would not include this pair because bar2 does not serve all beers of bar1 (they both have the same beer) and also does not have any beer that bar1 doesn't. Wait, in this case, bar1 and bar2 have the same set of beers. So the first condition of Q1 is that for every beer in b1, b2 serves it. Which is true. The second condition is that there exists a beer in b2 that is not in b1. But since they are equal, that's false. Therefore, this pair would not be in Q1's output. However, Q2 would include (bar1, bar2) and (bar2, bar1) because they share beer1.\n\nTherefore, Q1 and Q2 are not equivalent. So the answer is N.\n\nTo create a counterexample, let's create a scenario where Q1 and Q2 differ. Let's say we have two bars, A and B. Bar A serves beer1, and bar B serves beer1. Then Q2 would output (A, B) and (B, A). But Q1 would not output any pairs because the second condition (b2 has a beer not in b1) is not met. However, if there's a third bar C that serves beer1 and beer2, then Q1 would include (A, C) and (B, C) because C serves all beers of A and B and has an extra beer. But Q2 would include (A, C), (C, A), (B, C), (C, B), (A, B), (B, A), etc.\n\nBut to make a minimal counterexample, let's take two bars A and B that serve the same beer. Then Q2 would have (A, B) and (B, A), but Q1 would not have any pairs. So that's a case where Q2 returns results but Q1 does not. Alternatively, if there's a case where Q1 returns a pair but Q2 does not. Wait, no. Because Q1's pairs are a subset of Q2's pairs. Wait, Q1's condition is that b2 is a strict superset of b1's beers. Therefore, for such a pair, since b2 has all beers of b1 and more, they share at least one beer (the ones in b1), so Q2 would include (b1, b2). Therefore, Q1's output is a subset of Q2's output. But in the case where two bars have the same beers, Q2 includes the pair but Q1 does not. Therefore, the queries are not equivalent.\n\nSo the counterexample would be two bars serving the same beer. Let's create that in the database. Insert bar A and bar B, both serving beer1. Then Q2 will have (A, B) and (B, A), but Q1 will have nothing. So the counterexample would be that.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 647,
+    "total_tokens": 2538,
+    "completion_tokens": 1891,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1678
+    },
+    "generation_seconds": 59.953
+  },
+  "started_at": "2026-10-06T09:16:03.023971+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [],
+  "q2_output": [
+    [
+      "A",
+      "A"
+    ],
+    [
+      "A",
+      "B"
+    ],
+    [
+      "B",
+      "A"
+    ],
+    [
+      "B",
+      "B"
+    ]
+  ],
+  "q1_row_count": 0,
+  "q2_row_count": 4,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT b1.name AS bar1, b2.name AS bar2 FROM bar AS b1, bar AS b2 WHERE NOT EXISTS(SELECT s1.beer FROM serves AS s1 WHERE s1.bar = b1.name AND NOT EXISTS(SELECT 1 FROM serves AS s2 WHERE s2.bar = b2.name AND s2.beer = s1.beer)) AND EXISTS(SELECT s2.beer FROM serves AS s2 WHERE s2.bar = b2.name AND NOT EXISTS(SELECT 1 FROM serves AS s1 WHERE s1.bar = b1.name AND s1.beer = s2.beer))",
+  "q2_validation_sql": "SELECT DISTINCT S1.bar, S2.bar FROM serves AS S1 LEFT JOIN serves AS S2 ON S1.beer = S2.beer"
+}

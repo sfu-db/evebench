@@ -1,0 +1,65 @@
+{
+  "dbid": "603",
+  "index": "35",
+  "source_index": "262",
+  "schema_ddl": "CREATE TABLE CINEMA (\n    SEAT_ID INT,\n    FREE BOOLEAN\n);",
+  "q1": "SELECT O1.SEAT_ID FROM CINEMA O1 WHERE O1.FREE = 1 AND ((SELECT FREE FROM CINEMA O2 WHERE O2.SEAT_ID = O1.SEAT_ID - 1) = 1 OR (SELECT FREE FROM CINEMA O2 WHERE O2.SEAT_ID = O1.SEAT_ID + 1) = 1)",
+  "q2": "SELECT DISTINCT A.SEAT_ID FROM CINEMA AS A JOIN CINEMA AS B WHERE ABS(A.SEAT_ID-B.SEAT_ID)=1 AND A.FREE=TRUE AND B.FREE=TRUE ORDER BY A.SEAT_ID",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT O1.SEAT_ID FROM CINEMA O1 WHERE O1.FREE = 1 AND ((SELECT FREE FROM CINEMA O2 WHERE O2.SEAT_ID = O1.SEAT_ID - 1) = 1 OR (SELECT FREE FROM CINEMA O2 WHERE O2.SEAT_ID = O1.SEAT_ID + 1) = 1)",
+  "q2_prompt_sql": "SELECT DISTINCT A.SEAT_ID FROM CINEMA AS A JOIN CINEMA AS B WHERE ABS(A.SEAT_ID-B.SEAT_ID)=1 AND A.FREE=TRUE AND B.FREE=TRUE ORDER BY A.SEAT_ID",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO CINEMA (SEAT_ID, FREE) VALUES (1, TRUE), (2, TRUE), (3, TRUE), (4, FALSE), (5, TRUE);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent because Q1 uses subqueries to check the free status of adjacent seats, while Q2 uses a JOIN operation to achieve the same goal. The difference arises when the cinema has a sequence of free seats, and Q1 might not correctly identify all such sequences due to the way subqueries are used.",
+  "counterexample_dsp": "A cinema with three consecutive free seats, where Q1 might miss the middle seat as part of the sequence, while Q2 correctly identifies all three as part of the same sequence.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent because Q1 uses subqueries to check the free status of adjacent seats, while Q2 uses a JOIN operation to achieve the same goal. The difference arises when the cinema has a sequence of free seats, and Q1 might not correctly identify all such sequences due to the way subqueries are used.\",\n  \"counterexample_dsp\": \"A cinema with three consecutive free seats, where Q1 might miss the middle seat as part of the sequence, while Q2 correctly identifies all three as part of the same sequence.\",\n  \"counterexample\": \"INSERT INTO CINEMA (SEAT_ID, FREE) VALUES (1, TRUE), (2, TRUE), (3, TRUE), (4, FALSE), (5, TRUE);\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 364,
+    "total_tokens": 532,
+    "completion_tokens": 168,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 2.781
+  },
+  "started_at": "2026-10-06T09:49:59.724796+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      1
+    ],
+    [
+      2
+    ],
+    [
+      3
+    ]
+  ],
+  "q2_output": [
+    [
+      1
+    ],
+    [
+      2
+    ],
+    [
+      3
+    ]
+  ],
+  "q1_row_count": 3,
+  "q2_row_count": 3,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT O1.SEAT_ID FROM CINEMA O1 WHERE O1.FREE = 1 AND ((SELECT FREE FROM CINEMA O2 WHERE O2.SEAT_ID = O1.SEAT_ID - 1) = 1 OR (SELECT FREE FROM CINEMA O2 WHERE O2.SEAT_ID = O1.SEAT_ID + 1) = 1)",
+  "q2_validation_sql": "SELECT DISTINCT A.SEAT_ID FROM CINEMA AS A JOIN CINEMA AS B WHERE ABS(A.SEAT_ID-B.SEAT_ID)=1 AND A.FREE=TRUE AND B.FREE=TRUE ORDER BY A.SEAT_ID"
+}

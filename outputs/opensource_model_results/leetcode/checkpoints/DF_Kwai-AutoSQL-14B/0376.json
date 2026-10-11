@@ -1,0 +1,39 @@
+{
+  "dbid": "596",
+  "index": "376",
+  "source_index": "150",
+  "schema_ddl": "CREATE TABLE COURSES (\n    STUDENT VARCHAR(255),\n    CLASS VARCHAR(255),\n    PRIMARY KEY (STUDENT)\n);",
+  "q1": "SELECT CLASS FROM COURSES GROUP BY CLASS HAVING COUNT(*)>=5",
+  "q2": "SELECT CLASS FROM COURSES GROUP BY (CLASS) HAVING COUNT(STUDENT) >= 5",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT CLASS FROM COURSES GROUP BY CLASS HAVING COUNT(*)>=5",
+  "q2_prompt_sql": "SELECT CLASS FROM COURSES GROUP BY (CLASS) HAVING COUNT(STUDENT) >= 5",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries group by CLASS and count students in each class. Since STUDENT is a primary key and never null, COUNT(*) and COUNT(STUDENT) are equivalent. The grouping by (CLASS) is identical to GROUP BY CLASS.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries group by CLASS and count students in each class. Since STUDENT is a primary key and never null, COUNT(*) and COUNT(STUDENT) are equivalent. The grouping by (CLASS) is identical to GROUP BY CLASS.\"\n}",
+  "reasoning": "\nOkay, let's see. I need to check if Q1 and Q2 are semantically equivalent. The schema has a COURSES table with STUDENT and CLASS, and STUDENT is the primary key. So each student can only appear once in the table, right? That means each row represents a unique student enrolled in a class.\n\nQ1 is selecting CLASS from COURSES, grouping by CLASS, and having count(*) >=5. So this groups all classes and returns those that have at least 5 students. Since each student is unique, COUNT(*) here counts the number of students in each class.\n\nQ2 is similar but groups by (CLASS) and has COUNT(STUDENT) >=5. Wait, grouping by (CLASS) is the same as grouping by CLASS. But the HAVING condition uses COUNT(STUDENT). Since STUDENT is part of the table and each row has one student, COUNT(STUDENT) should be the same as COUNT(*). So why would there be a difference?\n\nHmm, maybe in some SQL dialects, if the column name is used in the HAVING clause, it might behave differently. But in standard SQL, COUNT(STUDENT) would count the number of non-null values in the STUDENT column, which since STUDENT is a primary key, it's always non-null. So COUNT(STUDENT) should equal COUNT(*). Therefore, Q1 and Q2 should be equivalent. But wait, maybe there's a case where a class has multiple rows per student? No, the primary key is STUDENT, so each student appears once. So each class's count via COUNT(*) and COUNT(STUDENT) should be the same.\n\nWait, but what if there's a class that has NULLs in STUDENT? No, because STUDENT is part of the primary key. The primary key constraint ensures that STUDENT is not null. So COUNT(STUDENT) and COUNT(*) are the same here. Therefore, the two queries should be equivalent.\n\nBut maybe I'm missing something. Let me think again. Suppose a class has 5 students. Then both queries would return that class. If a class has 4 students, both would not. So they should always return the same result. Therefore, the answer is Y.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 319,
+    "total_tokens": 838,
+    "completion_tokens": 519,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 456
+    },
+    "generation_seconds": 16.047
+  },
+  "started_at": "2026-10-06T15:44:08.941548+00:00",
+  "elapsed_seconds": 0.0
+}

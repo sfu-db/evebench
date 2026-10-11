@@ -1,0 +1,53 @@
+{
+  "dbid": "beers",
+  "index": "221",
+  "source_index": "6494",
+  "schema_ddl": "CREATE TABLE Bar (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Beer (\n    name VARCHAR NOT NULL,\n    brewer VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Drinker (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Frequents (\n    drinker VARCHAR NOT NULL,\n    bar VARCHAR NOT NULL,\n    times_a_week SMALLINT NOT NULL,\n    PRIMARY KEY (drinker, bar),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (bar) REFERENCES Bar(name)\n);\n\nCREATE TABLE Serves (\n    bar VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    price DECIMAL(5,2) NOT NULL,\n    PRIMARY KEY (bar, beer),\n    FOREIGN KEY (bar) REFERENCES Bar(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);\n\nCREATE TABLE Likes (\n    drinker VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    PRIMARY KEY (drinker, beer),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);",
+  "q1": "SELECT beer, MAX(price) - MIN(price) AS price_gap, AVG(price) AS avg_price FROM serves WHERE beer IN (SELECT s.beer FROM serves AS s, frequents AS f WHERE s.bar = f.bar AND f.drinker LIKE 'B%' GROUP BY s.beer HAVING COUNT(DISTINCT s.bar) >= 2) GROUP BY beer ORDER BY beer",
+  "q2": "WITH BarFreq AS (SELECT DISTINCT bar FROM frequents WHERE drinker LIKE 'B%'), beerServed AS (SELECT s.beer, s.bar, s.price FROM serves AS s WHERE s.bar IN (SELECT bar FROM BarFreq)), beerServedCount AS (SELECT beer, COUNT(bar) AS barCount FROM beerServed GROUP BY beer HAVING COUNT(bar) > 2) SELECT bs.beer, MAX(bs.price) - MIN(bs.price) AS price_gap, AVG(price) AS avg_price FROM beerServed AS bs JOIN beerServedCount AS bsc ON bs.beer = bsc.beer GROUP BY bs.beer",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "beers",
+  "q1_prompt_sql": "SELECT beer, MAX(price) - MIN(price) AS price_gap, AVG(price) AS avg_price FROM serves WHERE beer IN (SELECT s.beer FROM serves AS s, frequents AS f WHERE s.bar = f.bar AND f.drinker LIKE 'B%' GROUP BY s.beer HAVING COUNT(DISTINCT s.bar) >= 2) GROUP BY beer ORDER BY beer",
+  "q2_prompt_sql": "WITH BarFreq AS (SELECT DISTINCT bar FROM frequents WHERE drinker LIKE 'B%'), beerServed AS (SELECT s.beer, s.bar, s.price FROM serves AS s WHERE s.bar IN (SELECT bar FROM BarFreq)), beerServedCount AS (SELECT beer, COUNT(bar) AS barCount FROM beerServed GROUP BY beer HAVING COUNT(bar) > 2) SELECT bs.beer, MAX(bs.price) - MIN(bs.price) AS price_gap, AVG(price) AS avg_price FROM beerServed AS bs JOIN beerServedCount AS bsc ON bs.beer = bsc.beer GROUP BY bs.beer",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO Drinker (name, address) VALUES ('B1', 'addr1');\nINSERT INTO Bar (name, address) VALUES ('bar1', 'addr1'), ('bar2', 'addr2');\nINSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('B1', 'bar1', 3), ('B1', 'bar2', 2);\nINSERT INTO Beer (name, brewer) VALUES ('BeerA', 'Brewer1');\nINSERT INTO Serves (bar, beer, price) VALUES ('bar1', 'BeerA', 5.00), ('bar2', 'BeerA', 6.00);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 uses HAVING COUNT(DISTINCT s.bar) >= 2 while Q2 uses HAVING COUNT(bar) > 2. This means Q1 includes beers served at exactly 2 qualifying bars, but Q2 excludes them.",
+  "counterexample_dsp": "A beer (BeerA) served at exactly 2 bars frequented by B% drinkers. Q1 includes it, Q2 excludes it due to the > 2 threshold.",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 uses HAVING COUNT(DISTINCT s.bar) >= 2 while Q2 uses HAVING COUNT(bar) > 2. This means Q1 includes beers served at exactly 2 qualifying bars, but Q2 excludes them.\",\n  \"counterexample_dsp\": \"A beer (BeerA) served at exactly 2 bars frequented by B% drinkers. Q1 includes it, Q2 excludes it due to the > 2 threshold.\",\n  \"counterexample\": \"INSERT INTO Drinker (name, address) VALUES ('B1', 'addr1');\\nINSERT INTO Bar (name, address) VALUES ('bar1', 'addr1'), ('bar2', 'addr2');\\nINSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('B1', 'bar1', 3), ('B1', 'bar2', 2);\\nINSERT INTO Beer (name, brewer) VALUES ('BeerA', 'Brewer1');\\nINSERT INTO Serves (bar, beer, price) VALUES ('bar1', 'BeerA', 5.00), ('bar2', 'BeerA', 6.00);\"\n}",
+  "reasoning": "\nOkay, let's see. I need to find a counterexample where Q1 and Q2 return different results. First, I need to understand what each query is doing.\n\nStarting with Q1. The subquery in the WHERE clause selects beers from serves where the beer is served at at least 2 bars that are frequented by drinkers whose names start with 'B%'. Then, Q1 groups by beer, computes price_gap (max price minus min price) and average price. So the beers selected are those that have at least two distinct bars in the frequents table for 'B%' drinkers.\n\nNow Q2 uses a CTE approach. BarFreq gets distinct bars from frequents where drinker starts with 'B%'. Then beerServed selects serves where the bar is in BarFreq. beerServedCount groups by beer and counts bars, requiring count(bar) > 2. Then the final select joins beerServed with beerServedCount on beer to get the same stats.\n\nWait, the HAVING in Q2 is COUNT(bar) > 2, while Q1's HAVING is COUNT(DISTINCT bar) >= 2. So that's a difference. Wait, in Q1, the subquery uses COUNT(DISTINCT s.bar) >= 2, while in Q2, beerServedCount has COUNT(bar) > 2. Wait, but beerServed is selecting s.bar from BarFreq, which is already distinct bars. So beerServed has each bar once per beer. Then grouping by beer and counting bars would give the count of distinct bars, since each bar appears once per beer. So in Q2, the HAVING is COUNT(bar) > 2, which is equivalent to >= 3. But Q1's HAVING is >= 2. So that's a difference. Therefore, if a beer is served at exactly 2 bars that are in BarFreq, Q1 would include it, but Q2 would not, since it requires count > 2 (i.e., >=3). That's a key difference.\n\nSo the counterexample would be a beer served at exactly 2 bars that are frequented by B% drinkers. Then Q1 would include it, but Q2 would not. Let me check.\n\nLet me think of a scenario. Suppose there's a beer 'Bud' served at bar1 and bar2. Both bar1 and bar2 are in BarFreq (frequented by B% drinkers). Then in Q1, the subquery would have COUNT(DISTINCT s.bar) >=2, so Bud is included. Then Q1 would compute price_gap and avg_price for Bud.\n\nIn Q2, beerServedCount requires COUNT(bar) > 2, which would be 2 in this case. Since 2 is not greater than 2, it's excluded. So Q2 would not return Bud. Therefore, the difference arises because Q1 uses >=2 and Q2 uses >2. Wait, no: looking at the code again.\n\nWait in Q1's HAVING is COUNT(DISTINCT s.bar) >= 2. In Q2, beerServedCount has HAVING COUNT(bar) > 2. So the threshold is different. So if a beer is served at exactly two bars that are in BarFreq, Q1 includes it, Q2 excludes it. That would be the case where the results differ.\n\nSo to create a counterexample, I need a beer that is served at exactly two bars frequented by B% drinkers, and maybe another beer that's served at three or more, but maybe that's not needed. Let me create two beers: BeerA served at two bars (both in BarFreq), and BeerB served at three bars (in BarFreq). Then Q1 would return both, but Q2 would return only BeerB. But if I only have BeerA, then Q1 includes it, Q2 excludes it. So that's a case where the results differ.\n\nSo the test data would have:\n\n- Drinker 'B1' frequents bar1 and bar2.\n\n- Beer 'BeerA' is served at bar1 and bar2 with different prices.\n\nThen, in Q1, BeerA is selected because it has two bars. In Q2, the count is 2, which is not >2, so not selected. Thus, Q1 returns BeerA, Q2 returns nothing for BeerA. So that's the difference.\n\nNow, I need to make sure that the other tables are filled correctly. For example, the Bar table needs entries for bar1 and bar2. The Beer table needs BeerA. The Serves table has entries for bar1 and bar2 with BeerA and some prices. The Frequents table has entries for 'B1' (or any drinker starting with B) for bar1 and bar2.\n\nLet me structure the INSERT statements accordingly.\n\nAlso, the schema requires that in Frequents, the drinker references Drinker(name), so I need to insert into Drinker a drinker named 'B1'.\n\nSo the steps:\n\n1. Insert into Drinker: 'B1'.\n\n2. Insert into Bar: bar1, bar2.\n\n3. Insert into Frequents: ('B1', bar1, ...), ('B1', bar2, ...).\n\n4. Insert into Beer: BeerA.\n\n5. Insert into Serves: bar1, BeerA, price1; bar2, BeerA, price2.\n\nThat should make BeerA have exactly two bars in BarFreq. So Q1 includes it, Q2 excludes it.\n\nAnother beer, say BeerB, served at three bars (but maybe not necessary if I just have one beer that's different). But if I have only BeerA, then Q1 returns it and Q2 doesn't, so that's sufficient.\n\nSo the counterexample would have this setup. The explanation is that Q1 uses >=2 in HAVING while Q2 uses >2, leading to different counts.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 647,
+    "total_tokens": 2140,
+    "completion_tokens": 1493,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1235
+    },
+    "generation_seconds": 47.75
+  },
+  "started_at": "2026-10-06T09:00:07.823819+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "BeerA",
+      1,
+      5.5
+    ]
+  ],
+  "q2_output": [],
+  "q1_row_count": 1,
+  "q2_row_count": 0,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT beer, MAX(price) - MIN(price) AS price_gap, AVG(price) AS avg_price FROM serves WHERE beer IN (SELECT s.beer FROM serves AS s, frequents AS f WHERE s.bar = f.bar AND f.drinker LIKE 'B%' GROUP BY s.beer HAVING COUNT(DISTINCT s.bar) >= 2) GROUP BY beer ORDER BY beer",
+  "q2_validation_sql": "WITH BarFreq AS (SELECT DISTINCT bar FROM frequents WHERE drinker LIKE 'B%'), beerServed AS (SELECT s.beer, s.bar, s.price FROM serves AS s WHERE s.bar IN (SELECT bar FROM BarFreq)), beerServedCount AS (SELECT beer, COUNT(bar) AS barCount FROM beerServed GROUP BY beer HAVING COUNT(bar) > 2) SELECT bs.beer, MAX(bs.price) - MIN(bs.price) AS price_gap, AVG(price) AS avg_price FROM beerServed AS bs JOIN beerServedCount AS bsc ON bs.beer = bsc.beer GROUP BY bs.beer"
+}

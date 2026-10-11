@@ -1,0 +1,63 @@
+{
+  "dbid": "1141",
+  "index": "203",
+  "source_index": "29",
+  "schema_ddl": "CREATE TABLE ACTIVITY (\n    USER_ID INT,\n    SESSION_ID INT,\n    ACTIVITY_DATE DATE,\n    ACTIVITY_TYPE ENUM('OPEN_SESSION', 'END_SESSION', 'SCROLL_DOWN', 'SEND_MESSAGE'),\n    CHECK (ACTIVITY_TYPE IN ('OPEN_SESSION', 'END_SESSION', 'SCROLL_DOWN', 'SEND_MESSAGE'))\n);",
+  "q1": "SELECT ACTIVITY_DATE AS DAY, COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY WHERE ACTIVITY_DATE BETWEEN '2019-06-28' AND '2019-07-27' GROUP BY ACTIVITY_DATE",
+  "q2": "SELECT ACTIVITY_DATE AS DAY, COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY WHERE ACTIVITY_DATE BETWEEN DATE_ADD('2019-07-27', INTERVAL -29 DAY) AND '2019-07-27' GROUP BY ACTIVITY_DATE",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT ACTIVITY_DATE AS DAY, COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY WHERE ACTIVITY_DATE BETWEEN '2019-06-28' AND '2019-07-27' GROUP BY ACTIVITY_DATE",
+  "q2_prompt_sql": "SELECT ACTIVITY_DATE AS DAY, COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY WHERE ACTIVITY_DATE BETWEEN DATE_ADD('2019-07-27', INTERVAL -29 DAY) AND '2019-07-27' GROUP BY ACTIVITY_DATE",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO ACTIVITY (USER_ID, SESSION_ID, ACTIVITY_DATE, ACTIVITY_TYPE) VALUES (1, 101, '2019-06-28', 'OPEN_SESSION'); INSERT INTO ACTIVITY (USER_ID, SESSION_ID, ACTIVITY_DATE, ACTIVITY_TYPE) VALUES (2, 102, '2019-07-27', 'SCROLL_DOWN');",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent because they have different date ranges. Q1 uses a specific date range from '2019-06-28' to '2019-07-27', while Q2 uses a date range that starts 29 days before '2019-07-27' and ends on '2019-07-27'. This means Q2's date range is narrower than Q1's, potentially excluding some days that Q1 includes.",
+  "counterexample_dsp": "The test data should include activity records for '2019-06-28' and '2019-07-27' to demonstrate the difference between Q1 and Q2. The presence of activity on '2019-06-28' in Q1's range but not in Q2's range will cause the results to differ.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent because they have different date ranges. Q1 uses a specific date range from '2019-06-28' to '2019-07-27', while Q2 uses a date range that starts 29 days before '2019-07-27' and ends on '2019-07-27'. This means Q2's date range is narrower than Q1's, potentially excluding some days that Q1 includes.\",\n  \"counterexample_dsp\": \"The test data should include activity records for '2019-06-28' and '2019-07-27' to demonstrate the difference between Q1 and Q2. The presence of activity on '2019-06-28' in Q1's range but not in Q2's range will cause the results to differ.\",\n  \"counterexample\": \"INSERT INTO ACTIVITY (USER_ID, SESSION_ID, ACTIVITY_DATE, ACTIVITY_TYPE) VALUES (1, 101, '2019-06-28', 'OPEN_SESSION'); INSERT INTO ACTIVITY (USER_ID, SESSION_ID, ACTIVITY_DATE, ACTIVITY_TYPE) VALUES (2, 102, '2019-07-27', 'SCROLL_DOWN');\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 407,
+    "total_tokens": 714,
+    "completion_tokens": 307,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 5.093
+  },
+  "started_at": "2026-10-06T09:50:34.281479+00:00",
+  "elapsed_seconds": 0.312,
+  "q1_output": [
+    [
+      "2019-06-28",
+      1
+    ],
+    [
+      "2019-07-27",
+      1
+    ]
+  ],
+  "q2_output": [
+    [
+      "2019-06-28",
+      1
+    ],
+    [
+      "2019-07-27",
+      1
+    ]
+  ],
+  "q1_row_count": 2,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT ACTIVITY_DATE AS DAY, COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY WHERE ACTIVITY_DATE BETWEEN '2019-06-28' AND '2019-07-27' GROUP BY ACTIVITY_DATE",
+  "q2_validation_sql": "SELECT ACTIVITY_DATE AS DAY, COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY WHERE ACTIVITY_DATE BETWEEN DATE_ADD('2019-07-27', INTERVAL -29 DAY) AND '2019-07-27' GROUP BY ACTIVITY_DATE"
+}

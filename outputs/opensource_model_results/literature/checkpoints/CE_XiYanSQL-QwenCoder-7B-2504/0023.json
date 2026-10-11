@@ -1,0 +1,53 @@
+{
+  "dbid": "20",
+  "index": "23",
+  "source_index": "28",
+  "schema_ddl": "CREATE TABLE A (C INT);",
+  "q1": "SELECT * FROM A AS X WHERE X.C IN (SELECT Y.C FROM A AS Y)",
+  "q2": "SELECT * FROM A AS X",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "literature",
+  "q1_prompt_sql": "SELECT * FROM A AS X WHERE X.C IN (SELECT Y.C FROM A AS Y)",
+  "q2_prompt_sql": "SELECT * FROM A AS X",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO A (C) VALUES (1);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 filters rows in table A where the column C exists in the same table, which effectively means it selects all rows since every value of C in A is compared with all other values of C in A. Q2, on the other hand, simply selects all rows from table A without any filtering.",
+  "counterexample_dsp": "The difference is triggered when table A contains at least one row. Since Q1 filters based on the existence of C in the same table, it will always return all rows. Q2, however, returns all rows without any conditions.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 filters rows in table A where the column C exists in the same table, which effectively means it selects all rows since every value of C in A is compared with all other values of C in A. Q2, on the other hand, simply selects all rows from table A without any filtering.\",\n  \"counterexample_dsp\": \"The difference is triggered when table A contains at least one row. Since Q1 filters based on the existence of C in the same table, it will always return all rows. Q2, however, returns all rows without any conditions.\",\n  \"counterexample\": \"INSERT INTO A (C) VALUES (1);\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 252,
+    "total_tokens": 394,
+    "completion_tokens": 142,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 2.453
+  },
+  "started_at": "2026-10-06T07:05:02.915567+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      1
+    ]
+  ],
+  "q2_output": [
+    [
+      1
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT * FROM A AS X WHERE X.C IN (SELECT Y.C FROM A AS Y)",
+  "q2_validation_sql": "SELECT * FROM A AS X"
+}

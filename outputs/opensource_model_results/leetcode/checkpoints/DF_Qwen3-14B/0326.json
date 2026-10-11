@@ -1,0 +1,39 @@
+{
+  "dbid": "607",
+  "index": "326",
+  "source_index": "362",
+  "schema_ddl": "CREATE TABLE SALESPERSON (\n    SALES_ID INT,\n    NAME VARCHAR(255),\n    SALARY INT,\n    COMMISSION_RATE INT,\n    HIRE_DATE VARCHAR(255)\n);\n\nCREATE TABLE COMPANY (\n    COM_ID INT,\n    NAME VARCHAR(255),\n    CITY VARCHAR(255)\n);\n\nCREATE TABLE ORDERS (\n    ORDER_ID INT,\n    COM_ID INT,\n    SALES_ID INT,\n    ORDER_DATE VARCHAR(255),\n    AMOUNT INT\n);",
+  "q1": "SELECT NAME FROM SALESPERSON AS S WHERE 0 = ( SELECT COUNT(*) FROM ORDERS AS O JOIN COMPANY AS C ON O.COM_ID = C.COM_ID WHERE O.SALES_ID = S.SALES_ID AND C.NAME = 'RED' )",
+  "q2": "SELECT DISTINCT NAME FROM SALESPERSON WHERE NAME NOT IN ( SELECT DISTINCT S.NAME FROM SALESPERSON S JOIN ORDERS O ON S.SALES_ID = O.SALES_ID JOIN COMPANY C ON C.COM_ID = O.COM_ID WHERE C.NAME='RED')",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT NAME FROM SALESPERSON AS S WHERE 0 = ( SELECT COUNT(*) FROM ORDERS AS O JOIN COMPANY AS C ON O.COM_ID = C.COM_ID WHERE O.SALES_ID = S.SALES_ID AND C.NAME = 'RED' )",
+  "q2_prompt_sql": "SELECT DISTINCT NAME FROM SALESPERSON WHERE NAME NOT IN ( SELECT DISTINCT S.NAME FROM SALESPERSON S JOIN ORDERS O ON S.SALES_ID = O.SALES_ID JOIN COMPANY C ON C.COM_ID = O.COM_ID WHERE C.NAME='RED')",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries aim to retrieve salespersons with no orders linked to the 'RED' company. Q1 checks for zero count of such orders, while Q2 excludes salespersons present in the subquery of those with at least one 'RED' order. They are logically equivalent.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries aim to retrieve salespersons with no orders linked to the 'RED' company. Q1 checks for zero count of such orders, while Q2 excludes salespersons present in the subquery of those with at least one 'RED' order. They are logically equivalent.\"\n}",
+  "reasoning": "\nOkay, let's see. I need to determine if Q1 and Q2 are semantically equivalent. Let me start by understanding each query.\n\nQ1 selects the name of salespeople where the count of orders linked to the company 'RED' is zero. So, for each salesperson, it checks if there are no orders associated with 'RED' company. If that's true, their name is selected.\n\nQ2 uses a NOT IN clause. It selects distinct names from salesperson where their name is not in the list of salespeople who have orders linked to 'RED'. The subquery here joins salesperson, orders, and company where company name is 'RED', and gets the distinct names. So Q2 is excluding any salesperson who has at least one order with 'RED'.\n\nWait, but Q1 is checking for salespeople who have zero orders with 'RED'. So Q1 should return salespeople who have no orders with 'RED' at all. Q2 is doing the opposite: it's excluding those who have any such orders. So the result of Q2 should be the same as Q1. But maybe there's a difference in how they handle duplicates or nulls?\n\nWait, let's think again. Q1 uses a scalar subquery in the WHERE clause. The subquery counts the number of orders for each salesperson linked to 'RED'. If that count is zero, the salesperson is selected. So Q1 is correct for salespeople with zero orders.\n\nQ2 uses NOT IN with a subquery that selects distinct names of salespeople who have at least one order with 'RED'. So if a salesperson has any order with 'RED', their name is in the subquery, and thus excluded from Q2's result. That seems equivalent to Q1. But wait, what if a salesperson has multiple orders with 'RED'? The subquery in Q2 uses DISTINCT, so it's just the names, not the count. So Q2 is saying \"names not in the list of salespeople who have at least one order with RED\", which is the same as Q1's condition. So they should be equivalent.\n\nBut maybe there's a case where a salesperson has no orders at all. Let's see. Suppose a salesperson has no orders. Then the subquery in Q1 would return 0, so they would be selected. In Q2, the subquery would not include their name, so they would be included in the result. So that's the same. What about if a salesperson has orders with other companies but not 'RED'? Then Q1 would include them, and Q2 would also include them. So seems equivalent.\n\nWait, but what if the subquery in Q2 returns NULL? For example, if there are no orders with 'RED', then the subquery would return an empty set. The NOT IN (empty set) would be true, so all salespeople would be included. But Q1 would check for 0, which is true for all salespeople. Wait, no. Let me think again. If there are no orders with 'RED', then the subquery in Q2 would return no rows, so the NOT IN would be true for all names. So Q2 would return all salespeople. Q1 would check for each salesperson if the count of orders with 'RED' is zero. Which is true for all. So both would return all salespeople. That's same.\n\nBut wait, what if there's a salesperson with no orders at all? Then in Q1, the count is zero, so included. In Q2, the subquery would not have their name, so included. So same result.\n\nHmm. Are there any cases where they differ? Let me think of a scenario where a salesperson has orders with 'RED' but the subquery in Q2 doesn't include them. But no, the subquery in Q2 is joining orders and company where company is 'RED', so any salesperson with such orders would be in the subquery. So Q2's NOT IN would exclude them. So seems same as Q1.\n\nWait, but what about if the subquery in Q2 returns NULL values? For example, if the join between orders and company doesn't have matching rows. But the subquery is selecting S.NAME from salesperson joined with orders and company. If there's no matching orders, then the subquery would not return that salesperson's name. So the NOT IN would include them. Which is same as Q1.\n\nSo maybe they are equivalent. But maybe there's a case where the subquery in Q2 returns duplicates, but since it uses DISTINCT, that's handled. So Q2's subquery is the same as the set of salespeople who have at least one order with 'RED'.\n\nBut wait, Q1 uses a scalar subquery. For each salesperson S, it checks if the count of orders where O.SALES_ID = S.SALES_ID and C.NAME = 'RED' is zero. So that's exactly the same as saying that the salesperson has no orders with 'RED'.\n\nQ2 is selecting names not in the set of salespeople who have at least one order with 'RED'. So the result should be the same.\n\nTherefore, they are equivalent. So the answer is Y.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 465,
+    "total_tokens": 1629,
+    "completion_tokens": 1164,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1092
+    },
+    "generation_seconds": 37.421
+  },
+  "started_at": "2026-10-06T15:02:26.010369+00:00",
+  "elapsed_seconds": 0.016
+}

@@ -1,0 +1,53 @@
+{
+  "dbid": "550",
+  "index": "318",
+  "source_index": "358",
+  "schema_ddl": "CREATE TABLE ACTIVITY (\n    PLAYER_ID INT,\n    EVENT_DATE DATE,\n    DEVICE_ID INT,\n    GAMES_PLAYED INT,\n    PRIMARY KEY (PLAYER_ID, EVENT_DATE),\n    CHECK (GAMES_PLAYED >= 0)\n);",
+  "q1": "SELECT ROUND((SUM(CASE WHEN (TEMP.MIN_DATE + 1) = A.EVENT_DATE THEN 1 ELSE 0 END) / COUNT(DISTINCT TEMP.PLAYER_ID)), 2) AS FRACTION FROM (SELECT PLAYER_ID, MIN(EVENT_DATE) AS MIN_DATE FROM ACTIVITY GROUP BY PLAYER_ID) AS TEMP JOIN ACTIVITY AS A ON TEMP.PLAYER_ID = A.PLAYER_ID",
+  "q2": "SELECT ROUND(SUM(CASE WHEN A.PLAYER_ID IS NULL THEN 0 ELSE 1 END)/COUNT(TMP.PLAYER_ID)*1.0,2)AS FRACTION FROM (SELECT PLAYER_ID, MIN(EVENT_DATE) AS FIRST_DATE FROM ACTIVITY GROUP BY 1) TMP LEFT JOIN (SELECT DISTINCT PLAYER_ID, EVENT_DATE FROM ACTIVITY) A ON TMP.PLAYER_ID=A.PLAYER_ID AND DATEDIFF(A.EVENT_DATE,TMP.FIRST_DATE)=1",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT ROUND((SUM(CASE WHEN (TEMP.MIN_DATE + 1) = A.EVENT_DATE THEN 1 ELSE 0 END) / COUNT(DISTINCT TEMP.PLAYER_ID)), 2) AS FRACTION FROM (SELECT PLAYER_ID, MIN(EVENT_DATE) AS MIN_DATE FROM ACTIVITY GROUP BY PLAYER_ID) AS TEMP JOIN ACTIVITY AS A ON TEMP.PLAYER_ID = A.PLAYER_ID",
+  "q2_prompt_sql": "SELECT ROUND(SUM(CASE WHEN A.PLAYER_ID IS NULL THEN 0 ELSE 1 END)/COUNT(TMP.PLAYER_ID)*1.0,2)AS FRACTION FROM (SELECT PLAYER_ID, MIN(EVENT_DATE) AS FIRST_DATE FROM ACTIVITY GROUP BY 1) TMP LEFT JOIN (SELECT DISTINCT PLAYER_ID, EVENT_DATE FROM ACTIVITY) A ON TMP.PLAYER_ID=A.PLAYER_ID AND DATEDIFF(A.EVENT_DATE,TMP.FIRST_DATE)=1",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO ACTIVITY (PLAYER_ID, EVENT_DATE, DEVICE_ID, GAMES_PLAYED) VALUES (1, '2023-01-01', 101, 5), (1, '2023-01-03', 102, 3), (2, '2023-01-02', 103, 2);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 calculates the fraction of players who had an activity on the day immediately following their first activity, while Q2 calculates the fraction of players who had an activity on the day right after their first activity, considering all players, not just those with an immediate follow-up.",
+  "counterexample_dsp": "A player with an activity on day 1 and another on day 3 should trigger a difference, as Q1 will count this as a success (immediate follow-up), while Q2 will not.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 calculates the fraction of players who had an activity on the day immediately following their first activity, while Q2 calculates the fraction of players who had an activity on the day right after their first activity, considering all players, not just those with an immediate follow-up.\",\n  \"counterexample_dsp\": \"A player with an activity on day 1 and another on day 3 should trigger a difference, as Q1 will count this as a success (immediate follow-up), while Q2 will not.\",\n  \"counterexample\": \"INSERT INTO ACTIVITY (PLAYER_ID, EVENT_DATE, DEVICE_ID, GAMES_PLAYED) VALUES (1, '2023-01-01', 101, 5), (1, '2023-01-03', 102, 3), (2, '2023-01-02', 103, 2);\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 450,
+    "total_tokens": 658,
+    "completion_tokens": 208,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 3.437
+  },
+  "started_at": "2026-10-06T09:51:01.796598+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "0.00"
+    ]
+  ],
+  "q2_output": [
+    [
+      "0.00"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT ROUND((SUM(CASE WHEN (TEMP.MIN_DATE + 1) = A.EVENT_DATE THEN 1 ELSE 0 END) / COUNT(DISTINCT TEMP.PLAYER_ID)), 2) AS FRACTION FROM (SELECT PLAYER_ID, MIN(EVENT_DATE) AS MIN_DATE FROM ACTIVITY GROUP BY PLAYER_ID) AS TEMP JOIN ACTIVITY AS A ON TEMP.PLAYER_ID = A.PLAYER_ID",
+  "q2_validation_sql": "SELECT ROUND(SUM(CASE WHEN A.PLAYER_ID IS NULL THEN 0 ELSE 1 END)/COUNT(TMP.PLAYER_ID)*1.0,2)AS FRACTION FROM (SELECT PLAYER_ID, MIN(EVENT_DATE) AS FIRST_DATE FROM ACTIVITY GROUP BY 1) TMP LEFT JOIN (SELECT DISTINCT PLAYER_ID, EVENT_DATE FROM ACTIVITY) A ON TMP.PLAYER_ID=A.PLAYER_ID AND DATEDIFF(A.EVENT_DATE,TMP.FIRST_DATE)=1"
+}

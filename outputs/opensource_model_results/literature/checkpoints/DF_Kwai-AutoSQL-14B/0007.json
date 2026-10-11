@@ -1,0 +1,59 @@
+{
+  "dbid": "5",
+  "index": "7",
+  "source_index": "6",
+  "schema_ddl": "CREATE TABLE PAYROLL (SSNO INT, DEPTNO INT);\nCREATE TABLE APPLICANT (SSNO INT, JOBTITILE INT, OFFICENO INT);",
+  "q1": "SELECT Y.* FROM PAYROLL AS X, APPLICANT AS Y WHERE X.SSNO = Y.SSNO AND X.DEPTNO = 29",
+  "q2": "SELECT C.* FROM PAYROLL AS A, (SELECT Y.SSNO, Y.DEPTNO FROM PAYROLL AS Y) AS B, APPLICANT AS C WHERE A.SSNO = B.SSNO AND C.SSNO = A.SSNO AND B.DEPTNO = 29",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "literature",
+  "q1_prompt_sql": "SELECT Y.* FROM PAYROLL AS X, APPLICANT AS Y WHERE X.SSNO = Y.SSNO AND X.DEPTNO = 29",
+  "q2_prompt_sql": "SELECT C.* FROM PAYROLL AS A, (SELECT Y.SSNO, Y.DEPTNO FROM PAYROLL AS Y) AS B, APPLICANT AS C WHERE A.SSNO = B.SSNO AND C.SSNO = A.SSNO AND B.DEPTNO = 29",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO PAYROLL (SSNO, DEPTNO) VALUES (1001, 29); INSERT INTO PAYROLL (SSNO, DEPTNO) VALUES (1002, 30); INSERT INTO APPLICANT (SSNO, JOBTITILE, OFFICENO) VALUES (1001, 1, 101); INSERT INTO APPLICANT (SSNO, JOBTITILE, OFFICENO) VALUES (1002, 2, 102);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 retrieves all columns from APPLICANT for rows where SSNO matches between PAYROLL and APPLICANT, and DEPTNO = 29. Q2 has an unnecessary subquery that selects from PAYROLL again but does not filter the subquery result with DEPTNO = 29. This means Q2 could return more rows than Q1 if DEPTNO = 29 is not enforced on the subquery.",
+  "counterexample_dsp": "A test case with two rows in PAYROLL: one with DEPTNO = 29 and one with DEPTNO = 30, both matching SSNO values in APPLICANT. Q1 returns only the row with DEPTNO = 29, but Q2 may return both due to the subquery not filtering on DEPTNO = 29.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n  \"equiv\": \"N\",\n  \"explanation\": \"Q1 retrieves all columns from APPLICANT for rows where SSNO matches between PAYROLL and APPLICANT, and DEPTNO = 29. Q2 has an unnecessary subquery that selects from PAYROLL again but does not filter the subquery result with DEPTNO = 29. This means Q2 could return more rows than Q1 if DEPTNO = 29 is not enforced on the subquery.\",\n  \"counterexample_dsp\": \"A test case with two rows in PAYROLL: one with DEPTNO = 29 and one with DEPTNO = 30, both matching SSNO values in APPLICANT. Q1 returns only the row with DEPTNO = 29, but Q2 may return both due to the subquery not filtering on DEPTNO = 29.\",\n  \"counterexample\": \"INSERT INTO PAYROLL (SSNO, DEPTNO) VALUES (1001, 29); INSERT INTO PAYROLL (SSNO, DEPTNO) VALUES (1002, 30); INSERT INTO APPLICANT (SSNO, JOBTITILE, OFFICENO) VALUES (1001, 1, 101); INSERT INTO APPLICANT (SSNO, JOBTITILE, OFFICENO) VALUES (1002, 2, 102);\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 387,
+    "total_tokens": 700,
+    "completion_tokens": 313,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 9.891
+  },
+  "started_at": "2026-10-06T07:53:02.103916+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      1001,
+      1,
+      101
+    ]
+  ],
+  "q2_output": [
+    [
+      1001,
+      1,
+      101
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT Y.* FROM PAYROLL AS X, APPLICANT AS Y WHERE X.SSNO = Y.SSNO AND X.DEPTNO = 29",
+  "q2_validation_sql": "SELECT C.* FROM PAYROLL AS A, (SELECT Y.SSNO, Y.DEPTNO FROM PAYROLL AS Y) AS B, APPLICANT AS C WHERE A.SSNO = B.SSNO AND C.SSNO = A.SSNO AND B.DEPTNO = 29"
+}

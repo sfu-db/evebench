@@ -1,0 +1,55 @@
+{
+  "dbid": "beers",
+  "index": "24",
+  "source_index": "243",
+  "schema_ddl": "CREATE TABLE Bar (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Beer (\n    name VARCHAR NOT NULL,\n    brewer VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Drinker (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Frequents (\n    drinker VARCHAR NOT NULL,\n    bar VARCHAR NOT NULL,\n    times_a_week SMALLINT NOT NULL,\n    PRIMARY KEY (drinker, bar),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (bar) REFERENCES Bar(name)\n);\n\nCREATE TABLE Serves (\n    bar VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    price DECIMAL(5,2) NOT NULL,\n    PRIMARY KEY (bar, beer),\n    FOREIGN KEY (bar) REFERENCES Bar(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);\n\nCREATE TABLE Likes (\n    drinker VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    PRIMARY KEY (drinker, beer),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);",
+  "q1": "SELECT DISTINCT bar FROM Serves WHERE (beer = 'Amstel' OR beer = 'Corona') AND price > 2",
+  "q2": "SELECT DISTINCT drinker FROM frequents WHERE (drinker IN (SELECT DISTINCT drinker FROM likes WHERE beer <> 'Corona') AND bar IN (SELECT DISTINCT bar FROM serves WHERE beer = 'Corona'))",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "beers",
+  "q1_prompt_sql": "SELECT DISTINCT bar FROM Serves WHERE (beer = 'Amstel' OR beer = 'Corona') AND price > 2",
+  "q2_prompt_sql": "SELECT DISTINCT drinker FROM frequents WHERE (drinker IN (SELECT DISTINCT drinker FROM likes WHERE beer <> 'Corona') AND bar IN (SELECT DISTINCT bar FROM serves WHERE beer = 'Corona'))",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO Bar (name, address) VALUES ('B1', 'Addr1');\nINSERT INTO Beer (name, brewer) VALUES ('Amstel', 'Brewer1'), ('Corona', 'Brewer2');\nINSERT INTO Drinker (name, address) VALUES ('D1', 'AddrD');\nINSERT INTO Serves (bar, beer, price) VALUES ('B1', 'Corona', 3.00);\nINSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('D1', 'B1', 2);\nINSERT INTO Likes (drinker, beer) VALUES ('D1', 'Amstel');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 selects bars serving Amstel/Corona with price >2, while Q2 selects drinkers who frequent bars serving Corona and like non-Corona beers. They return different entities (bars vs drinkers) and have distinct logical conditions.",
+  "counterexample_dsp": "A bar serving Corona at $3, a drinker who frequents this bar and likes Amstel. Q1 returns the bar, Q2 returns the drinker.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 selects bars serving Amstel/Corona with price >2, while Q2 selects drinkers who frequent bars serving Corona and like non-Corona beers. They return different entities (bars vs drinkers) and have distinct logical conditions.\",\n\"counterexample_dsp\": \"A bar serving Corona at $3, a drinker who frequents this bar and likes Amstel. Q1 returns the bar, Q2 returns the drinker.\",\n\"counterexample\": \"INSERT INTO Bar (name, address) VALUES ('B1', 'Addr1');\\nINSERT INTO Beer (name, brewer) VALUES ('Amstel', 'Brewer1'), ('Corona', 'Brewer2');\\nINSERT INTO Drinker (name, address) VALUES ('D1', 'AddrD');\\nINSERT INTO Serves (bar, beer, price) VALUES ('B1', 'Corona', 3.00);\\nINSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('D1', 'B1', 2);\\nINSERT INTO Likes (drinker, beer) VALUES ('D1', 'Amstel');\"\n}",
+  "reasoning": "\nOkay, let's see. I need to figure out if Q1 and Q2 are semantically equivalent. Let me start by understanding each query.\n\nQ1 is selecting distinct 'bar' from the Serves table where the beer is either Amstel or Corona and the price is greater than 2. So, this query is looking for bars that serve either of those two beers at a price above 2. The result is a list of bars meeting those conditions.\n\nQ2 is more complex. It selects distinct 'drinker' from the Frequents table. The condition is that the drinker is in a subquery that selects drinkers who like beers not equal to Corona, and the bar is in another subquery that selects bars serving Corona. So, Q2 is finding drinkers who both frequent a bar that serves Corona and also like some beer that's not Corona. Wait, but the subquery in the drinker part is (SELECT DISTINCT drinker FROM likes WHERE beer <> 'Corona'), which means any drinker who likes at least one beer that isn't Corona. Then, the bar must be in the list of bars that serve Corona. So Q2's result is drinkers who frequent a bar that serves Corona and also like some other beer (not Corona).\n\nWait, but the Q1 is about bars serving Amstel or Corona with price >2. Q2 is about drinkers who frequent bars serving Corona and also like other beers. These seem to be about different things. The first is about bars, the second about drinkers. So their results are different in terms of what they return. Q1 returns bars, Q2 returns drinkers. Therefore, they can't be equivalent. Unless there's a misunderstanding here.\n\nWait, looking again. Q1's SELECT is bar, Q2's SELECT is drinker. So the columns are different. So even if the logic were similar, the output columns are different. So they can't be equivalent. But maybe I'm missing something?\n\nWait, maybe I made a mistake. Let me recheck the queries.\n\nQ1: SELECT DISTINCT bar FROM Serves WHERE (beer = 'Amstel' OR beer = 'Corona') AND price > 2. So this is bars that serve either Amstel or Corona at price over 2.\n\nQ2: SELECT DISTINCT drinker FROM frequents WHERE (drinker IN (SELECT DISTINCT drinker FROM likes WHERE beer <> 'Corona') AND bar IN (SELECT DISTINCT bar FROM serves WHERE beer = 'Corona')).\n\nSo Q2 is selecting drinkers who frequent a bar that serves Corona (from the second subquery) and also like at least one beer that's not Corona (from the first subquery). The result is a list of drinkers.\n\nSo the two queries are selecting different entities (bars vs drinkers) and based on different conditions. Therefore, they are not equivalent. The output columns are different, so even if there was some overlap in the data, the results would differ. For example, if a bar is in Q1's result, that's a bar name, but Q2's result is a drinker name. Unless there's some overlap in the data where a bar name is the same as a drinker name, but that's not guaranteed. But even then, the logic is different. So the answer is not equivalent.\n\nBut maybe the user made a typo? Let me check again. The Q2's SELECT is drinker FROM frequents. The Q1 is bar FROM serves. So the output columns are different. Therefore, the two queries can't be equivalent. Hence, the answer is N. The explanation would be that Q1 selects bars serving certain beers with price conditions, while Q2 selects drinkers who frequent bars serving Corona and like other beers. The outputs are different (bars vs drinkers), so they are not equivalent.\n\nSo for the counterexample, I can create a simple case where there are bars and drinkers. Let's say:\n\n- Bar 'B1' serves Amstel at $3 and Corona at $2.5. Then, Q1 would include B1 for Amstel (price>2) but Corona's price is 2.5 which is over 2. So B1 would be in Q1's result.\n\nFor Q2, suppose there's a drinker 'D1' who frequents B1 (which serves Corona) and likes a beer that's not Corona, say 'Heineken'. Then D1 would be in Q2's result. But Q1's result is bar names, so they are different.\n\nThus, the counterexample would show that Q1 returns bars and Q2 returns drinkers, so they are not equivalent.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 561,
+    "total_tokens": 1779,
+    "completion_tokens": 1218,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 959
+    },
+    "generation_seconds": 37.781
+  },
+  "started_at": "2026-10-06T09:10:30.183946+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "B1"
+    ]
+  ],
+  "q2_output": [
+    [
+      "D1"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DISTINCT bar FROM Serves WHERE (beer = 'Amstel' OR beer = 'Corona') AND price > 2",
+  "q2_validation_sql": "SELECT DISTINCT drinker FROM frequents WHERE (drinker IN (SELECT DISTINCT drinker FROM likes WHERE beer <> 'Corona') AND bar IN (SELECT DISTINCT bar FROM serves WHERE beer = 'Corona'))"
+}

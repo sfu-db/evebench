@@ -1,0 +1,58 @@
+{
+  "dbid": "card_games",
+  "index": "278",
+  "source_index": "456",
+  "schema_ddl": "CREATE TABLE \"cards\"\n(\n    id                      INTEGER           not null\n        primary key autoincrement,\n    artist                  TEXT,\n    asciiName               TEXT,\n    availability            TEXT,\n    borderColor             TEXT,\n    cardKingdomFoilId       TEXT,\n    cardKingdomId           TEXT,\n    colorIdentity           TEXT,\n    colorIndicator          TEXT,\n    colors                  TEXT,\n    convertedManaCost       REAL,\n    duelDeck                TEXT,\n    edhrecRank              INTEGER,\n    faceConvertedManaCost   REAL,\n    faceName                TEXT,\n    flavorName              TEXT,\n    flavorText              TEXT,\n    frameEffects            TEXT,\n    frameVersion            TEXT,\n    hand                    TEXT,\n    hasAlternativeDeckLimit INTEGER default 0 not null,\n    hasContentWarning       INTEGER default 0 not null,\n    hasFoil                 INTEGER default 0 not null,\n    hasNonFoil              INTEGER default 0 not null,\n    isAlternative           INTEGER default 0 not null,\n    isFullArt               INTEGER default 0 not null,\n    isOnlineOnly            INTEGER default 0 not null,\n    isOversized             INTEGER default 0 not null,\n    isPromo                 INTEGER default 0 not null,\n    isReprint               INTEGER default 0 not null,\n    isReserved              INTEGER default 0 not null,\n    isStarter               INTEGER default 0 not null,\n    isStorySpotlight        INTEGER default 0 not null,\n    isTextless              INTEGER default 0 not null,\n    isTimeshifted           INTEGER default 0 not null,\n    keywords                TEXT,\n    layout                  TEXT,\n    leadershipSkills        TEXT,\n    life                    TEXT,\n    loyalty                 TEXT,\n    manaCost                TEXT,\n    mcmId                   TEXT,\n    mcmMetaId               TEXT,\n    mtgArenaId              TEXT,\n    mtgjsonV4Id             TEXT,\n    mtgoFoilId              TEXT,\n    mtgoId                  TEXT,\n    multiverseId            TEXT,\n    name                    TEXT,\n    number                  TEXT,\n    originalReleaseDate     TEXT,\n    originalText            TEXT,\n    originalType            TEXT,\n    otherFaceIds            TEXT,\n    power                   TEXT,\n    printings               TEXT,\n    promoTypes              TEXT,\n    purchaseUrls            TEXT,\n    rarity                  TEXT,\n    scryfallId              TEXT,\n    scryfallIllustrationId  TEXT,\n    scryfallOracleId        TEXT,\n    setCode                 TEXT,\n    side                    TEXT,\n    subtypes                TEXT,\n    supertypes              TEXT,\n    tcgplayerProductId      TEXT,\n    text                    TEXT,\n    toughness               TEXT,\n    type                    TEXT,\n    types                   TEXT,\n    uuid                    TEXT              not null\n        unique,\n    variations              TEXT,\n    watermark               TEXT\n);\n\nCREATE TABLE \"foreign_data\"\n(\n    id           INTEGER not null\n        primary key autoincrement,\n    flavorText   TEXT,\n    language     TEXT,\n    multiverseid INTEGER,\n    name         TEXT,\n    text         TEXT,\n    type         TEXT,\n    uuid         TEXT\n        references cards (uuid)\n);\n\nCREATE TABLE \"legalities\"\n(\n    id     INTEGER not null\n        primary key autoincrement,\n    format TEXT,\n    status TEXT,\n    uuid   TEXT\n        references cards (uuid)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE \"sets\"\n(\n    id               INTEGER           not null\n        primary key autoincrement,\n    baseSetSize      INTEGER,\n    block            TEXT,\n    booster          TEXT,\n    code             TEXT              not null\n        unique,\n    isFoilOnly       INTEGER default 0 not null,\n    isForeignOnly    INTEGER default 0 not null,\n    isNonFoilOnly    INTEGER default 0 not null,\n    isOnlineOnly     INTEGER default 0 not null,\n    isPartialPreview INTEGER default 0 not null,\n    keyruneCode      TEXT,\n    mcmId            INTEGER,\n    mcmIdExtras      INTEGER,\n    mcmName          TEXT,\n    mtgoCode         TEXT,\n    name             TEXT,\n    parentCode       TEXT,\n    releaseDate      DATE,\n    tcgplayerGroupId INTEGER,\n    totalSetSize     INTEGER,\n    type             TEXT\n);\n\nCREATE TABLE \"set_translations\"\n(\n    id          INTEGER not null\n        primary key autoincrement,\n    language    TEXT,\n    setCode     TEXT\n        references sets (code)\n            on update cascade on delete cascade,\n    translation TEXT\n);\n\nCREATE TABLE \"rulings\"\n(\n    id   INTEGER not null\n        primary key autoincrement,\n    date DATE,\n    text TEXT,\n    uuid TEXT\n        references cards (uuid)\n            on update cascade on delete cascade\n);",
+  "q1": "SELECT DISTINCT name FROM cards WHERE isPromo = 1 AND NOT side IS NULL",
+  "q2": "SELECT name FROM cards WHERE isPromo = 1 AND NOT side IS NULL",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT DISTINCT name FROM cards WHERE isPromo = 1 AND NOT side IS NULL",
+  "q2_prompt_sql": "SELECT name FROM cards WHERE isPromo = 1 AND NOT side IS NULL",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO cards (name, isPromo, side, uuid) VALUES ('Test Card', 1, 'A', 'uuid1');\nINSERT INTO cards (name, isPromo, side, uuid) VALUES ('Test Card', 1, 'B', 'uuid2');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 uses SELECT DISTINCT, which removes duplicate name values, while Q2 returns all matching rows. If multiple rows share the same name but differ in other columns, Q1 will return one result while Q2 returns multiple.",
+  "counterexample_dsp": "Two cards with identical 'name' values, isPromo = 1, and non-null side values. Q1 returns one distinct name; Q2 returns both rows.",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 uses SELECT DISTINCT, which removes duplicate name values, while Q2 returns all matching rows. If multiple rows share the same name but differ in other columns, Q1 will return one result while Q2 returns multiple.\",\n  \"counterexample_dsp\": \"Two cards with identical 'name' values, isPromo = 1, and non-null side values. Q1 returns one distinct name; Q2 returns both rows.\",\n  \"counterexample\": [\n    \"INSERT INTO cards (name, isPromo, side, uuid) VALUES ('Test Card', 1, 'A', 'uuid1');\",\n    \"INSERT INTO cards (name, isPromo, side, uuid) VALUES ('Test Card', 1, 'B', 'uuid2');\"\n  ]\n}",
+  "reasoning": "\nOkay, let's see. The user wants me to generate a counterexample where Q1 and Q2 return different results. The two queries are:\n\nQ1: SELECT DISTINCT name FROM cards WHERE isPromo = 1 AND NOT side IS NULL\nQ2: SELECT name FROM cards FROM cards WHERE isPromo = 1 AND NOT side IS NULL\n\nWait, the only difference between Q1 and Q2 is that Q1 uses SELECT DISTINCT and Q2 doesn't. So, if there are duplicate names in the result of Q2, then Q1 would return fewer rows. But why would the same query with DISTINCT and without return different results? Because without DISTINCT, duplicates are allowed. But the question says they are not semantically equivalent. So the key here is that Q1 removes duplicates, while Q2 doesn't. Therefore, if there are multiple rows with the same name in the cards table that meet the conditions (isPromo = 1 and side is not null), then Q1 would return one unique name and Q2 would return multiple entries of the same name.\n\nSo, to create a counterexample, I need to insert at least two rows into the cards table that have the same name, isPromo = 1, and side is not null. Then Q2 would return two rows with the same name, and Q1 would return one distinct name.\n\nLet me think about the schema. The cards table has a name column (TEXT), and the primary key is id. So multiple rows can have the same name. The side column is TEXT, and the condition is NOT side IS NULL, which in SQL is equivalent to side IS NOT NULL. Wait, the syntax might be slightly different. In SQL, the correct syntax is side IS NOT NULL. So the original queries might have a typo, but assuming that the actual queries are using the correct syntax. So the WHERE clause is checking that side is not null.\n\nSo, for the counterexample, I need two rows with the same name, both with isPromo = 1 and side IS NOT NULL. Then Q1 will return one row (distinct), Q2 will return two rows.\n\nLet me create two cards with same name, same isPromo value (1), and side not null. For example, name 'Test Card', isPromo = 1, side = 'A' for one and side = 'B' for another. Wait, but the condition is side IS NOT NULL. So as long as side is not null, it's okay. So even if side values are different, as long as they are not null, both rows would satisfy the condition. So inserting two rows with the same name, different side values (but not null), and isPromo = 1.\n\nThen Q2 would return two rows with the same name, and Q1 would return one row.\n\nSo the test data would be inserting two rows into cards with same name, isPromo = 1, side not null.\n\nLet me make sure that the other columns are filled in with valid data. The id is autoincremented, so I can just insert with default values where possible. The rest of the columns can be filled with dummy data. For example:\n\nINSERT INTO cards (name, isPromo, side, ...) VALUES ('Test Card', 1, 'A', ...);\nINSERT INTO cards (name, isPromo, side, ...) VALUES ('Test Card', 1, 'B', ...);\n\nBut I need to make sure that all required columns are present. The schema shows that all columns except id are nullable except for some that have default values. For example, isPromo has a default of 0, but in our case we set it to 1. The side column is TEXT, so inserting 'A' or 'B' is okay. The rest of the columns can be filled with default values or arbitrary values. Since the question only requires the counterexample to trigger the difference, the rest can be filled with dummy data.\n\nSo the counterexample_dsp would be inserting two cards with the same name, both promo and non-null side. Then Q1 gives one row, Q2 gives two rows.\n\nThe explanation would be that Q1 uses DISTINCT so duplicates are removed, while Q2 returns all matching rows including duplicates. Hence, when there are duplicate names in the result, they differ.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 1199,
+    "total_tokens": 2268,
+    "completion_tokens": 1069,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 897
+    },
+    "generation_seconds": 36.657
+  },
+  "started_at": "2026-10-06T18:42:21.541593+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "Test Card"
+    ]
+  ],
+  "q2_output": [
+    [
+      "Test Card"
+    ],
+    [
+      "Test Card"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DISTINCT name FROM cards WHERE isPromo = 1 AND NOT side IS NULL",
+  "q2_validation_sql": "SELECT name FROM cards WHERE isPromo = 1 AND NOT side IS NULL"
+}

@@ -1,0 +1,53 @@
+{
+  "dbid": "182",
+  "index": "119",
+  "source_index": "257",
+  "schema_ddl": "CREATE TABLE PERSON (\n    ID INT,\n    EMAIL VARCHAR(255),\n    PRIMARY KEY (ID)\n);",
+  "q1": "SELECT EMAIL AS EMAIL FROM PERSON GROUP BY EMAIL HAVING COUNT(EMAIL) >1",
+  "q2": "WITH DUPLICATES AS ( SELECT EMAIL, COUNT(*) FROM PERSON GROUP BY EMAIL HAVING COUNT(*) > 1 ) SELECT EMAIL FROM DUPLICATES",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT EMAIL AS EMAIL FROM PERSON GROUP BY EMAIL HAVING COUNT(EMAIL) >1",
+  "q2_prompt_sql": "WITH DUPLICATES AS ( SELECT EMAIL, COUNT(*) FROM PERSON GROUP BY EMAIL HAVING COUNT(*) > 1 ) SELECT EMAIL FROM DUPLICATES",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO PERSON (ID, EMAIL) VALUES (1, 'user1@example.com'), (2, 'user2@example.com'), (3, 'user1@example.com');",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent because Q1 does not use a CTE (Common Table Expression) and instead tries to group by the EMAIL column directly in the HAVING clause, which is not the intended behavior. Q2 correctly uses a CTE to first identify duplicates and then selects the EMAILs from this CTE. The difference in logic leads to different results when the PERSON table contains duplicate EMAILs.",
+  "counterexample_dsp": "The test data should contain at least two rows with the same EMAIL, and another row with a unique EMAIL. The presence of duplicate EMAILs should trigger a difference in the results between Q1 and Q2.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent because Q1 does not use a CTE (Common Table Expression) and instead tries to group by the EMAIL column directly in the HAVING clause, which is not the intended behavior. Q2 correctly uses a CTE to first identify duplicates and then selects the EMAILs from this CTE. The difference in logic leads to different results when the PERSON table contains duplicate EMAILs.\",\n  \"counterexample_dsp\": \"The test data should contain at least two rows with the same EMAIL, and another row with a unique EMAIL. The presence of duplicate EMAILs should trigger a difference in the results between Q1 and Q2.\",\n  \"counterexample\": \"INSERT INTO PERSON (ID, EMAIL) VALUES (1, 'user1@example.com'), (2, 'user2@example.com'), (3, 'user1@example.com');\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 291,
+    "total_tokens": 479,
+    "completion_tokens": 188,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 3.016
+  },
+  "started_at": "2026-10-06T09:50:13.146908+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "user1@example.com"
+    ]
+  ],
+  "q2_output": [
+    [
+      "user1@example.com"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT EMAIL AS EMAIL FROM PERSON GROUP BY EMAIL HAVING COUNT(EMAIL) >1",
+  "q2_validation_sql": "WITH DUPLICATES AS ( SELECT EMAIL, COUNT(*) FROM PERSON GROUP BY EMAIL HAVING COUNT(*) > 1 ) SELECT EMAIL FROM DUPLICATES"
+}

@@ -1,0 +1,39 @@
+{
+  "dbid": "596",
+  "index": "320",
+  "source_index": "93",
+  "schema_ddl": "CREATE TABLE COURSES (\n    STUDENT VARCHAR(255),\n    CLASS VARCHAR(255),\n    PRIMARY KEY (STUDENT)\n);",
+  "q1": "SELECT CLASS FROM COURSES GROUP BY CLASS HAVING COUNT(*)>=5",
+  "q2": "SELECT CLASS FROM COURSES GROUP BY CLASS HAVING COUNT(2)>=5",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT CLASS FROM COURSES GROUP BY CLASS HAVING COUNT(*)>=5",
+  "q2_prompt_sql": "SELECT CLASS FROM COURSES GROUP BY CLASS HAVING COUNT(2)>=5",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are semantically equivalent. Both queries group the COURSES table by CLASS and use a HAVING clause to filter groups where the count of rows is at least 5. In Q1, COUNT(*) counts all rows in each group, while in Q2, COUNT(2) counts the number of non-null values in the second column of the table (CLASS), which is effectively the same as COUNT(*) in this context because CLASS is not null for any row in the table. Therefore, both queries produce the same result.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n  \"equiv\": \"Y\",\n  \"explanation\": \"Q1 and Q2 are semantically equivalent. Both queries group the COURSES table by CLASS and use a HAVING clause to filter groups where the count of rows is at least 5. In Q1, COUNT(*) counts all rows in each group, while in Q2, COUNT(2) counts the number of non-null values in the second column of the table (CLASS), which is effectively the same as COUNT(*) in this context because CLASS is not null for any row in the table. Therefore, both queries produce the same result.\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 315,
+    "total_tokens": 445,
+    "completion_tokens": 130,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 4.532
+  },
+  "started_at": "2026-10-06T15:41:03.611032+00:00",
+  "elapsed_seconds": 0.0
+}

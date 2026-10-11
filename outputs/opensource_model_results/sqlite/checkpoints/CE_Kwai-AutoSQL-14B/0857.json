@@ -1,0 +1,58 @@
+{
+  "dbid": "debit_card_specializing",
+  "index": "857",
+  "source_index": "1507",
+  "schema_ddl": "CREATE TABLE customers\n(\n    CustomerID INTEGER UNIQUE     not null\n        primary key,\n    Segment    TEXT null,\n    Currency   TEXT null\n);\n\nCREATE TABLE gasstations\n(\n    GasStationID INTEGER    UNIQUE   not null\n        primary key,\n    ChainID      INTEGER          null,\n    Country      TEXT null,\n    Segment      TEXT null\n);\n\nCREATE TABLE products\n(\n    ProductID   INTEGER   UNIQUE      not null\n        primary key,\n    Description TEXT null\n);\n\nCREATE TABLE \"transactions_1k\"\n(\n    TransactionID INTEGER\n        primary key autoincrement,\n    Date          DATE,\n    Time          TEXT,\n    CustomerID    INTEGER,\n    CardID        INTEGER,\n    GasStationID  INTEGER,\n    ProductID     INTEGER,\n    Amount        INTEGER,\n    Price         REAL\n);\n\nCREATE TABLE \"yearmonth\"\n(\n    CustomerID  INTEGER not null\n        references customers\n            on update cascade on delete cascade\n        references customers,\n    Date        TEXT    not null,\n    Consumption REAL,\n    primary key (Date, CustomerID)\n);",
+  "q1": "SELECT T3.Description FROM transactions_1k AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID INNER JOIN products AS T3 ON T1.ProductID = T3.ProductID WHERE T2.Country = 'CZE'",
+  "q2": "SELECT DISTINCT T3.Description FROM \"transactions_1k\" AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID INNER JOIN products AS T3 ON T1.ProductID = T3.ProductID WHERE T2.Country = 'CZE'",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT T3.Description FROM transactions_1k AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID INNER JOIN products AS T3 ON T1.ProductID = T3.ProductID WHERE T2.Country = 'CZE'",
+  "q2_prompt_sql": "SELECT DISTINCT T3.Description FROM \"transactions_1k\" AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID INNER JOIN products AS T3 ON T1.ProductID = T3.ProductID WHERE T2.Country = 'CZE'",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO gasstations (GasStationID, Country) VALUES (1, 'CZE');\nINSERT INTO products (ProductID, Description) VALUES (1, 'Diesel');\nINSERT INTO transactions_1k (TransactionID, GasStationID, ProductID) VALUES (1, 1, 1);\nINSERT INTO transactions_1k (TransactionID, GasStationID, ProductID) VALUES (2, 1, 1);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 does not use DISTINCT, so it may return duplicate product descriptions if multiple transactions share the same product. Q2 uses DISTINCT, so duplicates are removed. The difference arises when multiple transactions reference the same product at a CZE gas station.",
+  "counterexample_dsp": "Two transactions for the same product at a CZE gas station cause Q1 to return duplicate descriptions while Q2 returns one distinct result.",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 does not use DISTINCT, so it may return duplicate product descriptions if multiple transactions share the same product. Q2 uses DISTINCT, so duplicates are removed. The difference arises when multiple transactions reference the same product at a CZE gas station.\",\n  \"counterexample_dsp\": \"Two transactions for the same product at a CZE gas station cause Q1 to return duplicate descriptions while Q2 returns one distinct result.\",\n  \"counterexample\": \"INSERT INTO gasstations (GasStationID, Country) VALUES (1, 'CZE');\\nINSERT INTO products (ProductID, Description) VALUES (1, 'Diesel');\\nINSERT INTO transactions_1k (TransactionID, GasStationID, ProductID) VALUES (1, 1, 1);\\nINSERT INTO transactions_1k (TransactionID, GasStationID, ProductID) VALUES (2, 1, 1);\"\n}",
+  "reasoning": "\nOkay, let's see. The user wants me to find a counterexample where Q1 and Q2 return different results. Let me first look at the two queries.\n\nQ1 is a simple INNER JOIN between transactions_1k, gasstations, and products, filtering by Country = 'CZE'. It selects T3.Description. Q2 is the same but with DISTINCT on T3.Description. So the difference is that Q1 could have duplicate descriptions if there are multiple transactions for the same product at gas stations in CZE, while Q2 would return unique descriptions.\n\nSo to make them different, I need a scenario where there are multiple transactions for the same product in CZE. That way, Q1 would list the description multiple times, and Q2 would list it once. Therefore, the counterexample should have at least two transactions with the same ProductID (and same Description) from gas stations in CZE.\n\nLet me structure the test data. I need:\n\n- A gas station in CZE (gasstations table, Country = 'CZE').\n- A product with a specific Description (products table).\n- Two entries in transactions_1k for that gas station and product.\n\nSo inserting those would make Q1 return two rows with the same Description, and Q2 would return one distinct row.\n\nLet me check the schema constraints. GasStationID in gasstations is primary key, ProductID in products is primary key. transactions_1k has GasStationID and ProductID as foreign keys. So inserting a gas station with Country 'CZE', a product with some Description, and two transactions with the same GasStationID and ProductID should work.\n\nThe explanation would be that Q1 doesn't use DISTINCT so duplicates are possible, while Q2 does. The counterexample involves multiple transactions for the same product.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 535,
+    "total_tokens": 1102,
+    "completion_tokens": 567,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 369
+    },
+    "generation_seconds": 17.954
+  },
+  "started_at": "2026-10-06T19:57:24.611447+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "Diesel"
+    ],
+    [
+      "Diesel"
+    ]
+  ],
+  "q2_output": [
+    [
+      "Diesel"
+    ]
+  ],
+  "q1_row_count": 2,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT T3.Description FROM transactions_1k AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID INNER JOIN products AS T3 ON T1.ProductID = T3.ProductID WHERE T2.Country = 'CZE'",
+  "q2_validation_sql": "SELECT DISTINCT T3.Description FROM \"transactions_1k\" AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID INNER JOIN products AS T3 ON T1.ProductID = T3.ProductID WHERE T2.Country = 'CZE'"
+}

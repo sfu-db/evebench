@@ -1,0 +1,64 @@
+{
+  "dbid": "debit_card_specializing",
+  "index": "875",
+  "source_index": "1531",
+  "schema_ddl": "CREATE TABLE customers\n(\n    CustomerID INTEGER UNIQUE     not null\n        primary key,\n    Segment    TEXT null,\n    Currency   TEXT null\n);\n\nCREATE TABLE gasstations\n(\n    GasStationID INTEGER    UNIQUE   not null\n        primary key,\n    ChainID      INTEGER          null,\n    Country      TEXT null,\n    Segment      TEXT null\n);\n\nCREATE TABLE products\n(\n    ProductID   INTEGER   UNIQUE      not null\n        primary key,\n    Description TEXT null\n);\n\nCREATE TABLE \"transactions_1k\"\n(\n    TransactionID INTEGER\n        primary key autoincrement,\n    Date          DATE,\n    Time          TEXT,\n    CustomerID    INTEGER,\n    CardID        INTEGER,\n    GasStationID  INTEGER,\n    ProductID     INTEGER,\n    Amount        INTEGER,\n    Price         REAL\n);\n\nCREATE TABLE \"yearmonth\"\n(\n    CustomerID  INTEGER not null\n        references customers\n            on update cascade on delete cascade\n        references customers,\n    Date        TEXT    not null,\n    Consumption REAL,\n    primary key (Date, CustomerID)\n);",
+  "q1": "SELECT T2.Description FROM transactions_1k AS T1 INNER JOIN products AS T2 ON T1.ProductID = T2.ProductID ORDER BY T1.Amount DESC LIMIT 5",
+  "q2": "SELECT p.Description FROM products AS p INNER JOIN \"transactions_1k\" AS t ON p.ProductID = t.ProductID GROUP BY p.ProductID ORDER BY SUM(t.Amount) DESC LIMIT 5",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT T2.Description FROM transactions_1k AS T1 INNER JOIN products AS T2 ON T1.ProductID = T2.ProductID ORDER BY T1.Amount DESC LIMIT 5",
+  "q2_prompt_sql": "SELECT p.Description FROM products AS p INNER JOIN \"transactions_1k\" AS t ON p.ProductID = t.ProductID GROUP BY p.ProductID ORDER BY SUM(t.Amount) DESC LIMIT 5",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO products (ProductID, Description) VALUES (1, 'Product A'), (2, 'Product B');\nINSERT INTO transactions_1k (TransactionID, Date, Time, CustomerID, CardID, GasStationID, ProductID, Amount, Price) \nVALUES (1, '2023-01-01', '10:00', 1, 100, 1, 1, 100, 5.0),\n       (2, '2023-01-02', '11:00', 1, 101, 2, 1, 100, 5.0),\n       (3, '2023-01-03', '12:00', 2, 102, 3, 2, 150, 7.5);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 retrieves top 5 individual transactions by Amount, while Q2 retrieves top 5 products by total transaction amount. They differ in aggregation logic and ordering criteria.",
+  "counterexample_dsp": "Product A has two transactions of 100 each, Product B has one transaction of 150. Q1 shows B first (highest single transaction), Q2 shows A first (total 200 > 150).",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 retrieves top 5 individual transactions by Amount, while Q2 retrieves top 5 products by total transaction amount. They differ in aggregation logic and ordering criteria.\",\n\"counterexample_dsp\": \"Product A has two transactions of 100 each, Product B has one transaction of 150. Q1 shows B first (highest single transaction), Q2 shows A first (total 200 > 150).\",\n\"counterexample\": \"INSERT INTO products (ProductID, Description) VALUES (1, 'Product A'), (2, 'Product B');\\nINSERT INTO transactions_1k (TransactionID, Date, Time, CustomerID, CardID, GasStationID, ProductID, Amount, Price) \\nVALUES (1, '2023-01-01', '10:00', 1, 100, 1, 1, 100, 5.0),\\n       (2, '2023-01-02', '11:00', 1, 101, 2, 1, 100, 5.0),\\n       (3, '2023-01-03', '12:00', 2, 102, 3, 2, 150, 7.5);\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem step by step. I need to determine if the two SQL queries Q1 and Q2 are semantically equivalent. If they're not, I have to come up with a counterexample. \n\nFirst, I'll start by understanding what each query does. \n\nLooking at Q1: It selects the Description from products (T2) by joining with transactions_1k (T1) on ProductID. Then it orders the results by T1.Amount in descending order and takes the top 5. So, this query is retrieving the top 5 transactions with the highest Amount, and for each, it's getting the product description. However, if there are multiple transactions for the same product, each transaction is considered individually. So, the same product might appear multiple times if it has multiple high-amount transactions.\n\nNow Q2: It selects the Description from products (p) by joining with transactions_1k (t) on ProductID. Then it groups by p.ProductID, which implies that it's aggregating data per product. The ORDER BY is SUM(t.Amount) DESC, so it's ordering by the total amount of all transactions for each product. Then it takes the top 5. This query is getting the top 5 products with the highest total transaction amounts. Each product appears once, and their total is summed.\n\nSo the key difference is that Q1 is about individual transactions (top 5 transactions, each possibly for different products), while Q2 is about products (top 5 products based on total transaction amounts). Therefore, they are not equivalent. \n\nFor example, imagine a product A with two transactions: 100 and 100. Product B has one transaction of 150. In Q1, the top 5 would include both transactions of A and the one of B. But in Q2, product A's total is 200, which is higher than B's 150, so A would be first. So Q1 might list B as a result, while Q2 lists A. \n\nTo create a counterexample, I need to set up a scenario where the top transactions (Q1) are different from the top products by total amount (Q2). Let's create two products. Product 1 has two transactions of 100 each, and Product 2 has one transaction of 150. \n\nIn Q1, the top 5 would be Product 2's 150, then the two 100s from Product 1. But since we take the top 5, if there are only three transactions, they all would be listed. However, Q2 would group Product 1's total as 200, which is higher than Product 2's 150, so Product 1 would be first. \n\nSo in this case, Q1 would return Product 2's description first, while Q2 would return Product 1's. Thus, the results are different. \n\nNow, I need to ensure that the test data adheres to the schema constraints. The transactions_1k table has a primary key TransactionID, which is autoincremented. So I need to insert entries with unique TransactionIDs. Also, ProductID must be valid, and other foreign keys like CustomerID, GasStationID, etc., must exist in their respective tables. But for the counterexample, maybe I can ignore other tables and just create the necessary entries. \n\nLet me draft the test data. \n\nInsert into products: ProductID 1 with Description 'Product A', ProductID 2 with 'Product B'. \n\nThen insert into transactions_1k:\n- TransactionID 1, ProductID 1, Amount 100\n- TransactionID 2, ProductID 1, Amount 100\n- TransactionID 3, ProductID 2, Amount 150\n\nThis setup would make Q1 return Product B (150) first, then two entries of Product A (each 100). But Q2 would sum Product A's total as 200, so Product A is first. \n\nThus, the counterexample would show that the two queries return different results.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 551,
+    "total_tokens": 1744,
+    "completion_tokens": 1193,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 875
+    },
+    "generation_seconds": 36.125
+  },
+  "started_at": "2026-10-06T21:02:43.540588+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "Product B"
+    ],
+    [
+      "Product A"
+    ],
+    [
+      "Product A"
+    ]
+  ],
+  "q2_output": [
+    [
+      "Product A"
+    ],
+    [
+      "Product B"
+    ]
+  ],
+  "q1_row_count": 3,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT T2.Description FROM transactions_1k AS T1 INNER JOIN products AS T2 ON T1.ProductID = T2.ProductID ORDER BY T1.Amount DESC LIMIT 5",
+  "q2_validation_sql": "SELECT p.Description FROM products AS p INNER JOIN \"transactions_1k\" AS t ON p.ProductID = t.ProductID GROUP BY p.ProductID ORDER BY SUM(t.Amount) DESC LIMIT 5"
+}

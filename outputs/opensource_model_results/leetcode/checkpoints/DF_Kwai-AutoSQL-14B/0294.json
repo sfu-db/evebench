@@ -1,0 +1,39 @@
+{
+  "dbid": "1149",
+  "index": "294",
+  "source_index": "34",
+  "schema_ddl": "CREATE TABLE VIEWS (\n    ARTICLE_ID INT,\n    AUTHOR_ID INT,\n    VIEWER_ID INT,\n    VIEW_DATE DATE\n);",
+  "q1": "SELECT DISTINCT VIEWER_ID AS ID FROM VIEWS GROUP BY VIEW_DATE, VIEWER_ID HAVING COUNT(DISTINCT ARTICLE_ID) > 1 ORDER BY ID",
+  "q2": "SELECT DISTINCT X.VIEWER_ID AS ID FROM ( SELECT V.VIEWER_ID, V.VIEW_DATE, COUNT(DISTINCT V.ARTICLE_ID) AS DISTINCT_VIEWS FROM VIEWS V GROUP BY 1,2 HAVING COUNT(DISTINCT V.ARTICLE_ID) >1 ) AS X ORDER BY 1",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT DISTINCT VIEWER_ID AS ID FROM VIEWS GROUP BY VIEW_DATE, VIEWER_ID HAVING COUNT(DISTINCT ARTICLE_ID) > 1 ORDER BY ID",
+  "q2_prompt_sql": "SELECT DISTINCT X.VIEWER_ID AS ID FROM ( SELECT V.VIEWER_ID, V.VIEW_DATE, COUNT(DISTINCT V.ARTICLE_ID) AS DISTINCT_VIEWS FROM VIEWS V GROUP BY 1,2 HAVING COUNT(DISTINCT V.ARTICLE_ID) >1 ) AS X ORDER BY 1",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries aim to find distinct viewer IDs who viewed more than one distinct article on at least one date. Q1 groups by VIEW_DATE and VIEWER_ID, applies HAVING, and uses DISTINCT. Q2 uses a subquery with the same grouping and HAVING, then selects distinct VIEWER_ID from the result. They produce the same output.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries aim to find distinct viewer IDs who viewed more than one distinct article on at least one date. Q1 groups by VIEW_DATE and VIEWER_ID, applies HAVING, and uses DISTINCT. Q2 uses a subquery with the same grouping and HAVING, then selects distinct VIEWER_ID from the result. They produce the same output.\"\n}",
+  "reasoning": "\nOkay, let's try to figure out if Q1 and Q2 are equivalent. \n\nFirst, looking at Q1: It selects distinct VIEWER_ID from VIEWS, groups by VIEW_DATE and VIEWER_ID, and uses HAVING COUNT(DISTINCT ARTICLE_ID) > 1. Then orders by ID. So the grouping is on both VIEW_DATE and VIEWER_ID. The HAVING condition checks that the viewer has more than one distinct article viewed on the same date? Wait, no, the grouping is by VIEW_DATE and VIEWER_ID, so each group has the same viewer and same date. Then COUNT(DISTINCT ARTICLE_ID) counts distinct articles per date for that viewer. So the HAVING condition means that the viewer viewed more than one distinct article on that particular date. But since the grouping is on both date and viewer, each row in the result would be a viewer-date pair where that viewer had more than one distinct article viewed on that date. But the SELECT is just the VIEWER_ID, so the DISTINCT in the SELECT would combine all such instances for the same viewer across different dates?\n\nWait, no. The GROUP BY is on VIEW_DATE and VIEWER_ID. So for each unique combination of viewer and date, the HAVING condition is applied. If that condition is met, then the viewer's ID is selected. But since the SELECT is only VIEWER_ID, the DISTINCT would collapse all instances where the same viewer had multiple articles on any date. So Q1 would return viewers who have at least one date where they viewed more than one distinct article.\n\nNow Q2: It's a subquery where the inner query groups by VIEWER_ID and VIEW_DATE (GROUP BY 1,2 which refers to the first two columns, VIEWER_ID and VIEW_DATE). Then it counts distinct ARTICLE_ID and filters with HAVING COUNT(DISTINCT ARTICLE_ID) > 1. The outer query selects the VIEWER_ID from that subquery, and orders by 1 (the first column, which is VIEWER_ID). Since the subquery already groups by VIEWER_ID and VIEW_DATE, the result of the subquery would have rows with each viewer-date pair that meets the count condition. The outer query then selects distinct VIEWER_IDs from that result. So the outer query's DISTINCT would give all viewer IDs that have at least one such date.\n\nWait, so both Q1 and Q2 are returning distinct viewer IDs who have at least one date where they viewed more than one distinct article. So maybe they are equivalent?\n\nWait, but in Q1, the GROUP BY is on VIEW_DATE and VIEWER_ID, and the SELECT is VIEWER_ID. Since each group is a unique viewer-date pair, the HAVING condition applies per group. Then the DISTINCT in the SELECT would just return the viewer ID once per group, but since the same viewer could have multiple dates meeting the condition, the DISTINCT would collapse them into one. So Q1 would return viewer IDs that have at least one date with more than one distinct article.\n\nIn Q2, the inner query groups by viewer and date, computes the count, and returns those rows. The outer query then selects distinct viewer IDs from that result. So again, the same result: viewer IDs that have at least one date where the count of distinct articles is more than one.\n\nSo the two queries should be equivalent. Therefore, the answer is Y.\n\nWait, but let me check for possible differences. Let's think of an example. Suppose a viewer has two different dates where they viewed two articles each. Then Q1 would return that viewer once (because of DISTINCT), and Q2 would also return once. If the same viewer has one date with two articles and another date with three articles, same result. So both queries are selecting distinct viewer IDs that have at least one date where they viewed more than one distinct article.\n\nTherefore, they are equivalent. So the answer is Y.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 384,
+    "total_tokens": 1272,
+    "completion_tokens": 888,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 801
+    },
+    "generation_seconds": 28.969
+  },
+  "started_at": "2026-10-06T15:40:02.641510+00:00",
+  "elapsed_seconds": 0.0
+}

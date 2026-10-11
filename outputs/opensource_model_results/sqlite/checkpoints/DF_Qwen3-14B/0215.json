@@ -1,0 +1,55 @@
+{
+  "dbid": "toxicology",
+  "index": "215",
+  "source_index": "325",
+  "schema_ddl": "CREATE TABLE `atom` (\n  `atom_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `element` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `bond` (\n  `bond_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `bond_type` TEXT DEFAULT NULL,\n  PRIMARY KEY (`bond_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `connected` (\n  `atom_id` TEXT NOT NULL,\n  `atom_id2` TEXT NOT NULL,\n  `bond_id` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`,`atom_id2`),\n  FOREIGN KEY (`atom_id`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`atom_id2`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`bond_id`) REFERENCES `bond` (`bond_id`) ON DELETE CASCADE ON UPDATE CASCADE\n);\n\nCREATE TABLE `molecule` (\n  `molecule_id` TEXT NOT NULL,\n  `label` TEXT DEFAULT NULL,\n  PRIMARY KEY (`molecule_id`)\n);",
+  "q1": "SELECT CAST(COUNT(CASE WHEN T.bond_type = '-' THEN T.bond_id ELSE NULL END) AS REAL) * 100 / COUNT(T.bond_id) FROM bond AS t",
+  "q2": "SELECT CAST(SUM(CASE WHEN T2.bond_type = '-' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(T1.bond_id) FROM connected AS T1 INNER JOIN bond AS T2 ON T1.bond_id = T2.bond_id",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT CAST(COUNT(CASE WHEN T.bond_type = '-' THEN T.bond_id ELSE NULL END) AS REAL) * 100 / COUNT(T.bond_id) FROM bond AS t",
+  "q2_prompt_sql": "SELECT CAST(SUM(CASE WHEN T2.bond_type = '-' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(T1.bond_id) FROM connected AS T1 INNER JOIN bond AS T2 ON T1.bond_id = T2.bond_id",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO molecule (molecule_id, label) VALUES ('m1', 'test');\nINSERT INTO atom (atom_id, molecule_id, element) VALUES ('a1', 'm1', 'C'), ('a2', 'm1', 'H'), ('a3', 'm1', 'H');\nINSERT INTO bond (bond_id, molecule_id, bond_type) VALUES ('A', 'm1', '-'), ('B', 'm1', 'single');\nINSERT INTO connected (atom_id, atom_id2, bond_id) VALUES ('a1', 'a2', 'A'), ('a1', 'a3', 'A'), ('a2', 'a3', 'B');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 counts bonds with '-' type in the bond table and divides by total bonds. Q2 counts connected entries with '-' type bonds and divides by connected rows. If bonds are referenced multiple times in connected, denominators differ.",
+  "counterexample_dsp": "A bond with '-' type referenced twice in connected, and another bond with non-'-' type referenced once in connected.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 counts bonds with '-' type in the bond table and divides by total bonds. Q2 counts connected entries with '-' type bonds and divides by connected rows. If bonds are referenced multiple times in connected, denominators differ.\",\n\"counterexample_dsp\": \"A bond with '-' type referenced twice in connected, and another bond with non-'-' type referenced once in connected.\",\n\"counterexample\": \"INSERT INTO molecule (molecule_id, label) VALUES ('m1', 'test');\\nINSERT INTO atom (atom_id, molecule_id, element) VALUES ('a1', 'm1', 'C'), ('a2', 'm1', 'H'), ('a3', 'm1', 'H');\\nINSERT INTO bond (bond_id, molecule_id, bond_type) VALUES ('A', 'm1', '-'), ('B', 'm1', 'single');\\nINSERT INTO connected (atom_id, atom_id2, bond_id) VALUES ('a1', 'a2', 'A'), ('a1', 'a3', 'A'), ('a2', 'a3', 'B');\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem step by step. So, I need to determine if the two SQL queries Q1 and Q2 are semantically equivalent. If they aren't, I have to provide a counterexample. Let me start by understanding each query and their purposes.\n\nFirst, looking at Q1: It's selecting a calculation that involves counting the number of bonds where the bond_type is '-', converting that count to a real number, multiplying by 100, and then dividing by the total count of bond_ids. The FROM clause is just the bond table as T. So, this seems to be calculating the percentage of bonds in the bond table that have a bond_type of '-'.\n\nNow, Q2 is a bit more complex. It's using a JOIN between connected (T1) and bond (T2) on bond_id. The SUM part is adding 1 for each row where T2.bond_type is '-', else 0. Then, it's casting that sum to real, multiplying by 100, and dividing by the count of T1.bond_id. Wait, the denominator here is COUNT(T1.bond_id), which is the number of rows in the connected table, but since each connected entry has a bond_id, maybe it's counting the number of bonds in connected? But wait, the connected table has a bond_id that references the bond table. However, each bond might be connected to multiple atoms. But the denominator here is COUNT(T1.bond_id), which would be the number of rows in the connected table. But the bond_id in connected could be duplicated if a bond connects multiple atom pairs. So, the denominator in Q2 is the number of connected entries, not the number of unique bonds. But Q1's denominator is COUNT(T.bond_id), which is the number of bonds in the bond table. \n\nWait, that's a key difference. Q1 counts all bonds in the bond table, while Q2's denominator is the count of rows in the connected table. So, if there are multiple entries in connected for a single bond_id, then the denominator in Q2 would be higher than in Q1. That could lead to different results. Let me think of an example.\n\nSuppose there's one bond with bond_type '-', and in the connected table, this bond is associated with two different atom pairs. Then, Q1's denominator would be 1 (since there's one bond in the bond table), and the numerator would be 1. So the result would be 100%. But Q2's numerator would be 1 (since SUM adds 1 for each connected entry with that bond_type), but the denominator would be 2 (two rows in connected). So the result would be 50%. That would make them different.\n\nSo the main difference is that Q1 uses the count of bonds (each bond once) in the denominator, while Q2 uses the count of connected entries (each bond might be counted multiple times if it connects multiple atom pairs). Therefore, the two queries are not equivalent.\n\nNow, I need to create a counterexample. Let's create a bond table with one bond with bond_type '-', and a connected table with two entries for that bond. Then, Q1 would calculate 1/1 * 100 = 100%, while Q2 would calculate 2/2 * 100 = 100%? Wait, no. Wait, in Q2, the SUM is for T2.bond_type = '-', which in this case, each connected entry has that bond_id, which is the same bond with bond_type '-'. So SUM would be 2 (since each connected row contributes 1). The denominator is COUNT(T1.bond_id), which is 2. So 2/2 * 100 = 100%. Wait, that would be the same. Hmm, maybe my example isn't right.\n\nWait, let me think again. Suppose the bond table has two bonds. Bond A with type '-', and bond B with type 'something else'. In the connected table, bond A is present in two entries, and bond B is present in one entry. Then:\n\nQ1 would count the number of bonds with type '-', which is 1 (bond A). The total bonds is 2. So 1/2 * 100 = 50%.\n\nQ2 would sum the cases where T2.bond_type is '-', which would be 2 (since two connected entries for bond A). The denominator is COUNT(T1.bond_id), which is 3 (two for bond A and one for bond B). So 2/3 * 100 ≈ 66.67%. So here, the results differ.\n\nSo that's a case where they are not equivalent. Now, I need to create that scenario in the database.\n\nSo, the test data would be:\n\nbond table:\n- bond_id 'A', bond_type '-'\n- bond_id 'B', bond_type 'single'\n\nconnected table:\n- (atom1, atom2, bond_id) entries for A, A, and B. So three rows: two with bond_id A and one with bond_id B.\n\nThen Q1 would be 1/2 * 100 = 50%, Q2 would be 2/3 * 100 ≈ 66.67%.\n\nSo the counterexample would involve this setup. Now, I need to make sure that the foreign keys are satisfied. For example, the connected table's bond_id must exist in the bond table. Also, the atoms in connected must exist in the atom table, but maybe for simplicity, I can insert dummy atom entries.\n\nSo, the steps would be:\n\nInsert into molecule (if needed, but maybe not necessary for this example), insert into atom, insert into bond, insert into connected.\n\nBut the connected table requires that the atom_id and atom_id2 exist in the atom table. So, perhaps create two atoms, say 'a1' and 'a2', and then have connected entries between them with bond_id A and another entry between a1 and a3 with bond_id A, and then another entry between a4 and a5 with bond_id B. But maybe for simplicity, just create two atoms and have two connected entries for bond A and one for bond B.\n\nBut the exact atom entries don't matter as long as they exist. So the SQL inserts would be:\n\nINSERT INTO molecule (molecule_id, label) VALUES ('m1', 'test');\nINSERT INTO atom (atom_id, molecule_id, element) VALUES ('a1', 'm1', 'C'), ('a2', 'm1', 'H'), ('a3', 'm1', 'H');\nINSERT INTO bond (bond_id, molecule_id, bond_type) VALUES ('A', 'm1', '-'), ('B', 'm1', 'single');\nINSERT INTO connected (atom_id, atom_id2, bond_id) VALUES ('a1', 'a2', 'A'), ('a1', 'a3', 'A'), ('a2', 'a3', 'B');\n\nThis would create three connected entries: two for bond A (so two rows where bond_type is '-') and one for bond B (which is not '-'). \n\nThen Q1 would count the bonds with type '-', which is 1 (bond A), divided by total bonds (2), so 50%. Q2 would sum 2 (from the two connected entries for bond A), divided by 3 (total connected rows), giving 66.66...%.\n\nSo this would be a valid counterexample. Now, I need to make sure that all foreign keys are satisfied. For example, the molecule_id in bond is 'm1', which exists in molecule. The atoms a1, a2, a3 are in the atom table. The connected entries have bond_id that exist in bond. All constraints are satisfied.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 624,
+    "total_tokens": 2526,
+    "completion_tokens": 1902,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1653
+    },
+    "generation_seconds": 60.344
+  },
+  "started_at": "2026-10-06T20:25:28.312181+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      50.0
+    ]
+  ],
+  "q2_output": [
+    [
+      66.66666666666667
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT CAST(COUNT(CASE WHEN T.bond_type = '-' THEN T.bond_id ELSE NULL END) AS REAL) * 100 / COUNT(T.bond_id) FROM bond AS t",
+  "q2_validation_sql": "SELECT CAST(SUM(CASE WHEN T2.bond_type = '-' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(T1.bond_id) FROM connected AS T1 INNER JOIN bond AS T2 ON T1.bond_id = T2.bond_id"
+}

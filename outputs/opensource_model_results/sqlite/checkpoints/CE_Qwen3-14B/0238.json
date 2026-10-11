@@ -1,0 +1,55 @@
+{
+  "dbid": "card_games",
+  "index": "238",
+  "source_index": "370",
+  "schema_ddl": "CREATE TABLE \"cards\"\n(\n    id                      INTEGER           not null\n        primary key autoincrement,\n    artist                  TEXT,\n    asciiName               TEXT,\n    availability            TEXT,\n    borderColor             TEXT,\n    cardKingdomFoilId       TEXT,\n    cardKingdomId           TEXT,\n    colorIdentity           TEXT,\n    colorIndicator          TEXT,\n    colors                  TEXT,\n    convertedManaCost       REAL,\n    duelDeck                TEXT,\n    edhrecRank              INTEGER,\n    faceConvertedManaCost   REAL,\n    faceName                TEXT,\n    flavorName              TEXT,\n    flavorText              TEXT,\n    frameEffects            TEXT,\n    frameVersion            TEXT,\n    hand                    TEXT,\n    hasAlternativeDeckLimit INTEGER default 0 not null,\n    hasContentWarning       INTEGER default 0 not null,\n    hasFoil                 INTEGER default 0 not null,\n    hasNonFoil              INTEGER default 0 not null,\n    isAlternative           INTEGER default 0 not null,\n    isFullArt               INTEGER default 0 not null,\n    isOnlineOnly            INTEGER default 0 not null,\n    isOversized             INTEGER default 0 not null,\n    isPromo                 INTEGER default 0 not null,\n    isReprint               INTEGER default 0 not null,\n    isReserved              INTEGER default 0 not null,\n    isStarter               INTEGER default 0 not null,\n    isStorySpotlight        INTEGER default 0 not null,\n    isTextless              INTEGER default 0 not null,\n    isTimeshifted           INTEGER default 0 not null,\n    keywords                TEXT,\n    layout                  TEXT,\n    leadershipSkills        TEXT,\n    life                    TEXT,\n    loyalty                 TEXT,\n    manaCost                TEXT,\n    mcmId                   TEXT,\n    mcmMetaId               TEXT,\n    mtgArenaId              TEXT,\n    mtgjsonV4Id             TEXT,\n    mtgoFoilId              TEXT,\n    mtgoId                  TEXT,\n    multiverseId            TEXT,\n    name                    TEXT,\n    number                  TEXT,\n    originalReleaseDate     TEXT,\n    originalText            TEXT,\n    originalType            TEXT,\n    otherFaceIds            TEXT,\n    power                   TEXT,\n    printings               TEXT,\n    promoTypes              TEXT,\n    purchaseUrls            TEXT,\n    rarity                  TEXT,\n    scryfallId              TEXT,\n    scryfallIllustrationId  TEXT,\n    scryfallOracleId        TEXT,\n    setCode                 TEXT,\n    side                    TEXT,\n    subtypes                TEXT,\n    supertypes              TEXT,\n    tcgplayerProductId      TEXT,\n    text                    TEXT,\n    toughness               TEXT,\n    type                    TEXT,\n    types                   TEXT,\n    uuid                    TEXT              not null\n        unique,\n    variations              TEXT,\n    watermark               TEXT\n);\n\nCREATE TABLE \"foreign_data\"\n(\n    id           INTEGER not null\n        primary key autoincrement,\n    flavorText   TEXT,\n    language     TEXT,\n    multiverseid INTEGER,\n    name         TEXT,\n    text         TEXT,\n    type         TEXT,\n    uuid         TEXT\n        references cards (uuid)\n);\n\nCREATE TABLE \"legalities\"\n(\n    id     INTEGER not null\n        primary key autoincrement,\n    format TEXT,\n    status TEXT,\n    uuid   TEXT\n        references cards (uuid)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE \"sets\"\n(\n    id               INTEGER           not null\n        primary key autoincrement,\n    baseSetSize      INTEGER,\n    block            TEXT,\n    booster          TEXT,\n    code             TEXT              not null\n        unique,\n    isFoilOnly       INTEGER default 0 not null,\n    isForeignOnly    INTEGER default 0 not null,\n    isNonFoilOnly    INTEGER default 0 not null,\n    isOnlineOnly     INTEGER default 0 not null,\n    isPartialPreview INTEGER default 0 not null,\n    keyruneCode      TEXT,\n    mcmId            INTEGER,\n    mcmIdExtras      INTEGER,\n    mcmName          TEXT,\n    mtgoCode         TEXT,\n    name             TEXT,\n    parentCode       TEXT,\n    releaseDate      DATE,\n    tcgplayerGroupId INTEGER,\n    totalSetSize     INTEGER,\n    type             TEXT\n);\n\nCREATE TABLE \"set_translations\"\n(\n    id          INTEGER not null\n        primary key autoincrement,\n    language    TEXT,\n    setCode     TEXT\n        references sets (code)\n            on update cascade on delete cascade,\n    translation TEXT\n);\n\nCREATE TABLE \"rulings\"\n(\n    id   INTEGER not null\n        primary key autoincrement,\n    date DATE,\n    text TEXT,\n    uuid TEXT\n        references cards (uuid)\n            on update cascade on delete cascade\n);",
+  "q1": "SELECT COUNT(T1.id) FROM cards AS T1 INNER JOIN foreign_data AS T2 ON T1.uuid = T2.uuid WHERE T2.language = 'German' AND T1.isReprint = 1",
+  "q2": "SELECT COUNT(DISTINCT T1.id) FROM cards AS T1 INNER JOIN foreign_data AS T2 ON T1.uuid = T2.uuid WHERE T2.language = 'German' AND T1.isReprint = 1",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT COUNT(T1.id) FROM cards AS T1 INNER JOIN foreign_data AS T2 ON T1.uuid = T2.uuid WHERE T2.language = 'German' AND T1.isReprint = 1",
+  "q2_prompt_sql": "SELECT COUNT(DISTINCT T1.id) FROM cards AS T1 INNER JOIN foreign_data AS T2 ON T1.uuid = T2.uuid WHERE T2.language = 'German' AND T1.isReprint = 1",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO cards (id, uuid, isReprint) VALUES (1, 'card1', 1);\nINSERT INTO foreign_data (id, uuid, language, name) VALUES (1, 'card1', 'German', 'Test Name 1');\nINSERT INTO foreign_data (id, uuid, language, name) VALUES (2, 'card1', 'German', 'Test Name 2');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 counts all matching rows (including duplicates), while Q2 counts distinct card IDs. If a card has multiple foreign_data entries for 'German', Q1 will return a higher count.",
+  "counterexample_dsp": "A card with isReprint=1 has two foreign_data entries for 'German', causing Q1 to count 2 rows and Q2 to count 1 distinct card.",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 counts all matching rows (including duplicates), while Q2 counts distinct card IDs. If a card has multiple foreign_data entries for 'German', Q1 will return a higher count.\",\n  \"counterexample_dsp\": \"A card with isReprint=1 has two foreign_data entries for 'German', causing Q1 to count 2 rows and Q2 to count 1 distinct card.\",\n  \"counterexample\": [\n    \"INSERT INTO cards (id, uuid, isReprint) VALUES (1, 'card1', 1);\",\n    \"INSERT INTO foreign_data (id, uuid, language, name) VALUES (1, 'card1', 'German', 'Test Name 1');\",\n    \"INSERT INTO foreign_data (id, uuid, language, name) VALUES (2, 'card1', 'German', 'Test Name 2');\"\n  ]\n}",
+  "reasoning": "\nOkay, let's see. I need to find a counterexample where Q1 and Q2 return different results. Let me look at the queries again.\n\nQ1 is SELECT COUNT(T1.id) FROM cards AS T1 INNER JOIN foreign_data AS T2 ON T1.uuid = T2.uuid WHERE T2.language = 'German' AND T1.isReprint = 1.\n\nQ2 is SELECT COUNT(DISTINCT T1.id) FROM cards AS T1 INNER JOIN foreign_data AS T2 ON T1.uuid = T2.uuid WHERE T2.language = 'German' AND T1.isReprint = 1.\n\nThe difference is that Q1 counts all rows, including duplicates, while Q2 counts distinct T1.id values. So if there are multiple entries in foreign_data for the same card (same uuid) that meet the conditions, Q1 would count each occurrence, but Q2 would count each card once.\n\nSo to create a counterexample, I need a scenario where a card (T1) with isReprint = 1 has multiple entries in foreign_data with language 'German'. For example, if a card has two entries in foreign_data for German, then Q1 would count 2, and Q2 would count 1.\n\nLet me think about the schema. The foreign_data table has a uuid that references cards.uuid. So each entry in foreign_data is linked to a card. If a card has multiple foreign_data entries with the same language, that's allowed. For example, maybe different versions or something.\n\nSo I can create a card with uuid 'card1', isReprint = 1. Then insert two entries into foreign_data with uuid 'card1' and language 'German'. Then Q1 would return 2, Q2 would return 1. That's the difference.\n\nI need to make sure that the foreign_data entries have the same uuid but different other fields (like name, text, etc.) but same language. Also, the cards table needs to have the isReprint flag set to 1.\n\nSo the test data would be:\n\nInsert into cards (id, uuid, isReprint) values (1, 'card1', 1).\n\nThen insert into foreign_data (uuid, language) values ('card1', 'German'), ('card1', 'German').\n\nBut wait, the foreign_data table has other fields, but they can be filled with dummy data. The primary key is id, so I can just insert two rows with same uuid and language.\n\nSo the counterexample would have two rows in foreign_data for the same card, leading to Q1's count being 2 and Q2's being 1. That's the difference.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 1255,
+    "total_tokens": 2000,
+    "completion_tokens": 745,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 552
+    },
+    "generation_seconds": 25.328
+  },
+  "started_at": "2026-10-06T16:40:57.359677+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      2
+    ]
+  ],
+  "q2_output": [
+    [
+      1
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT COUNT(T1.id) FROM cards AS T1 INNER JOIN foreign_data AS T2 ON T1.uuid = T2.uuid WHERE T2.language = 'German' AND T1.isReprint = 1",
+  "q2_validation_sql": "SELECT COUNT(DISTINCT T1.id) FROM cards AS T1 INNER JOIN foreign_data AS T2 ON T1.uuid = T2.uuid WHERE T2.language = 'German' AND T1.isReprint = 1"
+}

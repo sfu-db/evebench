@@ -1,0 +1,39 @@
+{
+  "dbid": "1083",
+  "index": "227",
+  "source_index": "201",
+  "schema_ddl": "CREATE TABLE PRODUCT (\n    PRODUCT_ID INT,\n    PRODUCT_NAME VARCHAR(255),\n    UNIT_PRICE INT,\n    PRIMARY KEY (PRODUCT_ID),\n    CHECK (UNIT_PRICE > 0),\n    CHECK (PRODUCT_NAME IN ('S8', 'IPHONE'))\n);\n\nCREATE TABLE SALES (\n    PRODUCT_ID INT,\n    SELLER_ID INT,\n    BUYER_ID INT,\n    SALE_DATE DATE,\n    QUANTITY INT,\n    PRICE INT,\n    FOREIGN KEY (PRODUCT_ID) REFERENCES PRODUCT(PRODUCT_ID),\n    CHECK (QUANTITY > 0),\n    CHECK (PRICE > 0)\n);",
+  "q1": "SELECT DISTINCT SALES.BUYER_ID AS BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'S8' AND SALES.BUYER_ID NOT IN ( SELECT SALES.BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'IPHONE')",
+  "q2": "SELECT BUYER_ID FROM SALES INNER JOIN PRODUCT ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID GROUP BY BUYER_ID HAVING SUM(CASE WHEN PRODUCT_NAME = 'S8' THEN 1 ELSE 0 END) > 0 AND SUM(CASE WHEN PRODUCT_NAME = 'IPHONE' THEN 1 ELSE 0 END) = 0",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT DISTINCT SALES.BUYER_ID AS BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'S8' AND SALES.BUYER_ID NOT IN ( SELECT SALES.BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'IPHONE')",
+  "q2_prompt_sql": "SELECT BUYER_ID FROM SALES INNER JOIN PRODUCT ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID GROUP BY BUYER_ID HAVING SUM(CASE WHEN PRODUCT_NAME = 'S8' THEN 1 ELSE 0 END) > 0 AND SUM(CASE WHEN PRODUCT_NAME = 'IPHONE' THEN 1 ELSE 0 END) = 0",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries aim to find buyers who purchased 'S8' but not 'IPHONE'. Q1 uses NOT IN with a subquery to exclude buyers of 'IPHONE', while Q2 uses HAVING with aggregate conditions to ensure no 'IPHONE' purchases. They produce the same result set under the given schema constraints.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries aim to find buyers who purchased 'S8' but not 'IPHONE'. Q1 uses NOT IN with a subquery to exclude buyers of 'IPHONE', while Q2 uses HAVING with aggregate conditions to ensure no 'IPHONE' purchases. They produce the same result set under the given schema constraints.\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem. I need to determine if Q1 and Q2 are semantically equivalent. Let's start by understanding each query.\n\nFirst, looking at Q1. It selects distinct BUYER_ID from SALES joined with PRODUCT where PRODUCT_NAME is 'S8'. Then it excludes any BUYER_ID that appears in a subquery where the product name is 'IPHONE'. So Q1 is giving me buyers who bought S8 but not iPhone.\n\nNow Q2: It joins SALES with PRODUCT, groups by BUYER_ID, and uses HAVING. The first condition in HAVING is that the sum of 1s when product name is S8 is greater than 0 (so they have at least one S8 purchase). The second condition is that the sum of 1s when product name is iPhone equals 0 (so no iPhone purchases). So Q2 is also selecting buyers who bought S8 and not iPhone.\n\nAt first glance, they seem similar. Both are about buyers of S8 excluding those who bought iPhone. But maybe there's a difference in how they handle multiple purchases.\n\nWait, Q1 uses NOT IN with a subquery that gets all BUYER_IDs who bought iPhone. So if a buyer bought iPhone once, they are excluded. But what if a buyer bought S8 and iPhone in different rows? Q1 would exclude them. Q2 checks that the sum of iPhone cases is zero, meaning the buyer has no iPhone entries at all. So they should be the same.\n\nBut wait, maybe Q1's subquery is for iPhone, but the join in the subquery is on the same product table. Wait, in Q1's subquery, the inner join is between SALES and PRODUCT on PRODUCT_ID, where PRODUCT_NAME = 'IPHONE'. So the subquery returns all BUYER_IDs who have bought any iPhone product. So Q1's NOT IN excludes those buyers.\n\nQ2's HAVING condition requires that for the same buyer, there are no rows where PRODUCT_NAME is 'IPHONE'. So if a buyer has a row for iPhone, the sum would be positive, thus excluding them. So both conditions should result in the same set.\n\nWait, but what if a buyer has multiple rows for S8 and one for iPhone? Q1 would exclude them because the subquery finds the buyer in the iPhone case. Q2 would also exclude them because the sum for iPhone would be 1. So same result.\n\nBut what about a buyer who has multiple S8 purchases but no iPhone? Both would include them.\n\nAnother angle: Q1 uses DISTINCT, while Q2 groups by BUYER_ID. Since Q2 groups, each buyer appears once. So the DISTINCT in Q1 and GROUP BY in Q2 both result in unique buyer IDs. So they should be equivalent.\n\nBut maybe there's a case where the subquery in Q1 returns duplicates, but since it's in NOT IN, and the main query has DISTINCT, maybe that's not an issue. But the subquery in Q1 is just selecting BUYER_IDs from the same join with product_name = 'IPHONE'. The NOT IN would take all those buyer IDs and exclude them. So if a buyer bought iPhone once, they are excluded. The same applies to Q2's HAVING SUM(...)=0.\n\nWait, what if a buyer has multiple rows for S8 but no iPhone? Both queries should return them.\n\nHmm. Maybe they are equivalent. But I need to check if there's any scenario where they differ.\n\nWait, what if the subquery in Q1 returns NULLs? But in this case, since the subquery is on PRODUCT_NAME = 'IPHONE', and the product table has a check that product_name is in ('S8', 'IPHONE'), so no NULLs there. So the NOT IN should be safe.\n\nAnother thought: Q1's subquery is using the same join as the main query. But the main query is joining on product_id where product_name = 'S8', so the subquery is joining on product_id where product_name = 'IPHONE'. So the subquery is getting all buyers who bought iPhone, regardless of other products.\n\nQ2's HAVING is checking for the same buyer that they have at least one S8 purchase and zero iPhone purchases. So yes, they should be the same.\n\nWait, but maybe the subquery in Q1 could have duplicates, but since NOT IN is used with a list, duplicates don't matter. So I think they are equivalent.\n\nBut wait, the user says to check if they are equivalent. Let me think again.\n\nLet me take a test case. Suppose there's a buyer who bought S8 once and iPhone once. Then Q1's NOT IN would exclude them. Q2's HAVING would have SUM for S8 as 1 and SUM for iPhone as 1, so the second condition is not met. So excluded. Same result.\n\nAnother case: a buyer bought S8 twice and iPhone once. Q1 excludes them. Q2 also excludes them. Same.\n\nAnother case: a buyer bought S8 once and no iPhone. Both queries include them.\n\nAnother case: a buyer bought S8 once and iPhone twice. Both exclude.\n\nSo seems equivalent. So answer would be Y.\n\nWait, but wait. What if a buyer bought S8 and another product that's not S8 or iPhone? Wait, the product table's check says product_name is in ('S8', 'IPHONE'). So all products are either S8 or iPhone. So no other products.\n\nSo I think Q1 and Q2 are equivalent. So the answer is Y.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 529,
+    "total_tokens": 1769,
+    "completion_tokens": 1240,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1158
+    },
+    "generation_seconds": 38.859
+  },
+  "started_at": "2026-10-06T15:38:09.885975+00:00",
+  "elapsed_seconds": 0.0
+}

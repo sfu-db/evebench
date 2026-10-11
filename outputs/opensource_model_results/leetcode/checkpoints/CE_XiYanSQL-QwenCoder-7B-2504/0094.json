@@ -1,0 +1,53 @@
+{
+  "dbid": "596",
+  "index": "94",
+  "source_index": "50",
+  "schema_ddl": "CREATE TABLE COURSES (\n    STUDENT VARCHAR(255),\n    CLASS VARCHAR(255),\n    PRIMARY KEY (STUDENT)\n);",
+  "q1": "SELECT CLASS FROM COURSES GROUP BY CLASS HAVING COUNT(*)>=5",
+  "q2": "SELECT CLASS FROM ( SELECT CLASS, COUNT(DISTINCT STUDENT) NUM FROM COURSES GROUP BY CLASS HAVING NUM >= 5 ) AS A",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT CLASS FROM COURSES GROUP BY CLASS HAVING COUNT(*)>=5",
+  "q2_prompt_sql": "SELECT CLASS FROM ( SELECT CLASS, COUNT(DISTINCT STUDENT) NUM FROM COURSES GROUP BY CLASS HAVING NUM >= 5 ) AS A",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO COURSES (STUDENT, CLASS) VALUES ('student1', 'classA'), ('student2', 'classA'), ('student3', 'classA'), ('student4', 'classA'), ('student5', 'classA'), ('student6', 'classA'), ('student7', 'classB'), ('student8', 'classB'), ('student9', 'classC');",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 groups by CLASS and checks if the count of rows (i.e., students) in each class is >= 5. Q2 groups by CLASS, counts the distinct students in each class, and checks if this count is >= 5. The difference lies in the COUNT function used: Q1 uses COUNT(*), which counts all rows, while Q2 uses COUNT(DISTINCT STUDENT), which counts unique students.",
+  "counterexample_dsp": "A class with 5 students where 2 students are enrolled in other classes as well. Q1 will count this class as it has 5 rows, while Q2 will not count it as it has only 3 unique students.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 groups by CLASS and checks if the count of rows (i.e., students) in each class is >= 5. Q2 groups by CLASS, counts the distinct students in each class, and checks if this count is >= 5. The difference lies in the COUNT function used: Q1 uses COUNT(*), which counts all rows, while Q2 uses COUNT(DISTINCT STUDENT), which counts unique students.\",\n  \"counterexample_dsp\": \"A class with 5 students where 2 students are enrolled in other classes as well. Q1 will count this class as it has 5 rows, while Q2 will not count it as it has only 3 unique students.\",\n  \"counterexample\": \"INSERT INTO COURSES (STUDENT, CLASS) VALUES ('student1', 'classA'), ('student2', 'classA'), ('student3', 'classA'), ('student4', 'classA'), ('student5', 'classA'), ('student6', 'classA'), ('student7', 'classB'), ('student8', 'classB'), ('student9', 'classC');\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 295,
+    "total_tokens": 535,
+    "completion_tokens": 240,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 3.938
+  },
+  "started_at": "2026-10-06T09:50:07.874698+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "classA"
+    ]
+  ],
+  "q2_output": [
+    [
+      "classA"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT CLASS FROM COURSES GROUP BY CLASS HAVING COUNT(*)>=5",
+  "q2_validation_sql": "SELECT CLASS FROM ( SELECT CLASS, COUNT(DISTINCT STUDENT) NUM FROM COURSES GROUP BY CLASS HAVING NUM >= 5 ) AS A"
+}

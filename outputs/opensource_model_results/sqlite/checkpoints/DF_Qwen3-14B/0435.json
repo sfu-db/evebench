@@ -1,0 +1,39 @@
+{
+  "dbid": "superhero",
+  "index": "435",
+  "source_index": "823",
+  "schema_ddl": "CREATE TABLE alignment\n(\n    id        INTEGER not null\n            primary key,\n    alignment TEXT default NULL\n);\n\nCREATE TABLE attribute\n(\n    id             INTEGER not null\n            primary key,\n    attribute_name TEXT default NULL\n);\n\nCREATE TABLE colour\n(\n    id     INTEGER not null\n            primary key,\n    colour TEXT default NULL\n);\n\nCREATE TABLE gender\n(\n    id     INTEGER not null\n            primary key,\n    gender TEXT default NULL\n);\n\nCREATE TABLE publisher\n(\n    id             INTEGER not null\n            primary key,\n    publisher_name TEXT default NULL\n);\n\nCREATE TABLE race\n(\n    id   INTEGER not null\n            primary key,\n    race TEXT default NULL\n);\n\nCREATE TABLE superhero\n(\n    id             INTEGER not null\n            primary key,\n    superhero_name TEXT default NULL,\n    full_name      TEXT default NULL,\n    gender_id      INTEGER          default NULL,\n    eye_colour_id  INTEGER          default NULL,\n    hair_colour_id INTEGER          default NULL,\n    skin_colour_id INTEGER          default NULL,\n    race_id        INTEGER          default NULL,\n    publisher_id   INTEGER          default NULL,\n    alignment_id   INTEGER          default NULL,\n    height_cm      INTEGER          default NULL,\n    weight_kg      INTEGER          default NULL,\n    foreign key (alignment_id) references alignment(id),\n    foreign key (eye_colour_id) references colour(id),\n    foreign key (gender_id) references gender(id),\n    foreign key (hair_colour_id) references colour(id),\n    foreign key (publisher_id) references publisher(id),\n    foreign key (race_id) references race(id),\n    foreign key (skin_colour_id) references colour(id)\n);\n\nCREATE TABLE hero_attribute\n(\n    hero_id         INTEGER default NULL,\n    attribute_id    INTEGER default NULL,\n    attribute_value INTEGER default NULL,\n    foreign key (attribute_id) references attribute(id),\n    foreign key (hero_id) references superhero(id)\n);\n\nCREATE TABLE superpower\n(\n    id         INTEGER not null\n            primary key,\n    power_name TEXT default NULL\n);\n\nCREATE TABLE hero_power\n(\n    hero_id  INTEGER default NULL,\n    power_id INTEGER default NULL,\n    foreign key (hero_id) references superhero(id),\n    foreign key (power_id) references superpower(id)\n);",
+  "q1": "SELECT COUNT(T1.id) FROM superhero AS T1 INNER JOIN alignment AS T2 ON T1.alignment_id = T2.id INNER JOIN colour AS T3 ON T1.skin_colour_id = T3.id WHERE T2.alignment = 'Bad' AND T3.colour = 'Green'",
+  "q2": "SELECT COUNT(*) FROM superhero AS T1 INNER JOIN colour AS T2 ON T1.skin_colour_id = T2.id INNER JOIN alignment AS T3 ON T1.alignment_id = T3.id WHERE T2.colour = 'Green' AND T3.alignment = 'Bad'",
+  "dialect": "sqlite",
+  "ground_truth": "EQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT COUNT(T1.id) FROM superhero AS T1 INNER JOIN alignment AS T2 ON T1.alignment_id = T2.id INNER JOIN colour AS T3 ON T1.skin_colour_id = T3.id WHERE T2.alignment = 'Bad' AND T3.colour = 'Green'",
+  "q2_prompt_sql": "SELECT COUNT(*) FROM superhero AS T1 INNER JOIN colour AS T2 ON T1.skin_colour_id = T2.id INNER JOIN alignment AS T3 ON T1.alignment_id = T3.id WHERE T2.colour = 'Green' AND T3.alignment = 'Bad'",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries count superheroes with 'Bad' alignment and 'Green' skin colour by joining the same tables on the same foreign keys. The join order and aliasing differences do not affect the logical outcome.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries count superheroes with 'Bad' alignment and 'Green' skin colour by joining the same tables on the same foreign keys. The join order and aliasing differences do not affect the logical outcome.\"\n}",
+  "reasoning": "\nOkay, let's start by understanding what the two queries are doing. \n\nFirst, Q1: It selects the count of superhero IDs from the superhero table (T1), joining with alignment (T2) on alignment_id and colour (T3) on skin_colour_id. The WHERE clause filters for alignment 'Bad' and skin colour 'Green'. So it's counting superheroes that are aligned as bad and have green skin.\n\nQ2: It's similar but the joins are in a different order. It joins superhero (T1) with colour (T2) on skin_colour_id, then alignment (T3) on alignment_id. The WHERE clause checks T2.colour = 'Green' and T3.alignment = 'Bad'. So it's also counting superheroes with green skin and bad alignment. \n\nWait, the joins are on the same columns, just the order of joining alignment and colour tables is swapped. But since the joins are on different columns (alignment_id vs skin_colour_id), the order of joining shouldn't matter. Both are joining on the same foreign keys. The WHERE conditions are also checking the same attributes: alignment is 'Bad' and skin colour is 'Green'. \n\nBut maybe there's a difference in how the joins are structured. Let me check the tables again. The alignment table has alignment_id in superhero, which is joined to alignment.id. The colour table is joined via skin_colour_id. So both queries are joining the same tables on the same columns. The only difference is the order of the joins and the aliases used. \n\nIn Q1, the alignment is T2 and colour is T3. In Q2, colour is T2 and alignment is T3. But the WHERE conditions reference the same columns: T2.colour (in Q2) is the same as T3.colour in Q1? Wait no. Wait in Q1, the colour table is T3, so T3.colour is 'Green'. In Q2, the colour table is T2, so T2.colour is 'Green'. Similarly, alignment is T2 in Q1 and T3 in Q2. But the conditions are the same: alignment 'Bad' and colour 'Green'. \n\nSo the logic seems the same. Both are counting superheroes where alignment is 'Bad' and skin colour is 'Green'. The joins are on the same foreign keys, and the WHERE clauses check the same conditions. Therefore, the two queries should be semantically equivalent. \n\nBut wait, maybe there's an issue with the join order affecting the result? For example, if there were some outer joins or if the tables had different data, but both are inner joins. Since both are inner joins, the order shouldn't affect the result. \n\nSo I think they are equivalent. Therefore, the answer should be Y.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 826,
+    "total_tokens": 1458,
+    "completion_tokens": 632,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 575
+    },
+    "generation_seconds": 20.094
+  },
+  "started_at": "2026-10-06T20:36:29.275855+00:00",
+  "elapsed_seconds": 0.0
+}

@@ -1,0 +1,50 @@
+{
+  "dbid": "beers",
+  "index": "197",
+  "source_index": "4630",
+  "schema_ddl": "CREATE TABLE Bar (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Beer (\n    name VARCHAR NOT NULL,\n    brewer VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Drinker (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Frequents (\n    drinker VARCHAR NOT NULL,\n    bar VARCHAR NOT NULL,\n    times_a_week SMALLINT NOT NULL,\n    PRIMARY KEY (drinker, bar),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (bar) REFERENCES Bar(name)\n);\n\nCREATE TABLE Serves (\n    bar VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    price DECIMAL(5,2) NOT NULL,\n    PRIMARY KEY (bar, beer),\n    FOREIGN KEY (bar) REFERENCES Bar(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);\n\nCREATE TABLE Likes (\n    drinker VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    PRIMARY KEY (drinker, beer),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);",
+  "q1": "SELECT b1.name AS bar1, b2.name AS bar2 FROM bar AS b1, bar AS b2 WHERE NOT EXISTS(SELECT s1.beer FROM serves AS s1 WHERE s1.bar = b1.name AND NOT EXISTS(SELECT 1 FROM serves AS s2 WHERE s2.bar = b2.name AND s2.beer = s1.beer)) AND EXISTS(SELECT s2.beer FROM serves AS s2 WHERE s2.bar = b2.name AND NOT EXISTS(SELECT 1 FROM serves AS s1 WHERE s1.bar = b1.name AND s1.beer = s2.beer))",
+  "q2": "SELECT bar1, bar2 FROM (SELECT s1.bar AS bar1, s2.bar AS bar2, s2.beer FROM serves AS s1 JOIN serves AS s2 ON s1.bar <> s2.bar EXCEPT SELECT s1.bar AS bar1, s2.bar AS bar2, s1.beer FROM serves AS s1 JOIN serves AS s2 ON s1.bar <> s2.bar) AS q",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "beers",
+  "q1_prompt_sql": "SELECT b1.name AS bar1, b2.name AS bar2 FROM bar AS b1, bar AS b2 WHERE NOT EXISTS(SELECT s1.beer FROM serves AS s1 WHERE s1.bar = b1.name AND NOT EXISTS(SELECT 1 FROM serves AS s2 WHERE s2.bar = b2.name AND s2.beer = s1.beer)) AND EXISTS(SELECT s2.beer FROM serves AS s2 WHERE s2.bar = b2.name AND NOT EXISTS(SELECT 1 FROM serves AS s1 WHERE s1.bar = b1.name AND s1.beer = s2.beer))",
+  "q2_prompt_sql": "SELECT bar1, bar2 FROM (SELECT s1.bar AS bar1, s2.bar AS bar2, s2.beer FROM serves AS s1 JOIN serves AS s2 ON s1.bar <> s2.bar EXCEPT SELECT s1.bar AS bar1, s2.bar AS bar2, s1.beer FROM serves AS s1 JOIN serves AS s2 ON s1.bar <> s2.bar) AS q",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO Bar (name, address) VALUES ('B1', 'Address1'), ('B2', 'Address2'); INSERT INTO Beer (name, brewer) VALUES ('B1_B2', 'Brewer1'); INSERT INTO Serves (bar, beer, price) VALUES ('B1', 'B1_B2', 10.00);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent because they use different approaches to identify bars that serve unique beers (i.e., beers that no other bar serves). Q1 uses a NOT EXISTS subquery to find bars that serve beers not served by any other bar, while Q2 uses an EXCEPT operation to achieve the same goal. The difference in logic can lead to different results, especially when there are multiple bars serving the same beer.",
+  "counterexample_dsp": "The test data should include at least two bars, 'B1' and 'B2', and a beer 'B1_B2' that 'B1' serves but 'B2' does not. This should trigger a difference in the results of Q1 and Q2, as Q1 will include 'B1' in the result, while Q2 will not.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent because they use different approaches to identify bars that serve unique beers (i.e., beers that no other bar serves). Q1 uses a NOT EXISTS subquery to find bars that serve beers not served by any other bar, while Q2 uses an EXCEPT operation to achieve the same goal. The difference in logic can lead to different results, especially when there are multiple bars serving the same beer.\",\n  \"counterexample_dsp\": \"The test data should include at least two bars, 'B1' and 'B2', and a beer 'B1_B2' that 'B1' serves but 'B2' does not. This should trigger a difference in the results of Q1 and Q2, as Q1 will include 'B1' in the result, while Q2 will not.\",\n  \"counterexample\": \"INSERT INTO Bar (name, address) VALUES ('B1', 'Address1'), ('B2', 'Address2'); INSERT INTO Beer (name, brewer) VALUES ('B1_B2', 'Brewer1'); INSERT INTO Serves (bar, beer, price) VALUES ('B1', 'B1_B2', 10.00);\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 669,
+    "total_tokens": 934,
+    "completion_tokens": 265,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 4.641
+  },
+  "started_at": "2026-10-06T08:01:31.676258+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "B2",
+      "B1"
+    ]
+  ],
+  "q2_output": [],
+  "q1_row_count": 1,
+  "q2_row_count": 0,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT b1.name AS bar1, b2.name AS bar2 FROM bar AS b1, bar AS b2 WHERE NOT EXISTS(SELECT s1.beer FROM serves AS s1 WHERE s1.bar = b1.name AND NOT EXISTS(SELECT 1 FROM serves AS s2 WHERE s2.bar = b2.name AND s2.beer = s1.beer)) AND EXISTS(SELECT s2.beer FROM serves AS s2 WHERE s2.bar = b2.name AND NOT EXISTS(SELECT 1 FROM serves AS s1 WHERE s1.bar = b1.name AND s1.beer = s2.beer))",
+  "q2_validation_sql": "SELECT bar1, bar2 FROM (SELECT s1.bar AS bar1, s2.bar AS bar2, s2.beer FROM serves AS s1 JOIN serves AS s2 ON s1.bar <> s2.bar EXCEPT SELECT s1.bar AS bar1, s2.bar AS bar2, s1.beer FROM serves AS s1 JOIN serves AS s2 ON s1.bar <> s2.bar) AS q"
+}

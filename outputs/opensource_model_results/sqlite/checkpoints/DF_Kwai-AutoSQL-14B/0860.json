@@ -1,0 +1,55 @@
+{
+  "dbid": "debit_card_specializing",
+  "index": "860",
+  "source_index": "1510",
+  "schema_ddl": "CREATE TABLE customers\n(\n    CustomerID INTEGER UNIQUE     not null\n        primary key,\n    Segment    TEXT null,\n    Currency   TEXT null\n);\n\nCREATE TABLE gasstations\n(\n    GasStationID INTEGER    UNIQUE   not null\n        primary key,\n    ChainID      INTEGER          null,\n    Country      TEXT null,\n    Segment      TEXT null\n);\n\nCREATE TABLE products\n(\n    ProductID   INTEGER   UNIQUE      not null\n        primary key,\n    Description TEXT null\n);\n\nCREATE TABLE \"transactions_1k\"\n(\n    TransactionID INTEGER\n        primary key autoincrement,\n    Date          DATE,\n    Time          TEXT,\n    CustomerID    INTEGER,\n    CardID        INTEGER,\n    GasStationID  INTEGER,\n    ProductID     INTEGER,\n    Amount        INTEGER,\n    Price         REAL\n);\n\nCREATE TABLE \"yearmonth\"\n(\n    CustomerID  INTEGER not null\n        references customers\n            on update cascade on delete cascade\n        references customers,\n    Date        TEXT    not null,\n    Consumption REAL,\n    primary key (Date, CustomerID)\n);",
+  "q1": "SELECT COUNT(T1.TransactionID) FROM transactions_1k AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID WHERE T2.Country = 'CZE' AND STRFTIME('%Y', T1.Date) >= '2012'",
+  "q2": "SELECT COUNT(TransactionID) FROM transactions_1k AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID WHERE T2.Country = 'CZE' AND T1.Date > '2012-01-01'",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT COUNT(T1.TransactionID) FROM transactions_1k AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID WHERE T2.Country = 'CZE' AND STRFTIME('%Y', T1.Date) >= '2012'",
+  "q2_prompt_sql": "SELECT COUNT(TransactionID) FROM transactions_1k AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID WHERE T2.Country = 'CZE' AND T1.Date > '2012-01-01'",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO gasstations (GasStationID, Country) VALUES (1, 'CZE');\nINSERT INTO transactions_1k (TransactionID, Date, GasStationID) VALUES (1, '2012-01-01', 1);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent. Q1 counts transactions where the year is greater than or equal to 2012 using STRFTIME('%Y', T1.Date) >= '2012'. Q2 counts transactions where the date is strictly after January 1, 2012 using T1.Date > '2012-01-01'. These conditions are not identical and can yield different results for dates in 2012 before January 1.",
+  "counterexample_dsp": "A transaction on 2012-01-01 will be included in Q1 but not in Q2. This difference will be reflected in the count.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n  \"equiv\": \"N\",\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent. Q1 counts transactions where the year is greater than or equal to 2012 using STRFTIME('%Y', T1.Date) >= '2012'. Q2 counts transactions where the date is strictly after January 1, 2012 using T1.Date > '2012-01-01'. These conditions are not identical and can yield different results for dates in 2012 before January 1.\",\n  \"counterexample_dsp\": \"A transaction on 2012-01-01 will be included in Q1 but not in Q2. This difference will be reflected in the count.\",\n  \"counterexample\": \"INSERT INTO gasstations (GasStationID, Country) VALUES (1, 'CZE');\\nINSERT INTO transactions_1k (TransactionID, Date, GasStationID) VALUES (1, '2012-01-01', 1);\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 595,
+    "total_tokens": 827,
+    "completion_tokens": 232,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 7.485
+  },
+  "started_at": "2026-10-06T21:40:51.698898+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      1
+    ]
+  ],
+  "q2_output": [
+    [
+      0
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT COUNT(T1.TransactionID) FROM transactions_1k AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID WHERE T2.Country = 'CZE' AND STRFTIME('%Y', T1.Date) >= '2012'",
+  "q2_validation_sql": "SELECT COUNT(TransactionID) FROM transactions_1k AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID WHERE T2.Country = 'CZE' AND T1.Date > '2012-01-01'"
+}

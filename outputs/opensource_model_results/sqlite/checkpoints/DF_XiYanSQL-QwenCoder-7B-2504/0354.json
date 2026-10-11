@@ -1,0 +1,49 @@
+{
+  "dbid": "codebase_community",
+  "index": "354",
+  "source_index": "638",
+  "schema_ddl": "CREATE TABLE badges\n(\n    Id     INTEGER          not null\n        primary key,\n    UserId INTEGER          null,\n    Name   TEXT null,\n    Date   DATETIME     null,\n        foreign key (UserId) references users (Id)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE comments\n(\n    Id              INTEGER          not null\n        primary key,\n    PostId          INTEGER          null,\n    Score           INTEGER          null,\n    Text            TEXT     null,\n    CreationDate    DATETIME     null,\n    UserId          INTEGER          null,\n    UserDisplayName TEXT null,\n        foreign key (PostId) references posts (Id)\n            on update cascade on delete cascade,\n        foreign key (UserId) references users (Id)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE postHistory\n(\n    Id                INTEGER          not null UNIQUE\n        primary key,\n    PostHistoryTypeId INTEGER          null,\n    PostId            INTEGER          null,\n    RevisionGUID      TEXT null,\n    CreationDate      DATETIME     null,\n    UserId            INTEGER          null,\n    Text              TEXT     null,\n    Comment           TEXT         null,\n    UserDisplayName   TEXT null,\n        foreign key (PostId) references posts (Id)\n            on update cascade on delete cascade,\n        foreign key (UserId) references users (Id)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE postLinks\n(\n    Id            INTEGER      not null\n        primary key,\n    CreationDate  DATETIME null,\n    PostId        INTEGER      null,\n    RelatedPostId INTEGER      null,\n    LinkTypeId    INTEGER      null,\n        foreign key (PostId) references posts (Id)\n            on update cascade on delete cascade,\n        foreign key (RelatedPostId) references posts (Id)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE posts\n(\n    Id                    INTEGER          not null UNIQUE\n        primary key,\n    PostTypeId            INTEGER          null,\n    AcceptedAnswerId      INTEGER          null,\n    CreaionDate           DATETIME     null,\n    Score                 INTEGER          null,\n    ViewCount             INTEGER          null,\n    Body                  TEXT     null,\n    OwnerUserId           INTEGER          null,\n    LasActivityDate       DATETIME     null,\n    Title                 TEXT null,\n    Tags                  TEXT null,\n    AnswerCount           INTEGER          null,\n    CommentCount          INTEGER          null,\n    FavoriteCount         INTEGER          null,\n    LastEditorUserId      INTEGER          null,\n    LastEditDate          DATETIME     null,\n    CommunityOwnedDate    DATETIME    null,\n    ParentId              INTEGER          null,\n    ClosedDate            DATETIME     null,\n    OwnerDisplayName      TEXT null,\n    LastEditorDisplayName TEXT null,\n        foreign key (LastEditorUserId) references users (Id)\n            on update cascade on delete cascade,\n        foreign key (OwnerUserId) references users (Id)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE tags\n(\n    Id            INTEGER          not null\n        primary key,\n    TagName       TEXT null,\n    Count         INTEGER          null,\n    ExcerptPostId INTEGER          null,\n    WikiPostId    INTEGER          null,\n    foreign key (ExcerptPostId) references posts (Id)\n        on update cascade on delete cascade\n);\n\nCREATE TABLE users\n(\n    Id              INTEGER          not null UNIQUE\n        primary key,\n    Reputation      INTEGER          null,\n    CreationDate    DATETIME     null,\n    DisplayName     TEXT null,\n    LastAccessDate  DATETIME     null,\n    WebsiteUrl      TEXT null,\n    Location        TEXT null,\n    AboutMe         TEXT     null,\n    Views           INTEGER          null,\n    UpVotes         INTEGER          null,\n    DownVotes       INTEGER          null,\n    AccountId       INTEGER          null,\n    Age             INTEGER          null,\n    ProfileImageUrl TEXT null\n);\n\nCREATE TABLE votes\n(\n    Id           INTEGER  not null\n        primary key,\n    PostId       INTEGER  null,\n    VoteTypeId   INTEGER  null,\n    CreationDate DATE null,\n    UserId       INTEGER  null,\n    BountyAmount INTEGER  null,\n        foreign key (PostId) references posts (Id)\n            on update cascade on delete cascade,\n        foreign key (UserId) references users (Id)\n            on update cascade on delete cascade\n);",
+  "q1": "SELECT T3.Tags FROM users AS T1 INNER JOIN postHistory AS T2 ON T1.Id = T2.UserId INNER JOIN posts AS T3 ON T3.Id = T2.PostId WHERE T1.DisplayName = 'Mark Meckes' AND T3.CommentCount = 0",
+  "q2": "SELECT T2.TagName FROM users AS T1 INNER JOIN posts AS T3 ON T1.Id = T3.OwnerUserId INNER JOIN tags AS T2 ON T3.Id = T2.ExcerptPostId LEFT JOIN comments AS T4 ON T3.Id = T4.PostId WHERE T1.DisplayName = 'Mark Meckes' AND T4.Id IS NULL",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT T3.Tags FROM users AS T1 INNER JOIN postHistory AS T2 ON T1.Id = T2.UserId INNER JOIN posts AS T3 ON T3.Id = T2.PostId WHERE T1.DisplayName = 'Mark Meckes' AND T3.CommentCount = 0",
+  "q2_prompt_sql": "SELECT T2.TagName FROM users AS T1 INNER JOIN posts AS T3 ON T1.Id = T3.OwnerUserId INNER JOIN tags AS T2 ON T3.Id = T2.ExcerptPostId LEFT JOIN comments AS T4 ON T3.Id = T4.PostId WHERE T1.DisplayName = 'Mark Meckes' AND T4.Id IS NULL",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO users (Id, DisplayName) VALUES (1, 'Mark Meckes'), (2, 'Other User'); INSERT INTO posts (Id, OwnerUserId, CommentCount) VALUES (101, 1, 0), (102, 1, 1); INSERT INTO comments (PostId, UserId) VALUES (102, 2); INSERT INTO tags (Id, TagName, ExcerptPostId) VALUES (1, 'tag1', 101);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not equivalent because they are querying different tables and conditions. Q1 is looking for tags of posts created by 'Mark Meckes' that have no comments, while Q2 is looking for tags of posts where 'Mark Meckes' is the owner and there are no comments on the post.",
+  "counterexample_dsp": "A user named 'Mark Meckes' creates a post with no comments, and another user comments on that post. The first query should return the tag of the post, but the second query should not return anything because of the comment on the post.",
+  "equiv": "N",
+  "raw_response": "{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 and Q2 are not equivalent because they are querying different tables and conditions. Q1 is looking for tags of posts created by 'Mark Meckes' that have no comments, while Q2 is looking for tags of posts where 'Mark Meckes' is the owner and there are no comments on the post.\",\n\"counterexample_dsp\": \"A user named 'Mark Meckes' creates a post with no comments, and another user comments on that post. The first query should return the tag of the post, but the second query should not return anything because of the comment on the post.\",\n\"counterexample\": \"INSERT INTO users (Id, DisplayName) VALUES (1, 'Mark Meckes'), (2, 'Other User'); INSERT INTO posts (Id, OwnerUserId, CommentCount) VALUES (101, 1, 0), (102, 1, 1); INSERT INTO comments (PostId, UserId) VALUES (102, 2); INSERT INTO tags (Id, TagName, ExcerptPostId) VALUES (1, 'tag1', 101);\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 1283,
+    "total_tokens": 1532,
+    "completion_tokens": 249,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 6.157
+  },
+  "started_at": "2026-10-06T20:03:49.304172+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [],
+  "q2_output": [
+    [
+      "tag1"
+    ]
+  ],
+  "q1_row_count": 0,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT T3.Tags FROM users AS T1 INNER JOIN postHistory AS T2 ON T1.Id = T2.UserId INNER JOIN posts AS T3 ON T3.Id = T2.PostId WHERE T1.DisplayName = 'Mark Meckes' AND T3.CommentCount = 0",
+  "q2_validation_sql": "SELECT T2.TagName FROM users AS T1 INNER JOIN posts AS T3 ON T1.Id = T3.OwnerUserId INNER JOIN tags AS T2 ON T3.Id = T2.ExcerptPostId LEFT JOIN comments AS T4 ON T3.Id = T4.PostId WHERE T1.DisplayName = 'Mark Meckes' AND T4.Id IS NULL"
+}

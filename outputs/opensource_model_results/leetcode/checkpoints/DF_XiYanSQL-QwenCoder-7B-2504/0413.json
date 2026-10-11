@@ -1,0 +1,63 @@
+{
+  "dbid": "577",
+  "index": "413",
+  "source_index": "273",
+  "schema_ddl": "CREATE TABLE EMPLOYEE (\n    EMPID INT,\n    NAME VARCHAR(255),\n    SUPERVISOR INT,\n    SALARY INT,\n    PRIMARY KEY (EMPID),\n    CHECK (EMPID <> SUPERVISOR),\n    CHECK (SALARY >= 0)\n);\n\nCREATE TABLE BONUS (\n    EMPID INT,\n    BONUS INT,\n    PRIMARY KEY (EMPID),\n    FOREIGN KEY (EMPID) REFERENCES EMPLOYEE(EMPID),\n    CHECK (BONUS >= 0)\n);",
+  "q1": "SELECT EMPLOYEE.NAME, BONUS.BONUS FROM EMPLOYEE LEFT JOIN BONUS ON EMPLOYEE.EMPID = BONUS.EMPID WHERE BONUS < 1000 OR BONUS IS NULL",
+  "q2": "SELECT E.NAME,B.BONUS FROM EMPLOYEE AS E LEFT JOIN BONUS AS B USING (EMPID) HAVING BONUS < 1000 OR BONUS IS NULL",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT EMPLOYEE.NAME, BONUS.BONUS FROM EMPLOYEE LEFT JOIN BONUS ON EMPLOYEE.EMPID = BONUS.EMPID WHERE BONUS < 1000 OR BONUS IS NULL",
+  "q2_prompt_sql": "SELECT E.NAME,B.BONUS FROM EMPLOYEE AS E LEFT JOIN BONUS AS B USING (EMPID) HAVING BONUS < 1000 OR BONUS IS NULL",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO EMPLOYEE (EMPID, NAME, SUPERVISOR, SALARY) VALUES (1, 'John', 2, 5000), (2, 'Jane', 1, 6000), (3, 'Bob', 2, 5500); INSERT INTO BONUS (EMPID, BONUS) VALUES (1, 500), (2, NULL), (3, 1500);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not equivalent because Q1 uses a WHERE clause to filter the results, while Q2 uses a HAVING clause. The HAVING clause is used for filtering groups, not individual rows, and it can only be used with aggregate functions. In this case, since there are no aggregate functions, the HAVING clause behaves like a WHERE clause, but it is not the same as the WHERE clause in Q1.",
+  "counterexample_dsp": "The difference between Q1 and Q2 is that Q1 will return all employees with a bonus less than 1000 or no bonus at all, while Q2 will return all employees with a bonus less than 1000 or no bonus at all, but it will also return employees with a NULL bonus if they are part of a group that has a bonus less than 1000.",
+  "equiv": "N",
+  "raw_response": "{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 and Q2 are not equivalent because Q1 uses a WHERE clause to filter the results, while Q2 uses a HAVING clause. The HAVING clause is used for filtering groups, not individual rows, and it can only be used with aggregate functions. In this case, since there are no aggregate functions, the HAVING clause behaves like a WHERE clause, but it is not the same as the WHERE clause in Q1.\",\n\"counterexample_dsp\": \"The difference between Q1 and Q2 is that Q1 will return all employees with a bonus less than 1000 or no bonus at all, while Q2 will return all employees with a bonus less than 1000 or no bonus at all, but it will also return employees with a NULL bonus if they are part of a group that has a bonus less than 1000.\",\n\"counterexample\": \"INSERT INTO EMPLOYEE (EMPID, NAME, SUPERVISOR, SALARY) VALUES (1, 'John', 2, 5000), (2, 'Jane', 1, 6000), (3, 'Bob', 2, 5500); INSERT INTO BONUS (EMPID, BONUS) VALUES (1, 500), (2, NULL), (3, 1500);\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 459,
+    "total_tokens": 755,
+    "completion_tokens": 296,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 5.141
+  },
+  "started_at": "2026-10-06T14:33:57.210418+00:00",
+  "elapsed_seconds": 1.547,
+  "q1_output": [
+    [
+      "John",
+      500
+    ],
+    [
+      "Jane",
+      null
+    ]
+  ],
+  "q2_output": [
+    [
+      "John",
+      500
+    ],
+    [
+      "Jane",
+      null
+    ]
+  ],
+  "q1_row_count": 2,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT EMPLOYEE.NAME, BONUS.BONUS FROM EMPLOYEE LEFT JOIN BONUS ON EMPLOYEE.EMPID = BONUS.EMPID WHERE BONUS < 1000 OR BONUS IS NULL",
+  "q2_validation_sql": "SELECT E.NAME,B.BONUS FROM EMPLOYEE AS E LEFT JOIN BONUS AS B USING (EMPID) HAVING BONUS < 1000 OR BONUS IS NULL"
+}

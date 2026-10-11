@@ -1,0 +1,64 @@
+{
+  "dbid": "8",
+  "index": "10",
+  "source_index": "9",
+  "schema_ddl": "CREATE TABLE USER (UID INT, UNAME INT, CITY INT);\nCREATE TABLE PICTURE (UID INT, SIZE INT);",
+  "q1": "SELECT P.UID, P.UNAME, COALESCE(Q.CNT, 0) AS CNT FROM (SELECT X.UID, X.UNAME FROM USER AS X WHERE X.CITY = 3) AS P LEFT JOIN (SELECT Y.UID, COUNT(*) AS CNT FROM PICTURE AS Y WHERE Y.SIZE > 1000000 GROUP BY Y.UID) AS Q USING (UID)",
+  "q2": "SELECT X.UID AS UID, X.UNAME AS UNAME, COUNT(*) AS CNT FROM USER AS X, PICTURE AS Y WHERE X.UID = Y.UID AND Y.SIZE > 1000000 AND X.CITY = 3 GROUP BY X.UID, X.UNAME",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "literature",
+  "q1_prompt_sql": "SELECT P.UID, P.UNAME, COALESCE(Q.CNT, 0) AS CNT FROM (SELECT X.UID, X.UNAME FROM USER AS X WHERE X.CITY = 3) AS P LEFT JOIN (SELECT Y.UID, COUNT(*) AS CNT FROM PICTURE AS Y WHERE Y.SIZE > 1000000 GROUP BY Y.UID) AS Q USING (UID)",
+  "q2_prompt_sql": "SELECT X.UID AS UID, X.UNAME AS UNAME, COUNT(*) AS CNT FROM USER AS X, PICTURE AS Y WHERE X.UID = Y.UID AND Y.SIZE > 1000000 AND X.CITY = 3 GROUP BY X.UID, X.UNAME",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO USER (UID, UNAME, CITY) VALUES (1, 1, 3); INSERT INTO USER (UID, UNAME, CITY) VALUES (2, 2, 3); INSERT INTO PICTURE (UID, SIZE) VALUES (1, 500000); INSERT INTO PICTURE (UID, SIZE) VALUES (2, 2000000);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 uses a LEFT JOIN, ensuring all users from CITY=3 appear with CNT=0 if no qualifying pictures exist. Q2 uses an INNER JOIN (via WHERE clause), omitting users without qualifying pictures. The difference arises when a user in CITY=3 has no pictures with SIZE > 1000000.",
+  "counterexample_dsp": "User 1 in CITY 3 has no pictures with SIZE > 1000000. User 2 in CITY 3 has one qualifying picture. Q1 shows both users (with CNT 0 for user 1), while Q2 shows only user 2.",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 uses a LEFT JOIN, ensuring all users from CITY=3 appear with CNT=0 if no qualifying pictures exist. Q2 uses an INNER JOIN (via WHERE clause), omitting users without qualifying pictures. The difference arises when a user in CITY=3 has no pictures with SIZE > 1000000.\",\n  \"counterexample_dsp\": \"User 1 in CITY 3 has no pictures with SIZE > 1000000. User 2 in CITY 3 has one qualifying picture. Q1 shows both users (with CNT 0 for user 1), while Q2 shows only user 2.\",\n  \"counterexample\": \"INSERT INTO USER (UID, UNAME, CITY) VALUES (1, 1, 3); INSERT INTO USER (UID, UNAME, CITY) VALUES (2, 2, 3); INSERT INTO PICTURE (UID, SIZE) VALUES (1, 500000); INSERT INTO PICTURE (UID, SIZE) VALUES (2, 2000000);\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem. I need to find a counterexample where Q1 and Q2 produce different results. First, I should understand what each query does.\n\nLooking at Q1: It starts by selecting users from the USER table where CITY = 3. Then, it does a LEFT JOIN with a subquery that counts pictures where SIZE > 1,000,000 per UID. The LEFT JOIN means that even if a user has no such pictures, they'll still appear with CNT = 0.\n\nQ2: It joins USER with PICTURE on UID, filters for SIZE > 1,000,000 and CITY = 3, then groups by UID and UNAME, counting all matching rows. This would only include users who have at least one picture meeting the size condition. Users without such pictures wouldn't appear in the result.\n\nSo the key difference is that Q1 includes all users from CITY 3 (even those without qualifying pictures) with CNT 0, while Q2 only includes users who have qualifying pictures. Therefore, if there's a user in CITY 3 with no pictures of size > 1,000,000, Q1 would show them with 0, but Q2 wouldn't show them at all.\n\nTo create a counterexample, I need a user in CITY 3 with no qualifying pictures. Let's say USER has UID 1, UNAME 1, CITY 3. PICTURE for UID 1 has SIZE 500,000. Then Q1 would show UID 1, UNAME 1, CNT 0. Q2 would not show UID 1 because there are no pictures with SIZE > 1,000,000.\n\nAnother user, say UID 2, in CITY 3 with a picture of size 2,000,000. Q1 would show UID 2 with CNT 1, and Q2 would also show UID 2 with CNT 1. But the presence of UID 1 in Q1's result but not in Q2's would be the difference.\n\nSo the counterexample should have at least one user in CITY 3 with no qualifying pictures. That way, Q1 includes them with 0 count, and Q2 omits them.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 376,
+    "total_tokens": 1102,
+    "completion_tokens": 726,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 486
+    },
+    "generation_seconds": 21.734
+  },
+  "started_at": "2026-10-06T07:29:53.230736+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      1,
+      1,
+      0
+    ],
+    [
+      2,
+      2,
+      1
+    ]
+  ],
+  "q2_output": [
+    [
+      2,
+      2,
+      1
+    ]
+  ],
+  "q1_row_count": 2,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT P.UID, P.UNAME, COALESCE(Q.CNT, 0) AS CNT FROM (SELECT X.UID, X.UNAME FROM USER AS X WHERE X.CITY = 3) AS P LEFT JOIN (SELECT Y.UID, COUNT(*) AS CNT FROM PICTURE AS Y WHERE Y.SIZE > 1000000 GROUP BY Y.UID) AS Q USING (UID)",
+  "q2_validation_sql": "SELECT X.UID AS UID, X.UNAME AS UNAME, COUNT(*) AS CNT FROM USER AS X, PICTURE AS Y WHERE X.UID = Y.UID AND Y.SIZE > 1000000 AND X.CITY = 3 GROUP BY X.UID, X.UNAME"
+}

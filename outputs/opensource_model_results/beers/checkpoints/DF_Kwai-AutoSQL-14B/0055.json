@@ -1,0 +1,69 @@
+{
+  "dbid": "beers",
+  "index": "55",
+  "source_index": "711",
+  "schema_ddl": "CREATE TABLE Bar (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Beer (\n    name VARCHAR NOT NULL,\n    brewer VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Drinker (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Frequents (\n    drinker VARCHAR NOT NULL,\n    bar VARCHAR NOT NULL,\n    times_a_week SMALLINT NOT NULL,\n    PRIMARY KEY (drinker, bar),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (bar) REFERENCES Bar(name)\n);\n\nCREATE TABLE Serves (\n    bar VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    price DECIMAL(5,2) NOT NULL,\n    PRIMARY KEY (bar, beer),\n    FOREIGN KEY (bar) REFERENCES Bar(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);\n\nCREATE TABLE Likes (\n    drinker VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    PRIMARY KEY (drinker, beer),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);",
+  "q1": "SELECT f1.drinker, f2.drinker FROM (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f1, (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f2 WHERE f1.drinker < f2.drinker AND f1.st = f2.st",
+  "q2": "SELECT A.drinker, B.drinker FROM frequents AS A CROSS JOIN frequents AS B WHERE A.times_a_week = B.times_a_week",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "beers",
+  "q1_prompt_sql": "SELECT f1.drinker, f2.drinker FROM (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f1, (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f2 WHERE f1.drinker < f2.drinker AND f1.st = f2.st",
+  "q2_prompt_sql": "SELECT A.drinker, B.drinker FROM frequents AS A CROSS JOIN frequents AS B WHERE A.times_a_week = B.times_a_week",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO Drinker (name, address) VALUES ('Alice', 'Addr1'), ('Bob', 'Addr2');\nINSERT INTO Bar (name, address) VALUES ('Bar1', 'BAddr1');\nINSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('Alice', 'Bar1', 1), ('Bob', 'Bar1', 1);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 compares aggregated sums of times_a_week per drinker across all bars, outputting pairs where sums are equal. Q2 compares individual rows in Frequents, outputting pairs where times_a_week values are equal. These are fundamentally different operations.",
+  "counterexample_dsp": "Two drinkers (Alice, Bob) each have one row in Frequents with times_a_week = 1. Q1 returns (Alice, Bob); Q2 returns (Alice, Alice), (Alice, Bob), (Bob, Alice), (Bob, Bob).",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 compares aggregated sums of times_a_week per drinker across all bars, outputting pairs where sums are equal. Q2 compares individual rows in Frequents, outputting pairs where times_a_week values are equal. These are fundamentally different operations.\",\n\"counterexample_dsp\": \"Two drinkers (Alice, Bob) each have one row in Frequents with times_a_week = 1. Q1 returns (Alice, Bob); Q2 returns (Alice, Alice), (Alice, Bob), (Bob, Alice), (Bob, Bob).\",\n\"counterexample\": \"INSERT INTO Drinker (name, address) VALUES ('Alice', 'Addr1'), ('Bob', 'Addr2');\\nINSERT INTO Bar (name, address) VALUES ('Bar1', 'BAddr1');\\nINSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('Alice', 'Bar1', 1), ('Bob', 'Bar1', 1);\"\n}",
+  "reasoning": "\nOkay, let's try to figure out whether Q1 and Q2 are semantically equivalent.\n\nFirst, I need to understand what each query does.\n\nStarting with Q1. It seems to have two subqueries that both compute the sum of times_a_week per drinker from the Frequents table, grouping by drinker. Then, it does a cross join between these two subqueries (f1 and f2) and filters where f1.drinker < f2.drinker and their sum (st) is equal. So the result pairs of drinkers where their total times_a_week are equal, and the first drinker's name is lexicographically less than the second. The output is pairs of drinkers with same total times_a_week, ordered by drinker names.\n\nNow Q2: It does a cross join of the Frequents table with itself (A and B). Then, it selects pairs where A.times_a_week equals B.times_a_week. So for every row in Frequents, it pairs it with every other row (including itself) where the times_a_week value is the same. The output is pairs of (drinker, drinker) where each row in A and B has the same times_a_week value.\n\nWait, but Q2's output is pairs of drinkers (from the same row in A and B?), but the actual condition is that the times_a_week from A equals the times_a_week from B. So for each row in Frequents, it's matched with every row in Frequents that has the same times_a_week value. So the pairs could be same drinker (if they have the same times_a_week in the same bar?), or different drinkers.\n\nBut Q1 groups by drinker, sums their times_a_week across all bars. So Q1 is comparing the total times per drinker across all bars. Q2 is comparing individual entries in the Frequents table (each row represents a drinker's frequency at a particular bar, with a times_a_week value). So Q2 is comparing individual rows where the times_a_week values are equal, not the sum per drinker.\n\nSo the two queries are fundamentally different. Q1 is about the sum of times per drinker, while Q2 is about individual times_a_week values in the Frequents table.\n\nLet me think of a counterexample. Suppose there are two drinkers, A and B. A frequents bar1 2 times a week and bar2 2 times a week. B frequents bar3 3 times a week and bar4 1 time a week. Then, the sum for A is 4, sum for B is 4. So Q1 would have A paired with B (since A < B and sum equal). \n\nIn Q2, each row in Frequents for A has times_a_week 2, and for B, rows have 3 and 1. So Q2 would have pairs where times_a_week are equal. For example, if there's another row where times_a_week is 2, but in this case, maybe not. Wait, in this example, Q2 would have pairs where times_a_week is same. For A's two rows (times 2 each), they would pair with each other (since 2=2). Also, if there's another row with times 2, but in this case, B's rows are 3 and 1. So Q2 would have (A, A) pairs, (A's first row with A's second row), but also if another drinker has a row with times 2, but in this case, no. So Q1 would return (A, B) as a pair. Q2 would return pairs like (A, A) (since same row's times_a_week equals itself), but also maybe pairs where two different drinkers have same times_a_week in their rows.\n\nWait, but in Q2, the cross join is on the entire Frequents table. So for each row in A and each row in B, if their times_a_week are equal, output A.drinker and B.drinker. So if A has two rows (same drinker, different bars) with times 2 each, then pairing A's first row with A's second row would produce (A, A). Also, if there's another drinker C who has a row with times 2, then (A, C) and (C, A) would be in the output.\n\nBut Q1 is about the total sum per drinker. So if two drinkers have the same total sum, they are paired once (since f1.drinker < f2.drinker).\n\nSo the two queries are not equivalent. Let me think of a simple test case where they differ.\n\nLet's create a small example. Suppose there are two drinkers: Alice and Bob. \n\nIn Frequents:\n- Alice frequents bar1, times_a_week 1.\n- Bob frequents bar1, times_a_week 1.\n\nSo for Q1, the sum for Alice is 1, sum for Bob is 1. So Q1 returns (Alice, Bob) since Alice < Bob.\n\nFor Q2, cross join of Frequents with itself. Each row in A is (Alice, bar1, 1) and (Bob, bar1, 1). Each row in B is same. So the pairs where times_a_week equal would be:\n\n(Alice, Alice) because A and B are same row (1=1)\n(Alice, Bob) because A's times 1 equals B's times 1\n(Bob, Alice) same as above\n(Bob, Bob) same row.\n\nSo Q2 would return four rows: (Alice, Alice), (Alice, Bob), (Bob, Alice), (Bob, Bob).\n\nBut Q1 returns only (Alice, Bob).\n\nSo in this case, Q1 and Q2 are not equivalent. So the answer is N.\n\nAnother example: if there's only one drinker, say Alice, with two rows in Frequents with times_a_week 1 and 2. Then Q1 would have no pairs (only one drinker, so no f1.drinker < f2.drinker). Q2 would have pairs where times_a_week equals. For example, Alice's first row (times 1) paired with any row in B where times is 1. But since there's only one row with times 1, that would be (Alice, Alice). Also, the row with times 2 would pair with itself. So Q2 would have (Alice, Alice) for both rows. So Q2 returns two rows of (Alice, Alice). But Q1 returns nothing. So again, they differ.\n\nThus, the queries are not equivalent. The counterexample can be the first case I thought of.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 604,
+    "total_tokens": 2223,
+    "completion_tokens": 1619,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1404
+    },
+    "generation_seconds": 51.766
+  },
+  "started_at": "2026-10-06T09:33:28.616152+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "Alice",
+      "Bob"
+    ]
+  ],
+  "q2_output": [
+    [
+      "Alice",
+      "Alice"
+    ],
+    [
+      "Alice",
+      "Bob"
+    ],
+    [
+      "Bob",
+      "Alice"
+    ],
+    [
+      "Bob",
+      "Bob"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 4,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT f1.drinker, f2.drinker FROM (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f1, (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f2 WHERE f1.drinker < f2.drinker AND f1.st = f2.st",
+  "q2_validation_sql": "SELECT A.drinker, B.drinker FROM frequents AS A CROSS JOIN frequents AS B WHERE A.times_a_week = B.times_a_week"
+}

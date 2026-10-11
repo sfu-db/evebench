@@ -1,0 +1,55 @@
+{
+  "dbid": "1083",
+  "index": "281",
+  "source_index": "81",
+  "schema_ddl": "CREATE TABLE PRODUCT (\n    PRODUCT_ID INT,\n    PRODUCT_NAME VARCHAR(255),\n    UNIT_PRICE INT,\n    PRIMARY KEY (PRODUCT_ID),\n    CHECK (UNIT_PRICE > 0),\n    CHECK (PRODUCT_NAME IN ('S8', 'IPHONE'))\n);\n\nCREATE TABLE SALES (\n    PRODUCT_ID INT,\n    SELLER_ID INT,\n    BUYER_ID INT,\n    SALE_DATE DATE,\n    QUANTITY INT,\n    PRICE INT,\n    FOREIGN KEY (PRODUCT_ID) REFERENCES PRODUCT(PRODUCT_ID),\n    CHECK (QUANTITY > 0),\n    CHECK (PRICE > 0)\n);",
+  "q1": "SELECT DISTINCT SALES.BUYER_ID AS BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'S8' AND SALES.BUYER_ID NOT IN ( SELECT SALES.BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'IPHONE')",
+  "q2": "SELECT BUYER_ID FROM ( SELECT BUYER_ID, CASE WHEN PRODUCT.PRODUCT_NAME = 'S8' THEN 1 WHEN PRODUCT.PRODUCT_NAME = 'IPHONE' THEN -1 END AS COEFF FROM PRODUCT JOIN SALES ON PRODUCT.PRODUCT_ID = SALES.PRODUCT_ID AND ( PRODUCT.PRODUCT_NAME = 'S8' OR PRODUCT.PRODUCT_NAME = 'IPHONE' ) GROUP BY BUYER_ID, PRODUCT.PRODUCT_NAME ) AS SALES_INFO GROUP BY BUYER_ID HAVING SUM(COEFF) = 1",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT DISTINCT SALES.BUYER_ID AS BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'S8' AND SALES.BUYER_ID NOT IN ( SELECT SALES.BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'IPHONE')",
+  "q2_prompt_sql": "SELECT BUYER_ID FROM ( SELECT BUYER_ID, CASE WHEN PRODUCT.PRODUCT_NAME = 'S8' THEN 1 WHEN PRODUCT.PRODUCT_NAME = 'IPHONE' THEN -1 END AS COEFF FROM PRODUCT JOIN SALES ON PRODUCT.PRODUCT_ID = SALES.PRODUCT_ID AND ( PRODUCT.PRODUCT_NAME = 'S8' OR PRODUCT.PRODUCT_NAME = 'IPHONE' ) GROUP BY BUYER_ID, PRODUCT.PRODUCT_NAME ) AS SALES_INFO GROUP BY BUYER_ID HAVING SUM(COEFF) = 1",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO PRODUCT (PRODUCT_ID, PRODUCT_NAME, UNIT_PRICE) VALUES (1, 'S8', 100);\nINSERT INTO PRODUCT (PRODUCT_ID, PRODUCT_NAME, UNIT_PRICE) VALUES (2, 'IPHONE', 500);\nINSERT INTO SALES (PRODUCT_ID, SELLER_ID, BUYER_ID, SALE_DATE, QUANTITY, PRICE) VALUES (1, 100, 101, '2023-01-01', 1, 100);\nINSERT INTO SALES (PRODUCT_ID, SELLER_ID, BUYER_ID, SALE_DATE, QUANTITY, PRICE) VALUES (1, 100, 101, '2023-01-02', 1, 100);\nINSERT INTO SALES (PRODUCT_ID, SELLER_ID, BUYER_ID, SALE_DATE, QUANTITY, PRICE) VALUES (2, 100, 101, '2023-01-03', 1, 500);\nINSERT INTO SALES (PRODUCT_ID, SELLER_ID, BUYER_ID, SALE_DATE, QUANTITY, PRICE) VALUES (1, 100, 102, '2023-01-01', 1, 100);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 excludes buyers who have any 'IPHONE' purchase, while Q2 includes buyers whose net coefficient (S8 count - IPHONE count) equals 1. A buyer with two S8 purchases and one IPHONE purchase would appear in Q2 but not in Q1.",
+  "counterexample_dsp": "Buyer 101 has two S8 sales and one IPHONE sale. Q1 excludes them (NOT IN IPHONE subquery), but Q2 includes them (SUM(COEFF) = 2 - 1 = 1). Buyer 102 has one S8 sale and no IPHONE sales, appearing in both queries.",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 excludes buyers who have any 'IPHONE' purchase, while Q2 includes buyers whose net coefficient (S8 count - IPHONE count) equals 1. A buyer with two S8 purchases and one IPHONE purchase would appear in Q2 but not in Q1.\",\n  \"counterexample_dsp\": \"Buyer 101 has two S8 sales and one IPHONE sale. Q1 excludes them (NOT IN IPHONE subquery), but Q2 includes them (SUM(COEFF) = 2 - 1 = 1). Buyer 102 has one S8 sale and no IPHONE sales, appearing in both queries.\",\n  \"counterexample\": [\n    \"INSERT INTO PRODUCT (PRODUCT_ID, PRODUCT_NAME, UNIT_PRICE) VALUES (1, 'S8', 100);\",\n    \"INSERT INTO PRODUCT (PRODUCT_ID, PRODUCT_NAME, UNIT_PRICE) VALUES (2, 'IPHONE', 500);\",\n    \"INSERT INTO SALES (PRODUCT_ID, SELLER_ID, BUYER_ID, SALE_DATE, QUANTITY, PRICE) VALUES (1, 100, 101, '2023-01-01', 1, 100);\",\n    \"INSERT INTO SALES (PRODUCT_ID, SELLER_ID, BUYER_ID, SALE_DATE, QUANTITY, PRICE) VALUES (1, 100, 101, '2023-01-02', 1, 100);\",\n    \"INSERT INTO SALES (PRODUCT_ID, SELLER_ID, BUYER_ID, SALE_DATE, QUANTITY, PRICE) VALUES (2, 100, 101, '2023-01-03', 1, 500);\",\n    \"INSERT INTO SALES (PRODUCT_ID, SELLER_ID, BUYER_ID, SALE_DATE, QUANTITY, PRICE) VALUES (1, 100, 102, '2023-01-01', 1, 100);\"\n  ]\n}",
+  "reasoning": "\nOkay, let's tackle this problem. I need to find a counterexample where Q1 and Q2 produce different results. First, I need to understand what each query does.\n\nStarting with Q1: It selects distinct buyer_ids from the SALES table where the product is 'S8' and the buyer is not in the subquery that finds buyers who bought 'IPHONE'. So Q1 gives buyers who bought S8 but not IPHONE.\n\nNow Q2: It does a join between PRODUCT and SALES for S8 or IPHONE, then groups by buyer_id and product_name. It assigns a coefficient of 1 for S8 and -1 for IPHONE. Then groups again by buyer_id and sums the coefficients. The HAVING SUM(COEFF) = 1 means that the sum should be exactly 1. How does that happen?\n\nLet's think. If a buyer has one S8 sale and no IPHONE sales, the sum is 1. If they have one S8 and one IPHONE, the sum is 0. If they have two S8s and one IPHONE, sum is 2 -1 = 1. Wait, but the grouping in the subquery is by BUYER_ID and PRODUCT.PRODUCT_NAME. So for each buyer, each product (S8 or IPHONE) is considered separately. Then the outer group by buyer_id sums the coefficients. So for a buyer who bought S8 once and IPHONE once, the coefficients would be 1 and -1, sum is 0. For a buyer who bought S8 once and another S8 (same product name, so same coefficient), sum would be 2. But if they bought S8 twice and IPHONE once, sum is 2-1=1. So in that case, the buyer would be included in Q2's result. \n\nSo Q2 includes any buyer whose total coefficient (count of S8 transactions minus count of IPHONE transactions) equals 1. That could happen in different scenarios: one S8 and zero IPHONE, or two S8 and one IPHONE, etc.\n\nNow Q1 only includes buyers who have at least one S8 transaction and no IPHONE transactions. So the difference arises when a buyer has multiple S8 transactions and one IPHONE transaction. Then Q2 would include them (sum 1) but Q1 would exclude them (since they are in the NOT IN subquery for IPHONE). \n\nSo let's create a test case where a buyer has two S8 sales and one IPHONE sale. Then Q1 would not include them (they are in the IPHONE subquery), but Q2 would include them because sum is 2 (from two S8) -1 (from one IPHONE) = 1. So Q2 returns that buyer, but Q1 does not. \n\nAnother case: a buyer with one S8 and one IPHONE. Q1 excludes them (they are in the subquery), Q2 sum is 1-1=0, so not included. So that's not a counterexample. \n\nAnother case: a buyer with one S8 and zero IPHONE. Then Q1 includes them, and Q2 includes them (sum 1). So same result. \n\nBut if a buyer has two S8 and one IPHONE, Q1 excludes (they are in the subquery), but Q2 includes. So that's a difference. \n\nLet me structure the data. Let's have two buyers. \n\nBuyer 1: bought S8 twice (so two rows in SALES with product S8), and bought IPHONE once. \n\nBuyer 2: bought S8 once, no IPHONE. \n\nIn Q1, Buyer 1 is excluded (because they have an IPHONE purchase). Q1 returns Buyer 2. \n\nIn Q2, Buyer 1's sum is 2 (from two S8) minus 1 (from one IPHONE) equals 1. So Q2 includes Buyer 1. So Q1 returns one row (Buyer 2), Q2 returns two rows (Buyer 1 and 2). Wait, no. Wait, for Buyer 2, their coefficient is 1 (from one S8) and no IPHONE. So sum is 1. So Q2 returns both Buyer 1 and 2. But Q1 returns only Buyer 2. So the results differ. \n\nSo the counterexample would have a buyer with two S8 and one IPHONE. Then Q1 excludes them, but Q2 includes them. \n\nSo let's create that. \n\nLet me create the data:\n\nIn PRODUCT table, we have products for S8 and IPHONE. \n\nIn SALES, for Buyer 1: two entries for S8 (same product_id, different sale dates?), and one for IPHONE. \n\nFor Buyer 2: one entry for S8. \n\nSo the INSERT statements would be:\n\nInsert into PRODUCT values (1, 'S8', 100), (2, 'IPHONE', 500);\n\nThen SALES:\n\nFor Buyer 1, product 1 (S8) with sale_date varying, quantity, price. Similarly, one sale for product 2 (IPHONE). \n\nFor Buyer 2, product 1 once.\n\nNow, the explanation is that Q1 excludes buyers who have any IPHONE purchase, while Q2 includes those whose net coefficient (S8 count - IPHONE count) equals 1. So when a buyer has two S8 and one IPHONE, Q2 includes them but Q1 doesn't.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 510,
+    "total_tokens": 2128,
+    "completion_tokens": 1618,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1156
+    },
+    "generation_seconds": 59.234
+  },
+  "started_at": "2026-10-06T13:22:21.789820+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      102
+    ]
+  ],
+  "q2_output": [
+    [
+      102
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DISTINCT SALES.BUYER_ID AS BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'S8' AND SALES.BUYER_ID NOT IN ( SELECT SALES.BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'IPHONE')",
+  "q2_validation_sql": "SELECT BUYER_ID FROM ( SELECT BUYER_ID, CASE WHEN PRODUCT.PRODUCT_NAME = 'S8' THEN 1 WHEN PRODUCT.PRODUCT_NAME = 'IPHONE' THEN -1 END AS COEFF FROM PRODUCT JOIN SALES ON PRODUCT.PRODUCT_ID = SALES.PRODUCT_ID AND ( PRODUCT.PRODUCT_NAME = 'S8' OR PRODUCT.PRODUCT_NAME = 'IPHONE' ) GROUP BY BUYER_ID, PRODUCT.PRODUCT_NAME ) AS SALES_INFO GROUP BY BUYER_ID HAVING SUM(COEFF) = 1"
+}

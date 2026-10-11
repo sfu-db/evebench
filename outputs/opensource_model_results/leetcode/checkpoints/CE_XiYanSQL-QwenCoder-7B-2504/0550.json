@@ -1,0 +1,71 @@
+{
+  "dbid": "614",
+  "index": "550",
+  "source_index": "181",
+  "schema_ddl": "CREATE TABLE FOLLOW (\n    FOLLOWEE VARCHAR(255),\n    FOLLOWER VARCHAR(255),\n    PRIMARY KEY (FOLLOWEE, FOLLOWER),\n    CHECK (FOLLOWEE <> FOLLOWER)\n);",
+  "q1": "SELECT FOLLOWEE AS FOLLOWER, COUNT(FOLLOWEE) AS NUM FROM FOLLOW WHERE FOLLOWEE IN (SELECT FOLLOWER FROM FOLLOW) GROUP BY 1 ORDER BY 1",
+  "q2": "SELECT DISTINCT FOLLOWER, NUM FROM FOLLOW, (SELECT FOLLOWEE, COUNT(DISTINCT FOLLOWER) AS NUM FROM FOLLOW GROUP BY FOLLOWEE) T WHERE T.FOLLOWEE = FOLLOW.FOLLOWER ORDER BY FOLLOWER",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT FOLLOWEE AS FOLLOWER, COUNT(FOLLOWEE) AS NUM FROM FOLLOW WHERE FOLLOWEE IN (SELECT FOLLOWER FROM FOLLOW) GROUP BY 1 ORDER BY 1",
+  "q2_prompt_sql": "SELECT DISTINCT FOLLOWER, NUM FROM FOLLOW, (SELECT FOLLOWEE, COUNT(DISTINCT FOLLOWER) AS NUM FROM FOLLOW GROUP BY FOLLOWEE) T WHERE T.FOLLOWEE = FOLLOW.FOLLOWER ORDER BY FOLLOWER",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO FOLLOW (FOLLOWEE, FOLLOWER) VALUES ('user1', 'user2'), ('user1', 'user3'), ('user2', 'user1'), ('user3', 'user1');",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent because Q1 groups by the alias 'FOLLOWEE' and orders by the alias 'FOLLOWER', while Q2 groups by 'FOLLOWEE' and orders by 'FOLLOWER' without a subquery. The difference arises from the handling of the 'NUM' column in the SELECT statement of Q2, which is not present in Q1.",
+  "counterexample_dsp": "The test data should include a scenario where the number of followers for a followee is different from the number of followers for the follower. This will trigger the difference in the results of Q1 and Q2.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent because Q1 groups by the alias 'FOLLOWEE' and orders by the alias 'FOLLOWER', while Q2 groups by 'FOLLOWEE' and orders by 'FOLLOWER' without a subquery. The difference arises from the handling of the 'NUM' column in the SELECT statement of Q2, which is not present in Q1.\",\n  \"counterexample_dsp\": \"The test data should include a scenario where the number of followers for a followee is different from the number of followers for the follower. This will trigger the difference in the results of Q1 and Q2.\",\n  \"counterexample\": \"INSERT INTO FOLLOW (FOLLOWEE, FOLLOWER) VALUES ('user1', 'user2'), ('user1', 'user3'), ('user2', 'user1'), ('user3', 'user1');\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 345,
+    "total_tokens": 538,
+    "completion_tokens": 193,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 3.265
+  },
+  "started_at": "2026-10-06T09:55:37.155824+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "user1",
+      2
+    ],
+    [
+      "user2",
+      1
+    ],
+    [
+      "user3",
+      1
+    ]
+  ],
+  "q2_output": [
+    [
+      "user1",
+      2
+    ],
+    [
+      "user2",
+      1
+    ],
+    [
+      "user3",
+      1
+    ]
+  ],
+  "q1_row_count": 3,
+  "q2_row_count": 3,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT FOLLOWEE AS FOLLOWER, COUNT(FOLLOWEE) AS NUM FROM FOLLOW WHERE FOLLOWEE IN (SELECT FOLLOWER FROM FOLLOW) GROUP BY 1 ORDER BY 1",
+  "q2_validation_sql": "SELECT DISTINCT FOLLOWER, NUM FROM FOLLOW, (SELECT FOLLOWEE, COUNT(DISTINCT FOLLOWER) AS NUM FROM FOLLOW GROUP BY FOLLOWEE) T WHERE T.FOLLOWEE = FOLLOW.FOLLOWER ORDER BY FOLLOWER"
+}

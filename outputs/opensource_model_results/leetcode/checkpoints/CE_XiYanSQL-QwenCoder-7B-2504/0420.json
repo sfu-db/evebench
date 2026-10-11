@@ -1,0 +1,53 @@
+{
+  "dbid": "619",
+  "index": "420",
+  "source_index": "324",
+  "schema_ddl": "CREATE TABLE MYNUMBERS (\n    NUM INT\n);",
+  "q1": "SELECT MAX(NUM) AS NUM FROM (SELECT NUM FROM MYNUMBERS GROUP BY NUM HAVING COUNT(NUM) = 1) AS T",
+  "q2": "WITH BASE AS ( SELECT NUM, COUNT(*) AS NUM_COUNT FROM MYNUMBERS GROUP BY NUM ) SELECT MAX(NUM) AS NUM FROM BASE WHERE NUM_COUNT = 1",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT MAX(NUM) AS NUM FROM (SELECT NUM FROM MYNUMBERS GROUP BY NUM HAVING COUNT(NUM) = 1) AS T",
+  "q2_prompt_sql": "WITH BASE AS ( SELECT NUM, COUNT(*) AS NUM_COUNT FROM MYNUMBERS GROUP BY NUM ) SELECT MAX(NUM) AS NUM FROM BASE WHERE NUM_COUNT = 1",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO MYNUMBERS (NUM) VALUES (1), (2), (2), (3);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent because Q1 groups by NUM and then filters for unique NUMs, while Q2 first filters for unique NUMs and then groups by NUM. This difference in the order of operations can lead to different results if there are multiple occurrences of the same NUM in the input data.",
+  "counterexample_dsp": "The test data should contain at least two occurrences of the same NUM to trigger the difference between Q1 and Q2. The NUM with the highest value that appears only once in the input data will be the result of Q2, while Q1 will return NULL if no such NUM exists.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent because Q1 groups by NUM and then filters for unique NUMs, while Q2 first filters for unique NUMs and then groups by NUM. This difference in the order of operations can lead to different results if there are multiple occurrences of the same NUM in the input data.\",\n  \"counterexample_dsp\": \"The test data should contain at least two occurrences of the same NUM to trigger the difference between Q1 and Q2. The NUM with the highest value that appears only once in the input data will be the result of Q2, while Q1 will return NULL if no such NUM exists.\",\n  \"counterexample\": \"INSERT INTO MYNUMBERS (NUM) VALUES (1), (2), (2), (3);\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 294,
+    "total_tokens": 462,
+    "completion_tokens": 168,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 2.765
+  },
+  "started_at": "2026-10-06T09:51:25.967254+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      3
+    ]
+  ],
+  "q2_output": [
+    [
+      3
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT MAX(NUM) AS NUM FROM (SELECT NUM FROM MYNUMBERS GROUP BY NUM HAVING COUNT(NUM) = 1) AS T",
+  "q2_validation_sql": "WITH BASE AS ( SELECT NUM, COUNT(*) AS NUM_COUNT FROM MYNUMBERS GROUP BY NUM ) SELECT MAX(NUM) AS NUM FROM BASE WHERE NUM_COUNT = 1"
+}

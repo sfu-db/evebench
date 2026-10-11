@@ -1,0 +1,39 @@
+{
+  "dbid": "codebase_community",
+  "index": "332",
+  "source_index": "565",
+  "schema_ddl": "CREATE TABLE badges\n(\n    Id     INTEGER          not null\n        primary key,\n    UserId INTEGER          null,\n    Name   TEXT null,\n    Date   DATETIME     null,\n        foreign key (UserId) references users (Id)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE comments\n(\n    Id              INTEGER          not null\n        primary key,\n    PostId          INTEGER          null,\n    Score           INTEGER          null,\n    Text            TEXT     null,\n    CreationDate    DATETIME     null,\n    UserId          INTEGER          null,\n    UserDisplayName TEXT null,\n        foreign key (PostId) references posts (Id)\n            on update cascade on delete cascade,\n        foreign key (UserId) references users (Id)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE postHistory\n(\n    Id                INTEGER          not null UNIQUE\n        primary key,\n    PostHistoryTypeId INTEGER          null,\n    PostId            INTEGER          null,\n    RevisionGUID      TEXT null,\n    CreationDate      DATETIME     null,\n    UserId            INTEGER          null,\n    Text              TEXT     null,\n    Comment           TEXT         null,\n    UserDisplayName   TEXT null,\n        foreign key (PostId) references posts (Id)\n            on update cascade on delete cascade,\n        foreign key (UserId) references users (Id)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE postLinks\n(\n    Id            INTEGER      not null\n        primary key,\n    CreationDate  DATETIME null,\n    PostId        INTEGER      null,\n    RelatedPostId INTEGER      null,\n    LinkTypeId    INTEGER      null,\n        foreign key (PostId) references posts (Id)\n            on update cascade on delete cascade,\n        foreign key (RelatedPostId) references posts (Id)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE posts\n(\n    Id                    INTEGER          not null UNIQUE\n        primary key,\n    PostTypeId            INTEGER          null,\n    AcceptedAnswerId      INTEGER          null,\n    CreaionDate           DATETIME     null,\n    Score                 INTEGER          null,\n    ViewCount             INTEGER          null,\n    Body                  TEXT     null,\n    OwnerUserId           INTEGER          null,\n    LasActivityDate       DATETIME     null,\n    Title                 TEXT null,\n    Tags                  TEXT null,\n    AnswerCount           INTEGER          null,\n    CommentCount          INTEGER          null,\n    FavoriteCount         INTEGER          null,\n    LastEditorUserId      INTEGER          null,\n    LastEditDate          DATETIME     null,\n    CommunityOwnedDate    DATETIME    null,\n    ParentId              INTEGER          null,\n    ClosedDate            DATETIME     null,\n    OwnerDisplayName      TEXT null,\n    LastEditorDisplayName TEXT null,\n        foreign key (LastEditorUserId) references users (Id)\n            on update cascade on delete cascade,\n        foreign key (OwnerUserId) references users (Id)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE tags\n(\n    Id            INTEGER          not null\n        primary key,\n    TagName       TEXT null,\n    Count         INTEGER          null,\n    ExcerptPostId INTEGER          null,\n    WikiPostId    INTEGER          null,\n    foreign key (ExcerptPostId) references posts (Id)\n        on update cascade on delete cascade\n);\n\nCREATE TABLE users\n(\n    Id              INTEGER          not null UNIQUE\n        primary key,\n    Reputation      INTEGER          null,\n    CreationDate    DATETIME     null,\n    DisplayName     TEXT null,\n    LastAccessDate  DATETIME     null,\n    WebsiteUrl      TEXT null,\n    Location        TEXT null,\n    AboutMe         TEXT     null,\n    Views           INTEGER          null,\n    UpVotes         INTEGER          null,\n    DownVotes       INTEGER          null,\n    AccountId       INTEGER          null,\n    Age             INTEGER          null,\n    ProfileImageUrl TEXT null\n);\n\nCREATE TABLE votes\n(\n    Id           INTEGER  not null\n        primary key,\n    PostId       INTEGER  null,\n    VoteTypeId   INTEGER  null,\n    CreationDate DATE null,\n    UserId       INTEGER  null,\n    BountyAmount INTEGER  null,\n        foreign key (PostId) references posts (Id)\n            on update cascade on delete cascade,\n        foreign key (UserId) references users (Id)\n            on update cascade on delete cascade\n);",
+  "q1": "SELECT T2.Text FROM posts AS T1 INNER JOIN comments AS T2 ON T1.Id = T2.PostId WHERE T1.ParentId = 107829 AND T1.CommentCount = 1",
+  "q2": "SELECT T1.Text FROM comments AS T1 INNER JOIN posts AS T2 ON T1.PostId = T2.Id WHERE T2.ParentId = 107829 AND T2.CommentCount = 1",
+  "dialect": "sqlite",
+  "ground_truth": "EQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT T2.Text FROM posts AS T1 INNER JOIN comments AS T2 ON T1.Id = T2.PostId WHERE T1.ParentId = 107829 AND T1.CommentCount = 1",
+  "q2_prompt_sql": "SELECT T1.Text FROM comments AS T1 INNER JOIN posts AS T2 ON T1.PostId = T2.Id WHERE T2.ParentId = 107829 AND T2.CommentCount = 1",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are semantically equivalent. Both queries join the posts and comments tables and select the Text column from the comments table (T2 in Q1, T1 in Q2). The aliasing difference does not affect the result.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 and Q2 are not semantically equivalent because they select text from different tables and join in reverse order. Q1 selects Text from comments (T2) where the post (T1) has ParentId = 107829 and CommentCount = 1. Q2 selects Text from comments (T1) where the post (T2) has ParentId = 107829 and CommentCount = 1. However, the actual difference is that Q1 selects from comments and Q2 also selects from comments but joins differently. The key difference is that Q1 and Q2 are actually selecting from the same table (comments) but using different aliases, so they should be equivalent. Wait, re-evaluating: Q1 joins posts (T1) to comments (T2), and selects T2.Text. Q2 joins comments (T1) to posts (T2), and selects T1.Text. Since both select Text from comments table, they should be equivalent. But I need to recheck.\",\n\"explanation\": \"Q1 and Q2 are semantically equivalent. Both queries join the posts and comments tables and select Text from the comments table. The difference in aliasing does not change the result.\",\n\"equiv\": \"Y\",\n\"explanation\": \"Q1 and Q2 are semantically equivalent. Both queries join the posts and comments tables and select the Text column from the comments table (T2 in Q1, T1 in Q2). The aliasing difference does not affect the result.\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 1220,
+    "total_tokens": 1555,
+    "completion_tokens": 335,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 12.625
+  },
+  "started_at": "2026-10-06T21:22:00.254023+00:00",
+  "elapsed_seconds": 0.0
+}

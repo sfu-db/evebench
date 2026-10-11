@@ -1,0 +1,59 @@
+{
+  "dbid": "175",
+  "index": "493",
+  "source_index": "8",
+  "schema_ddl": "CREATE TABLE PERSON (\n    PERSONID INT,\n    FIRSTNAME VARCHAR(255),\n    LASTNAME VARCHAR(255),\n    PRIMARY KEY (PERSONID)\n);\n\nCREATE TABLE ADDRESS (\n    ADDRESSID INT,\n    PERSONID INT,\n    CITY VARCHAR(255),\n    STATE VARCHAR(255),\n    PRIMARY KEY (ADDRESSID, PERSONID),\n    FOREIGN KEY (PERSONID) REFERENCES PERSON(PERSONID)\n);",
+  "q1": "SELECT FIRSTNAME, LASTNAME, CITY, STATE FROM PERSON AS P LEFT OUTER JOIN ADDRESS AS A ON P.PERSONID = A.PERSONID",
+  "q2": "SELECT FIRSTNAME, LASTNAME, CITY, STATE FROM PERSON LEFT JOIN ADDRESS ON PERSON.PERSONID = ADDRESS.PERSONID WHERE PERSON.PERSONID > 0",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT FIRSTNAME, LASTNAME, CITY, STATE FROM PERSON AS P LEFT OUTER JOIN ADDRESS AS A ON P.PERSONID = A.PERSONID",
+  "q2_prompt_sql": "SELECT FIRSTNAME, LASTNAME, CITY, STATE FROM PERSON LEFT JOIN ADDRESS ON PERSON.PERSONID = ADDRESS.PERSONID WHERE PERSON.PERSONID > 0",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO PERSON (PERSONID, FIRSTNAME, LASTNAME) VALUES (1, 'John', 'Doe');",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 uses a LEFT OUTER JOIN, which returns all records from the left table (PERSON), and the matched records from the right table (ADDRESS). The result is NULL on the side of the right table, if there is no match. Q2 uses an INNER JOIN, which returns records that have matching values in both tables.",
+  "counterexample_dsp": "A person with no address record in the ADDRESS table.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 uses a LEFT OUTER JOIN, which returns all records from the left table (PERSON), and the matched records from the right table (ADDRESS). The result is NULL on the side of the right table, if there is no match. Q2 uses an INNER JOIN, which returns records that have matching values in both tables.\",\n  \"counterexample_dsp\": \"A person with no address record in the ADDRESS table.\",\n  \"counterexample\": \"INSERT INTO PERSON (PERSONID, FIRSTNAME, LASTNAME) VALUES (1, 'John', 'Doe');\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 374,
+    "total_tokens": 499,
+    "completion_tokens": 125,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 2.078
+  },
+  "started_at": "2026-10-06T09:55:37.101104+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "John",
+      "Doe",
+      null,
+      null
+    ]
+  ],
+  "q2_output": [
+    [
+      "John",
+      "Doe",
+      null,
+      null
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT FIRSTNAME, LASTNAME, CITY, STATE FROM PERSON AS P LEFT OUTER JOIN ADDRESS AS A ON P.PERSONID = A.PERSONID",
+  "q2_validation_sql": "SELECT FIRSTNAME, LASTNAME, CITY, STATE FROM PERSON LEFT JOIN ADDRESS ON PERSON.PERSONID = ADDRESS.PERSONID WHERE PERSON.PERSONID > 0"
+}

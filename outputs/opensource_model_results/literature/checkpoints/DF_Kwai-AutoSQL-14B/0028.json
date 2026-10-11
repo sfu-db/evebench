@@ -1,0 +1,61 @@
+{
+  "dbid": "26",
+  "index": "28",
+  "source_index": "34",
+  "schema_ddl": "CREATE TABLE X (A INT, K INT);\nCREATE TABLE Y (A INT, K INT);",
+  "q1": "SELECT X.A AS A FROM X AS X, Y AS Y WHERE X.K = Y.K",
+  "q2": "SELECT X1.A AS X1A FROM (SELECT X.A AS A, X.K AS K FROM X AS X) AS X1, Y AS Y WHERE X1.K = Y.K",
+  "dialect": "sqlite",
+  "ground_truth": "EQ",
+  "source": "literature",
+  "q1_prompt_sql": "SELECT X.A AS A FROM X AS X, Y AS Y WHERE X.K = Y.K",
+  "q2_prompt_sql": "SELECT X1.A AS X1A FROM (SELECT X.A AS A, X.K AS K FROM X AS X) AS X1, Y AS Y WHERE X1.K = Y.K",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO X (A, K) VALUES (1, 100);\nINSERT INTO X (A, K) VALUES (2, 100);\nINSERT INTO Y (A, K) VALUES (3, 100);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent. Q1 selects A from X joined with Y on K, while Q2 selects A from a subquery that aliases X and then joins with Y on K. However, in Q1, both tables X and Y are used in the outer query, and their columns are implicitly referenced. In Q2, the aliasing in the subquery may cause ambiguity or misinterpretation of columns in the outer join condition. A counterexample can be constructed.",
+  "counterexample_dsp": "Create a scenario where X has multiple rows with the same K but different A values. Q1 may produce duplicate rows or different results compared to Q2 due to implicit aliasing behavior.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n  \"equiv\": \"N\",\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent. Q1 selects A from X joined with Y on K, while Q2 selects A from a subquery that aliases X and then joins with Y on K. However, in Q1, both tables X and Y are used in the outer query, and their columns are implicitly referenced. In Q2, the aliasing in the subquery may cause ambiguity or misinterpretation of columns in the outer join condition. A counterexample can be constructed.\",\n  \"counterexample_dsp\": \"Create a scenario where X has multiple rows with the same K but different A values. Q1 may produce duplicate rows or different results compared to Q2 due to implicit aliasing behavior.\",\n  \"counterexample\": \"INSERT INTO X (A, K) VALUES (1, 100);\\nINSERT INTO X (A, K) VALUES (2, 100);\\nINSERT INTO Y (A, K) VALUES (3, 100);\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 334,
+    "total_tokens": 560,
+    "completion_tokens": 226,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 7.047
+  },
+  "started_at": "2026-10-06T07:53:02.124787+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      1
+    ],
+    [
+      2
+    ]
+  ],
+  "q2_output": [
+    [
+      1
+    ],
+    [
+      2
+    ]
+  ],
+  "q1_row_count": 2,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT X.A AS A FROM X AS X, Y AS Y WHERE X.K = Y.K",
+  "q2_validation_sql": "SELECT X1.A AS X1A FROM (SELECT X.A AS A, X.K AS K FROM X AS X) AS X1, Y AS Y WHERE X1.K = Y.K"
+}

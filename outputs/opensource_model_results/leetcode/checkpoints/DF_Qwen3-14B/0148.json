@@ -1,0 +1,39 @@
+{
+  "dbid": "577",
+  "index": "148",
+  "source_index": "112",
+  "schema_ddl": "CREATE TABLE EMPLOYEE (\n    EMPID INT,\n    NAME VARCHAR(255),\n    SUPERVISOR INT,\n    SALARY INT,\n    PRIMARY KEY (EMPID),\n    CHECK (EMPID <> SUPERVISOR),\n    CHECK (SALARY >= 0)\n);\n\nCREATE TABLE BONUS (\n    EMPID INT,\n    BONUS INT,\n    PRIMARY KEY (EMPID),\n    FOREIGN KEY (EMPID) REFERENCES EMPLOYEE(EMPID),\n    CHECK (BONUS >= 0)\n);",
+  "q1": "SELECT EMPLOYEE.NAME, BONUS.BONUS FROM EMPLOYEE LEFT JOIN BONUS ON EMPLOYEE.EMPID = BONUS.EMPID WHERE BONUS < 1000 OR BONUS IS NULL",
+  "q2": "WITH EMPLOYEE_BONUS AS ( SELECT A.*, B.BONUS FROM EMPLOYEE AS A LEFT JOIN BONUS AS B ON A.EMPID = B.EMPID ) SELECT NAME, BONUS FROM EMPLOYEE_BONUS WHERE BONUS < 1000 OR BONUS IS NULL",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT EMPLOYEE.NAME, BONUS.BONUS FROM EMPLOYEE LEFT JOIN BONUS ON EMPLOYEE.EMPID = BONUS.EMPID WHERE BONUS < 1000 OR BONUS IS NULL",
+  "q2_prompt_sql": "WITH EMPLOYEE_BONUS AS ( SELECT A.*, B.BONUS FROM EMPLOYEE AS A LEFT JOIN BONUS AS B ON A.EMPID = B.EMPID ) SELECT NAME, BONUS FROM EMPLOYEE_BONUS WHERE BONUS < 1000 OR BONUS IS NULL",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries perform a LEFT JOIN between EMPLOYEE and BONUS, then filter rows where BONUS is less than 1000 or NULL. Q1 applies the filter directly in the main query, while Q2 uses a CTE to precompute the join. Since the CTE does not alter the data and the WHERE clause is identical, the results are semantically equivalent.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries perform a LEFT JOIN between EMPLOYEE and BONUS, then filter rows where BONUS is less than 1000 or NULL. Q1 applies the filter directly in the main query, while Q2 uses a CTE to precompute the join. Since the CTE does not alter the data and the WHERE clause is identical, the results are semantically equivalent.\"\n}",
+  "reasoning": "\nOkay, let's see. I need to determine if Q1 and Q2 are semantically equivalent. Let me start by understanding what each query does.\n\nFirst, looking at Q1: It's a SELECT statement that joins EMPLOYEE with BONUS on EMPID using a LEFT JOIN. Then, it filters where BONUS is less than 1000 or BONUS is NULL. Since it's a LEFT JOIN, all employees are included, and if there's no matching bonus, BONUS would be NULL. The WHERE clause includes both cases where the bonus is under 1000 and where it's missing (NULL). But wait, in a LEFT JOIN, the BONUS column would be NULL only if there's no matching row in BONUS. So the WHERE condition here is checking for BONUS < 1000 OR BONUS IS NULL. However, in SQL, when you have a LEFT JOIN and then a WHERE condition on the joined table's column, it can affect the result. Because if the BONUS is NULL (no match), then the condition BONUS < 1000 would be false, but BONUS IS NULL would be true. So the WHERE clause would include all employees with a bonus less than 1000 and those without any bonus. But wait, in a LEFT JOIN, the BONUS column is from the BONUS table. So the WHERE clause here is effectively filtering for those rows where either the bonus is under 1000 or there's no bonus. But since the LEFT JOIN includes all employees, even those without a bonus, the WHERE clause here would include all employees except those with a bonus of 1000 or more. Wait, no. Let me think again. The condition is BONUS < 1000 OR BONUS IS NULL. So if BONUS is NULL (no match), then the OR condition is true. If BONUS is not NULL, then it's checked if it's less than 1000. So the result would be all employees who either have a bonus less than 1000 or have no bonus at all. So that's including all employees except those with a bonus of 1000 or more.\n\nNow, Q2 uses a CTE called EMPLOYEE_BONUS. It does a LEFT JOIN between EMPLOYEE and BONUS, similar to Q1, but then selects from that CTE with the same WHERE condition. The CTE is essentially creating a temporary table with all employees and their bonuses (or NULL if none). Then, the outer query applies the same WHERE clause. So the logic here seems similar to Q1. But wait, is there any difference in how the WHERE clause is applied?\n\nWait, in Q1, the LEFT JOIN is directly in the SELECT statement, and the WHERE is applied after. In Q2, the LEFT JOIN is done in the CTE, and the WHERE is applied in the outer query. But logically, they should be the same. However, maybe there's a subtlety here. Let me check.\n\nIn Q1, the LEFT JOIN is done, and the WHERE clause includes BONUS < 1000 OR BONUS IS NULL. However, in a LEFT JOIN, the BONUS column could be NULL if there's no matching row. So the WHERE condition is checking for BONUS < 1000 or BONUS is NULL. But in SQL, when you have a LEFT JOIN and then a condition on the joined table's column, it can sometimes be equivalent to an INNER JOIN if the condition is not on the joined table's column. Wait, but here the condition is on the BONUS column, which is from the BONUS table. Let me think again.\n\nWait, in Q1, the LEFT JOIN ensures that all employees are included. Then, the WHERE clause is BONUS < 1000 OR BONUS IS NULL. So for employees with a bonus, if the bonus is <1000, they are included. If the bonus is >=1000, they are excluded. For employees without a bonus (BONUS IS NULL), they are included. So the result is all employees except those with a bonus >=1000.\n\nIn Q2, the CTE does the same LEFT JOIN, and then the WHERE is applied. So the same logic. Therefore, they should be equivalent. But maybe there's a case where the CTE is different? Let me check the CTE's structure.\n\nIn the CTE, EMPLOYEE_BONUS is selecting A.*, B.BONUS. So A is EMPLOYEE, and B is BONUS. The LEFT JOIN on EMPID. So the CTE would have all employees, and their BONUS (if any). Then, the outer query selects NAME and BONUS from that CTE where BONUS < 1000 or BONUS is NULL. That's the same as Q1. So why would there be a difference?\n\nWait, perhaps the issue is with the handling of the BONUS column. In Q1, the BONUS column is part of the LEFT JOIN. In Q2, the BONUS column is selected from the CTE. But logically, the same data is present. So the two queries should return the same result. Therefore, they are equivalent. But maybe I'm missing something. Let me think of a test case.\n\nSuppose there's an employee with a bonus of 1000. In Q1, this employee would be excluded because BONUS is not <1000 and not NULL. In Q2, same thing. If an employee has no bonus, then BONUS is NULL, so included. If an employee has a bonus of 500, included. So same result. Therefore, the two queries should be equivalent. So the answer is Y.\n\nWait, but maybe there's an issue with the CTE. Wait, in Q2, the CTE is selecting A.*, B.BONUS. But what if the BONUS table has multiple entries for the same EMPID? Wait, no, because the BONUS table has a primary key on EMPID. So each EMPID can have at most one BONUS entry. Therefore, the LEFT JOIN would result in one row per employee, with BONUS being the value from BONUS or NULL. So the CTE is the same as the LEFT JOIN in Q1. So the WHERE clause is the same. Therefore, the two queries are equivalent.\n\nTherefore, the answer is \"Y\".\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 460,
+    "total_tokens": 1901,
+    "completion_tokens": 1441,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1347
+    },
+    "generation_seconds": 44.75
+  },
+  "started_at": "2026-10-06T14:48:32.988010+00:00",
+  "elapsed_seconds": 0.0
+}

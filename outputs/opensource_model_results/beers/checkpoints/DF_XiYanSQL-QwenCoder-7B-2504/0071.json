@@ -1,0 +1,49 @@
+{
+  "dbid": "beers",
+  "index": "71",
+  "source_index": "961",
+  "schema_ddl": "CREATE TABLE Bar (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Beer (\n    name VARCHAR NOT NULL,\n    brewer VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Drinker (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Frequents (\n    drinker VARCHAR NOT NULL,\n    bar VARCHAR NOT NULL,\n    times_a_week SMALLINT NOT NULL,\n    PRIMARY KEY (drinker, bar),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (bar) REFERENCES Bar(name)\n);\n\nCREATE TABLE Serves (\n    bar VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    price DECIMAL(5,2) NOT NULL,\n    PRIMARY KEY (bar, beer),\n    FOREIGN KEY (bar) REFERENCES Bar(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);\n\nCREATE TABLE Likes (\n    drinker VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    PRIMARY KEY (drinker, beer),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);",
+  "q1": "SELECT DISTINCT drinker FROM frequents NATURAL JOIN serves WHERE beer = 'Corona' AND NOT drinker IN (SELECT drinker FROM Likes WHERE beer = 'Corona')",
+  "q2": "SELECT bar FROM serves GROUP BY bar HAVING COUNT(beer) >= 5",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "beers",
+  "q1_prompt_sql": "SELECT DISTINCT drinker FROM frequents NATURAL JOIN serves WHERE beer = 'Corona' AND NOT drinker IN (SELECT drinker FROM Likes WHERE beer = 'Corona')",
+  "q2_prompt_sql": "SELECT bar FROM serves GROUP BY bar HAVING COUNT(beer) >= 5",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO Bar (name, address) VALUES ('Brewery', '123 Beer St'); INSERT INTO Beer (name, brewer) VALUES ('IPA', 'BrewCo'), ('Stout', 'BrewCo'), ('Lager', 'BrewCo'), ('Pilsner', 'BrewCo'), ('Wheat', 'BrewCo'); INSERT INTO Serves (bar, beer, price) VALUES ('Brewery', 'IPA', 5.00), ('Brewery', 'Stout', 5.50), ('Brewery', 'Lager', 4.50), ('Brewery', 'Pilsner', 4.00), ('Brewery', 'Wheat', 4.75);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 have significant differences. Q1 is about identifying drinkers who frequent bars that serve a specific beer ('Corona') but do not like that beer, while Q2 is about identifying bars that serve at least 5 different beers.",
+  "counterexample_dsp": "Q1 focuses on drinkers and their preferences, while Q2 is about bars and the variety of beers they serve. A counterexample would involve a bar that serves multiple beers but no specific drinker who frequents it and dislikes a particular beer.",
+  "equiv": "N",
+  "raw_response": "{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 and Q2 have significant differences. Q1 is about identifying drinkers who frequent bars that serve a specific beer ('Corona') but do not like that beer, while Q2 is about identifying bars that serve at least 5 different beers.\",\n\"counterexample_dsp\": \"Q1 focuses on drinkers and their preferences, while Q2 is about bars and the variety of beers they serve. A counterexample would involve a bar that serves multiple beers but no specific drinker who frequents it and dislikes a particular beer.\",\n\"counterexample\": \"INSERT INTO Bar (name, address) VALUES ('Brewery', '123 Beer St'); INSERT INTO Beer (name, brewer) VALUES ('IPA', 'BrewCo'), ('Stout', 'BrewCo'), ('Lager', 'BrewCo'), ('Pilsner', 'BrewCo'), ('Wheat', 'BrewCo'); INSERT INTO Serves (bar, beer, price) VALUES ('Brewery', 'IPA', 5.00), ('Brewery', 'Stout', 5.50), ('Brewery', 'Lager', 4.50), ('Brewery', 'Pilsner', 4.00), ('Brewery', 'Wheat', 4.75);\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 565,
+    "total_tokens": 854,
+    "completion_tokens": 289,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 4.969
+  },
+  "started_at": "2026-10-06T09:05:00.744385+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [],
+  "q2_output": [
+    [
+      "Brewery"
+    ]
+  ],
+  "q1_row_count": 0,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DISTINCT drinker FROM frequents NATURAL JOIN serves WHERE beer = 'Corona' AND NOT drinker IN (SELECT drinker FROM Likes WHERE beer = 'Corona')",
+  "q2_validation_sql": "SELECT bar FROM serves GROUP BY bar HAVING COUNT(beer) >= 5"
+}

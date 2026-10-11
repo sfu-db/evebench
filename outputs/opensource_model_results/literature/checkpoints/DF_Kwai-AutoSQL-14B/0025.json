@@ -1,0 +1,39 @@
+{
+  "dbid": "22",
+  "index": "25",
+  "source_index": "30",
+  "schema_ddl": "CREATE TABLE R1 (X INT);\nCREATE TABLE R2 (X INT);\nCREATE TABLE R3 (X INT);",
+  "q1": "SELECT * FROM R1 AS X, (SELECT * FROM R2 UNION ALL SELECT * FROM R3) AS Y",
+  "q2": "SELECT * FROM R1 AS X, R2 AS Y UNION ALL SELECT * FROM R1 AS X, R3 AS Y",
+  "dialect": "sqlite",
+  "ground_truth": "EQ",
+  "source": "literature",
+  "q1_prompt_sql": "SELECT * FROM R1 AS X, (SELECT * FROM R2 UNION ALL SELECT * FROM R3) AS Y",
+  "q2_prompt_sql": "SELECT * FROM R1 AS X, R2 AS Y UNION ALL SELECT * FROM R1 AS X, R3 AS Y",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are semantically equivalent. Both queries compute the Cartesian product of R1 with all rows from R2 and R3 combined, preserving duplicates as required by UNION ALL.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n  \"equiv\": \"N\",\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent. Q1 performs a Cartesian product of R1 with the result of a UNION ALL of R2 and R3, which is equivalent to (R1 × R2) ∪ (R1 × R3). Q2 explicitly performs two separate Cartesian products and combines them with UNION ALL, which is also equivalent to (R1 × R2) ∪ (R1 × R3). However, the difference lies in the order of rows when duplicates exist. In Q1, the UNION ALL on R2 and R3 first combines rows from R2 and R3 and then performs the Cartesian product with R1, which could lead to a different order of output rows compared to Q2, which explicitly combines the two Cartesian products. In practice, both queries should produce the same set of rows, but the order may differ. However, since UNION ALL is used in both, the difference lies in the fact that Q1 may produce fewer rows if R2 and R3 have duplicate rows (but UNION ALL does not eliminate duplicates). Wait, actually, both queries are semantically equivalent since UNION ALL preserves all rows. Let me reconsider.\",\n  \"explanation\": \"Q1 and Q2 are actually semantically equivalent. Q1 computes a Cartesian product of R1 with the union of all rows from R2 and R3. Q2 computes two Cartesian products, R1 × R2 and R1 × R3, and combines them with UNION ALL. Since UNION ALL preserves all rows, both approaches yield the same result set. Therefore, they are equivalent.\",\n  \"equiv\": \"Y\",\n  \"explanation\": \"Q1 and Q2 are semantically equivalent. Both queries compute the Cartesian product of R1 with all rows from R2 and R3 combined, preserving duplicates as required by UNION ALL.\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 330,
+    "total_tokens": 727,
+    "completion_tokens": 397,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 12.265
+  },
+  "started_at": "2026-10-06T07:53:02.122198+00:00",
+  "elapsed_seconds": 0.0
+}

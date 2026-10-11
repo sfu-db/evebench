@@ -1,0 +1,39 @@
+{
+  "dbid": "1141",
+  "index": "483",
+  "source_index": "312",
+  "schema_ddl": "CREATE TABLE ACTIVITY (\n    USER_ID INT,\n    SESSION_ID INT,\n    ACTIVITY_DATE DATE,\n    ACTIVITY_TYPE ENUM('OPEN_SESSION', 'END_SESSION', 'SCROLL_DOWN', 'SEND_MESSAGE'),\n    CHECK (ACTIVITY_TYPE IN ('OPEN_SESSION', 'END_SESSION', 'SCROLL_DOWN', 'SEND_MESSAGE'))\n);",
+  "q1": "SELECT ACTIVITY_DATE AS DAY, COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY WHERE ACTIVITY_DATE BETWEEN '2019-06-28' AND '2019-07-27' GROUP BY ACTIVITY_DATE",
+  "q2": "SELECT ACTIVITY_DATE AS DAY, COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY GROUP BY ACTIVITY_DATE HAVING DATEDIFF('2019-07-27',ACTIVITY_DATE)<30 ORDER BY ACTIVITY_DATE ASC",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT ACTIVITY_DATE AS DAY, COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY WHERE ACTIVITY_DATE BETWEEN '2019-06-28' AND '2019-07-27' GROUP BY ACTIVITY_DATE",
+  "q2_prompt_sql": "SELECT ACTIVITY_DATE AS DAY, COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY GROUP BY ACTIVITY_DATE HAVING DATEDIFF('2019-07-27',ACTIVITY_DATE)<30 ORDER BY ACTIVITY_DATE ASC",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries compute the number of distinct users per day for dates between June 28 and July 27, 2019. Q1 uses a WHERE clause, while Q2 uses HAVING with DATEDIFF, but both effectively filter the same date range. The GROUP BY and COUNT(DISTINCT USER_ID) logic is identical in both queries.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries compute the number of distinct users per day for dates between June 28 and July 27, 2019. Q1 uses a WHERE clause, while Q2 uses HAVING with DATEDIFF, but both effectively filter the same date range. The GROUP BY and COUNT(DISTINCT USER_ID) logic is identical in both queries.\"\n}",
+  "reasoning": "\nOkay, let me try to figure out if these two SQL queries are equivalent. \n\nFirst, looking at Q1: It selects ACTIVITY_DATE as DAY and counts distinct USER_IDs where the activity date is between '2019-06-28' and '2019-07-27'. Then groups by ACTIVITY_DATE. So this is straightforward; it's getting the number of unique users each day within that specific date range.\n\nNow Q2: It groups by ACTIVITY_DATE and uses HAVING with DATEDIFF('2019-07-27', ACTIVITY_DATE) < 30. The DATEDIFF function here probably calculates the difference in days between the two dates. So if the difference is less than 30, that means ACTIVITY_DATE is within 29 days before '2019-07-27'. Wait, let me check. DATEDIFF in some SQL dialects returns the difference in days. So if the result is less than 30, then ACTIVITY_DATE is from 2019-07-27 minus 29 days, which would be 2019-06-28 (since 29 days before July 27th is June 28th, because July has 31 days, so 27 - 29 = -2 days, but I need to compute correctly). Wait, let me think. If today is July 27, then 30 days before would be June 28. Because July has 31 days, so 27 - 30 = -3 days, so June 28. So the HAVING condition in Q2 is equivalent to ACTIVITY_DATE >= '2019-06-28' and ACTIVITY_DATE <= '2019-07-27'. Wait, but DATEDIFF('2019-07-27', ACTIVITY_DATE) gives the number of days between ACTIVITY_DATE and '2019-07-27'. If that's less than 30, then ACTIVITY_DATE is within 29 days before July 27. So the dates would be from July 27 - 29 days = June 28 (since 27 - 29 = -2, so June 28). So the range is June 28 to July 27. That's exactly the same as Q1's date range. So Q1's WHERE clause and Q2's HAVING clause are equivalent in terms of date filtering.\n\nWait, but Q1's WHERE is a BETWEEN, which includes both endpoints. Q2's HAVING DATEDIFF('2019-07-27', ACTIVITY_DATE) < 30. Let me check: DATEDIFF in MySQL, for example, returns the difference in days. So if ACTIVITY_DATE is '2019-07-27', then DATEDIFF('2019-07-27', ACTIVITY_DATE) is 0, which is less than 30. If ACTIVITY_DATE is '2019-06-28', then the difference is 29 days (since July 27 minus June 28 is 29 days). So the HAVING condition includes dates from June 28 up to July 27. So that's the same as Q1's date range. So the date filtering part is the same. \n\nBut then why would the two queries differ? Wait, but Q1 uses a WHERE clause to filter the dates, while Q2 uses HAVING. But the GROUP BY is on ACTIVITY_DATE. So in Q1, all rows outside that date range are excluded before grouping. In Q2, the HAVING condition is applied after grouping. But since the HAVING is checking the ACTIVITY_DATE of each group (the group key), it's effectively the same as a WHERE on ACTIVITY_DATE. Because each group has a single ACTIVITY_DATE value. So for each group, the HAVING condition is checking that date. Therefore, the two queries should produce the same result.\n\nWait, but what if a group has ACTIVITY_DATE outside the range? For example, suppose a group has ACTIVITY_DATE = '2019-06-27'. Then the HAVING condition would be DATEDIFF('2019-07-27', '2019-06-27') = 30 days, which is not less than 30. So that group would be excluded. Similarly, if ACTIVITY_DATE is '2019-06-28', then DATEDIFF is 29 < 30, so included. So the HAVING condition in Q2 is equivalent to filtering ACTIVITY_DATE >= '2019-06-28' AND ACTIVITY_DATE <= '2019-07-27'. Which is exactly the same as Q1's WHERE clause. \n\nTherefore, the two queries should be equivalent. But wait, the order of operations. In Q1, the WHERE clause filters the rows before grouping. In Q2, the HAVING clause is applied after grouping. But since the HAVING is on the group key (ACTIVITY_DATE), the effect is the same as a WHERE on ACTIVITY_DATE. So the result should be the same. \n\nBut wait, could there be a case where grouping by ACTIVITY_DATE and then applying HAVING on the same date is different? For example, suppose there are multiple rows with the same ACTIVITY_DATE but different values. But in this case, the HAVING is checking the ACTIVITY_DATE of the group, which is the same for all rows in the group. So the HAVING condition is equivalent to a WHERE on ACTIVITY_DATE. Therefore, both queries should return the same result. \n\nBut maybe there's a mistake in the HAVING condition. Let me double-check the DATEDIFF calculation. Let's take the date '2019-06-28'. The difference between '2019-07-27' and '2019-06-28' is 29 days. So DATEDIFF('2019-07-27', '2019-06-28') = 29. So the HAVING condition <30 includes that date. Then, the upper bound is '2019-07-27', which gives 0. So the HAVING condition is correct. Therefore, the two queries are equivalent. \n\nWait, but what if the date is '2019-06-27'? DATEDIFF would be 30 days, which is not less than 30, so excluded. So yes. Therefore, the two queries are equivalent. So the answer should be Y.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 433,
+    "total_tokens": 1998,
+    "completion_tokens": 1565,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1474
+    },
+    "generation_seconds": 48.938
+  },
+  "started_at": "2026-10-06T15:50:11.293075+00:00",
+  "elapsed_seconds": 0.0
+}

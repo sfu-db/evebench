@@ -1,0 +1,52 @@
+{
+  "dbid": "beers",
+  "index": "53",
+  "source_index": "693",
+  "schema_ddl": "CREATE TABLE Bar (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Beer (\n    name VARCHAR NOT NULL,\n    brewer VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Drinker (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Frequents (\n    drinker VARCHAR NOT NULL,\n    bar VARCHAR NOT NULL,\n    times_a_week SMALLINT NOT NULL,\n    PRIMARY KEY (drinker, bar),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (bar) REFERENCES Bar(name)\n);\n\nCREATE TABLE Serves (\n    bar VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    price DECIMAL(5,2) NOT NULL,\n    PRIMARY KEY (bar, beer),\n    FOREIGN KEY (bar) REFERENCES Bar(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);\n\nCREATE TABLE Likes (\n    drinker VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    PRIMARY KEY (drinker, beer),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);",
+  "q1": "SELECT f1.drinker, f2.drinker FROM (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f1, (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f2 WHERE f1.drinker < f2.drinker AND f1.st = f2.st",
+  "q2": "SELECT DISTINCT f1.drinker, f2.drinker FROM frequents AS f1 JOIN frequents AS f2 ON f1.drinker < f2.drinker WHERE NOT EXISTS(SELECT s.bar FROM serves AS s LEFT JOIN likes AS l ON s.beer = l.beer AND (f1.drinker = l.drinker OR f2.drinker = l.drinker) WHERE f1.bar = s.bar AND l.drinker IS NULL) GROUP BY f1.drinker, f2.drinker HAVING SUM(f1.times_a_week) = SUM(f2.times_a_week)",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "beers",
+  "q1_prompt_sql": "SELECT f1.drinker, f2.drinker FROM (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f1, (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f2 WHERE f1.drinker < f2.drinker AND f1.st = f2.st",
+  "q2_prompt_sql": "SELECT DISTINCT f1.drinker, f2.drinker FROM frequents AS f1 JOIN frequents AS f2 ON f1.drinker < f2.drinker WHERE NOT EXISTS(SELECT s.bar FROM serves AS s LEFT JOIN likes AS l ON s.beer = l.beer AND (f1.drinker = l.drinker OR f2.drinker = l.drinker) WHERE f1.bar = s.bar AND l.drinker IS NULL) GROUP BY f1.drinker, f2.drinker HAVING SUM(f1.times_a_week) = SUM(f2.times_a_week)",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO Bar (name, address) VALUES ('Bar X', '123 Main St'), ('Bar Z', '456 Oak St');\nINSERT INTO Beer (name, brewer) VALUES ('Beer Y', 'Brew Co'), ('Beer Z', 'Microbrew');\nINSERT INTO Drinker (name, address) VALUES ('Alice', '789 Pine St'), ('Bob', '101 Maple St');\nINSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('Alice', 'Bar X', 5), ('Alice', 'Bar Z', 5), ('Bob', 'Bar X', 5), ('Bob', 'Bar Z', 5);\nINSERT INTO Serves (bar, beer, price) VALUES ('Bar X', 'Beer Y', 3.50), ('Bar X', 'Beer Z', 4.00), ('Bar Z', 'Beer Y', 3.75);\nINSERT INTO Likes (drinker, beer) VALUES ('Alice', 'Beer Z'), ('Bob', 'Beer Z');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 finds all pairs of drinkers with equal total frequents times, while Q2 adds a constraint that for every bar both drinkers frequent, all beers served there must be liked by at least one of them. Q2 excludes pairs where there's a bar with a beer neither likes.",
+  "counterexample_dsp": "Two drinkers (Alice, Bob) with equal total frequents. Both frequent Bar X which serves Beer Y, but neither likes Beer Y. Q1 includes them as sums match, but Q2 excludes them due to Beer Y not being liked by either.",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 finds all pairs of drinkers with equal total frequents times, while Q2 adds a constraint that for every bar both drinkers frequent, all beers served there must be liked by at least one of them. Q2 excludes pairs where there's a bar with a beer neither likes.\",\n  \"counterexample_dsp\": \"Two drinkers (Alice, Bob) with equal total frequents. Both frequent Bar X which serves Beer Y, but neither likes Beer Y. Q1 includes them as sums match, but Q2 excludes them due to Beer Y not being liked by either.\",\n  \"counterexample\": [\n    \"INSERT INTO Bar (name, address) VALUES ('Bar X', '123 Main St'), ('Bar Z', '456 Oak St');\",\n    \"INSERT INTO Beer (name, brewer) VALUES ('Beer Y', 'Brew Co'), ('Beer Z', 'Microbrew');\",\n    \"INSERT INTO Drinker (name, address) VALUES ('Alice', '789 Pine St'), ('Bob', '101 Maple St');\",\n    \"INSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('Alice', 'Bar X', 5), ('Alice', 'Bar Z', 5), ('Bob', 'Bar X', 5), ('Bob', 'Bar Z', 5);\",\n    \"INSERT INTO Serves (bar, beer, price) VALUES ('Bar X', 'Beer Y', 3.50), ('Bar X', 'Beer Z', 4.00), ('Bar Z', 'Beer Y', 3.75);\",\n    \"INSERT INTO Likes (drinker, beer) VALUES ('Alice', 'Beer Z'), ('Bob', 'Beer Z');\"\n  ]\n}",
+  "reasoning": "\nOkay, let's try to figure out why these two queries aren't equivalent and come up with a counterexample. \n\nFirst, looking at Q1: It's selecting pairs of drinkers where their total times_a_week from the frequents table are equal, and the first drinker's name is less than the second. The subqueries f1 and f2 are both aggregating the sum of times_a_week per drinker. So Q1 is essentially finding all pairs of drinkers with the same total frequency, ordered by their names.\n\nNow Q2 is more complicated. It's joining frequents as f1 and f2 on f1.drinker < f2.drinker, then using a NOT EXISTS clause. The inner query checks for bars that f1 or f2 frequent where there's a beer served at that bar that neither of them likes. Wait, the LEFT JOIN with likes on s.beer = l.beer and (f1.drinker = l.drinker OR f2.drinker = l.drinker). Then, if there's a bar where l.drinker is NULL, that means there's a beer served at that bar that neither f1 nor f2 likes. The NOT EXISTS would exclude such pairs where there's at least one bar that serves a beer that neither likes. \n\nSo Q2 is selecting pairs of drinkers where for all bars that they frequent, every beer served at those bars is liked by at least one of the two drinkers. Additionally, the SUM of their times_a_week must be equal. \n\nSo the key difference between Q1 and Q2 is that Q2 adds a condition on the beers served at the bars they frequent, ensuring that every beer served at those bars is liked by at least one of the two drinkers. Q1 doesn't have this condition. Therefore, Q2 could return fewer pairs than Q1 if there are pairs that meet the sum condition but fail the beer-liking condition.\n\nTo create a counterexample, I need two drinkers with the same total times_a_week, but one pair where they don't satisfy the beer condition. Let's say we have two drinkers, Alice and Bob, both with total times_a_week of 10. Now, suppose there's a bar that both frequent, and at that bar, there's a beer that neither Alice nor Bob likes. Then, according to Q2, this pair (Alice, Bob) would be excluded because the NOT EXISTS condition would fail. But in Q1, they would be included. \n\nSo the test data would need:\n\n- Two drinkers, Alice and Bob, each with total times_a_week of 10 (maybe each frequents two bars with 5 and 5 times a week).\n- A bar that both frequent, say Bar X.\n- Bar X serves a beer (say, Beer Y) that neither Alice nor Bob likes.\n\nIn this case, Q1 would return (Alice, Bob) because their sums are equal, but Q2 would not return them because of the beer not being liked by either.\n\nSo the counterexample would involve inserting these entities into the tables. Need to make sure all foreign keys are satisfied. For example, the bar and beer must exist, and the likes table entries must be correctly set.\n\nLet me outline the steps:\n\n1. Insert Bar 'Bar X'.\n2. Insert Beer 'Beer Y'.\n3. Insert Drinker 'Alice' and 'Bob'.\n4. Insert into Frequents: Alice goes to Bar X 5 times a week, and another bar (say Bar Z) 5 times. Similarly for Bob.\n5. Insert into Serves: Bar X serves Beer Y at some price.\n6. Ensure that neither Alice nor Bob likes Beer Y. So, no entries in Likes for them and Beer Y.\n\nThis setup would make Q1 return (Alice, Bob) as their sums are equal, but Q2 would not include them because of the beer not being liked by either.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 645,
+    "total_tokens": 1830,
+    "completion_tokens": 1185,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 810
+    },
+    "generation_seconds": 38.86
+  },
+  "started_at": "2026-10-06T08:12:38.048703+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "Alice",
+      "Bob"
+    ]
+  ],
+  "q2_output": [],
+  "q1_row_count": 1,
+  "q2_row_count": 0,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT f1.drinker, f2.drinker FROM (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f1, (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f2 WHERE f1.drinker < f2.drinker AND f1.st = f2.st",
+  "q2_validation_sql": "SELECT DISTINCT f1.drinker, f2.drinker FROM frequents AS f1 JOIN frequents AS f2 ON f1.drinker < f2.drinker WHERE NOT EXISTS(SELECT s.bar FROM serves AS s LEFT JOIN likes AS l ON s.beer = l.beer AND (f1.drinker = l.drinker OR f2.drinker = l.drinker) WHERE f1.bar = s.bar AND l.drinker IS NULL) GROUP BY f1.drinker, f2.drinker HAVING SUM(f1.times_a_week) = SUM(f2.times_a_week)"
+}

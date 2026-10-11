@@ -1,0 +1,51 @@
+{
+  "dbid": "607",
+  "index": "477",
+  "source_index": "12",
+  "schema_ddl": "CREATE TABLE SALESPERSON (\n    SALES_ID INT,\n    NAME VARCHAR(255),\n    SALARY INT,\n    COMMISSION_RATE INT,\n    HIRE_DATE VARCHAR(255)\n);\n\nCREATE TABLE COMPANY (\n    COM_ID INT,\n    NAME VARCHAR(255),\n    CITY VARCHAR(255)\n);\n\nCREATE TABLE ORDERS (\n    ORDER_ID INT,\n    COM_ID INT,\n    SALES_ID INT,\n    ORDER_DATE VARCHAR(255),\n    AMOUNT INT\n);",
+  "q1": "SELECT NAME FROM SALESPERSON AS S WHERE 0 = ( SELECT COUNT(*) FROM ORDERS AS O JOIN COMPANY AS C ON O.COM_ID = C.COM_ID WHERE O.SALES_ID = S.SALES_ID AND C.NAME = 'RED' )",
+  "q2": "SELECT NAME FROM SALESPERSON WHERE NAME NOT IN (SELECT DISTINCT NAME FROM SALESPERSON WHERE SALES_ID IN (SELECT SALES_ID FROM ORDERS WHERE COM_ID IN (SELECT COM_ID FROM COMPANY WHERE NAME='RED')))",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT NAME FROM SALESPERSON AS S WHERE 0 = ( SELECT COUNT(*) FROM ORDERS AS O JOIN COMPANY AS C ON O.COM_ID = C.COM_ID WHERE O.SALES_ID = S.SALES_ID AND C.NAME = 'RED' )",
+  "q2_prompt_sql": "SELECT NAME FROM SALESPERSON WHERE NAME NOT IN (SELECT DISTINCT NAME FROM SALESPERSON WHERE SALES_ID IN (SELECT SALES_ID FROM ORDERS WHERE COM_ID IN (SELECT COM_ID FROM COMPANY WHERE NAME='RED')))",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO COMPANY (COM_ID, NAME, CITY) VALUES (1, 'RED', 'NY'), (2, 'BLUE', 'LA');\nINSERT INTO SALESPERSON (SALES_ID, NAME, SALARY, COMMISSION_RATE, HIRE_DATE) VALUES (1, 'Alice', 50000, 5, '2020-01-01'), (2, 'Alice', 60000, 6, '2021-01-01');\nINSERT INTO ORDERS (ORDER_ID, COM_ID, SALES_ID, ORDER_DATE, AMOUNT) VALUES (100, 1, 1, '2022-01-01', 1000), (200, 2, 2, '2022-02-01', 2000);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 checks for salespeople with zero orders linked to 'RED' company via SALES_ID, while Q2 excludes salespeople whose NAME appears in any salesperson with orders linked to 'RED'. Name collisions cause divergence.",
+  "counterexample_dsp": "Two salespeople with same name 'Alice', one has RED orders, other doesn't. Q1 includes the latter, Q2 excludes both due to name match.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 checks for salespeople with zero orders linked to 'RED' company via SALES_ID, while Q2 excludes salespeople whose NAME appears in any salesperson with orders linked to 'RED'. Name collisions cause divergence.\",\n\"counterexample_dsp\": \"Two salespeople with same name 'Alice', one has RED orders, other doesn't. Q1 includes the latter, Q2 excludes both due to name match.\",\n\"counterexample\": \"INSERT INTO COMPANY (COM_ID, NAME, CITY) VALUES (1, 'RED', 'NY'), (2, 'BLUE', 'LA');\\nINSERT INTO SALESPERSON (SALES_ID, NAME, SALARY, COMMISSION_RATE, HIRE_DATE) VALUES (1, 'Alice', 50000, 5, '2020-01-01'), (2, 'Alice', 60000, 6, '2021-01-01');\\nINSERT INTO ORDERS (ORDER_ID, COM_ID, SALES_ID, ORDER_DATE, AMOUNT) VALUES (100, 1, 1, '2022-01-01', 1000), (200, 2, 2, '2022-02-01', 2000);\"\n}",
+  "reasoning": "\nOkay, let's try to figure out if these two SQL queries are equivalent. \n\nFirst, I need to understand what each query is doing. Let's start with Q1. \n\nQ1 selects the name from SALESPERSON where the subquery returns 0. The subquery is counting the number of orders joined with company where the company name is 'RED' and the salesperson's ID matches. So, Q1 is looking for salespeople who have zero orders associated with the 'RED' company. That makes sense. If the count is zero, they aren't linked to any RED company orders.\n\nNow Q2 is a bit more complex. It selects names from SALESPERSON where the name is not in a subquery. The subquery is selecting distinct names from SALESPERSON where their SALES_ID is in the list of SALES_IDs from ORDERS that have COM_IDs in the COMPANY where name is 'RED'. So Q2 is excluding salespeople whose names appear in the list of salespeople who have orders with RED company. Wait, but it's using the name, not the SALES_ID. That might be a problem. \n\nWait, Q2's subquery is selecting names from SALESPERSON where their SALES_ID is in the orders linked to RED company. So the subquery is getting all the names of salespeople who have at least one order with a RED company. Then Q2 is selecting names not in that list. So Q2 is supposed to get salespeople who have no orders with RED company. But here's the catch: what if two different salespeople have the same name? The DISTINCT in the subquery would group them, but Q2's NOT IN would exclude all names that are in that list. However, Q1 is checking based on SALES_ID, which is unique. \n\nSo the key difference is that Q1 uses SALES_ID to check for zero orders with RED, while Q2 uses NAME. If two different salespeople have the same name, Q2 might incorrectly exclude both even if only one has orders with RED. Conversely, if a salesperson's name is in the subquery list but they actually don't have any orders with RED (maybe due to a name collision), Q2 would exclude them wrongly. \n\nSo, for example, suppose there are two salespeople with the same name, Alice. One (SALES_ID 1) has an order with RED, and the other (SALES_ID 2) doesn't. Q1 would include SALES_ID 2 because their count is zero, but Q2 would exclude both Alices because the subquery includes Alice (from SALES_ID 1). Therefore, Q2 would give a different result here. \n\nThat's a counterexample. So the queries are not equivalent because Q2 uses NAME instead of SALES_ID, leading to possible name collisions. \n\nNow, I need to create a test case with that scenario. Let's create two salespeople with the same name. One has an order with RED, the other doesn't. \n\nIn the COMPANY table, have COM_ID 1 with name 'RED'. In ORDERS, SALES_ID 1 (Alice) has COM_ID 1, and SALES_ID 2 (Alice) has COM_ID 2 (maybe another company). Then Q1 would return Alice (SALES_ID 2) because her count is zero. Q2 would not return Alice because the subquery includes Alice (from SALES_ID 1), so NOT IN would exclude her. Hence, Q1 and Q2 would have different results here.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 460,
+    "total_tokens": 1506,
+    "completion_tokens": 1046,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 743
+    },
+    "generation_seconds": 32.843
+  },
+  "started_at": "2026-10-06T15:13:11.165408+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "Alice"
+    ]
+  ],
+  "q2_output": [],
+  "q1_row_count": 1,
+  "q2_row_count": 0,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT NAME FROM SALESPERSON AS S WHERE 0 = ( SELECT COUNT(*) FROM ORDERS AS O JOIN COMPANY AS C ON O.COM_ID = C.COM_ID WHERE O.SALES_ID = S.SALES_ID AND C.NAME = 'RED' )",
+  "q2_validation_sql": "SELECT NAME FROM SALESPERSON WHERE NAME NOT IN (SELECT DISTINCT NAME FROM SALESPERSON WHERE SALES_ID IN (SELECT SALES_ID FROM ORDERS WHERE COM_ID IN (SELECT COM_ID FROM COMPANY WHERE NAME='RED')))"
+}

@@ -1,0 +1,71 @@
+{
+  "dbid": "175",
+  "index": "523",
+  "source_index": "47",
+  "schema_ddl": "CREATE TABLE PERSON (\n    PERSONID INT,\n    FIRSTNAME VARCHAR(255),\n    LASTNAME VARCHAR(255),\n    PRIMARY KEY (PERSONID)\n);\n\nCREATE TABLE ADDRESS (\n    ADDRESSID INT,\n    PERSONID INT,\n    CITY VARCHAR(255),\n    STATE VARCHAR(255),\n    PRIMARY KEY (ADDRESSID, PERSONID),\n    FOREIGN KEY (PERSONID) REFERENCES PERSON(PERSONID)\n);",
+  "q1": "SELECT FIRSTNAME, LASTNAME, CITY, STATE FROM PERSON AS P LEFT OUTER JOIN ADDRESS AS A ON P.PERSONID = A.PERSONID",
+  "q2": "SELECT CITY, FIRSTNAME, LASTNAME, STATE FROM PERSON LEFT JOIN ADDRESS ON PERSON.PERSONID=ADDRESS.PERSONID",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT FIRSTNAME, LASTNAME, CITY, STATE FROM PERSON AS P LEFT OUTER JOIN ADDRESS AS A ON P.PERSONID = A.PERSONID",
+  "q2_prompt_sql": "SELECT CITY, FIRSTNAME, LASTNAME, STATE FROM PERSON LEFT JOIN ADDRESS ON PERSON.PERSONID=ADDRESS.PERSONID",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO PERSON (PERSONID, FIRSTNAME, LASTNAME) VALUES (1, 'John', 'Doe'), (2, 'Jane', 'Smith'); INSERT INTO ADDRESS (ADDRESSID, PERSONID, CITY, STATE) VALUES (1, 1, 'New York', 'NY');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent because the order of the SELECTed columns is different, and the ORDER BY clause (if present) would affect the results differently in each query. In this case, the difference in the order of columns can lead to different output formats, which might be interpreted differently in some contexts.",
+  "counterexample_dsp": "The test data should include at least one person with an address and another person without an address. The difference in the order of columns in the SELECT statements will cause the results to be different.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent because the order of the SELECTed columns is different, and the ORDER BY clause (if present) would affect the results differently in each query. In this case, the difference in the order of columns can lead to different output formats, which might be interpreted differently in some contexts.\",\n  \"counterexample_dsp\": \"The test data should include at least one person with an address and another person without an address. The difference in the order of columns in the SELECT statements will cause the results to be different.\",\n  \"counterexample\": \"INSERT INTO PERSON (PERSONID, FIRSTNAME, LASTNAME) VALUES (1, 'John', 'Doe'), (2, 'Jane', 'Smith'); INSERT INTO ADDRESS (ADDRESSID, PERSONID, CITY, STATE) VALUES (1, 1, 'New York', 'NY');\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 366,
+    "total_tokens": 555,
+    "completion_tokens": 189,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 3.125
+  },
+  "started_at": "2026-10-06T09:55:37.130291+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "John",
+      "Doe",
+      "New York",
+      "NY"
+    ],
+    [
+      "Jane",
+      "Smith",
+      null,
+      null
+    ]
+  ],
+  "q2_output": [
+    [
+      "New York",
+      "John",
+      "Doe",
+      "NY"
+    ],
+    [
+      null,
+      "Jane",
+      "Smith",
+      null
+    ]
+  ],
+  "q1_row_count": 2,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT FIRSTNAME, LASTNAME, CITY, STATE FROM PERSON AS P LEFT OUTER JOIN ADDRESS AS A ON P.PERSONID = A.PERSONID",
+  "q2_validation_sql": "SELECT CITY, FIRSTNAME, LASTNAME, STATE FROM PERSON LEFT JOIN ADDRESS ON PERSON.PERSONID=ADDRESS.PERSONID"
+}

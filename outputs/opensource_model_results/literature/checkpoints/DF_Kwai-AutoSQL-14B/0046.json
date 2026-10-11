@@ -1,0 +1,52 @@
+{
+  "dbid": "32",
+  "index": "46",
+  "source_index": "53",
+  "schema_ddl": "CREATE TABLE COURSE (COURSE_ID INT, TITLE INT, DEPT_NAME INT, CREDITS INT);\nCREATE TABLE DEPARTMENT (DEPT_NAME INT, BUILDING INT, BUDGET INT);\nCREATE TABLE INSTRUCTOR (ID INT, NAME INT, SALARY INT, DEPT_NAME INT);\nCREATE TABLE TEACHES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, SEMESTER INT, INSTRUCTOR INT);\nCREATE TABLE SECTION (COURSE_ID INT, SEC_ID INT, YEAR INT, BUILDING INT, ROOM_NUMBER INT, TIME_SLOT_ID INT);\nCREATE TABLE TAKES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, GRADE INT);\nCREATE TABLE STUDENT (ID INT, NAME INT, DEPT_NAME INT, TOT_CRED INT);",
+  "q1": "SELECT C.DEPT_NAME, AVG(I.SALARY) FROM COURSE AS C INNER JOIN DEPARTMENT AS D ON (C.DEPT_NAME = D.DEPT_NAME) INNER JOIN TEACHES AS T ON (C.COURSE_ID = T.COURSE_ID) INNER JOIN INSTRUCTOR AS I ON (D.DEPT_NAME = I.DEPT_NAME) GROUP BY C.DEPT_NAME HAVING AVG(I.SALARY) > 50000 AND COUNT(DISTINCT I.SALARY) = 4",
+  "q2": "SELECT C.DEPT_NAME, AVG(I.SALARY) FROM COURSE AS C INNER JOIN DEPARTMENT AS D ON (C.DEPT_NAME = D.DEPT_NAME) INNER JOIN TEACHES AS T ON (C.COURSE_ID = T.COURSE_ID) INNER JOIN INSTRUCTOR AS I ON (D.DEPT_NAME = I.DEPT_NAME) GROUP BY C.DEPT_NAME HAVING AVG(I.SALARY) > 50000 AND COUNT(DISTINCT I.SALARY) > 4",
+  "dialect": "sqlite",
+  "ground_truth": "EQ",
+  "source": "literature",
+  "q1_prompt_sql": "SELECT C.DEPT_NAME, AVG(I.SALARY) FROM COURSE AS C INNER JOIN DEPARTMENT AS D ON (C.DEPT_NAME = D.DEPT_NAME) INNER JOIN TEACHES AS T ON (C.COURSE_ID = T.COURSE_ID) INNER JOIN INSTRUCTOR AS I ON (D.DEPT_NAME = I.DEPT_NAME) GROUP BY C.DEPT_NAME HAVING AVG(I.SALARY) > 50000 AND COUNT(DISTINCT I.SALARY) = 4",
+  "q2_prompt_sql": "SELECT C.DEPT_NAME, AVG(I.SALARY) FROM COURSE AS C INNER JOIN DEPARTMENT AS D ON (C.DEPT_NAME = D.DEPT_NAME) INNER JOIN TEACHES AS T ON (C.COURSE_ID = T.COURSE_ID) INNER JOIN INSTRUCTOR AS I ON (D.DEPT_NAME = I.DEPT_NAME) GROUP BY C.DEPT_NAME HAVING AVG(I.SALARY) > 50000 AND COUNT(DISTINCT I.SALARY) > 4",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO DEPARTMENT VALUES (1, 100, 1000000); INSERT INTO COURSE VALUES (1, 'DB', 1, 3); INSERT INTO INSTRUCTOR VALUES (1, 'A', 50001, 1), (2, 'B', 50002, 1), (3, 'C', 50003, 1), (4, 'D', 50004, 1); INSERT INTO TEACHES VALUES (1, 1, 1, 2020, 1, 1), (2, 1, 1, 2020, 1, 2), (3, 1, 1, 2020, 1, 3), (4, 1, 1, 2020, 1, 4);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 differ in the COUNT(DISTINCT I.SALARY) condition. Q1 requires exactly 4 distinct salaries, while Q2 requires more than 4. This leads to different results when a department has exactly 4 distinct salaries meeting the average condition.",
+  "counterexample_dsp": "A department with exactly 4 distinct instructor salaries (e.g., 50001, 50002, 50003, 50004) meeting AVG(SALARY) > 50000. Q1 includes this dept, Q2 excludes it.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 and Q2 differ in the COUNT(DISTINCT I.SALARY) condition. Q1 requires exactly 4 distinct salaries, while Q2 requires more than 4. This leads to different results when a department has exactly 4 distinct salaries meeting the average condition.\",\n\"counterexample_dsp\": \"A department with exactly 4 distinct instructor salaries (e.g., 50001, 50002, 50003, 50004) meeting AVG(SALARY) > 50000. Q1 includes this dept, Q2 excludes it.\",\n\"counterexample\": \"INSERT INTO DEPARTMENT VALUES (1, 100, 1000000); INSERT INTO COURSE VALUES (1, 'DB', 1, 3); INSERT INTO INSTRUCTOR VALUES (1, 'A', 50001, 1), (2, 'B', 50002, 1), (3, 'C', 50003, 1), (4, 'D', 50004, 1); INSERT INTO TEACHES VALUES (1, 1, 1, 2020, 1, 1), (2, 1, 1, 2020, 1, 2), (3, 1, 1, 2020, 1, 3), (4, 1, 1, 2020, 1, 4);\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem step by step. First, I need to understand what Q1 and Q2 are doing and whether they are equivalent. \n\nLooking at Q1 and Q2, both are selecting DEPT_NAME and the average salary from the COURSE, DEPARTMENT, TEACHES, and INSTRUCTOR tables, grouped by DEPT_NAME. The main differences are in the HAVING clause. \n\nQ1 has HAVING AVG(I.SALARY) > 50000 AND COUNT(DISTINCT I.SALARY) = 4. Q2 has HAVING AVG(I.SALARY) > 50000 AND COUNT(DISTINCT I.SALARY) > 4. \n\nSo the key difference is that Q1 requires exactly 4 distinct salaries, while Q2 requires more than 4. Therefore, if a department has exactly 4 distinct salaries above 50000 average, Q1 would include it, but Q2 would not. Conversely, if a department has 5 or more, both would include it. So they are not equivalent.\n\nTo create a counterexample, I need a scenario where a department has exactly 4 distinct salaries meeting the average condition. Let's say Department A has 4 instructors with salaries 60000 each. The average would be 60000, which is above 50000. COUNT(DISTINCT SALARY) would be 1 (all same), so that's not matching. Wait, that's not right. Wait, the count of distinct salaries would be 1. So maybe I need 4 different salaries. For example, four distinct salaries like 50001, 50002, 50003, 50004. The average would be (sum of these)/4. Let me calculate: 50001 + 50002 + 50003 + 50004 = 200010, divided by 4 is 50002.5. That's above 50000. Then COUNT(DISTINCT I.SALARY) would be 4. So Q1 would include this department, but Q2 would require COUNT(DISTINCT) > 4, which would not be satisfied. So in this case, Q1 returns the department, Q2 does not. That's a counterexample.\n\nNow, I need to structure the test data accordingly. Let's create a DEPARTMENT with DEPT_NAME = 1. Then INSTRUCTOR entries for that department with 4 distinct salaries. Then COURSE and TEACHES tables should link them. The COURSE table's DEPT_NAME should be 1, and TEACHES should connect the course to the instructor. \n\nSo inserting into DEPARTMENT: (1, ...). INSTRUCTOR: four rows with DEPT_NAME=1 and different SALARY values. COURSE: one or more courses with DEPT_NAME=1. TEACHES: entries linking the course to each instructor. Then, when grouped by DEPT_NAME, the average would be above 50000 and count distinct salary is 4, so Q1 returns it, Q2 does not.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 636,
+    "total_tokens": 1671,
+    "completion_tokens": 1035,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 685
+    },
+    "generation_seconds": 31.531
+  },
+  "started_at": "2026-10-06T07:58:41.763659+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      1,
+      50002.5
+    ]
+  ],
+  "q2_output": [],
+  "q1_row_count": 1,
+  "q2_row_count": 0,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT C.DEPT_NAME, AVG(I.SALARY) FROM COURSE AS C INNER JOIN DEPARTMENT AS D ON (C.DEPT_NAME = D.DEPT_NAME) INNER JOIN TEACHES AS T ON (C.COURSE_ID = T.COURSE_ID) INNER JOIN INSTRUCTOR AS I ON (D.DEPT_NAME = I.DEPT_NAME) GROUP BY C.DEPT_NAME HAVING AVG(I.SALARY) > 50000 AND COUNT(DISTINCT I.SALARY) = 4",
+  "q2_validation_sql": "SELECT C.DEPT_NAME, AVG(I.SALARY) FROM COURSE AS C INNER JOIN DEPARTMENT AS D ON (C.DEPT_NAME = D.DEPT_NAME) INNER JOIN TEACHES AS T ON (C.COURSE_ID = T.COURSE_ID) INNER JOIN INSTRUCTOR AS I ON (D.DEPT_NAME = I.DEPT_NAME) GROUP BY C.DEPT_NAME HAVING AVG(I.SALARY) > 50000 AND COUNT(DISTINCT I.SALARY) > 4"
+}

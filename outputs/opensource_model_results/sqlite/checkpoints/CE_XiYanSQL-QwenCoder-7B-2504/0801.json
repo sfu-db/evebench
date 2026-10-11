@@ -1,0 +1,53 @@
+{
+  "dbid": "student_club",
+  "index": "801",
+  "source_index": "1401",
+  "schema_ddl": "CREATE TABLE event\n(\n    event_id   TEXT\n        constraint event_pk\n            primary key,\n    event_name TEXT,\n    event_date TEXT,\n    type       TEXT,\n    notes      TEXT,\n    location   TEXT,\n    status     TEXT\n);\n\nCREATE TABLE major\n(\n    major_id   TEXT\n        constraint major_pk\n            primary key,\n    major_name TEXT,\n    department TEXT,\n    college    TEXT\n);\n\nCREATE TABLE zip_code\n(\n    zip_code    INTEGER\n        constraint zip_code_pk\n            primary key,\n    type        TEXT,\n    city        TEXT,\n    county      TEXT,\n    state       TEXT,\n    short_state TEXT\n);\n\nCREATE TABLE \"attendance\"\n(\n    link_to_event  TEXT,\n    link_to_member TEXT,\n    primary key (link_to_event, link_to_member),\n    foreign key (link_to_event) references event(event_id),\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"budget\"\n(\n    budget_id     TEXT\n            primary key,\n    category      TEXT,\n    spent         REAL,\n    remaining     REAL,\n    amount        INTEGER,\n    event_status  TEXT,\n    link_to_event TEXT,\n    foreign key (link_to_event) references event(event_id)\n);\n\nCREATE TABLE \"expense\"\n(\n    expense_id          TEXT\n            primary key,\n    expense_description TEXT,\n    expense_date        TEXT,\n    cost                REAL,\n    approved            TEXT,\n    link_to_member      TEXT,\n    link_to_budget      TEXT,\n    foreign key (link_to_budget) references budget(budget_id),\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"income\"\n(\n    income_id      TEXT\n        constraint income_pk\n            primary key,\n    date_received  TEXT,\n    amount         INTEGER,\n    source         TEXT,\n    notes          TEXT,\n    link_to_member TEXT,\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"member\"\n(\n    member_id     TEXT\n        constraint member_pk\n            primary key,\n    first_name    TEXT,\n    last_name     TEXT,\n    email         TEXT,\n    position      TEXT,\n    t_shirt_size  TEXT,\n    phone         TEXT,\n    zip           INTEGER,\n    link_to_major TEXT,\n    foreign key (link_to_major) references major(major_id),\n    foreign key (zip) references zip_code(zip_code)\n);",
+  "q1": "SELECT CAST(SUM(CASE WHEN type = 'Community Service' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(type) FROM event WHERE SUBSTR(event_date, 1, 4) = '2019'",
+  "q2": "SELECT CAST(SUM(CASE WHEN type = 'Community Service' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(event_id) FROM event WHERE event_date BETWEEN '2019-01-01' AND '2019-12-31'",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT CAST(SUM(CASE WHEN type = 'Community Service' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(type) FROM event WHERE SUBSTR(event_date, 1, 4) = '2019'",
+  "q2_prompt_sql": "SELECT CAST(SUM(CASE WHEN type = 'Community Service' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(event_id) FROM event WHERE event_date BETWEEN '2019-01-01' AND '2019-12-31'",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO event (event_id, event_name, event_date, type) VALUES ('e1', 'Event A', '2019-01-01', 'Community Service'); INSERT INTO event (event_id, event_name, event_date, type) VALUES ('e2', 'Event B', '2019-01-02', 'Community Service'); INSERT INTO event (event_id, event_name, event_date, type) VALUES ('e3', 'Event C', '2018-01-01', 'Charity');",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent because they count the total number of events differently. Q1 counts the total number of events by the 'type' column, while Q2 counts the total number of events by the 'event_id' column. This difference can lead to different results if there are events with the same 'type' but different 'event_id's.",
+  "counterexample_dsp": "Create events with the same 'type' but different 'event_id's in 2019. Q1 will count the total number of events by 'type', while Q2 will count the total number of events by 'event_id', leading to different results.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent because they count the total number of events differently. Q1 counts the total number of events by the 'type' column, while Q2 counts the total number of events by the 'event_id' column. This difference can lead to different results if there are events with the same 'type' but different 'event_id's.\",\n  \"counterexample_dsp\": \"Create events with the same 'type' but different 'event_id's in 2019. Q1 will count the total number of events by 'type', while Q2 will count the total number of events by 'event_id', leading to different results.\",\n  \"counterexample\": \"INSERT INTO event (event_id, event_name, event_date, type) VALUES ('e1', 'Event A', '2019-01-01', 'Community Service'); INSERT INTO event (event_id, event_name, event_date, type) VALUES ('e2', 'Event B', '2019-01-02', 'Community Service'); INSERT INTO event (event_id, event_name, event_date, type) VALUES ('e3', 'Event C', '2018-01-01', 'Charity');\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 827,
+    "total_tokens": 1101,
+    "completion_tokens": 274,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 5.422
+  },
+  "started_at": "2026-10-06T16:07:11.312674+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      100.0
+    ]
+  ],
+  "q2_output": [
+    [
+      100.0
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT CAST(SUM(CASE WHEN type = 'Community Service' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(type) FROM event WHERE SUBSTR(event_date, 1, 4) = '2019'",
+  "q2_validation_sql": "SELECT CAST(SUM(CASE WHEN type = 'Community Service' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(event_id) FROM event WHERE event_date BETWEEN '2019-01-01' AND '2019-12-31'"
+}

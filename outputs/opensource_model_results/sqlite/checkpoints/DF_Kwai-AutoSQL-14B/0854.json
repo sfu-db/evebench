@@ -1,0 +1,55 @@
+{
+  "dbid": "debit_card_specializing",
+  "index": "854",
+  "source_index": "1503",
+  "schema_ddl": "CREATE TABLE customers\n(\n    CustomerID INTEGER UNIQUE     not null\n        primary key,\n    Segment    TEXT null,\n    Currency   TEXT null\n);\n\nCREATE TABLE gasstations\n(\n    GasStationID INTEGER    UNIQUE   not null\n        primary key,\n    ChainID      INTEGER          null,\n    Country      TEXT null,\n    Segment      TEXT null\n);\n\nCREATE TABLE products\n(\n    ProductID   INTEGER   UNIQUE      not null\n        primary key,\n    Description TEXT null\n);\n\nCREATE TABLE \"transactions_1k\"\n(\n    TransactionID INTEGER\n        primary key autoincrement,\n    Date          DATE,\n    Time          TEXT,\n    CustomerID    INTEGER,\n    CardID        INTEGER,\n    GasStationID  INTEGER,\n    ProductID     INTEGER,\n    Amount        INTEGER,\n    Price         REAL\n);\n\nCREATE TABLE \"yearmonth\"\n(\n    CustomerID  INTEGER not null\n        references customers\n            on update cascade on delete cascade\n        references customers,\n    Date        TEXT    not null,\n    Consumption REAL,\n    primary key (Date, CustomerID)\n);",
+  "q1": "SELECT DISTINCT T3.ChainID FROM transactions_1k AS T1 INNER JOIN customers AS T2 ON T1.CustomerID = T2.CustomerID INNER JOIN gasstations AS T3 ON T1.GasStationID = T3.GasStationID WHERE T2.Currency = 'EUR'",
+  "q2": "SELECT DISTINCT T2.ChainID FROM gasstations AS T2 INNER JOIN transactions_1k AS T3 ON T2.GasStationID = T3.GasStationID INNER JOIN customers AS T1 ON T3.CustomerID = T1.CustomerID WHERE T1.Currency = 'Euro'",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT DISTINCT T3.ChainID FROM transactions_1k AS T1 INNER JOIN customers AS T2 ON T1.CustomerID = T2.CustomerID INNER JOIN gasstations AS T3 ON T1.GasStationID = T3.GasStationID WHERE T2.Currency = 'EUR'",
+  "q2_prompt_sql": "SELECT DISTINCT T2.ChainID FROM gasstations AS T2 INNER JOIN transactions_1k AS T3 ON T2.GasStationID = T3.GasStationID INNER JOIN customers AS T1 ON T3.CustomerID = T1.CustomerID WHERE T1.Currency = 'Euro'",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO customers (CustomerID, Currency) VALUES (1, 'EUR');\nINSERT INTO customers (CustomerID, Currency) VALUES (2, 'Euro');\nINSERT INTO gasstations (GasStationID, ChainID) VALUES (1, 10);\nINSERT INTO gasstations (GasStationID, ChainID) VALUES (2, 20);\nINSERT INTO transactions_1k (TransactionID, Date, Time, CustomerID, GasStationID) VALUES (1, '2023-01-01', '10:00', 1, 1);\nINSERT INTO transactions_1k (TransactionID, Date, Time, CustomerID, GasStationID) VALUES (2, '2023-01-01', '11:00', 2, 2);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not equivalent because Q1 filters on T2.Currency = 'EUR' while Q2 filters on T1.Currency = 'Euro'. The different currency string values and potential case sensitivity in the database will produce different results.",
+  "counterexample_dsp": "A customer with Currency 'EUR' and another with Currency 'Euro', each associated with different gas stations, will cause Q1 and Q2 to return different ChainIDs.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 and Q2 are not equivalent because Q1 filters on T2.Currency = 'EUR' while Q2 filters on T1.Currency = 'Euro'. The different currency string values and potential case sensitivity in the database will produce different results.\",\n\"counterexample_dsp\": \"A customer with Currency 'EUR' and another with Currency 'Euro', each associated with different gas stations, will cause Q1 and Q2 to return different ChainIDs.\",\n\"counterexample\": \"INSERT INTO customers (CustomerID, Currency) VALUES (1, 'EUR');\\nINSERT INTO customers (CustomerID, Currency) VALUES (2, 'Euro');\\nINSERT INTO gasstations (GasStationID, ChainID) VALUES (1, 10);\\nINSERT INTO gasstations (GasStationID, ChainID) VALUES (2, 20);\\nINSERT INTO transactions_1k (TransactionID, Date, Time, CustomerID, GasStationID) VALUES (1, '2023-01-01', '10:00', 1, 1);\\nINSERT INTO transactions_1k (TransactionID, Date, Time, CustomerID, GasStationID) VALUES (2, '2023-01-01', '11:00', 2, 2);\"\n}",
+  "reasoning": "\nOkay, let's start by understanding both queries.\n\nQ1 selects distinct ChainID from transactions_1k (T1), joined with customers (T2) on CustomerID, and gasstations (T3) on GasStationID. The condition is T2.Currency = 'EUR'. So it's looking for gas stations (via their ChainID) that are associated with transactions made by customers who use EUR currency.\n\nQ2 selects distinct ChainID from gasstations (T2), joined with transactions_1k (T3) on GasStationID, then joined with customers (T1) on CustomerID. The condition here is T1.Currency = 'Euro'. The main difference here is the currency value: 'EUR' vs 'Euro', and the order of joins might be different but the joins themselves are the same. Also, in Q2, the gasstations table is aliased as T2 and the customers as T1, but the joins are similar.\n\nSo the key differences are the currency condition (case-sensitive 'EUR' vs 'Euro') and the order of joins. But the main issue is the currency comparison. If the database stores 'EUR' and 'Euro' as different values, then the results would differ. However, the problem says the schema has Currency as TEXT, so it's case-sensitive. But the user might have intended 'Euro' vs 'EUR' as different values. Wait, looking at the WHERE clauses: Q1 uses 'EUR' and Q2 uses 'Euro'. So if there's a customer with Currency 'Euro', Q2 would include them, but Q1 would not. Conversely, if a customer has 'EUR', Q1 includes them, Q2 doesn't. So the queries are different in that aspect.\n\nAnother difference is the aliases. In Q1, T2 is customers, T3 is gasstations. In Q2, T2 is gasstations, T1 is customers. But the joins are the same in terms of relationships. So the main difference is the currency value and the order of joins (which doesn't affect the result). Therefore, the queries are not equivalent because of the different currency strings. Also, if the database has customers with 'EUR' and others with 'Euro', they would return different ChainIDs.\n\nSo to create a counterexample, I need a customer with Currency 'EUR' and another with 'Euro', and transactions linked to gas stations. Let's say:\n\nCustomer 1: Currency 'EUR', transaction at GasStation 1 (ChainID 10).\nCustomer 2: Currency 'Euro', transaction at GasStation 2 (ChainID 20).\n\nQ1 would return ChainID 10 (since T2.Currency = 'EUR').\nQ2 would return ChainID 20 (since T1.Currency = 'Euro').\n\nThus, the results are different. So the queries are not equivalent.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 590,
+    "total_tokens": 1472,
+    "completion_tokens": 882,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 590
+    },
+    "generation_seconds": 28.454
+  },
+  "started_at": "2026-10-06T21:40:51.693876+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      10
+    ]
+  ],
+  "q2_output": [
+    [
+      20
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DISTINCT T3.ChainID FROM transactions_1k AS T1 INNER JOIN customers AS T2 ON T1.CustomerID = T2.CustomerID INNER JOIN gasstations AS T3 ON T1.GasStationID = T3.GasStationID WHERE T2.Currency = 'EUR'",
+  "q2_validation_sql": "SELECT DISTINCT T2.ChainID FROM gasstations AS T2 INNER JOIN transactions_1k AS T3 ON T2.GasStationID = T3.GasStationID INNER JOIN customers AS T1 ON T3.CustomerID = T1.CustomerID WHERE T1.Currency = 'Euro'"
+}

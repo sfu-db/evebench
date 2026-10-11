@@ -1,0 +1,53 @@
+{
+  "dbid": "student_club",
+  "index": "813",
+  "source_index": "1433",
+  "schema_ddl": "CREATE TABLE event\n(\n    event_id   TEXT\n        constraint event_pk\n            primary key,\n    event_name TEXT,\n    event_date TEXT,\n    type       TEXT,\n    notes      TEXT,\n    location   TEXT,\n    status     TEXT\n);\n\nCREATE TABLE major\n(\n    major_id   TEXT\n        constraint major_pk\n            primary key,\n    major_name TEXT,\n    department TEXT,\n    college    TEXT\n);\n\nCREATE TABLE zip_code\n(\n    zip_code    INTEGER\n        constraint zip_code_pk\n            primary key,\n    type        TEXT,\n    city        TEXT,\n    county      TEXT,\n    state       TEXT,\n    short_state TEXT\n);\n\nCREATE TABLE \"attendance\"\n(\n    link_to_event  TEXT,\n    link_to_member TEXT,\n    primary key (link_to_event, link_to_member),\n    foreign key (link_to_event) references event(event_id),\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"budget\"\n(\n    budget_id     TEXT\n            primary key,\n    category      TEXT,\n    spent         REAL,\n    remaining     REAL,\n    amount        INTEGER,\n    event_status  TEXT,\n    link_to_event TEXT,\n    foreign key (link_to_event) references event(event_id)\n);\n\nCREATE TABLE \"expense\"\n(\n    expense_id          TEXT\n            primary key,\n    expense_description TEXT,\n    expense_date        TEXT,\n    cost                REAL,\n    approved            TEXT,\n    link_to_member      TEXT,\n    link_to_budget      TEXT,\n    foreign key (link_to_budget) references budget(budget_id),\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"income\"\n(\n    income_id      TEXT\n        constraint income_pk\n            primary key,\n    date_received  TEXT,\n    amount         INTEGER,\n    source         TEXT,\n    notes          TEXT,\n    link_to_member TEXT,\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"member\"\n(\n    member_id     TEXT\n        constraint member_pk\n            primary key,\n    first_name    TEXT,\n    last_name     TEXT,\n    email         TEXT,\n    position      TEXT,\n    t_shirt_size  TEXT,\n    phone         TEXT,\n    zip           INTEGER,\n    link_to_major TEXT,\n    foreign key (link_to_major) references major(major_id),\n    foreign key (zip) references zip_code(zip_code)\n);",
+  "q1": "SELECT CAST(SUM(CASE WHEN T2.amount = 50 THEN 1.0 ELSE 0 END) AS REAL) * 100 / COUNT(T2.income_id) FROM member AS T1 INNER JOIN income AS T2 ON T1.member_id = T2.link_to_member WHERE T1.position = 'Member' AND T1.t_shirt_size = 'Medium'",
+  "q2": "SELECT CAST(COUNT(CASE WHEN T2.amount = 50 THEN 1 ELSE NULL END) AS REAL) * 100 / COUNT(T1.member_id) FROM member AS T1 INNER JOIN income AS T2 ON T1.member_id = T2.link_to_member WHERE T1.t_shirt_size = 'Medium' AND T1.position = 'Member'",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT CAST(SUM(CASE WHEN T2.amount = 50 THEN 1.0 ELSE 0 END) AS REAL) * 100 / COUNT(T2.income_id) FROM member AS T1 INNER JOIN income AS T2 ON T1.member_id = T2.link_to_member WHERE T1.position = 'Member' AND T1.t_shirt_size = 'Medium'",
+  "q2_prompt_sql": "SELECT CAST(COUNT(CASE WHEN T2.amount = 50 THEN 1 ELSE NULL END) AS REAL) * 100 / COUNT(T1.member_id) FROM member AS T1 INNER JOIN income AS T2 ON T1.member_id = T2.link_to_member WHERE T1.t_shirt_size = 'Medium' AND T1.position = 'Member'",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO member (member_id, position, t_shirt_size) VALUES ('M1', 'Member', 'Medium'); INSERT INTO income (income_id, link_to_member, amount) VALUES ('I1', 'M1', 50), ('I2', 'M1', 100);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not equivalent because they count different things in the numerator of the percentage calculation. Q1 counts the number of times the amount is 50, while Q2 counts the number of non-NULL values for the amount.",
+  "counterexample_dsp": "The difference is triggered when there are rows in the income table where the amount is 50 and when there are rows where the amount is not 50.",
+  "equiv": "N",
+  "raw_response": "{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 and Q2 are not equivalent because they count different things in the numerator of the percentage calculation. Q1 counts the number of times the amount is 50, while Q2 counts the number of non-NULL values for the amount.\",\n\"counterexample_dsp\": \"The difference is triggered when there are rows in the income table where the amount is 50 and when there are rows where the amount is not 50.\",\n\"counterexample\": \"INSERT INTO member (member_id, position, t_shirt_size) VALUES ('M1', 'Member', 'Medium'); INSERT INTO income (income_id, link_to_member, amount) VALUES ('I1', 'M1', 50), ('I2', 'M1', 100);\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 922,
+    "total_tokens": 1096,
+    "completion_tokens": 174,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 3.609
+  },
+  "started_at": "2026-10-06T20:10:23.305454+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      50.0
+    ]
+  ],
+  "q2_output": [
+    [
+      50.0
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT CAST(SUM(CASE WHEN T2.amount = 50 THEN 1.0 ELSE 0 END) AS REAL) * 100 / COUNT(T2.income_id) FROM member AS T1 INNER JOIN income AS T2 ON T1.member_id = T2.link_to_member WHERE T1.position = 'Member' AND T1.t_shirt_size = 'Medium'",
+  "q2_validation_sql": "SELECT CAST(COUNT(CASE WHEN T2.amount = 50 THEN 1 ELSE NULL END) AS REAL) * 100 / COUNT(T1.member_id) FROM member AS T1 INNER JOIN income AS T2 ON T1.member_id = T2.link_to_member WHERE T1.t_shirt_size = 'Medium' AND T1.position = 'Member'"
+}

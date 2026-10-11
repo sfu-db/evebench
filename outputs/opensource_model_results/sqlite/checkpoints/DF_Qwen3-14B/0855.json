@@ -1,0 +1,56 @@
+{
+  "dbid": "debit_card_specializing",
+  "index": "855",
+  "source_index": "1504",
+  "schema_ddl": "CREATE TABLE customers\n(\n    CustomerID INTEGER UNIQUE     not null\n        primary key,\n    Segment    TEXT null,\n    Currency   TEXT null\n);\n\nCREATE TABLE gasstations\n(\n    GasStationID INTEGER    UNIQUE   not null\n        primary key,\n    ChainID      INTEGER          null,\n    Country      TEXT null,\n    Segment      TEXT null\n);\n\nCREATE TABLE products\n(\n    ProductID   INTEGER   UNIQUE      not null\n        primary key,\n    Description TEXT null\n);\n\nCREATE TABLE \"transactions_1k\"\n(\n    TransactionID INTEGER\n        primary key autoincrement,\n    Date          DATE,\n    Time          TEXT,\n    CustomerID    INTEGER,\n    CardID        INTEGER,\n    GasStationID  INTEGER,\n    ProductID     INTEGER,\n    Amount        INTEGER,\n    Price         REAL\n);\n\nCREATE TABLE \"yearmonth\"\n(\n    CustomerID  INTEGER not null\n        references customers\n            on update cascade on delete cascade\n        references customers,\n    Date        TEXT    not null,\n    Consumption REAL,\n    primary key (Date, CustomerID)\n);",
+  "q1": "SELECT DISTINCT T1.ProductID, T3.Description FROM transactions_1k AS T1 INNER JOIN customers AS T2 ON T1.CustomerID = T2.CustomerID INNER JOIN products AS T3 ON T1.ProductID = T3.ProductID WHERE T2.Currency = 'EUR'",
+  "q2": "SELECT DISTINCT T3.Description FROM \"transactions_1k\" AS T1 INNER JOIN customers AS T2 ON T1.CustomerID = T2.CustomerID INNER JOIN products AS T3 ON T1.ProductID = T3.ProductID WHERE T2.Currency = 'Euro'",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT DISTINCT T1.ProductID, T3.Description FROM transactions_1k AS T1 INNER JOIN customers AS T2 ON T1.CustomerID = T2.CustomerID INNER JOIN products AS T3 ON T1.ProductID = T3.ProductID WHERE T2.Currency = 'EUR'",
+  "q2_prompt_sql": "SELECT DISTINCT T3.Description FROM \"transactions_1k\" AS T1 INNER JOIN customers AS T2 ON T1.CustomerID = T2.CustomerID INNER JOIN products AS T3 ON T1.ProductID = T3.ProductID WHERE T2.Currency = 'Euro'",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO customers (CustomerID, Currency) VALUES (1, 'EUR'), (2, 'Euro');\nINSERT INTO products (ProductID, Description) VALUES (101, 'Widget A'), (102, 'Widget A');\nINSERT INTO transactions_1k (TransactionID, CustomerID, ProductID) VALUES (1, 1, 101), (2, 2, 102);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Queries differ in WHERE clause (case-sensitive 'EUR' vs 'Euro') and SELECT list (Q1 includes ProductID).",
+  "counterexample_dsp": "A customer with Currency 'EUR' and another with 'Euro', both linked to transactions with same product description but different ProductIDs.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Queries differ in WHERE clause (case-sensitive 'EUR' vs 'Euro') and SELECT list (Q1 includes ProductID).\",\n\"counterexample_dsp\": \"A customer with Currency 'EUR' and another with 'Euro', both linked to transactions with same product description but different ProductIDs.\",\n\"counterexample\": \"INSERT INTO customers (CustomerID, Currency) VALUES (1, 'EUR'), (2, 'Euro');\\nINSERT INTO products (ProductID, Description) VALUES (101, 'Widget A'), (102, 'Widget A');\\nINSERT INTO transactions_1k (TransactionID, CustomerID, ProductID) VALUES (1, 1, 101), (2, 2, 102);\"\n}",
+  "reasoning": "\nOkay, let's start by looking at the two queries, Q1 and Q2. \n\nFirst, Q1 selects DISTINCT T1.ProductID and T3.Description from transactions_1k (T1) joined with customers (T2) on CustomerID, and products (T3) on ProductID. The WHERE clause filters where T2.Currency is 'EUR'. \n\nQ2 is similar but selects only T3.Description, and the WHERE condition checks for T2.Currency = 'Euro'. \n\nSo the main differences are: \n1. Q1 includes ProductID in the SELECT, while Q2 doesn't.\n2. The WHERE clause uses 'EUR' vs 'Euro' for the currency.\n\nNow, the first thing to note is that the WHERE clauses are different. If the Currency in the customers table has entries that are 'EUR' and 'Euro', then the WHERE conditions would filter different rows. However, if all entries are either 'EUR' or 'Euro', but the query uses different strings, that would affect the result. But the problem says the schema allows Currency to be TEXT, so it's possible that some entries are 'EUR' and others 'Euro'.\n\nBut wait, the question is about whether the queries are semantically equivalent. The first difference is the WHERE clause's condition. If the database has customers with Currency 'EUR' and others with 'Euro', then Q1 and Q2 would have different WHERE conditions, leading to different sets of rows. \n\nHowever, maybe the user intended that 'EUR' and 'Euro' are the same, but in SQL, string comparisons are case-sensitive unless the collation is set otherwise. So if the database is case-sensitive, then 'EUR' and 'Euro' are different. \n\nSo if there's a customer with Currency 'Euro', Q2 would include them, but Q1 would not. Conversely, a customer with 'EUR' would be included in Q1 but not in Q2. \n\nBut also, Q1 selects ProductID and Description, while Q2 selects only Description. Even if the WHERE conditions were the same, the SELECT lists differ. However, since they are using DISTINCT, the presence of ProductID in Q1 might lead to different grouping. For example, if two different ProductIDs have the same Description, Q1 would return them as separate rows (since ProductID is part of the DISTINCT), while Q2 would return the same Description once. \n\nBut the main issue here is the WHERE clause. Let's check both differences.\n\nFirst, the WHERE clause. If the Currency is stored as 'EUR' in some rows and 'Euro' in others, then Q1 and Q2 would have different results. \n\nSecond, the SELECT list. Q1 has ProductID and Description, Q2 has only Description. So even if the WHERE conditions were the same, the results would differ. However, the problem is whether the queries are semantically equivalent. If the goal is to get distinct product descriptions from transactions in EUR, then Q2 is missing ProductID, but maybe the user intended that. However, the main difference here is the WHERE clause's value.\n\nSo, the first thing is that the WHERE conditions are different. If there are customers with Currency 'EUR' and others with 'Euro', then the two queries would have different results. \n\nBut the problem says to determine if they are semantically equivalent. If the WHERE conditions are different, then the queries are not equivalent. \n\nBut wait, maybe the user made a typo, but according to the problem, we need to treat them as written. So Q1 uses 'EUR' and Q2 uses 'Euro'. \n\nTherefore, the queries are not equivalent. \n\nNow, for the counterexample. We need to create a scenario where there are customers with Currency 'EUR' and 'Euro'. Let's say we have two customers: one with 'EUR' and another with 'Euro'. Then, Q1 would include the first customer's transactions, and Q2 would include the second's. \n\nAdditionally, the SELECT lists differ. Suppose there are two products with the same description but different ProductIDs. Then, Q1 would return both (as distinct pairs), while Q2 would return one. But the main difference is the WHERE condition. \n\nBut to make the counterexample, perhaps the easiest is to have a customer with Currency 'EUR' and another with 'Euro', and transactions linked to both. \n\nSo, let's create:\n\nCustomer1: CustomerID=1, Currency='EUR'\nCustomer2: CustomerID=2, Currency='Euro'\n\nThen, transactions_1k entries linked to both customers. \n\nAssuming that the products have the same description, but different ProductIDs. \n\nIn Q1, since the WHERE is 'EUR', only Customer1's transactions are included. The SELECT includes ProductID and Description. So if there are two products with same Description, they would be two rows. \n\nIn Q2, the WHERE is 'Euro', so only Customer2's transactions are included. The SELECT is only Description, so if the product's Description is same, it would be one row. \n\nBut to make the counterexample, perhaps we can have:\n\nCustomer1 (Currency 'EUR') has a transaction with ProductID 1, Description 'Widget A'.\nCustomer2 (Currency 'Euro') has a transaction with ProductID 2, Description 'Widget A'.\n\nThen Q1 would return (1, 'Widget A') and Q2 would return ('Widget A'). So the results are different. \n\nAlternatively, if Q2's WHERE is 'Euro' and there are no such customers, then Q2 returns nothing. But if there are customers with 'Euro', then Q2 includes them. \n\nSo the main difference is the WHERE condition. Therefore, the queries are not equivalent. \n\nSo the answer is that they are not equivalent because the WHERE conditions differ (case-sensitive comparison), and the SELECT lists differ (ProductID included in Q1 but not in Q2). However, the main reason for inequivalence is the WHERE clause. \n\nBut the problem says to determine if they are semantically equivalent. Even if the SELECT lists differ, but the WHERE is different, the queries are not equivalent. \n\nSo the counterexample would involve a customer with 'EUR' and another with 'Euro', and transactions linked to both. Then, Q1 would return the EUR's transactions and Q2 the Euro's. \n\nSo the JSON response should be \"equiv\": \"N\", with explanation about the WHERE clause's case sensitivity and the SELECT lists. The counterexample would include inserting such data.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 585,
+    "total_tokens": 2109,
+    "completion_tokens": 1524,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1349
+    },
+    "generation_seconds": 48.719
+  },
+  "started_at": "2026-10-06T21:01:00.121415+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      101,
+      "Widget A"
+    ]
+  ],
+  "q2_output": [
+    [
+      "Widget A"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DISTINCT T1.ProductID, T3.Description FROM transactions_1k AS T1 INNER JOIN customers AS T2 ON T1.CustomerID = T2.CustomerID INNER JOIN products AS T3 ON T1.ProductID = T3.ProductID WHERE T2.Currency = 'EUR'",
+  "q2_validation_sql": "SELECT DISTINCT T3.Description FROM \"transactions_1k\" AS T1 INNER JOIN customers AS T2 ON T1.CustomerID = T2.CustomerID INNER JOIN products AS T3 ON T1.ProductID = T3.ProductID WHERE T2.Currency = 'Euro'"
+}

@@ -1,0 +1,71 @@
+{
+  "dbid": "175",
+  "index": "439",
+  "source_index": "0",
+  "schema_ddl": "CREATE TABLE PERSON (\n    PERSONID INT,\n    FIRSTNAME VARCHAR(255),\n    LASTNAME VARCHAR(255),\n    PRIMARY KEY (PERSONID)\n);\n\nCREATE TABLE ADDRESS (\n    ADDRESSID INT,\n    PERSONID INT,\n    CITY VARCHAR(255),\n    STATE VARCHAR(255),\n    PRIMARY KEY (ADDRESSID, PERSONID),\n    FOREIGN KEY (PERSONID) REFERENCES PERSON(PERSONID)\n);",
+  "q1": "SELECT FIRSTNAME, LASTNAME, CITY, STATE FROM PERSON AS P LEFT OUTER JOIN ADDRESS AS A ON P.PERSONID = A.PERSONID",
+  "q2": "SELECT DISTINCT FIRSTNAME, LASTNAME, CITY, STATE FROM PERSON AS P LEFT JOIN ADDRESS AS A ON P.PERSONID = A.PERSONID",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT FIRSTNAME, LASTNAME, CITY, STATE FROM PERSON AS P LEFT OUTER JOIN ADDRESS AS A ON P.PERSONID = A.PERSONID",
+  "q2_prompt_sql": "SELECT DISTINCT FIRSTNAME, LASTNAME, CITY, STATE FROM PERSON AS P LEFT JOIN ADDRESS AS A ON P.PERSONID = A.PERSONID",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO PERSON (PERSONID, FIRSTNAME, LASTNAME) VALUES (1, 'John', 'Doe'); INSERT INTO ADDRESS (ADDRESSID, PERSONID, CITY, STATE) VALUES (1, 1, 'New York', 'NY'); INSERT INTO ADDRESS (ADDRESSID, PERSONID, CITY, STATE) VALUES (2, 1, 'Los Angeles', 'CA');",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 uses a LEFT OUTER JOIN, which returns all records from the left table (PERSON), and the matched records from the right table (ADDRESS). The result is NULL on the side of the right table, if there is no match. Q2 uses a LEFT JOIN, which also returns all records from the left table (PERSON), and the matched records from the right table (ADDRESS). However, the DISTINCT keyword in Q2 removes duplicate rows from the result set, which can lead to different results if the same person has multiple addresses.",
+  "counterexample_dsp": "The test data should include a person with multiple addresses. The DISTINCT keyword in Q2 will remove duplicate rows, while Q1 will return all rows, including duplicates.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 uses a LEFT OUTER JOIN, which returns all records from the left table (PERSON), and the matched records from the right table (ADDRESS). The result is NULL on the side of the right table, if there is no match. Q2 uses a LEFT JOIN, which also returns all records from the left table (PERSON), and the matched records from the right table (ADDRESS). However, the DISTINCT keyword in Q2 removes duplicate rows from the result set, which can lead to different results if the same person has multiple addresses.\",\n  \"counterexample_dsp\": \"The test data should include a person with multiple addresses. The DISTINCT keyword in Q2 will remove duplicate rows, while Q1 will return all rows, including duplicates.\",\n  \"counterexample\": \"INSERT INTO PERSON (PERSONID, FIRSTNAME, LASTNAME) VALUES (1, 'John', 'Doe'); INSERT INTO ADDRESS (ADDRESSID, PERSONID, CITY, STATE) VALUES (1, 1, 'New York', 'NY'); INSERT INTO ADDRESS (ADDRESSID, PERSONID, CITY, STATE) VALUES (2, 1, 'Los Angeles', 'CA');\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 371,
+    "total_tokens": 616,
+    "completion_tokens": 245,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 4.046
+  },
+  "started_at": "2026-10-06T09:51:29.814556+00:00",
+  "elapsed_seconds": 0.109,
+  "q1_output": [
+    [
+      "John",
+      "Doe",
+      "New York",
+      "NY"
+    ],
+    [
+      "John",
+      "Doe",
+      "Los Angeles",
+      "CA"
+    ]
+  ],
+  "q2_output": [
+    [
+      "John",
+      "Doe",
+      "New York",
+      "NY"
+    ],
+    [
+      "John",
+      "Doe",
+      "Los Angeles",
+      "CA"
+    ]
+  ],
+  "q1_row_count": 2,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT FIRSTNAME, LASTNAME, CITY, STATE FROM PERSON AS P LEFT OUTER JOIN ADDRESS AS A ON P.PERSONID = A.PERSONID",
+  "q2_validation_sql": "SELECT DISTINCT FIRSTNAME, LASTNAME, CITY, STATE FROM PERSON AS P LEFT JOIN ADDRESS AS A ON P.PERSONID = A.PERSONID"
+}

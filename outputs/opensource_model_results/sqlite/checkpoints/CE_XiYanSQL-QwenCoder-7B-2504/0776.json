@@ -1,0 +1,53 @@
+{
+  "dbid": "student_club",
+  "index": "776",
+  "source_index": "1340",
+  "schema_ddl": "CREATE TABLE event\n(\n    event_id   TEXT\n        constraint event_pk\n            primary key,\n    event_name TEXT,\n    event_date TEXT,\n    type       TEXT,\n    notes      TEXT,\n    location   TEXT,\n    status     TEXT\n);\n\nCREATE TABLE major\n(\n    major_id   TEXT\n        constraint major_pk\n            primary key,\n    major_name TEXT,\n    department TEXT,\n    college    TEXT\n);\n\nCREATE TABLE zip_code\n(\n    zip_code    INTEGER\n        constraint zip_code_pk\n            primary key,\n    type        TEXT,\n    city        TEXT,\n    county      TEXT,\n    state       TEXT,\n    short_state TEXT\n);\n\nCREATE TABLE \"attendance\"\n(\n    link_to_event  TEXT,\n    link_to_member TEXT,\n    primary key (link_to_event, link_to_member),\n    foreign key (link_to_event) references event(event_id),\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"budget\"\n(\n    budget_id     TEXT\n            primary key,\n    category      TEXT,\n    spent         REAL,\n    remaining     REAL,\n    amount        INTEGER,\n    event_status  TEXT,\n    link_to_event TEXT,\n    foreign key (link_to_event) references event(event_id)\n);\n\nCREATE TABLE \"expense\"\n(\n    expense_id          TEXT\n            primary key,\n    expense_description TEXT,\n    expense_date        TEXT,\n    cost                REAL,\n    approved            TEXT,\n    link_to_member      TEXT,\n    link_to_budget      TEXT,\n    foreign key (link_to_budget) references budget(budget_id),\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"income\"\n(\n    income_id      TEXT\n        constraint income_pk\n            primary key,\n    date_received  TEXT,\n    amount         INTEGER,\n    source         TEXT,\n    notes          TEXT,\n    link_to_member TEXT,\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"member\"\n(\n    member_id     TEXT\n        constraint member_pk\n            primary key,\n    first_name    TEXT,\n    last_name     TEXT,\n    email         TEXT,\n    position      TEXT,\n    t_shirt_size  TEXT,\n    phone         TEXT,\n    zip           INTEGER,\n    link_to_major TEXT,\n    foreign key (link_to_major) references major(major_id),\n    foreign key (zip) references zip_code(zip_code)\n);",
+  "q1": "SELECT AVG(T2.cost) FROM member AS T1 INNER JOIN expense AS T2 ON T1.member_id = T2.link_to_member WHERE T1.last_name = 'Allen' AND T1.first_name = 'Elijah' AND (SUBSTR(T2.expense_date, 6, 2) = '09' OR SUBSTR(T2.expense_date, 6, 2) = '10')",
+  "q2": "SELECT AVG(cost) FROM expense WHERE link_to_member = (SELECT member_id FROM member WHERE first_name = 'Elijah' AND last_name = 'Allen') AND (STRFTIME('%m', expense_date) = '09' OR STRFTIME('%m', expense_date) = '10')",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT AVG(T2.cost) FROM member AS T1 INNER JOIN expense AS T2 ON T1.member_id = T2.link_to_member WHERE T1.last_name = 'Allen' AND T1.first_name = 'Elijah' AND (SUBSTR(T2.expense_date, 6, 2) = '09' OR SUBSTR(T2.expense_date, 6, 2) = '10')",
+  "q2_prompt_sql": "SELECT AVG(cost) FROM expense WHERE link_to_member = (SELECT member_id FROM member WHERE first_name = 'Elijah' AND last_name = 'Allen') AND (STRFTIME('%m', expense_date) = '09' OR STRFTIME('%m', expense_date) = '10')",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO member (member_id, first_name, last_name) VALUES ('m1', 'Elijah', 'Allen'); INSERT INTO expense (expense_id, expense_date, cost, link_to_member) VALUES ('e1', '2023-09-15', 100.0, 'm1');",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent because Q1 uses SUBSTR to extract the month from the expense_date, while Q2 uses STRFTIME. The SUBSTR function is not locale-aware and can return incorrect results for dates outside the '01' to '12' range, whereas STRFTIME is locale-aware and will correctly interpret the month as a number.",
+  "counterexample_dsp": "The test data should include an expense with a date that, when processed by SUBSTR, results in an incorrect month value, while STRFTIME correctly interprets the month. This will cause the two queries to return different results.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent because Q1 uses SUBSTR to extract the month from the expense_date, while Q2 uses STRFTIME. The SUBSTR function is not locale-aware and can return incorrect results for dates outside the '01' to '12' range, whereas STRFTIME is locale-aware and will correctly interpret the month as a number.\",\n  \"counterexample_dsp\": \"The test data should include an expense with a date that, when processed by SUBSTR, results in an incorrect month value, while STRFTIME correctly interprets the month. This will cause the two queries to return different results.\",\n  \"counterexample\": \"INSERT INTO member (member_id, first_name, last_name) VALUES ('m1', 'Elijah', 'Allen'); INSERT INTO expense (expense_id, expense_date, cost, link_to_member) VALUES ('e1', '2023-09-15', 100.0, 'm1');\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 859,
+    "total_tokens": 1076,
+    "completion_tokens": 217,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 4.234
+  },
+  "started_at": "2026-10-06T16:07:11.288513+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      100.0
+    ]
+  ],
+  "q2_output": [
+    [
+      100.0
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT AVG(T2.cost) FROM member AS T1 INNER JOIN expense AS T2 ON T1.member_id = T2.link_to_member WHERE T1.last_name = 'Allen' AND T1.first_name = 'Elijah' AND (SUBSTR(T2.expense_date, 6, 2) = '09' OR SUBSTR(T2.expense_date, 6, 2) = '10')",
+  "q2_validation_sql": "SELECT AVG(cost) FROM expense WHERE link_to_member = (SELECT member_id FROM member WHERE first_name = 'Elijah' AND last_name = 'Allen') AND (STRFTIME('%m', expense_date) = '09' OR STRFTIME('%m', expense_date) = '10')"
+}

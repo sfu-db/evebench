@@ -1,0 +1,39 @@
+{
+  "dbid": "1149",
+  "index": "394",
+  "source_index": "43",
+  "schema_ddl": "CREATE TABLE VIEWS (\n    ARTICLE_ID INT,\n    AUTHOR_ID INT,\n    VIEWER_ID INT,\n    VIEW_DATE DATE\n);",
+  "q1": "SELECT DISTINCT VIEWER_ID AS ID FROM VIEWS GROUP BY VIEW_DATE, VIEWER_ID HAVING COUNT(DISTINCT ARTICLE_ID) > 1 ORDER BY ID",
+  "q2": "SELECT DISTINCT VIEWER_ID AS ID FROM VIEWS V1 GROUP BY VIEWER_ID, VIEW_DATE HAVING COUNT(DISTINCT ARTICLE_ID) > 1",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT DISTINCT VIEWER_ID AS ID FROM VIEWS GROUP BY VIEW_DATE, VIEWER_ID HAVING COUNT(DISTINCT ARTICLE_ID) > 1 ORDER BY ID",
+  "q2_prompt_sql": "SELECT DISTINCT VIEWER_ID AS ID FROM VIEWS V1 GROUP BY VIEWER_ID, VIEW_DATE HAVING COUNT(DISTINCT ARTICLE_ID) > 1",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries group by VIEWER_ID and VIEW_DATE (order does not affect grouping), filter groups with more than one distinct ARTICLE_ID, and return distinct VIEWER_IDs. The logic and results are identical.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries group by VIEWER_ID and VIEW_DATE (order does not affect grouping), filter groups with more than one distinct ARTICLE_ID, and return distinct VIEWER_IDs. The logic and results are identical.\"\n}",
+  "reasoning": "\nOkay, let's see. I need to determine if Q1 and Q2 are semantically equivalent. Both queries are selecting distinct VIEWER_IDs from the VIEWS table, grouping by VIEWER_ID and VIEW_DATE, and having a count of distinct ARTICLE_IDs greater than 1. The only difference I notice is the order of the columns in the GROUP BY clause. Q1 groups by VIEW_DATE first, then VIEWER_ID, while Q2 groups by VIEWER_ID first, then VIEW_DATE. But since GROUP BY is order-insensitive in SQL, right? Wait, but maybe not when there are multiple columns. Wait, the GROUP BY clause groups rows that have the same values in all the specified columns. So the order of the columns in the GROUP BY shouldn't matter. For example, grouping by (A, B) is the same as (B, A) in terms of grouping. So the grouping would be the same. But wait, in the HAVING clause, they are using COUNT(DISTINCT ARTICLE_ID). So the grouping is based on VIEWER_ID and VIEW_DATE. So regardless of the order, the groups are the same. Therefore, the HAVING condition would be applied to the same groups. So the result of the SELECT should be the same. But maybe I'm missing something. Let me think again.\n\nWait, but what if there are multiple entries with the same VIEWER_ID and VIEW_DATE but different ARTICLE_IDs? For example, if a viewer viewed two different articles on the same date. Then COUNT(DISTINCT ARTICLE_ID) would be 2, which satisfies the HAVING condition. So both queries would include that viewer. But the grouping is based on VIEWER_ID and VIEW_DATE. The order in GROUP BY shouldn't affect the grouping. Therefore, the two queries should be equivalent. But maybe there's a case where the order of grouping affects the aggregation? No, because the grouping is based on the combination of the two columns. So the order shouldn't matter. Therefore, the two queries should be semantically equivalent. So the answer is Y. But wait, let me check again. Maybe the DISTINCT in the SELECT clause? Both have SELECT DISTINCT VIEWER_ID. But since they are grouping by VIEWER_ID, the DISTINCT might be redundant. However, in SQL, when you use GROUP BY, the SELECT clause can have the grouped columns, and using DISTINCT might not change the result. But in this case, since the grouping is by VIEWER_ID and VIEW_DATE, but the SELECT is only VIEWER_ID. So for each group (VIEWER_ID, VIEW_DATE), the VIEWER_ID is the same. So when you do SELECT DISTINCT VIEWER_ID, it's just selecting the VIEWER_ID once per group. But since multiple groups can have the same VIEWER_ID (different dates), the DISTINCT would ensure that each VIEWER_ID is listed once, even if they have multiple dates meeting the condition. But both queries are doing the same. So the output would be the same. Therefore, the answer is Y. But wait, maybe there's a scenario where the grouping order affects the HAVING clause? For example, if the HAVING clause had some aggregate that depends on the order of grouping? But COUNT(DISTINCT ARTICLE_ID) is the same regardless of the grouping order. So I think they are equivalent. Therefore, the answer is Y.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 348,
+    "total_tokens": 1101,
+    "completion_tokens": 753,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 694
+    },
+    "generation_seconds": 24.515
+  },
+  "started_at": "2026-10-06T15:06:15.290263+00:00",
+  "elapsed_seconds": 0.0
+}

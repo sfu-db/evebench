@@ -1,0 +1,58 @@
+{
+  "dbid": "beers",
+  "index": "25",
+  "source_index": "256",
+  "schema_ddl": "CREATE TABLE Bar (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Beer (\n    name VARCHAR NOT NULL,\n    brewer VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Drinker (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Frequents (\n    drinker VARCHAR NOT NULL,\n    bar VARCHAR NOT NULL,\n    times_a_week SMALLINT NOT NULL,\n    PRIMARY KEY (drinker, bar),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (bar) REFERENCES Bar(name)\n);\n\nCREATE TABLE Serves (\n    bar VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    price DECIMAL(5,2) NOT NULL,\n    PRIMARY KEY (bar, beer),\n    FOREIGN KEY (bar) REFERENCES Bar(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);\n\nCREATE TABLE Likes (\n    drinker VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    PRIMARY KEY (drinker, beer),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);",
+  "q1": "SELECT bar FROM Serves GROUP BY bar HAVING COUNT(beer) >= 5",
+  "q2": "SELECT COUNT(*) AS bar_count FROM (SELECT bar FROM serves GROUP BY bar HAVING COUNT(DISTINCT beer) >= 5) AS bars_with_5_beers",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "beers",
+  "q1_prompt_sql": "SELECT bar FROM Serves GROUP BY bar HAVING COUNT(beer) >= 5",
+  "q2_prompt_sql": "SELECT COUNT(*) AS bar_count FROM (SELECT bar FROM serves GROUP BY bar HAVING COUNT(DISTINCT beer) >= 5) AS bars_with_5_beers",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO Bar (name, address) VALUES ('BarA', '123 Main St'), ('BarB', '456 Oak St');\nINSERT INTO Beer (name, brewer) VALUES ('B1', 'BrewerX'), ('B2', 'BrewerX'), ('B3', 'BrewerX'), ('B4', 'BrewerX'), ('B5', 'BrewerX'), ('B6', 'BrewerY'), ('B7', 'BrewerY'), ('B8', 'BrewerY'), ('B9', 'BrewerY'), ('B10', 'BrewerY');\nINSERT INTO Serves (bar, beer, price) VALUES ('BarA', 'B1', 3.50), ('BarA', 'B2', 3.75), ('BarA', 'B3', 4.00), ('BarA', 'B4', 3.90), ('BarA', 'B5', 4.20), ('BarB', 'B6', 3.60), ('BarB', 'B7', 3.80), ('BarB', 'B8', 4.10), ('BarB', 'B9', 3.95), ('BarB', 'B10', 4.30);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 returns the list of bars that serve at least 5 distinct beers, while Q2 returns the count of such bars. When multiple bars meet the condition, Q1 outputs multiple rows and Q2 outputs a single count value.",
+  "counterexample_dsp": "Two bars (BarA and BarB) each serve exactly 5 distinct beers. Q1 returns both bar names, Q2 returns 2 as the count.",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 returns the list of bars that serve at least 5 distinct beers, while Q2 returns the count of such bars. When multiple bars meet the condition, Q1 outputs multiple rows and Q2 outputs a single count value.\",\n  \"counterexample_dsp\": \"Two bars (BarA and BarB) each serve exactly 5 distinct beers. Q1 returns both bar names, Q2 returns 2 as the count.\",\n  \"counterexample\": [\n    \"INSERT INTO Bar (name, address) VALUES ('BarA', '123 Main St'), ('BarB', '456 Oak St');\",\n    \"INSERT INTO Beer (name, brewer) VALUES ('B1', 'BrewerX'), ('B2', 'BrewerX'), ('B3', 'BrewerX'), ('B4', 'BrewerX'), ('B5', 'BrewerX'), ('B6', 'BrewerY'), ('B7', 'BrewerY'), ('B8', 'BrewerY'), ('B9', 'BrewerY'), ('B10', 'BrewerY');\",\n    \"INSERT INTO Serves (bar, beer, price) VALUES ('BarA', 'B1', 3.50), ('BarA', 'B2', 3.75), ('BarA', 'B3', 4.00), ('BarA', 'B4', 3.90), ('BarA', 'B5', 4.20), ('BarB', 'B6', 3.60), ('BarB', 'B7', 3.80), ('BarB', 'B8', 4.10), ('BarB', 'B9', 3.95), ('BarB', 'B10', 4.30);\"\n  ]\n}",
+  "reasoning": "\nOkay, let's tackle this problem. The user wants a counterexample where Q1 and Q2 return different results. First, I need to understand what each query does.\n\nLooking at Q1: It selects 'bar' from Serves, groups by bar, and has a HAVING clause that counts the number of beers (COUNT(beer)) >=5. So, this query is looking for bars that have at least 5 different beers served. But wait, COUNT(beer) in a GROUP BY bar would count the number of rows, which in the Serves table is the number of beers per bar since each (bar, beer) is a unique entry. So COUNT(beer) here is effectively the count of distinct beers per bar. Because each bar and beer combination is unique, COUNT(beer) is the same as COUNT(DISTINCT beer). So Q1 is selecting bars that serve 5 or more different beers.\n\nNow Q2: It selects the count of bars that have COUNT(DISTINCT beer) >=5. The inner query is similar to Q1 but uses COUNT(DISTINCT beer), which is redundant here because in the Serves table, each beer per bar is unique. So the inner query would return the same bars as Q1. Then Q2 counts the number of such bars. So Q1 returns the list of bars, Q2 returns the count of those bars.\n\nSo, the difference between Q1 and Q2 is that Q1 returns the actual bar names, and Q2 returns the number of bars that meet the condition. Therefore, they are not equivalent because one returns a list and the other returns a count. However, the user's example might require that they return different results. Wait, but the user's Q1 and Q2 might have a different structure. Let me check again.\n\nWait, the user's Q1 is: SELECT bar FROM Serves GROUP BY bar HAVING COUNT(beer) >=5. The HAVING clause here is COUNT(beer) >=5. Since each bar can have multiple entries for different beers, the COUNT(beer) would be the number of beers served by that bar. Because each (bar, beer) is unique, COUNT(beer) is the same as COUNT(DISTINCT beer). So Q1 returns the bars that serve at least 5 different beers.\n\nQ2 is: SELECT COUNT(*) AS bar_count FROM (SELECT bar FROM serves GROUP BY bar HAVING COUNT(DISTINCT beer) >=5) AS bars_with_5_beers. So the inner query is selecting bars with COUNT(DISTINCT beer) >=5, which is the same as Q1's condition. Then Q2 counts the number of such bars.\n\nSo the difference is that Q1 returns the list of bars (names), and Q2 returns the count of those bars. Therefore, if there are multiple bars meeting the condition, Q1 would return multiple rows, and Q2 would return a single row with the count. For example, if there are 3 bars that meet the condition, Q1 would return 3 rows (each bar name), and Q2 would return 3 as the count. Therefore, they are not equivalent.\n\nSo to create a counterexample, we need a scenario where there are at least two bars that meet the condition. Let's say two bars, BarA and BarB, each serving 5 or more beers. Then Q1 would return two rows (BarA, BarB), and Q2 would return 2 as the count. Therefore, the results are different.\n\nBut the user's problem says that the queries are not semantically equivalent. So the counterexample needs to have different results. The explanation is that Q1 returns the list of bars, and Q2 returns the count of such bars. Therefore, when there's more than one bar meeting the condition, the results differ.\n\nNow, the test data should have two bars, each with at least 5 different beers. Let's create two bars, Bar1 and Bar2. Each has 5 beers. Then, Q1 will return both bar names, and Q2 will return 2.\n\nSo the counterexample would involve inserting into the Serves table entries for Bar1 and Bar2 each with 5 different beers. Let's make sure that the beers are distinct for each bar. For example, Bar1 serves Beer1-Beer5, and Bar2 serves Beer6-Beer10. Then, each has 5 beers. So when we run Q1, we get Bar1 and Bar2. Q2 counts them as 2.\n\nSo the SQL inserts would be:\n\nINSERT INTO Serves (bar, beer, price) VALUES ('Bar1', 'Beer1', 3.50);\n... for Beer1 to Beer5 for Bar1.\nSame for Bar2 with Beer6 to Beer10.\n\nThat should create the necessary data. Also, need to ensure that the Bar names exist in the Bar table. So we need to insert Bar1 and Bar2 into Bar table, and the Beers into Beer table.\n\nWait, the Beer table requires that each beer has a brewer. So for each beer, we need to insert into Beer with a brewer. For example, Beer1 has a brewer 'BrewerA', etc.\n\nSo the steps would be:\n\n1. Insert Bar1 and Bar2 into Bar table.\n2. Insert Beer1-Beer5 and Beer6-Beer10 into Beer table, each with a brewer.\n3. Insert the corresponding entries into Serves.\n\nThis will satisfy the constraints. Then, when Q1 runs, it returns Bar1 and Bar2. Q2 returns 2. Hence, different results.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 488,
+    "total_tokens": 2071,
+    "completion_tokens": 1583,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1171
+    },
+    "generation_seconds": 50.782
+  },
+  "started_at": "2026-10-06T08:08:30.169900+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "BarA"
+    ],
+    [
+      "BarB"
+    ]
+  ],
+  "q2_output": [
+    [
+      2
+    ]
+  ],
+  "q1_row_count": 2,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT bar FROM Serves GROUP BY bar HAVING COUNT(beer) >= 5",
+  "q2_validation_sql": "SELECT COUNT(*) AS bar_count FROM (SELECT bar FROM serves GROUP BY bar HAVING COUNT(DISTINCT beer) >= 5) AS bars_with_5_beers"
+}

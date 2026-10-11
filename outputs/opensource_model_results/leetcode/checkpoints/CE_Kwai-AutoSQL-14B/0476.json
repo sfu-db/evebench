@@ -1,0 +1,61 @@
+{
+  "dbid": "1113",
+  "index": "476",
+  "source_index": "237",
+  "schema_ddl": "CREATE TABLE ACTIONS (\n    USER_ID INT,\n    POST_ID INT,\n    ACTION_DATE DATE,\n    ACTION ENUM('VIEW', 'LIKE', 'REACTION', 'COMMENT', 'REPORT', 'SHARE'),\n    EXTRA VARCHAR(255),\n    CHECK (ACTION_DATE <= '2019-07-05'),\n    CHECK (ACTION IN ('VIEW', 'LIKE', 'REACTION', 'COMMENT', 'REPORT', 'SHARE'))\n);",
+  "q1": "SELECT EXTRA AS REPORT_REASON, COUNT(DISTINCT POST_ID) AS REPORT_COUNT FROM ACTIONS WHERE ACTION = 'REPORT' AND ACTION_DATE = '2019-07-04' GROUP BY EXTRA",
+  "q2": "SELECT DISTINCT EXTRA AS REPORT_REASON,COUNT(DISTINCT POST_ID) AS REPORT_COUNT FROM ACTIONS WHERE ACTION='REPORT' AND ACTION_DATE='2019-07-04' AND EXTRA IS NOT NULL GROUP BY EXTRA",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT EXTRA AS REPORT_REASON, COUNT(DISTINCT POST_ID) AS REPORT_COUNT FROM ACTIONS WHERE ACTION = 'REPORT' AND ACTION_DATE = '2019-07-04' GROUP BY EXTRA",
+  "q2_prompt_sql": "SELECT DISTINCT EXTRA AS REPORT_REASON,COUNT(DISTINCT POST_ID) AS REPORT_COUNT FROM ACTIONS WHERE ACTION='REPORT' AND ACTION_DATE='2019-07-04' AND EXTRA IS NOT NULL GROUP BY EXTRA",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO ACTIONS (USER_ID, POST_ID, ACTION_DATE, ACTION, EXTRA) VALUES (1, 1, '2019-07-04', 'REPORT', NULL);\nINSERT INTO ACTIONS (USER_ID, POST_ID, ACTION_DATE, ACTION, EXTRA) VALUES (2, 2, '2019-07-04', 'REPORT', 'Spam');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 includes rows with NULL EXTRA values in the grouping, while Q2 explicitly excludes them via EXTRA IS NOT NULL. This leads to different results when NULLs are present in the data.",
+  "counterexample_dsp": "Insert two rows: one with NULL EXTRA and another with 'Spam'. Q1 returns both groups (NULL and Spam), while Q2 returns only Spam.",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 includes rows with NULL EXTRA values in the grouping, while Q2 explicitly excludes them via EXTRA IS NOT NULL. This leads to different results when NULLs are present in the data.\",\n  \"counterexample_dsp\": \"Insert two rows: one with NULL EXTRA and another with 'Spam'. Q1 returns both groups (NULL and Spam), while Q2 returns only Spam.\",\n  \"counterexample\": [\n    \"INSERT INTO ACTIONS (USER_ID, POST_ID, ACTION_DATE, ACTION, EXTRA) VALUES (1, 1, '2019-07-04', 'REPORT', NULL);\",\n    \"INSERT INTO ACTIONS (USER_ID, POST_ID, ACTION_DATE, ACTION, EXTRA) VALUES (2, 2, '2019-07-04', 'REPORT', 'Spam');\"\n  ]\n}",
+  "reasoning": "\nOkay, let's see. I need to find a counterexample where Q1 and Q2 return different results. Let me first understand the two queries.\n\nQ1 selects EXTRA as REPORT_REASON and counts distinct POST_ID where ACTION is 'REPORT' and ACTION_DATE is '2019-07-04', then groups by EXTRA. The DISTINCT in COUNT is on POST_ID.\n\nQ2 is similar but adds a DISTINCT on the entire row (since it's a SELECT DISTINCT) and also has an AND EXTRA IS NOT NULL. Wait, no. Wait, Q2's SELECT is SELECT DISTINCT EXTRA, COUNT(DISTINCT POST_ID)... So the DISTINCT applies to the entire row of the result set. But since they are grouping by EXTRA, the DISTINCT on the outer query might not have much effect. Wait, but GROUP BY already produces unique groups, so maybe the DISTINCT in Q2 is redundant. However, the key difference here is the EXTRA IS NOT NULL condition in Q2. Because Q1 doesn't have that. So if there are rows where EXTRA is NULL, Q1 would include them in the grouping, but Q2 would exclude them.\n\nWait, in Q1, the GROUP BY is on EXTRA. So if there are multiple rows with the same EXTRA value (including NULL), they would be grouped together. But in Q2, they have EXTRA IS NOT NULL, so any rows where EXTRA is NULL are excluded. So the difference arises when there are rows with EXTRA = NULL. Because in Q1, grouping by EXTRA would group all NULLs together, and in Q2, those rows are excluded.\n\nSo if I create a scenario where there are rows with ACTION = 'REPORT', ACTION_DATE = '2019-07-04', and EXTRA = NULL, then Q1 would have a group for NULL, while Q2 would not include those rows. Also, in Q1, the COUNT(DISTINCT POST_ID) for that group would count the distinct POST_IDs from those NULL rows. In Q2, since those rows are excluded, that group wouldn't be present.\n\nSo for example, if I have two rows: one with EXTRA = NULL and another with EXTRA = 'Spam'. Then Q1 would have two groups: one for NULL and one for 'Spam', each with their own count. Q2 would have only the 'Spam' group, because the NULLs are excluded by the IS NOT NULL condition.\n\nWait, but the GROUP BY in Q1 is on EXTRA. So if there are multiple rows with EXTRA = NULL, they would all be grouped under the same group. The SELECT clause would return the EXTRA value (NULL) and the count. In Q2, the same group would be excluded because of the IS NOT NULL. Therefore, the presence of NULLs in EXTRA would cause Q1 to have a group that Q2 doesn't have.\n\nSo to create a counterexample, I need a test case where there are rows with EXTRA = NULL and other rows with non-null EXTRA values. Then Q1 would include the NULL group, and Q2 would not.\n\nLet me think of a specific example. Suppose there are two rows:\n\nRow 1: POST_ID = 1, ACTION = 'REPORT', ACTION_DATE = '2019-07-04', EXTRA = NULL\n\nRow 2: POST_ID = 2, ACTION = 'REPORT', ACTION_DATE = '2019-07-04', EXTRA = 'Spam'\n\nIn Q1, grouping by EXTRA would have two groups: one with NULL and one with 'Spam'. The count for NULL would be 1 (POST_ID 1), and for 'Spam' would be 1 (POST_ID 2). So Q1 returns two rows.\n\nIn Q2, the condition EXTRA IS NOT NULL excludes the first row, so only the 'Spam' group is present, with count 1. So Q2 returns one row. Therefore, the results are different.\n\nAlternatively, if there are two rows with the same EXTRA value but different POST_IDs. Wait, but that's not necessary. The key is the presence of NULLs in EXTRA.\n\nAnother example: suppose there are three rows:\n\nRow 1: POST_ID = 1, ACTION = 'REPORT', ACTION_DATE = '2019-07-04', EXTRA = NULL\n\nRow 2: POST_ID = 1, ACTION = 'REPORT', ACTION_DATE = '2019-07-04', EXTRA = NULL\n\nRow 3: POST_ID = 2, ACTION = 'REPORT', ACTION_DATE = '2019-07-04', EXTRA = 'Spam'\n\nIn Q1, the group for NULL would have COUNT(DISTINCT POST_ID) = 1 (since both rows have POST_ID 1). The group for 'Spam' would have count 1. So Q1 returns two rows.\n\nIn Q2, the first two rows are excluded (NULL), so only the 'Spam' group is present. So Q2 returns one row. Thus, different results.\n\nSo the difference comes from the NULLs in EXTRA. Q1 includes them in grouping, Q2 excludes them with IS NOT NULL.\n\nSo the counterexample would involve inserting rows where EXTRA is NULL and others where it's not.\n\nNow, the schema allows EXTRA to be NULL. The CHECK constraints don't restrict that. So inserting rows with NULL in EXTRA is allowed.\n\nTherefore, the test data should have at least one row with EXTRA = NULL and another with a non-null value. Then Q1 and Q2 will differ.\n\nSo the counterexample would be:\n\nINSERT INTO ACTIONS (USER_ID, POST_ID, ACTION_DATE, ACTION, EXTRA) VALUES (1, 1, '2019-07-04', 'REPORT', NULL);\n\nINSERT INTO ACTIONS (USER_ID, POST_ID, ACTION_DATE, ACTION, EXTRA) VALUES (1, 2, '2019-07-04', 'REPORT', 'Spam');\n\nThen Q1 would have two groups: NULL and Spam. Q2 would have only Spam.\n\nAnother case: if there are two rows with same EXTRA but different POST_IDs. But the main point is the NULL.\n\nSo the explanation is that Q1 includes rows where EXTRA is NULL, grouping them under a single group, while Q2 excludes those rows due to the IS NOT NULL condition, leading to different results.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 382,
+    "total_tokens": 1913,
+    "completion_tokens": 1531,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1343
+    },
+    "generation_seconds": 52.937
+  },
+  "started_at": "2026-10-06T14:08:06.092056+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      null,
+      1
+    ],
+    [
+      "Spam",
+      1
+    ]
+  ],
+  "q2_output": [
+    [
+      "Spam",
+      1
+    ]
+  ],
+  "q1_row_count": 2,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT EXTRA AS REPORT_REASON, COUNT(DISTINCT POST_ID) AS REPORT_COUNT FROM ACTIONS WHERE ACTION = 'REPORT' AND ACTION_DATE = '2019-07-04' GROUP BY EXTRA",
+  "q2_validation_sql": "SELECT DISTINCT EXTRA AS REPORT_REASON,COUNT(DISTINCT POST_ID) AS REPORT_COUNT FROM ACTIONS WHERE ACTION='REPORT' AND ACTION_DATE='2019-07-04' AND EXTRA IS NOT NULL GROUP BY EXTRA"
+}

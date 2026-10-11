@@ -1,0 +1,39 @@
+{
+  "dbid": "toxicology",
+  "index": "159",
+  "source_index": "223",
+  "schema_ddl": "CREATE TABLE `atom` (\n  `atom_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `element` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `bond` (\n  `bond_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `bond_type` TEXT DEFAULT NULL,\n  PRIMARY KEY (`bond_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `connected` (\n  `atom_id` TEXT NOT NULL,\n  `atom_id2` TEXT NOT NULL,\n  `bond_id` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`,`atom_id2`),\n  FOREIGN KEY (`atom_id`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`atom_id2`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`bond_id`) REFERENCES `bond` (`bond_id`) ON DELETE CASCADE ON UPDATE CASCADE\n);\n\nCREATE TABLE `molecule` (\n  `molecule_id` TEXT NOT NULL,\n  `label` TEXT DEFAULT NULL,\n  PRIMARY KEY (`molecule_id`)\n);",
+  "q1": "SELECT COUNT(CASE WHEN T.label = '+' THEN T.molecule_id ELSE NULL END) - COUNT(CASE WHEN T.label = '-' THEN T.molecule_id ELSE NULL END) AS diff_car_notcar FROM molecule AS t",
+  "q2": "SELECT SUM(CASE WHEN label = '+' THEN 1 ELSE 0 END) - SUM(CASE WHEN label = '-' THEN 1 ELSE 0 END) AS DIFFERENCE FROM molecule",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT COUNT(CASE WHEN T.label = '+' THEN T.molecule_id ELSE NULL END) - COUNT(CASE WHEN T.label = '-' THEN T.molecule_id ELSE NULL END) AS diff_car_notcar FROM molecule AS t",
+  "q2_prompt_sql": "SELECT SUM(CASE WHEN label = '+' THEN 1 ELSE 0 END) - SUM(CASE WHEN label = '-' THEN 1 ELSE 0 END) AS DIFFERENCE FROM molecule",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries compute the difference between the count of molecules with label '+' and the count of molecules with label '-'. Q1 uses COUNT with CASE expressions, while Q2 uses SUM with CASE expressions returning 1/0. Since COUNT(T.molecule_id) when T.label = '+' is equivalent to SUM(CASE WHEN label = '+' THEN 1 ELSE 0 END), the two queries are semantically equivalent.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries compute the difference between the count of molecules with label '+' and the count of molecules with label '-'. Q1 uses COUNT with CASE expressions, while Q2 uses SUM with CASE expressions returning 1/0. Since COUNT(T.molecule_id) when T.label = '+' is equivalent to SUM(CASE WHEN label = '+' THEN 1 ELSE 0 END), the two queries are semantically equivalent.\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem step by step. So, I need to determine if the two SQL queries Q1 and Q2 are semantically equivalent. If not, I have to provide a counterexample. Let's start by understanding each query.\n\nFirst, looking at the schema. The molecule table has molecule_id and label. The other tables (atom, bond, connected) probably have more details, but the queries are only referencing the molecule table. So both queries are selecting from molecule.\n\nQ1: SELECT COUNT(CASE WHEN T.label = '+' THEN T.molecule_id ELSE NULL END) - COUNT(CASE WHEN T.label = '-' THEN T.molecule_id ELSE NULL END) AS diff_car_notcar FROM molecule AS t\n\nBreaking this down: The first COUNT counts the number of rows where label is '+', because when the condition is true, it returns molecule_id, otherwise NULL. COUNT ignores NULLs, so this effectively counts the number of '+' labels. Similarly, the second COUNT counts the number of '-' labels. The difference between these two counts is the result.\n\nQ2: SELECT SUM(CASE WHEN label = '+' THEN 1 ELSE 0 END) - SUM(CASE WHEN label = '-' THEN 1 ELSE 0 END) AS DIFFERENCE FROM molecule\n\nHere, SUM adds 1 for each '+' row and 0 otherwise, so the first SUM gives the count of '+'. Same for the second SUM with '-'. Then subtracts them.\n\nSo at a high level, both queries compute the count of '+' labels minus the count of '-' labels. That seems equivalent. But wait, are there any differences in how they handle rows?\n\nWait, in Q1, the CASE expressions are inside COUNT. The COUNT function counts non-null values. So when label is '+', T.molecule_id is counted (non-null), else NULL. So COUNT gives the number of '+' rows. Same for the '-' part. Then subtract.\n\nIn Q2, the CASE expressions return 1 or 0, and SUM adds them all. So SUM gives the count of '+' rows, same as COUNT. Then subtract the same for '-'. So the result should be the same.\n\nBut wait, is there any scenario where they differ? Let me think. For example, if a row has label neither '+' nor '-', then in Q1, both CASEs would return NULL, so the first COUNT would not count it (since it's not '+'), and the second COUNT would not count it either (since it's not '-'). So the difference would be count(+) - count(-). In Q2, the first SUM would add 0 for that row (since it's not '+') and the second SUM would add 0 (since it's not '-'), so the difference is same as count(+) - count(-). So same result.\n\nSo in all cases, both queries should compute the same value. Therefore, they are equivalent.\n\nBut maybe I'm missing something. Let me check again. Suppose there are multiple rows in molecule? Wait, molecule table's primary key is molecule_id, so each molecule_id is unique. So each row in molecule is one molecule. So the COUNT and SUM would be over all rows. So no difference.\n\nWait, but what if the molecule table had multiple rows per molecule_id? But no, molecule_id is the primary key. So each row is a unique molecule. So both queries are counting all rows where label is '+' and '-'.\n\nSo I think they are equivalent. Therefore, the answer is Y.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 604,
+    "total_tokens": 1422,
+    "completion_tokens": 818,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 719
+    },
+    "generation_seconds": 26.672
+  },
+  "started_at": "2026-10-06T21:12:50.739242+00:00",
+  "elapsed_seconds": 0.0
+}

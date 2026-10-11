@@ -1,0 +1,39 @@
+{
+  "dbid": "financial",
+  "index": "118",
+  "source_index": "155",
+  "schema_ddl": "CREATE TABLE account\n(\n    account_id  INTEGER default 0 not null\n        primary key,\n    district_id INTEGER default 0 not null,\n    frequency   TEXT   not null,\n    date        DATE          not null,\n    foreign key (district_id) references district (district_id)\n);\n\nCREATE TABLE card\n(\n    card_id INTEGER default 0 not null\n        primary key,\n    disp_id INTEGER           not null,\n    type    TEXT    not null,\n    issued  DATE          not null,\n    foreign key (disp_id) references disp (disp_id)\n);\n\nCREATE TABLE client\n(\n    client_id   INTEGER        not null\n        primary key,\n    gender      TEXT not null,\n    birth_date  DATE       not null,\n    district_id INTEGER        not null,\n    foreign key (district_id) references district (district_id)\n);\n\nCREATE TABLE disp\n(\n    disp_id    INTEGER        not null\n        primary key,\n    client_id  INTEGER        not null,\n    account_id INTEGER        not null,\n    type      TEXT not null,\n    foreign key (account_id) references account (account_id),\n    foreign key (client_id) references client (client_id)\n);\n\nCREATE TABLE district\n(\n    district_id INTEGER default 0 not null\n        primary key,\n    A2          TEXT   not null,\n    A3          TEXT   not null,\n    A4          TEXT       not null,\n    A5          TEXT           not null,\n    A6          TEXT           not null,\n    A7          TEXT           not null,\n    A8          INTEGER        not null,\n    A9          INTEGER           not null,\n    A10         REAL not null,\n    A11         INTEGER           not null,\n    A12         REAL null,\n    A13         REAL not null,\n    A14         INTEGER           not null,\n    A15         INTEGER        null,\n    A16         INTEGER          not null\n);\n\nCREATE TABLE loan\n(\n    loan_id    INTEGER default 0 not null\n        primary key,\n    account_id INTEGER           not null,\n    date       DATE          not null,\n    amount     INTEGER           not null,\n    duration   INTEGER           not null,\n    payments   REAL not null,\n    status     TEXT    not null,\n    foreign key (account_id) references account (account_id)\n);\n\nCREATE TABLE \"order\"\n(\n    order_id   INTEGER default 0 not null\n        primary key,\n    account_id INTEGER           not null,\n    bank_to    TEXT    not null,\n    account_to INTEGER           not null,\n    amount     REAL not null,\n    k_symbol   TEXT    not null,\n    foreign key (account_id) references account (account_id)\n);\n\nCREATE TABLE trans\n(\n    trans_id   INTEGER default 0    not null\n        primary key,\n    account_id INTEGER default 0    not null,\n    date       DATE             not null,\n    type       TEXT       not null,\n    operation  TEXT      null,\n    amount     INTEGER              not null,\n    balance    INTEGER             not null,\n    k_symbol   TEXT      null,\n    bank       TEXT       null,\n    account    INTEGER          null,\n    foreign key (account_id) references account (account_id)\n);",
+  "q1": "SELECT COUNT(T1.client_id) FROM client AS T1 INNER JOIN district AS T2 ON T1.district_id = T2.district_id WHERE T1.gender = 'M' AND T2.A2 = 'Hl.m. Praha'",
+  "q2": "SELECT COUNT(T1.client_id) FROM client AS T1 INNER JOIN district AS T2 ON T1.district_id = T2.district_id WHERE T2.A2 = 'Hl.m. Praha' AND T1.gender = 'M'",
+  "dialect": "sqlite",
+  "ground_truth": "EQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT COUNT(T1.client_id) FROM client AS T1 INNER JOIN district AS T2 ON T1.district_id = T2.district_id WHERE T1.gender = 'M' AND T2.A2 = 'Hl.m. Praha'",
+  "q2_prompt_sql": "SELECT COUNT(T1.client_id) FROM client AS T1 INNER JOIN district AS T2 ON T1.district_id = T2.district_id WHERE T2.A2 = 'Hl.m. Praha' AND T1.gender = 'M'",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are semantically equivalent because the WHERE clause conditions are logically identical (gender filter and district A2 value check), and SQL evaluates AND conditions commutatively. The order of conditions in the WHERE clause does not affect the result set.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Q1 and Q2 are semantically equivalent because the WHERE clause conditions are logically identical (gender filter and district A2 value check), and SQL evaluates AND conditions commutatively. The order of conditions in the WHERE clause does not affect the result set.\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem. So, the user wants to know if Q1 and Q2 are semantically equivalent. Let me look at the queries again.\n\nQ1 and Q2 both count the number of client_id from the client table joined with district, with two conditions: T1.gender = 'M' and T2.A2 = 'Hl.m. Praha'. The only difference I see is the order of the WHERE clauses. In Q1, it's T1.gender first, then T2.A2. In Q2, it's T2.A2 first, then T1.gender.\n\nWait, but in SQL, the order of conditions in the WHERE clause doesn't affect the result. The WHERE clause is a logical AND, so the order shouldn't matter. Both queries should filter the same rows. The join condition is the same, and the filters are the same. So, logically, they should produce the same count. \n\nBut maybe there's a trick here. Let me double-check. Are there any cases where the order might matter? Like if one of the conditions could be null or something? But the gender is 'M' which is a string, and A2 is a string. The schema says that in the district table, A2 is not null. So both conditions are checking for specific values. \n\nSo, the WHERE clauses in both queries are logically equivalent. Therefore, the count should be the same. So, the answer should be equivalent. \n\nBut wait, maybe there's a typo in the queries? Let me check again. No, both have the same conditions, just swapped order. So, the answer is Y. They are equivalent. No counterexample needed.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 1021,
+    "total_tokens": 1439,
+    "completion_tokens": 418,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 350
+    },
+    "generation_seconds": 13.969
+  },
+  "started_at": "2026-10-06T20:20:03.582046+00:00",
+  "elapsed_seconds": 0.0
+}

@@ -1,0 +1,61 @@
+{
+  "dbid": "beers",
+  "index": "114",
+  "source_index": "1938",
+  "schema_ddl": "CREATE TABLE Bar (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Beer (\n    name VARCHAR NOT NULL,\n    brewer VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Drinker (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Frequents (\n    drinker VARCHAR NOT NULL,\n    bar VARCHAR NOT NULL,\n    times_a_week SMALLINT NOT NULL,\n    PRIMARY KEY (drinker, bar),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (bar) REFERENCES Bar(name)\n);\n\nCREATE TABLE Serves (\n    bar VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    price DECIMAL(5,2) NOT NULL,\n    PRIMARY KEY (bar, beer),\n    FOREIGN KEY (bar) REFERENCES Bar(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);\n\nCREATE TABLE Likes (\n    drinker VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    PRIMARY KEY (drinker, beer),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);",
+  "q1": "SELECT f1.drinker, f2.drinker FROM (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f1, (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f2 WHERE f1.drinker < f2.drinker AND f1.st = f2.st",
+  "q2": "SELECT DISTINCT f1.drinker, f2.drinker FROM frequents AS f1, frequents AS f2 GROUP BY f1.drinker, f2.drinker HAVING SUM(f1.times_a_week) = SUM(f2.times_a_week)",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "beers",
+  "q1_prompt_sql": "SELECT f1.drinker, f2.drinker FROM (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f1, (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f2 WHERE f1.drinker < f2.drinker AND f1.st = f2.st",
+  "q2_prompt_sql": "SELECT DISTINCT f1.drinker, f2.drinker FROM frequents AS f1, frequents AS f2 GROUP BY f1.drinker, f2.drinker HAVING SUM(f1.times_a_week) = SUM(f2.times_a_week)",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO Bar (name, address) VALUES ('Bar1', '123 Main St'), ('Bar2', '456 Oak St'), ('Bar3', '789 Pine St');\nINSERT INTO Drinker (name, address) VALUES ('A', '100 Maple Ave'), ('B', '200 Cedar Ln');\nINSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('A', 'Bar1', 3), ('A', 'Bar2', 3), ('B', 'Bar3', 6);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 compares aggregated sums of frequents per drinker and returns pairs where sums are equal and drinker names are ordered. Q2 groups all possible drinker pairs and checks if the product of sum and count of frequents matches between pairs, which requires both equal sums and equal counts. Thus, when two drinkers have the same sum but different counts, Q1 returns the pair but Q2 does not.",
+  "counterexample_dsp": "Drinker A frequents 2 bars (3 times each, total 6), Drinker B frequents 1 bar (6 times, total 6). Q1 pairs them (same sum), Q2 does not (different counts).",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 compares aggregated sums of frequents per drinker and returns pairs where sums are equal and drinker names are ordered. Q2 groups all possible drinker pairs and checks if the product of sum and count of frequents matches between pairs, which requires both equal sums and equal counts. Thus, when two drinkers have the same sum but different counts, Q1 returns the pair but Q2 does not.\",\n  \"counterexample_dsp\": \"Drinker A frequents 2 bars (3 times each, total 6), Drinker B frequents 1 bar (6 times, total 6). Q1 pairs them (same sum), Q2 does not (different counts).\",\n  \"counterexample\": [\n    \"INSERT INTO Bar (name, address) VALUES ('Bar1', '123 Main St'), ('Bar2', '456 Oak St'), ('Bar3', '789 Pine St');\",\n    \"INSERT INTO Drinker (name, address) VALUES ('A', '100 Maple Ave'), ('B', '200 Cedar Ln');\",\n    \"INSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('A', 'Bar1', 3), ('A', 'Bar2', 3), ('B', 'Bar3', 6);\"\n  ]\n}",
+  "reasoning": "\nOkay, I need to figure out why Q1 and Q2 aren't equivalent and create a counterexample where they return different results. Let me start by understanding both queries.\n\nQ1: It's using two subqueries f1 and f2, each aggregating the sum of times_a_week per drinker. Then it joins them on f1.drinker < f2.drinker and where their sums are equal. So this would list pairs of drinkers where their total frequency sums are equal, and the first drinker's name is lexicographically less than the second.\n\nQ2: It's doing a cross join of the frequents table with itself, grouping by pairs of drinkers, and then using HAVING to check if the sum of times_a_week for each drinker in the pairs are equal. Then it selects distinct pairs. But since it's grouping by f1.drinker and f2.drinker, each group is a pair. The HAVING condition checks if the sum of f1's times equals the sum of f2's times. However, in this case, for each pair (d1, d2), the sum for d1 is calculated over all their entries in frequents, same for d2. Wait, no, because the grouping is on f1.drinker and f2.drinker, but the SUM in HAVING would be SUM(f1.times_a_week) and SUM(f2.times_a_week). But since f1 and f2 are from the same table, for each row in the cross join, f1 is a row from frequents and f2 is another row. However, when grouping by f1.drinker and f2.drinker, each group will have all combinations of rows where the drinker pairs are the same. Wait, maybe I'm misunderstanding.\n\nWait, Q2 is grouping by f1.drinker and f2.drinker. For each group (d1, d2), the HAVING clause is checking if the sum of f1.times_a_week across all rows in that group equals the sum of f2.times_a_week. But in the cross join, for each pair (d1, d2), each row in the cross join would have f1 being a row for d1 and f2 being a row for d2. But when grouping by d1 and d2, the SUM(f1.times_a_week) would be the sum of all f1's times for that d1 across all their rows in frequents. Wait, no. Because the grouping is on f1.drinker and f2.drinker. So for a group (d1, d2), all the rows in that group have f1.drinker = d1 and f2.drinker = d2. But the SUM(f1.times_a_week) would sum all the times_a_week from f1 (which is all the rows where f1.drinker = d1) multiplied by the number of rows in f2 where f2.drinker = d2. Wait, that doesn't make sense. Because in a cross join, each row in f1 is combined with each row in f2. So for a group (d1, d2), the number of rows would be (number of times d1 appears in frequents) multiplied by (number of times d2 appears in frequents). But when you group by d1 and d2, the SUM(f1.times_a_week) would be sum over all f1 rows (for d1) multiplied by the count of f2 rows (for d2). Because for each f1 row, you have multiple f2 rows. So the sum would be sum(f1.times) * count(f2.rows). Similarly for sum(f2.times) * count(f1.rows). Therefore, the HAVING condition would be sum(f1.times) * count(f2) = sum(f2.times) * count(f1). That's different from Q1, which just compares the sum of each drinker's total times.\n\nSo Q2 is checking for pairs (d1, d2) where (sum_d1 * count_d2) equals (sum_d2 * count_d1). Whereas Q1 checks for pairs where sum_d1 equals sum_d2. Therefore, if sum_d1 equals sum_d2, then Q1 would include the pair, but Q2 would only include it if sum_d1 * count_d2 equals sum_d2 * count_d1. Which would be true if sum_d1 = sum_d2, but also if sum_d1 and sum_d2 are different but their product with the counts equals. However, if sum_d1 equals sum_d2, then the HAVING condition in Q2 would be sum_d1 * count_d2 = sum_d2 * count_d1. Since sum_d1 = sum_d2, this reduces to count_d2 = count_d1. Therefore, Q2 would only return pairs where sum_d1 = sum_d2 and count_d1 = count_d2. Whereas Q1 would return any pair where sum_d1 = sum_d2, regardless of the count. So if there are two drinkers with the same sum but different counts, Q1 would include them, but Q2 would not. \n\nTherefore, to create a counterexample, I need two drinkers with the same total times_a_week sum, but different number of bars they frequent. For example, Drinker A frequents two bars with 3 times each (total 6), and Drinker B frequents one bar with 6 times (total 6). Then Q1 would pair them because their sums are equal, but Q2 would not, since count_d1 (2) is not equal to count_d2 (1). Thus, Q1 would have (A,B) in the result, but Q2 would not. \n\nLet me test this scenario. \n\nFor Q1: The subqueries f1 and f2 each compute sum per drinker. So A has sum 6, B has sum 6. The join condition is A.drinker < B.drinker (assuming A's name is lex smaller than B's). So (A,B) is included.\n\nFor Q2: The grouping is on (A,B). The HAVING condition would be SUM(f1.times) = SUM(f2.times). But in this case, SUM(f1.times) would be sum of all f1's times for A. But since in the cross join, each row for A is combined with each row for B. So for each row in f1 (A's rows), there are multiple rows in f2 (B's rows). When grouping by (A,B), the SUM(f1.times) would be (3 + 3) multiplied by the number of B's rows (which is 1). So 6 * 1 = 6. Similarly, SUM(f2.times) would be 6 multiplied by the number of A's rows (2). So 6 * 2 = 12. Therefore, 6 != 12, so the HAVING condition fails. Hence, Q2 would not return (A,B).\n\nSo in this case, Q1 returns the pair, Q2 does not. That's a counterexample.\n\nNow, I need to create such data. Let's say:\n\nDrinker A frequents two bars, each with 3 times a week. Drinker B frequents one bar with 6 times a week. \n\nSo the Frequents table would have:\n\n('A', 'Bar1', 3), ('A', 'Bar2', 3), ('B', 'Bar3', 6).\n\nAlso, need to make sure that the other tables (Bar, Beer, etc.) have the necessary entries. For example, Bar1, Bar2, Bar3 must exist. But since the other tables (like Beer, Likes) are not referenced in the queries, maybe we can ignore them. But the schema requires that the foreign keys are valid. So we need to insert into Bar the names of the bars mentioned in Frequents.\n\nSo the steps would be:\n\n1. Insert Bars: Bar1, Bar2, Bar3.\n2. Insert Drinkers: A and B.\n3. Insert into Frequents the entries for A and B as described.\n\nNow, the SQL statements would be:\n\nINSERT INTO Bar (name, address) VALUES ('Bar1', 'addr1'), ('Bar2', 'addr2'), ('Bar3', 'addr3');\nINSERT INTO Drinker (name, address) VALUES ('A', 'addrA'), ('B', 'addrB');\nINSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('A', 'Bar1', 3), ('A', 'Bar2', 3), ('B', 'Bar3', 6);\n\nThis should create the necessary data. Now, when Q1 is run, it would find that A and B have the same sum (6), and since A < B, they are included. Q2 would not include them because the HAVING condition isn't met.\n\nAnother possible case: if two drinkers have same sum but different counts. So the counterexample is when sum is same but counts differ. That's the key.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 571,
+    "total_tokens": 2771,
+    "completion_tokens": 2200,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1914
+    },
+    "generation_seconds": 71.062
+  },
+  "started_at": "2026-10-06T08:15:36.395981+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "A",
+      "B"
+    ]
+  ],
+  "q2_output": [
+    [
+      "A",
+      "A"
+    ],
+    [
+      "B",
+      "B"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT f1.drinker, f2.drinker FROM (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f1, (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f2 WHERE f1.drinker < f2.drinker AND f1.st = f2.st",
+  "q2_validation_sql": "SELECT DISTINCT f1.drinker, f2.drinker FROM frequents AS f1, frequents AS f2 GROUP BY f1.drinker, f2.drinker HAVING SUM(f1.times_a_week) = SUM(f2.times_a_week)"
+}

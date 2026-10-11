@@ -1,0 +1,61 @@
+{
+  "dbid": "1084",
+  "index": "435",
+  "source_index": "886",
+  "schema_ddl": "CREATE TABLE PRODUCT (\n    PRODUCT_ID INT,\n    PRODUCT_NAME VARCHAR(255),\n    UNIT_PRICE INT,\n    PRIMARY KEY (PRODUCT_ID),\n    CHECK (UNIT_PRICE > 0)\n);\n\nCREATE TABLE SALES (\n    PRODUCT_ID INT,\n    SELLER_ID INT,\n    BUYER_ID INT,\n    SALE_DATE DATE,\n    QUANTITY INT,\n    PRICE INT,\n    FOREIGN KEY (PRODUCT_ID) REFERENCES PRODUCT(PRODUCT_ID),\n    CHECK (QUANTITY > 0),\n    CHECK (PRICE > 0)\n);",
+  "q1": "SELECT P.PRODUCT_ID, P.PRODUCT_NAME FROM PRODUCT P INNER JOIN ( SELECT PRODUCT_ID FROM SALES GROUP BY PRODUCT_ID HAVING MIN(SALE_DATE) >= '2019-01-01' AND MAX(SALE_DATE) <= '2019-03-31' ) S ON (P.PRODUCT_ID = S.PRODUCT_ID)",
+  "q2": "SELECT PRODUCT.PRODUCT_ID, PRODUCT.PRODUCT_NAME FROM PRODUCT WHERE PRODUCT.PRODUCT_ID NOT IN ( SELECT PRODUCT.PRODUCT_ID FROM PRODUCT JOIN SALES ON PRODUCT.PRODUCT_ID = SALES.PRODUCT_ID AND (SALES.SALE_DATE < '2019-01-01' OR SALES.SALE_DATE > '2019-03-31') )",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT P.PRODUCT_ID, P.PRODUCT_NAME FROM PRODUCT P INNER JOIN ( SELECT PRODUCT_ID FROM SALES GROUP BY PRODUCT_ID HAVING MIN(SALE_DATE) >= '2019-01-01' AND MAX(SALE_DATE) <= '2019-03-31' ) S ON (P.PRODUCT_ID = S.PRODUCT_ID)",
+  "q2_prompt_sql": "SELECT PRODUCT.PRODUCT_ID, PRODUCT.PRODUCT_NAME FROM PRODUCT WHERE PRODUCT.PRODUCT_ID NOT IN ( SELECT PRODUCT.PRODUCT_ID FROM PRODUCT JOIN SALES ON PRODUCT.PRODUCT_ID = SALES.PRODUCT_ID AND (SALES.SALE_DATE < '2019-01-01' OR SALES.SALE_DATE > '2019-03-31') )",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO PRODUCT (PRODUCT_ID, PRODUCT_NAME, UNIT_PRICE) VALUES (1, 'Product A', 100);\nINSERT INTO PRODUCT (PRODUCT_ID, PRODUCT_NAME, UNIT_PRICE) VALUES (2, 'Product B', 200);\nINSERT INTO PRODUCT (PRODUCT_ID, PRODUCT_NAME, UNIT_PRICE) VALUES (3, 'Product C', 300);\nINSERT INTO SALES (PRODUCT_ID, SELLER_ID, BUYER_ID, SALE_DATE, QUANTITY, PRICE) VALUES (1, 101, 201, '2019-02-15', 5, 500);\nINSERT INTO SALES (PRODUCT_ID, SELLER_ID, BUYER_ID, SALE_DATE, QUANTITY, PRICE) VALUES (2, 102, 202, '2018-12-31', 2, 400);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 returns products with all sales within the date range and requires at least one sale. Q2 returns products that have no sales outside the date range, including products with no sales at all. A product with no sales is excluded by Q1 but included by Q2.",
+  "counterexample_dsp": "Product 3 has no sales. Q1 excludes it (no sales to join on), while Q2 includes it (NOT IN subquery returns no rows, so condition is true).",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 returns products with all sales within the date range and requires at least one sale. Q2 returns products that have no sales outside the date range, including products with no sales at all. A product with no sales is excluded by Q1 but included by Q2.\",\n  \"counterexample_dsp\": \"Product 3 has no sales. Q1 excludes it (no sales to join on), while Q2 includes it (NOT IN subquery returns no rows, so condition is true).\",\n  \"counterexample\": [\n    \"INSERT INTO PRODUCT (PRODUCT_ID, PRODUCT_NAME, UNIT_PRICE) VALUES (1, 'Product A', 100);\",\n    \"INSERT INTO PRODUCT (PRODUCT_ID, PRODUCT_NAME, UNIT_PRICE) VALUES (2, 'Product B', 200);\",\n    \"INSERT INTO PRODUCT (PRODUCT_ID, PRODUCT_NAME, UNIT_PRICE) VALUES (3, 'Product C', 300);\",\n    \"INSERT INTO SALES (PRODUCT_ID, SELLER_ID, BUYER_ID, SALE_DATE, QUANTITY, PRICE) VALUES (1, 101, 201, '2019-02-15', 5, 500);\",\n    \"INSERT INTO SALES (PRODUCT_ID, SELLER_ID, BUYER_ID, SALE_DATE, QUANTITY, PRICE) VALUES (2, 102, 202, '2018-12-31', 2, 400);\"\n  ]\n}",
+  "reasoning": "\nOkay, let's see. I need to find a counterexample where Q1 and Q2 give different results. First, I should understand what each query is doing.\n\nStarting with Q1. It selects products that have all their sales within the date range from '2019-01-01' to '2019-03-31'. The subquery groups SALES by PRODUCT_ID and checks that the minimum sale date is >= start date and maximum sale date <= end date. So, if a product has any sale outside that range, it's excluded. So Q1 returns products whose all sales are within the period.\n\nNow Q2. It selects products whose product_id is NOT IN a subquery. The subquery finds products that have at least one sale before '2019-01-01' or after '2019-03-31'. So Q2 returns products that have no sales outside the date range. That's the same as Q1, right? Wait, no. Wait, Q1 uses INNER JOIN with the subquery which gives product_ids that have all sales in the range. Q2 uses NOT IN with a subquery that gives product_ids that have any sale outside the range. So logically, they should be equivalent. But the problem says they are not. Hmm, maybe there's a case where a product has no sales at all?\n\nWait, the SALES table has a foreign key to PRODUCT. So a product might have no sales. Let me think. If a product has no sales, then in Q1, the subquery (SELECT PRODUCT_ID FROM SALES GROUP BY ...) would not include that product. So Q1 would not return it because there's no match in the inner join. But Q2: the NOT IN subquery would check for product_ids that have sales outside the date range. If the product has no sales, then the subquery returns nothing. So NOT IN (empty set) is true, so Q2 would include that product. Therefore, Q1 excludes products with no sales, while Q2 includes them. So that's a difference.\n\nSo the counterexample would be a product that has no sales. Let's create such a case. Suppose product A has no sales. Then Q1 would not return it (since no sales means no entry in the subquery), but Q2 would return it (since NOT IN the subquery which returns nothing). So that's a case where they differ.\n\nAnother case: a product that has sales only within the range. Both Q1 and Q2 would include it. But if a product has no sales, then Q2 includes it, Q1 doesn't.\n\nSo the counterexample would have a product with no sales. Let me make that explicit.\n\nLet me create two products: Product 1 with sales in the range, Product 2 with no sales. Then Q1 returns Product 1, Q2 returns both Product 1 and Product 2.\n\nWait, but Product 2 has no sales. Let me check Q2 again. The subquery is: product_id from product join sales on product_id where sale_date < start or > end. If the product has no sales, then the subquery returns nothing. So NOT IN (empty set) is true. So Q2 would return Product 2. Q1 would not return it because the inner join on the subquery (which has no rows for Product 2) would not produce any result. Therefore, Q1 and Q2 differ in this case.\n\nSo the test data needs a product with no sales. Let me set up that scenario.\n\nLet me create three products: P1 with sales in range, P2 with a sale outside the range, and P3 with no sales.\n\nBut let me think again. Let me make a product that has no sales. Let's say product_id 3. Then Q1 would not return it. Q2 would return it. So that's the difference. So the counterexample would have that product.\n\nSo the steps are:\n\nInsert product 1, product 2, product 3.\n\nInsert sales for product 1 with dates in range (say, 2019-02-15).\n\nInsert sales for product 2 with a date outside (say, 2018-12-31).\n\nProduct 3 has no sales.\n\nThen Q1 would return product 1 (all sales in range). Q2 would return product 1 and product 3 (since product 3's product_id is not in the subquery which returns product 2's id).\n\nWait, the subquery in Q2 is: product_id from product join sales where sale_date < '2019-01-01' or > '2019-03-31'. So product 2 would be in that subquery. So NOT IN would exclude product 2. But product 3 has no sales, so the subquery returns nothing, so product 3 is included in Q2. So Q2 returns products that are not in the subquery. So product 1 is not in the subquery (since all its sales are in range). So product 1 is included. Product 3 is included. So Q2 returns both. Q1 returns only product 1. Hence, different results.\n\nYes, that's a good example. So the counterexample is a product with no sales. That's the key difference between the two queries.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 466,
+    "total_tokens": 1936,
+    "completion_tokens": 1470,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1138
+    },
+    "generation_seconds": 51.047
+  },
+  "started_at": "2026-10-06T13:55:36.628869+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      1,
+      "Product A"
+    ]
+  ],
+  "q2_output": [
+    [
+      1,
+      "Product A"
+    ],
+    [
+      3,
+      "Product C"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT P.PRODUCT_ID, P.PRODUCT_NAME FROM PRODUCT P INNER JOIN ( SELECT PRODUCT_ID FROM SALES GROUP BY PRODUCT_ID HAVING MIN(SALE_DATE) >= '2019-01-01' AND MAX(SALE_DATE) <= '2019-03-31' ) S ON (P.PRODUCT_ID = S.PRODUCT_ID)",
+  "q2_validation_sql": "SELECT PRODUCT.PRODUCT_ID, PRODUCT.PRODUCT_NAME FROM PRODUCT WHERE PRODUCT.PRODUCT_ID NOT IN ( SELECT PRODUCT.PRODUCT_ID FROM PRODUCT JOIN SALES ON PRODUCT.PRODUCT_ID = SALES.PRODUCT_ID AND (SALES.SALE_DATE < '2019-01-01' OR SALES.SALE_DATE > '2019-03-31') )"
+}

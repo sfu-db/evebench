@@ -1,0 +1,69 @@
+{
+  "dbid": "beers",
+  "index": "20",
+  "source_index": "178",
+  "schema_ddl": "CREATE TABLE Bar (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Beer (\n    name VARCHAR NOT NULL,\n    brewer VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Drinker (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Frequents (\n    drinker VARCHAR NOT NULL,\n    bar VARCHAR NOT NULL,\n    times_a_week SMALLINT NOT NULL,\n    PRIMARY KEY (drinker, bar),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (bar) REFERENCES Bar(name)\n);\n\nCREATE TABLE Serves (\n    bar VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    price DECIMAL(5,2) NOT NULL,\n    PRIMARY KEY (bar, beer),\n    FOREIGN KEY (bar) REFERENCES Bar(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);\n\nCREATE TABLE Likes (\n    drinker VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    PRIMARY KEY (drinker, beer),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);",
+  "q1": "SELECT f1.drinker, f2.drinker FROM (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f1, (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f2 WHERE f1.drinker < f2.drinker AND f1.st = f2.st",
+  "q2": "SELECT drinkerA.name, drinkerB.name FROM drinker AS drinkerA, drinker AS drinkerB WHERE (SELECT SUM(frequents.times_a_week) FROM frequents WHERE frequents.drinker = drinkerA.name) = (SELECT SUM(frequents.times_a_week) FROM frequents WHERE frequents.drinker = drinkerB.name)",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "beers",
+  "q1_prompt_sql": "SELECT f1.drinker, f2.drinker FROM (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f1, (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f2 WHERE f1.drinker < f2.drinker AND f1.st = f2.st",
+  "q2_prompt_sql": "SELECT drinkerA.name, drinkerB.name FROM drinker AS drinkerA, drinker AS drinkerB WHERE (SELECT SUM(frequents.times_a_week) FROM frequents WHERE frequents.drinker = drinkerA.name) = (SELECT SUM(frequents.times_a_week) FROM frequents WHERE frequents.drinker = drinkerB.name)",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO Bar (name, address) VALUES ('Bar1', '789'), ('Bar2', '101');\nINSERT INTO Drinker (name, address) VALUES ('Alice', '123'), ('Bob', '456');\nINSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('Alice', 'Bar1', 2), ('Alice', 'Bar2', 3), ('Bob', 'Bar1', 1), ('Bob', 'Bar2', 4);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 returns only pairs where drinkerA < drinkerB (lex order) and their sums are equal. Q2 returns all pairs (including same drinker, reversed order) where sums are equal. When two drinkers have the same sum, Q1 outputs one row while Q2 outputs four rows.",
+  "counterexample_dsp": "Two drinkers (Alice, Bob) with identical total times_a_week (5). Q1 outputs (Alice, Bob) once. Q2 outputs (Alice,Alice), (Alice,Bob), (Bob,Alice), (Bob,Bob).",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 returns only pairs where drinkerA < drinkerB (lex order) and their sums are equal. Q2 returns all pairs (including same drinker, reversed order) where sums are equal. When two drinkers have the same sum, Q1 outputs one row while Q2 outputs four rows.\",\n  \"counterexample_dsp\": \"Two drinkers (Alice, Bob) with identical total times_a_week (5). Q1 outputs (Alice, Bob) once. Q2 outputs (Alice,Alice), (Alice,Bob), (Bob,Alice), (Bob,Bob).\",\n  \"counterexample\": [\n    \"INSERT INTO Bar (name, address) VALUES ('Bar1', '789'), ('Bar2', '101');\",\n    \"INSERT INTO Drinker (name, address) VALUES ('Alice', '123'), ('Bob', '456');\",\n    \"INSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('Alice', 'Bar1', 2), ('Alice', 'Bar2', 3), ('Bob', 'Bar1', 1), ('Bob', 'Bar2', 4);\"\n  ]\n}",
+  "reasoning": "\nOkay, let's tackle this problem. So, I need to find a counterexample where Q1 and Q2 produce different results. First, I need to understand what each query does.\n\nLooking at Q1: It uses two subqueries, f1 and f2, both aggregating the sum of times_a_week per drinker from the Frequents table. Then it does a cross join between these two subqueries and filters where f1.drinker < f2.drinker and their sums are equal. So, for each pair of drinkers (A, B) where A's name is lexicographically less than B's and their total times_a_week are the same, it returns A and B.\n\nQ2: It's doing a cross join of the Drinker table with itself (drinkerA and drinkerB). Then it compares the sum of times_a_week for each drinker using subqueries. If they are equal, it returns their names. So, for every pair (A, B) where their total times_a_week are equal, regardless of the order, it returns them.\n\nSo the key difference is that Q1 only returns pairs where drinkerA < drinkerB (lex order), while Q2 returns all pairs (A, B) where their sums are equal, including (B, A) and (A, A) if applicable. Wait, but in Q1, the cross join between f1 and f2 would produce all possible pairs, but the WHERE clause f1.drinker < f2.drinker ensures that only one direction is considered. However, in Q2, since it's a cross join of the same table, each pair (A, B) and (B, A) would be considered separately unless A and B are the same.\n\nWait, but Q1's approach is to take two instances of the same aggregated subquery and then pair them with f1.drinker < f2.drinker. So for two drinkers with same sum, Q1 would output (A, B) once if A < B, whereas Q2 would output both (A, B) and (B, A) if they are different. Also, Q2 would include (A, A) if the sum is same (which it always is). So Q2 would have more rows than Q1.\n\nBut the question is to find a case where they differ. Let's think of a scenario where two drinkers have the same total times_a_week. Let's say there are two drinkers: Alice and Bob, both with sum 5. Then Q1 would return (Alice, Bob) once. Q2 would return (Alice, Alice), (Alice, Bob), (Bob, Alice), (Bob, Bob). But wait, the WHERE clause in Q2 is comparing the sums, so if they are equal, all those pairs would be present. So in this case, Q1 would have one row, Q2 would have four rows (assuming Alice < Bob). Wait, but in Q2, the cross join of drinkerA and drinkerB would produce all possible pairs. So if there are two drinkers, the cross join would produce 4 rows. But the WHERE condition would filter those where their sums are equal. So if both have same sum, all four rows would be output.\n\nWait, but in Q1, the cross join of f1 and f2 is actually a self-join where each row in f1 is paired with each row in f2. Since f1 and f2 are the same subquery, each row in f1 is paired with each row in f2. Then the WHERE f1.drinker < f2.drinker would give exactly the pairs where the first drinker's name is less than the second. So for two drinkers with same sum, Q1 would return one pair (A, B) if A < B. Q2 would return (A, A), (A, B), (B, A), (B, B). But in Q2, when A and B are same, the sum is same, so (A, A) would be included. So in this case, Q1 and Q2 would have different results.\n\nBut maybe the question is looking for a case where the output rows differ. Let me think of a concrete example. Suppose there are three drinkers: Alice (sum 5), Bob (sum 5), and Charlie (sum 5). Then Q1 would return all pairs where drinkerA < drinkerB: (Alice, Bob), (Alice, Charlie), (Bob, Charlie). Q2 would return all pairs (including same pairs and all permutations): (Alice, Alice), (Alice, Bob), (Alice, Charlie), (Bob, Alice), (Bob, Bob), (Bob, Charlie), (Charlie, Alice), (Charlie, Bob), (Charlie, Charlie). So clearly different results.\n\nBut maybe the user wants a simpler case. Let's think of two drinkers with same sum. Then Q1 returns one row (A, B), Q2 returns four rows (A, A), (A, B), (B, A), (B, B). So different results. So if I create a test case with two drinkers with same sum, then Q1 and Q2 would have different outputs.\n\nAlternatively, what if there's a drinker with sum 0? Wait, but in the Frequents table, times_a_week is a SMALLINT NOT NULL. So if a drinker doesn't frequent any bar, their sum would be 0? No, because the Frequents table's primary key is (drinker, bar). So if a drinker isn't in Frequents at all, then the SUM would be 0. Wait, no. If a drinker is not present in the Frequents table, then the SUM would be 0? Let me check. The subquery in Q1 is SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker. So if a drinker isn't in Frequents, they won't appear in the result of that subquery. Wait, no. Because GROUP BY drinker groups all rows from Frequents. So if a drinker has no rows in Frequents, then they won't appear in the result. Wait, no. Wait, the GROUP BY clause groups rows from the Frequents table. So if a drinker isn't in Frequents, they won't be in the result of the subquery. But in Q2, the subquery is (SELECT SUM(...) FROM frequents WHERE ...) which would return 0 if the drinker isn't in Frequents. So for drinkers not in Frequents, their sum is 0. But in Q1, the subquery would not include them because they have no rows in Frequents. So Q1's f1 and f2 would only have drinkers that are present in Frequents. So if there are drinkers not in Frequents, they wouldn't be part of Q1's output, but would be part of Q2's output if their sum (zero) matches another sum.\n\nBut maybe that's complicating. Let's create a simple case with two drinkers, both present in Frequents, with same sum. Let's say:\n\nDrinker Alice frequents bar1 2 times a week, bar2 3 times a week. Total sum 5.\n\nDrinker Bob frequents bar1 1 times a week, bar2 4 times a week. Total sum 5.\n\nSo both have sum 5. Then Q1 would return (Alice, Bob) once. Q2 would return (Alice, Alice), (Alice, Bob), (Bob, Alice), (Bob, Bob). So different results.\n\nAlternatively, if I have three drinkers with same sum. But the main point is that Q1 only returns pairs where drinkerA < drinkerB, while Q2 returns all pairs including same and reversed order. So the difference is clear.\n\nSo the counterexample would be two drinkers with same total times_a_week. Then Q1 returns one row, Q2 returns four rows (assuming two drinkers). Therefore, the output is different.\n\nNow, I need to create a test database with that scenario. Let's create two drinkers, Alice and Bob. Each has entries in the Frequents table that sum to the same value.\n\nLet me insert into Drinker:\n\nINSERT INTO Drinker (name, address) VALUES ('Alice', '123'), ('Bob', '456');\n\nThen into Frequents:\n\nFor Alice: two entries. Let's say she frequents bar 'Bar1' 2 times a week and 'Bar2' 3 times a week. Sum 5.\n\nFor Bob: 'Bar1' 1 time and 'Bar2' 4 times. Sum 5.\n\nSo:\n\nINSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('Alice', 'Bar1', 2), ('Alice', 'Bar2', 3), ('Bob', 'Bar1', 1), ('Bob', 'Bar2', 4);\n\nI also need to insert into Bar table. The Bar table requires name and address. Let's add Bar1 and Bar2.\n\nINSERT INTO Bar (name, address) VALUES ('Bar1', '789'), ('Bar2', '101');\n\nSo with this data, Q1 would output (Alice, Bob) once, and Q2 would output four rows: (Alice, Alice), (Alice, Bob), (Bob, Alice), (Bob, Bob).\n\nTherefore, the results are different. Hence, this is a valid counterexample.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 592,
+    "total_tokens": 2839,
+    "completion_tokens": 2247,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1990
+    },
+    "generation_seconds": 72.266
+  },
+  "started_at": "2026-10-06T08:39:45.549832+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "Alice",
+      "Bob"
+    ]
+  ],
+  "q2_output": [
+    [
+      "Alice",
+      "Alice"
+    ],
+    [
+      "Alice",
+      "Bob"
+    ],
+    [
+      "Bob",
+      "Alice"
+    ],
+    [
+      "Bob",
+      "Bob"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 4,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT f1.drinker, f2.drinker FROM (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f1, (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f2 WHERE f1.drinker < f2.drinker AND f1.st = f2.st",
+  "q2_validation_sql": "SELECT drinkerA.name, drinkerB.name FROM drinker AS drinkerA, drinker AS drinkerB WHERE (SELECT SUM(frequents.times_a_week) FROM frequents WHERE frequents.drinker = drinkerA.name) = (SELECT SUM(frequents.times_a_week) FROM frequents WHERE frequents.drinker = drinkerB.name)"
+}

@@ -1,0 +1,55 @@
+{
+  "dbid": "toxicology",
+  "index": "190",
+  "source_index": "274",
+  "schema_ddl": "CREATE TABLE `atom` (\n  `atom_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `element` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `bond` (\n  `bond_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `bond_type` TEXT DEFAULT NULL,\n  PRIMARY KEY (`bond_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `connected` (\n  `atom_id` TEXT NOT NULL,\n  `atom_id2` TEXT NOT NULL,\n  `bond_id` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`,`atom_id2`),\n  FOREIGN KEY (`atom_id`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`atom_id2`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`bond_id`) REFERENCES `bond` (`bond_id`) ON DELETE CASCADE ON UPDATE CASCADE\n);\n\nCREATE TABLE `molecule` (\n  `molecule_id` TEXT NOT NULL,\n  `label` TEXT DEFAULT NULL,\n  PRIMARY KEY (`molecule_id`)\n);",
+  "q1": "SELECT CAST(COUNT(CASE WHEN T1.element = 'cl' THEN T1.element ELSE NULL END) AS REAL) * 100 / COUNT(T1.element) FROM atom AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id WHERE T2.label = '+'",
+  "q2": "SELECT CAST(SUM(CASE WHEN T1.element = 'cl' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(T2.molecule_id) FROM atom AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id WHERE T2.label = '+'",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT CAST(COUNT(CASE WHEN T1.element = 'cl' THEN T1.element ELSE NULL END) AS REAL) * 100 / COUNT(T1.element) FROM atom AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id WHERE T2.label = '+'",
+  "q2_prompt_sql": "SELECT CAST(SUM(CASE WHEN T1.element = 'cl' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(T2.molecule_id) FROM atom AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id WHERE T2.label = '+'",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO molecule (molecule_id, label) VALUES ('m1', '+');\nINSERT INTO atom (atom_id, molecule_id, element) VALUES ('a1', 'm1', 'cl');\nINSERT INTO atom (atom_id, molecule_id, element) VALUES ('a2', 'm1', NULL);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 uses COUNT(T1.element) in the denominator which excludes rows where element is NULL. Q2 uses COUNT(T2.molecule_id) which counts all joined rows (since molecule_id is not NULL in the INNER JOIN). If any atom has element NULL, the denominators differ, leading to different results.",
+  "counterexample_dsp": "A molecule with label '+', one atom with element 'cl', and another atom with element NULL. Q1 counts only 'cl' in denominator (1), Q2 counts both atoms (2), resulting in different percentages.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 uses COUNT(T1.element) in the denominator which excludes rows where element is NULL. Q2 uses COUNT(T2.molecule_id) which counts all joined rows (since molecule_id is not NULL in the INNER JOIN). If any atom has element NULL, the denominators differ, leading to different results.\",\n\"counterexample_dsp\": \"A molecule with label '+', one atom with element 'cl', and another atom with element NULL. Q1 counts only 'cl' in denominator (1), Q2 counts both atoms (2), resulting in different percentages.\",\n\"counterexample\": \"INSERT INTO molecule (molecule_id, label) VALUES ('m1', '+');\\nINSERT INTO atom (atom_id, molecule_id, element) VALUES ('a1', 'm1', 'cl');\\nINSERT INTO atom (atom_id, molecule_id, element) VALUES ('a2', 'm1', NULL);\"\n}",
+  "reasoning": "\nOkay, let's see. I need to figure out if Q1 and Q2 are semantically equivalent. Both queries are calculating a percentage, probably the percentage of atoms that are 'cl' in molecules with label '+'. Let me break them down.\n\nStarting with Q1: The numerator is COUNT of CASE WHEN T1.element = 'cl' THEN T1.element ELSE NULL END. Since COUNT ignores NULLs, this counts the number of rows where element is 'cl'. Then multiply by 100 and divide by COUNT(T1.element), which counts all non-null elements in T1. So that's (number of 'cl' atoms) / (total atoms) * 100.\n\nQ2: The numerator is SUM of CASE WHEN element is 'cl' then 1 else 0. SUM adds up the 1s and 0s, so that's the same as counting 'cl' atoms. Then divide by COUNT(T2.molecule_id). Since T2.molecule_id is part of the join, and each atom row has a molecule_id, COUNT(T2.molecule_id) should be the same as COUNT(T1.element) because each atom row contributes one molecule_id. So the denominator in both cases is the same. Therefore, Q1 and Q2 should be equivalent. Wait, but maybe not?\n\nWait, let me think again. In Q1, the denominator is COUNT(T1.element). Since T1.element could be NULL (if the element is not set?), but the join is on molecule, which has label '+'. However, in the schema, the element in atom is DEFAULT NULL. So if there's an atom with element NULL, then COUNT(T1.element) would count non-nulls. But the CASE in the numerator would also not count those as 'cl'. So both denominators are counting the number of atoms (non-null elements) in the joined result. In Q2, COUNT(T2.molecule_id) counts the number of rows in the join, which would be same as COUNT(T1.element) since T2.molecule_id is part of the join condition and each row from T1 has a molecule_id. So they should be the same. Then why would they differ?\n\nWait, maybe there's a scenario where T1.element is NULL. Suppose there's a row where element is NULL. Then COUNT(T1.element) would not count that row. However, in Q1, the CASE WHEN T1.element = 'cl' would evaluate to else NULL, so COUNT would ignore it. But the denominator in Q1 is COUNT(T1.element), which again ignores NULLs. So the denominator counts all non-null elements. The numerator counts the number of 'cl's. So same as Q2's numerator and denominator.\n\nWait, but in Q2, the denominator is COUNT(T2.molecule_id). Since T2.molecule_id is from the molecule table, and the join is INNER JOIN, so every row in T1 has a matching T2 row. So T2.molecule_id is not null. Therefore COUNT(T2.molecule_id) counts all rows in the join result. But COUNT(T1.element) could be different if T1.element is NULL. Wait, but in the INNER JOIN, T1 is from atom table. The molecule_id in T1 is a foreign key to molecule, but the element can be NULL. So if an atom has element NULL, then in the join, T1.element is NULL, but T2.molecule_id is not. So COUNT(T1.element) would not count that row. But COUNT(T2.molecule_id) would count that row because it's not NULL. Therefore, in that case, the denominators would differ.\n\nSo if there are rows in T1 (atom) where element is NULL, then Q1's denominator is COUNT(T1.element) which excludes those rows, while Q2's denominator is COUNT(T2.molecule_id) which includes all rows. Therefore, if there are such rows, the two queries would produce different results.\n\nLet me test this. Suppose there's a molecule with label '+', and two atoms: one with element 'cl' and another with element NULL. Then:\n\nFor Q1:\nNumerator: count of 'cl' is 1.\nDenominator: count of T1.element (non-null elements) is 1 (only the 'cl' row, since the other has NULL element). So 1/1*100 = 100%.\n\nFor Q2:\nNumerator: sum of 1 for 'cl' and 0 for other (element not 'cl'), so 1.\nDenominator: count(T2.molecule_id) is 2 (both rows are present in the join). So 1/2 *100 = 50%.\n\nSo they are different. Therefore, the two queries are not equivalent. The difference arises when there are atoms with NULL element values.\n\nSo the counterexample would be a molecule with label '+', and two atoms: one with element 'cl' and one with element NULL. Then Q1 gives 100% and Q2 gives 50%.\n\nSo the answer is not equivalent. The explanation is that Q1's denominator counts non-null elements while Q2's counts all joined rows (since T2.molecule_id is not null). If there are atoms with NULL element, the denominators differ.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 654,
+    "total_tokens": 1972,
+    "completion_tokens": 1318,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1112
+    },
+    "generation_seconds": 42.187
+  },
+  "started_at": "2026-10-06T21:13:39.569987+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      100.0
+    ]
+  ],
+  "q2_output": [
+    [
+      50.0
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT CAST(COUNT(CASE WHEN T1.element = 'cl' THEN T1.element ELSE NULL END) AS REAL) * 100 / COUNT(T1.element) FROM atom AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id WHERE T2.label = '+'",
+  "q2_validation_sql": "SELECT CAST(SUM(CASE WHEN T1.element = 'cl' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(T2.molecule_id) FROM atom AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id WHERE T2.label = '+'"
+}

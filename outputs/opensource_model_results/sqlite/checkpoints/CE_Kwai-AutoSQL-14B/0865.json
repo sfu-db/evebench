@@ -1,0 +1,55 @@
+{
+  "dbid": "debit_card_specializing",
+  "index": "865",
+  "source_index": "1518",
+  "schema_ddl": "CREATE TABLE customers\n(\n    CustomerID INTEGER UNIQUE     not null\n        primary key,\n    Segment    TEXT null,\n    Currency   TEXT null\n);\n\nCREATE TABLE gasstations\n(\n    GasStationID INTEGER    UNIQUE   not null\n        primary key,\n    ChainID      INTEGER          null,\n    Country      TEXT null,\n    Segment      TEXT null\n);\n\nCREATE TABLE products\n(\n    ProductID   INTEGER   UNIQUE      not null\n        primary key,\n    Description TEXT null\n);\n\nCREATE TABLE \"transactions_1k\"\n(\n    TransactionID INTEGER\n        primary key autoincrement,\n    Date          DATE,\n    Time          TEXT,\n    CustomerID    INTEGER,\n    CardID        INTEGER,\n    GasStationID  INTEGER,\n    ProductID     INTEGER,\n    Amount        INTEGER,\n    Price         REAL\n);\n\nCREATE TABLE \"yearmonth\"\n(\n    CustomerID  INTEGER not null\n        references customers\n            on update cascade on delete cascade\n        references customers,\n    Date        TEXT    not null,\n    Consumption REAL,\n    primary key (Date, CustomerID)\n);",
+  "q1": "SELECT T2.Segment FROM transactions_1k AS T1 INNER JOIN customers AS T2 ON T1.CustomerID = T2.CustomerID ORDER BY Date ASC LIMIT 1",
+  "q2": "SELECT Segment FROM customers ORDER BY CustomerID ASC LIMIT 1",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT T2.Segment FROM transactions_1k AS T1 INNER JOIN customers AS T2 ON T1.CustomerID = T2.CustomerID ORDER BY Date ASC LIMIT 1",
+  "q2_prompt_sql": "SELECT Segment FROM customers ORDER BY CustomerID ASC LIMIT 1",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO customers (CustomerID, Segment) VALUES (1, 'A');\nINSERT INTO customers (CustomerID, Segment) VALUES (2, 'B');\nINSERT INTO transactions_1k (Date, CustomerID, CardID, GasStationID, ProductID, Amount, Price) VALUES ('2020-01-01', 2, 1, 1, 1, 10, 5.0);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 retrieves the Segment of the customer associated with the earliest transaction (ordered by Date ASC), while Q2 retrieves the Segment of the customer with the smallest CustomerID. If the earliest transaction belongs to a different customer than the one with the minimum CustomerID, the results differ.",
+  "counterexample_dsp": "Customer 1 has Segment 'A' (minimum CustomerID). Customer 2 has Segment 'B'. The earliest transaction in transactions_1k belongs to Customer 2. Q1 returns 'B', Q2 returns 'A'.",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 retrieves the Segment of the customer associated with the earliest transaction (ordered by Date ASC), while Q2 retrieves the Segment of the customer with the smallest CustomerID. If the earliest transaction belongs to a different customer than the one with the minimum CustomerID, the results differ.\",\n  \"counterexample_dsp\": \"Customer 1 has Segment 'A' (minimum CustomerID). Customer 2 has Segment 'B'. The earliest transaction in transactions_1k belongs to Customer 2. Q1 returns 'B', Q2 returns 'A'.\",\n  \"counterexample\": [\n    \"INSERT INTO customers (CustomerID, Segment) VALUES (1, 'A');\",\n    \"INSERT INTO customers (CustomerID, Segment) VALUES (2, 'B');\",\n    \"INSERT INTO transactions_1k (Date, CustomerID, CardID, GasStationID, ProductID, Amount, Price) VALUES ('2020-01-01', 2, 1, 1, 1, 10, 5.0);\"\n  ]\n}",
+  "reasoning": "\nOkay, let's tackle this problem. So, I need to find a counterexample where Q1 and Q2 return different results. Let me first understand what each query does.\n\nQ1 is selecting T2.Segment from transactions_1k (T1) joined with customers (T2) on CustomerID, ordered by Date ascending, and taking the first result. So, this query is looking for the earliest transaction's customer segment. The join here is on CustomerID, so it's getting the segment from the customers table for the customer involved in the earliest transaction.\n\nQ2 is selecting Segment from customers ordered by CustomerID ascending and taking the first one. This would give the segment of the customer with the smallest CustomerID.\n\nSo the difference between these two queries would occur if the earliest transaction (by Date) is from a customer who has a different segment than the customer with the smallest CustomerID.\n\nFor example, suppose the customer with CustomerID=1 has Segment 'A', but the earliest transaction is made by CustomerID=2 who has Segment 'B'. Then Q1 would return 'B' and Q2 would return 'A', making them different.\n\nSo to create a counterexample, I need:\n\n- A customer with CustomerID=1 (the smallest) with Segment 'A'.\n- Another customer with CustomerID=2 (or another higher ID) with Segment 'B'.\n- A transaction in transactions_1k for CustomerID=2 with a Date earlier than any transaction for CustomerID=1.\n\nWait, but transactions_1k might have multiple transactions. So the earliest Date in transactions_1k is from Customer 2, whose segment is B. Then Q1 would pick that. Q2 would pick Customer 1's segment A.\n\nSo the test data needs to have:\n\n- Customer 1: Segment 'A'\n- Customer 2: Segment 'B'\n- A transaction for Customer 2 with a Date that's earlier than any transaction for Customer 1.\n\nBut what if there are no transactions for Customer 1? Then Q1 would still pick the earliest transaction, which is Customer 2's. But Q2 would still return Customer 1's segment.\n\nWait, but in the schema, transactions_1k has CustomerID as a foreign key to customers. So the customer must exist. But for Q1, the join would still work even if there are no transactions for Customer 1. But the problem says that the counterexample should not violate constraints. So inserting data where Customer 1 has no transactions, but Customer 2 has a transaction with an early date.\n\nSo let me structure the data:\n\nInsert into customers:\n\nCustomerID=1, Segment='A'\n\nCustomerID=2, Segment='B'\n\nThen insert into transactions_1k:\n\nA transaction for CustomerID=2 with a very early date (like '2020-01-01').\n\nNo transaction for CustomerID=1, or maybe a transaction for CustomerID=1 with a later date.\n\nIn this case, Q1 would return 'B' (from Customer 2's earliest transaction), and Q2 would return 'A' (from Customer 1's earliest CustomerID). So they are different.\n\nYes, that should work. Now, I need to make sure that the SQL statements don't violate any constraints. The customers table has CustomerID as the primary key, so inserting unique IDs. The transactions_1k table's CustomerID is a foreign key to customers, so it's okay as long as the CustomerIDs exist.\n\nSo the counterexample would be:\n\nInsert into customers (CustomerID, Segment) values (1, 'A'), (2, 'B');\n\nInsert into transactions_1k (Date, CustomerID, ...) values ('2020-01-01', 2, ...);\n\nThen Q1's ORDER BY Date ASC LIMIT 1 gives Customer 2's segment 'B', while Q2's ORDER BY CustomerID ASC LIMIT 1 gives Customer 1's segment 'A'.\n\nThat should be the case. Now, the explanation should mention that Q1 depends on the earliest transaction's customer's segment, while Q2 depends on the customer with the smallest CustomerID's segment. If those two customers are different, the results differ.\n\nI need to write the explanation, the counterexample description, and the SQL inserts.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 466,
+    "total_tokens": 1595,
+    "completion_tokens": 1129,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 896
+    },
+    "generation_seconds": 37.11
+  },
+  "started_at": "2026-10-06T19:57:59.373249+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "B"
+    ]
+  ],
+  "q2_output": [
+    [
+      "A"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT T2.Segment FROM transactions_1k AS T1 INNER JOIN customers AS T2 ON T1.CustomerID = T2.CustomerID ORDER BY Date ASC LIMIT 1",
+  "q2_validation_sql": "SELECT Segment FROM customers ORDER BY CustomerID ASC LIMIT 1"
+}

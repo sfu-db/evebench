@@ -1,0 +1,59 @@
+{
+  "dbid": "beers",
+  "index": "214",
+  "source_index": "5914",
+  "schema_ddl": "CREATE TABLE Bar (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Beer (\n    name VARCHAR NOT NULL,\n    brewer VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Drinker (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Frequents (\n    drinker VARCHAR NOT NULL,\n    bar VARCHAR NOT NULL,\n    times_a_week SMALLINT NOT NULL,\n    PRIMARY KEY (drinker, bar),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (bar) REFERENCES Bar(name)\n);\n\nCREATE TABLE Serves (\n    bar VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    price DECIMAL(5,2) NOT NULL,\n    PRIMARY KEY (bar, beer),\n    FOREIGN KEY (bar) REFERENCES Bar(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);\n\nCREATE TABLE Likes (\n    drinker VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    PRIMARY KEY (drinker, beer),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);",
+  "q1": "SELECT b.name AS bar, COUNT(DISTINCT f.drinker) AS num_drinker, AVG(s.price) AS avg_price, (SELECT f1.drinker FROM frequents AS f1 WHERE f1.bar = b.name ORDER BY f1.times_a_week DESC, f1.drinker ASC LIMIT 1) AS most_reg_drinker FROM bar AS b LEFT JOIN frequents AS f ON b.name = f.bar LEFT JOIN serves AS s ON b.name = s.bar GROUP BY b.name ORDER BY num_drinker DESC, b.name ASC",
+  "q2": "WITH frequents_count AS (SELECT bar, COUNT(DISTINCT drinker) AS total_drinkers FROM frequents GROUP BY bar), average_price AS (SELECT bar, AVG(price) AS avg_price FROM serves GROUP BY bar), top_drinker AS (SELECT bar, drinker, times_a_week, ROW_NUMBER() OVER (PARTITION BY bar ORDER BY times_a_week DESC) AS rn FROM frequents) SELECT b.name AS bar_name, fc.total_drinkers, ap.avg_price, td.drinker AS top_drinker FROM bar AS b LEFT JOIN frequents_count AS fc ON b.name = fc.bar LEFT JOIN average_price AS ap ON b.name = ap.bar LEFT JOIN top_drinker AS td ON b.name = td.bar AND td.rn = 1 ORDER BY fc.total_drinkers DESC",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "beers",
+  "q1_prompt_sql": "SELECT b.name AS bar, COUNT(DISTINCT f.drinker) AS num_drinker, AVG(s.price) AS avg_price, (SELECT f1.drinker FROM frequents AS f1 WHERE f1.bar = b.name ORDER BY f1.times_a_week DESC, f1.drinker ASC LIMIT 1) AS most_reg_drinker FROM bar AS b LEFT JOIN frequents AS f ON b.name = f.bar LEFT JOIN serves AS s ON b.name = s.bar GROUP BY b.name ORDER BY num_drinker DESC, b.name ASC",
+  "q2_prompt_sql": "WITH frequents_count AS (SELECT bar, COUNT(DISTINCT drinker) AS total_drinkers FROM frequents GROUP BY bar), average_price AS (SELECT bar, AVG(price) AS avg_price FROM serves GROUP BY bar), top_drinker AS (SELECT bar, drinker, times_a_week, ROW_NUMBER() OVER (PARTITION BY bar ORDER BY times_a_week DESC) AS rn FROM frequents) SELECT b.name AS bar_name, fc.total_drinkers, ap.avg_price, td.drinker AS top_drinker FROM bar AS b LEFT JOIN frequents_count AS fc ON b.name = fc.bar LEFT JOIN average_price AS ap ON b.name = ap.bar LEFT JOIN top_drinker AS td ON b.name = td.bar AND td.rn = 1 ORDER BY fc.total_drinkers DESC",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO Bar (name, address) VALUES ('B1', 'A1'); INSERT INTO Drinker (name, address) VALUES ('D1', 'A1'), ('D2', 'A2'), ('D3', 'A3'); INSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('D1', 'B1', 3), ('D2', 'B1', 3), ('D3', 'B1', 2);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not equivalent because they handle the calculation of the most regular drinker differently. Q1 uses a subquery to find the most regular drinker, while Q2 uses a CTE with ROW_NUMBER() to achieve the same result.",
+  "counterexample_dsp": "The difference between Q1 and Q2 can be observed when there are multiple drinkers with the same highest frequency of visits to a bar. Q1 will return the first drinker in the order of drinker names, while Q2 will return the first drinker in the order of times_a_week.",
+  "equiv": "N",
+  "raw_response": "{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 and Q2 are not equivalent because they handle the calculation of the most regular drinker differently. Q1 uses a subquery to find the most regular drinker, while Q2 uses a CTE with ROW_NUMBER() to achieve the same result.\",\n\"counterexample_dsp\": \"The difference between Q1 and Q2 can be observed when there are multiple drinkers with the same highest frequency of visits to a bar. Q1 will return the first drinker in the order of drinker names, while Q2 will return the first drinker in the order of times_a_week.\",\n\"counterexample\": \"INSERT INTO Bar (name, address) VALUES ('B1', 'A1'); INSERT INTO Drinker (name, address) VALUES ('D1', 'A1'), ('D2', 'A2'), ('D3', 'A3'); INSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('D1', 'B1', 3), ('D2', 'B1', 3), ('D3', 'B1', 2);\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 793,
+    "total_tokens": 1031,
+    "completion_tokens": 238,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 4.297
+  },
+  "started_at": "2026-10-06T09:05:40.554935+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "B1",
+      3,
+      null,
+      "D1"
+    ]
+  ],
+  "q2_output": [
+    [
+      "B1",
+      3,
+      null,
+      "D1"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT b.name AS bar, COUNT(DISTINCT f.drinker) AS num_drinker, AVG(s.price) AS avg_price, (SELECT f1.drinker FROM frequents AS f1 WHERE f1.bar = b.name ORDER BY f1.times_a_week DESC, f1.drinker ASC LIMIT 1) AS most_reg_drinker FROM bar AS b LEFT JOIN frequents AS f ON b.name = f.bar LEFT JOIN serves AS s ON b.name = s.bar GROUP BY b.name ORDER BY num_drinker DESC, b.name ASC",
+  "q2_validation_sql": "WITH frequents_count AS (SELECT bar, COUNT(DISTINCT drinker) AS total_drinkers FROM frequents GROUP BY bar), average_price AS (SELECT bar, AVG(price) AS avg_price FROM serves GROUP BY bar), top_drinker AS (SELECT bar, drinker, times_a_week, ROW_NUMBER() OVER (PARTITION BY bar ORDER BY times_a_week DESC) AS rn FROM frequents) SELECT b.name AS bar_name, fc.total_drinkers, ap.avg_price, td.drinker AS top_drinker FROM bar AS b LEFT JOIN frequents_count AS fc ON b.name = fc.bar LEFT JOIN average_price AS ap ON b.name = ap.bar LEFT JOIN top_drinker AS td ON b.name = td.bar AND td.rn = 1 ORDER BY fc.total_drinkers DESC"
+}

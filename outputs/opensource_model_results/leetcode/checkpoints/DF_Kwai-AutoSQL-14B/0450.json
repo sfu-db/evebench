@@ -1,0 +1,55 @@
+{
+  "dbid": "607",
+  "index": "450",
+  "source_index": "132",
+  "schema_ddl": "CREATE TABLE SALESPERSON (\n    SALES_ID INT,\n    NAME VARCHAR(255),\n    SALARY INT,\n    COMMISSION_RATE INT,\n    HIRE_DATE VARCHAR(255)\n);\n\nCREATE TABLE COMPANY (\n    COM_ID INT,\n    NAME VARCHAR(255),\n    CITY VARCHAR(255)\n);\n\nCREATE TABLE ORDERS (\n    ORDER_ID INT,\n    COM_ID INT,\n    SALES_ID INT,\n    ORDER_DATE VARCHAR(255),\n    AMOUNT INT\n);",
+  "q1": "SELECT NAME FROM SALESPERSON AS S WHERE 0 = ( SELECT COUNT(*) FROM ORDERS AS O JOIN COMPANY AS C ON O.COM_ID = C.COM_ID WHERE O.SALES_ID = S.SALES_ID AND C.NAME = 'RED' )",
+  "q2": "SELECT DISTINCT S.NAME FROM SALESPERSON AS S WHERE S.NAME NOT IN (SELECT DISTINCT S.NAME AS PERSONNAME FROM SALESPERSON AS S LEFT JOIN ORDERS AS O ON S.SALES_ID=O.SALES_ID LEFT JOIN COMPANY AS C ON C.COM_ID=O.COM_ID WHERE C.NAME='RED')",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT NAME FROM SALESPERSON AS S WHERE 0 = ( SELECT COUNT(*) FROM ORDERS AS O JOIN COMPANY AS C ON O.COM_ID = C.COM_ID WHERE O.SALES_ID = S.SALES_ID AND C.NAME = 'RED' )",
+  "q2_prompt_sql": "SELECT DISTINCT S.NAME FROM SALESPERSON AS S WHERE S.NAME NOT IN (SELECT DISTINCT S.NAME AS PERSONNAME FROM SALESPERSON AS S LEFT JOIN ORDERS AS O ON S.SALES_ID=O.SALES_ID LEFT JOIN COMPANY AS C ON C.COM_ID=O.COM_ID WHERE C.NAME='RED')",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO SALESPERSON (SALES_ID, NAME, SALARY, COMMISSION_RATE, HIRE_DATE) VALUES (1, 'Alice', 50000, 5, '2020-01-01');\nINSERT INTO COMPANY (COM_ID, NAME, CITY) VALUES (1, 'RED', 'New York');\nINSERT INTO ORDERS (ORDER_ID, COM_ID, SALES_ID, ORDER_DATE, AMOUNT) VALUES (1, 1, 2, '2021-01-01', 100);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent. Q1 selects salespersons who have zero orders associated with the company named 'RED'. Q2 uses a NOT IN subquery with a LEFT JOIN to exclude salespersons who have any order linked to a company named 'RED'. The difference arises due to how NULLs are handled in NOT IN and the use of DISTINCT in Q2.",
+  "counterexample_dsp": "Create a scenario where a salesperson has no orders at all (thus should appear in Q1 but not in Q2). Q2's use of LEFT JOIN and NOT IN with NULLs may incorrectly exclude or include such a person.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n  \"equiv\": \"N\",\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent. Q1 selects salespersons who have zero orders associated with the company named 'RED'. Q2 uses a NOT IN subquery with a LEFT JOIN to exclude salespersons who have any order linked to a company named 'RED'. The difference arises due to how NULLs are handled in NOT IN and the use of DISTINCT in Q2.\",\n  \"counterexample_dsp\": \"Create a scenario where a salesperson has no orders at all (thus should appear in Q1 but not in Q2). Q2's use of LEFT JOIN and NOT IN with NULLs may incorrectly exclude or include such a person.\",\n  \"counterexample\": \"INSERT INTO SALESPERSON (SALES_ID, NAME, SALARY, COMMISSION_RATE, HIRE_DATE) VALUES (1, 'Alice', 50000, 5, '2020-01-01');\\nINSERT INTO COMPANY (COM_ID, NAME, CITY) VALUES (1, 'RED', 'New York');\\nINSERT INTO ORDERS (ORDER_ID, COM_ID, SALES_ID, ORDER_DATE, AMOUNT) VALUES (1, 1, 2, '2021-01-01', 100);\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 477,
+    "total_tokens": 764,
+    "completion_tokens": 287,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 9.266
+  },
+  "started_at": "2026-10-06T15:48:02.262584+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "Alice"
+    ]
+  ],
+  "q2_output": [
+    [
+      "Alice"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT NAME FROM SALESPERSON AS S WHERE 0 = ( SELECT COUNT(*) FROM ORDERS AS O JOIN COMPANY AS C ON O.COM_ID = C.COM_ID WHERE O.SALES_ID = S.SALES_ID AND C.NAME = 'RED' )",
+  "q2_validation_sql": "SELECT DISTINCT S.NAME FROM SALESPERSON AS S WHERE S.NAME NOT IN (SELECT DISTINCT S.NAME AS PERSONNAME FROM SALESPERSON AS S LEFT JOIN ORDERS AS O ON S.SALES_ID=O.SALES_ID LEFT JOIN COMPANY AS C ON C.COM_ID=O.COM_ID WHERE C.NAME='RED')"
+}

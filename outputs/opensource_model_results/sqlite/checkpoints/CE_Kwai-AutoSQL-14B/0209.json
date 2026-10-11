@@ -1,0 +1,51 @@
+{
+  "dbid": "toxicology",
+  "index": "209",
+  "source_index": "313",
+  "schema_ddl": "CREATE TABLE `atom` (\n  `atom_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `element` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `bond` (\n  `bond_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `bond_type` TEXT DEFAULT NULL,\n  PRIMARY KEY (`bond_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `connected` (\n  `atom_id` TEXT NOT NULL,\n  `atom_id2` TEXT NOT NULL,\n  `bond_id` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`,`atom_id2`),\n  FOREIGN KEY (`atom_id`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`atom_id2`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`bond_id`) REFERENCES `bond` (`bond_id`) ON DELETE CASCADE ON UPDATE CASCADE\n);\n\nCREATE TABLE `molecule` (\n  `molecule_id` TEXT NOT NULL,\n  `label` TEXT DEFAULT NULL,\n  PRIMARY KEY (`molecule_id`)\n);",
+  "q1": "SELECT DISTINCT T2.label FROM atom AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id INNER JOIN bond AS T3 ON T2.molecule_id = T3.molecule_id WHERE T3.bond_id = 'TR001_2_4'",
+  "q2": "SELECT T4.label FROM bond AS T1 INNER JOIN connected AS T2 ON T1.bond_id = T2.bond_id INNER JOIN atom AS T3 ON T2.atom_id = T3.atom_id INNER JOIN molecule AS T4 ON T3.molecule_id = T4.molecule_id WHERE T1.bond_id = 'TR001_2_4' AND T4.label = '+'",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT DISTINCT T2.label FROM atom AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id INNER JOIN bond AS T3 ON T2.molecule_id = T3.molecule_id WHERE T3.bond_id = 'TR001_2_4'",
+  "q2_prompt_sql": "SELECT T4.label FROM bond AS T1 INNER JOIN connected AS T2 ON T1.bond_id = T2.bond_id INNER JOIN atom AS T3 ON T2.atom_id = T3.atom_id INNER JOIN molecule AS T4 ON T3.molecule_id = T4.molecule_id WHERE T1.bond_id = 'TR001_2_4' AND T4.label = '+'",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO molecule (molecule_id, label) VALUES ('X', 'A');\nINSERT INTO bond (bond_id, molecule_id, bond_type) VALUES ('TR001_2_4', 'X', 'single');\nINSERT INTO atom (atom_id, molecule_id, element) VALUES ('a1', 'X', 'C'), ('a2', 'X', 'O');\nINSERT INTO connected (atom_id, atom_id2, bond_id) VALUES ('a1', 'a2', 'TR001_2_4');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 retrieves the molecule label for the bond 'TR001_2_4' without filtering on the molecule's label. Q2 adds a filter that the molecule's label must be '+'. When the molecule's label is not '+', Q2 returns no results while Q1 returns the actual label.",
+  "counterexample_dsp": "A bond 'TR001_2_4' belongs to a molecule labeled 'A'. Q1 returns 'A', Q2 returns nothing because T4.label = '+' is not satisfied.",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 retrieves the molecule label for the bond 'TR001_2_4' without filtering on the molecule's label. Q2 adds a filter that the molecule's label must be '+'. When the molecule's label is not '+', Q2 returns no results while Q1 returns the actual label.\",\n  \"counterexample_dsp\": \"A bond 'TR001_2_4' belongs to a molecule labeled 'A'. Q1 returns 'A', Q2 returns nothing because T4.label = '+' is not satisfied.\",\n  \"counterexample\": \"INSERT INTO molecule (molecule_id, label) VALUES ('X', 'A');\\nINSERT INTO bond (bond_id, molecule_id, bond_type) VALUES ('TR001_2_4', 'X', 'single');\\nINSERT INTO atom (atom_id, molecule_id, element) VALUES ('a1', 'X', 'C'), ('a2', 'X', 'O');\\nINSERT INTO connected (atom_id, atom_id2, bond_id) VALUES ('a1', 'a2', 'TR001_2_4');\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem. I need to find a counterexample where Q1 and Q2 return different results. First, I should understand what each query is doing.\n\nLooking at Q1: It selects distinct labels from molecule (T2) by joining atom (T1) with molecule on molecule_id, then joining bond (T3) on molecule_id. The condition is T3.bond_id = 'TR001_2_4'. So this query is getting molecule labels for the bond with that specific ID.\n\nQ2: It starts from bond (T1), joins connected (T2) on bond_id, then atom (T3) on atom_id, then molecule (T4) on molecule_id. The WHERE clause has the same bond_id and T4.label = '+'. So this query is getting the label of the molecule where the bond is connected to an atom that's part of a molecule labeled '+'.\n\nThe key difference seems to be that Q1 doesn't filter on the molecule's label (T4.label = '+') in Q2. So if the molecule associated with the bond in Q1 has a label that's not '+', then Q2 would return nothing, while Q1 would return that label. Alternatively, if there's a molecule with label '+' that's connected via the connected table, Q2 would return that label, but Q1 would return all labels from the bond's molecule.\n\nWait, but Q1's molecule comes from the bond's molecule_id. So the molecule in Q1 is the one that the bond belongs to. Q2's molecule comes from the atom that's connected via the bond. But the connected table links atoms via a bond. So for a given bond, connected has pairs of atoms that are connected by that bond. Then, the atom's molecule_id would be the same as the bond's molecule_id, right? Because the bond is part of a molecule. So the molecule in Q2 should be the same as in Q1. But Q2 adds the condition that the molecule's label is '+'. \n\nSo if the molecule associated with the bond in Q1 has label '+', then Q1 and Q2 would return the same. But if the molecule's label isn't '+', Q2 returns nothing. However, if there's another molecule with label '+' that's connected through the connected table, but that's not possible because the connected table's atoms belong to the same molecule as the bond.\n\nWait, no. The connected table's atoms are part of the same molecule as the bond, since the bond's molecule_id is linked to the atoms via the atom table. So the molecule for the atom in connected is the same as the bond's molecule_id. Therefore, in Q2, the molecule T4.label is the same as the molecule from Q1. But Q2 adds the condition T4.label = '+', so Q2's result is only those rows where the molecule's label is '+'. But Q1 doesn't have that filter. So if the molecule's label is not '+', then Q2 would return nothing while Q1 would return the label. Conversely, if the molecule's label is '+', then both would return the same. \n\nBut wait, in Q1, the molecule is T2 (from molecule table) joined with atom (T1) on molecule_id. The bond T3 is also joined on molecule_id. So the molecule in Q1 is the one that the bond belongs to. So the molecule's label in Q1 is the same as the one in Q2. Therefore, Q2's result is a subset of Q1's result (only when label is '+'). But if the molecule's label isn't '+', Q2 returns nothing. So if Q1's result is a label that's not '+', then Q2 returns nothing. Therefore, the counterexample would be when the molecule's label is not '+'. \n\nSo let's create a test case where the bond 'TR001_2_4' belongs to a molecule whose label is 'something else', say 'A'. Then Q1 would return 'A', but Q2 would return nothing because of the label filter. That's a counterexample.\n\nAlternatively, if the molecule's label is '+', then both would return '+'. So to get different results, the molecule's label must not be '+'. \n\nSo the counterexample would be: create a molecule with label 'A', a bond with that molecule_id, and the connected table entries. Then Q1 returns 'A', Q2 returns nothing.\n\nLet me structure the data:\n\nmolecule table:\nmolecule_id | label\n'X'        | 'A'\n\nbond table:\nbond_id       | molecule_id | bond_type\n'TR001_2_4' | 'X'         | 'single'\n\natom table:\natom_id | molecule_id | element\n'a1'    | 'X'         | 'C'\n'a2'    | 'X'         | 'O'\n\nconnected table:\natom_id | atom_id2 | bond_id\n'a1'    | 'a2'     | 'TR001_2_4'\n\nIn this case, Q1 would return 'A' (from molecule T2). Q2 would check T4.label = '+', which is not the case here, so returns nothing. Hence, different results.\n\nYes, that's a valid counterexample. So the explanation would be that Q1 returns the molecule label associated with the bond, while Q2 only returns it if the molecule's label is '+'. So when the label isn't '+', they differ.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 612,
+    "total_tokens": 2018,
+    "completion_tokens": 1406,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1157
+    },
+    "generation_seconds": 44.312
+  },
+  "started_at": "2026-10-06T18:34:14.118922+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "A"
+    ]
+  ],
+  "q2_output": [],
+  "q1_row_count": 1,
+  "q2_row_count": 0,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DISTINCT T2.label FROM atom AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id INNER JOIN bond AS T3 ON T2.molecule_id = T3.molecule_id WHERE T3.bond_id = 'TR001_2_4'",
+  "q2_validation_sql": "SELECT T4.label FROM bond AS T1 INNER JOIN connected AS T2 ON T1.bond_id = T2.bond_id INNER JOIN atom AS T3 ON T2.atom_id = T3.atom_id INNER JOIN molecule AS T4 ON T3.molecule_id = T4.molecule_id WHERE T1.bond_id = 'TR001_2_4' AND T4.label = '+'"
+}

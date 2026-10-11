@@ -1,0 +1,55 @@
+{
+  "dbid": "card_games",
+  "index": "244",
+  "source_index": "394",
+  "schema_ddl": "CREATE TABLE \"cards\"\n(\n    id                      INTEGER           not null\n        primary key autoincrement,\n    artist                  TEXT,\n    asciiName               TEXT,\n    availability            TEXT,\n    borderColor             TEXT,\n    cardKingdomFoilId       TEXT,\n    cardKingdomId           TEXT,\n    colorIdentity           TEXT,\n    colorIndicator          TEXT,\n    colors                  TEXT,\n    convertedManaCost       REAL,\n    duelDeck                TEXT,\n    edhrecRank              INTEGER,\n    faceConvertedManaCost   REAL,\n    faceName                TEXT,\n    flavorName              TEXT,\n    flavorText              TEXT,\n    frameEffects            TEXT,\n    frameVersion            TEXT,\n    hand                    TEXT,\n    hasAlternativeDeckLimit INTEGER default 0 not null,\n    hasContentWarning       INTEGER default 0 not null,\n    hasFoil                 INTEGER default 0 not null,\n    hasNonFoil              INTEGER default 0 not null,\n    isAlternative           INTEGER default 0 not null,\n    isFullArt               INTEGER default 0 not null,\n    isOnlineOnly            INTEGER default 0 not null,\n    isOversized             INTEGER default 0 not null,\n    isPromo                 INTEGER default 0 not null,\n    isReprint               INTEGER default 0 not null,\n    isReserved              INTEGER default 0 not null,\n    isStarter               INTEGER default 0 not null,\n    isStorySpotlight        INTEGER default 0 not null,\n    isTextless              INTEGER default 0 not null,\n    isTimeshifted           INTEGER default 0 not null,\n    keywords                TEXT,\n    layout                  TEXT,\n    leadershipSkills        TEXT,\n    life                    TEXT,\n    loyalty                 TEXT,\n    manaCost                TEXT,\n    mcmId                   TEXT,\n    mcmMetaId               TEXT,\n    mtgArenaId              TEXT,\n    mtgjsonV4Id             TEXT,\n    mtgoFoilId              TEXT,\n    mtgoId                  TEXT,\n    multiverseId            TEXT,\n    name                    TEXT,\n    number                  TEXT,\n    originalReleaseDate     TEXT,\n    originalText            TEXT,\n    originalType            TEXT,\n    otherFaceIds            TEXT,\n    power                   TEXT,\n    printings               TEXT,\n    promoTypes              TEXT,\n    purchaseUrls            TEXT,\n    rarity                  TEXT,\n    scryfallId              TEXT,\n    scryfallIllustrationId  TEXT,\n    scryfallOracleId        TEXT,\n    setCode                 TEXT,\n    side                    TEXT,\n    subtypes                TEXT,\n    supertypes              TEXT,\n    tcgplayerProductId      TEXT,\n    text                    TEXT,\n    toughness               TEXT,\n    type                    TEXT,\n    types                   TEXT,\n    uuid                    TEXT              not null\n        unique,\n    variations              TEXT,\n    watermark               TEXT\n);\n\nCREATE TABLE \"foreign_data\"\n(\n    id           INTEGER not null\n        primary key autoincrement,\n    flavorText   TEXT,\n    language     TEXT,\n    multiverseid INTEGER,\n    name         TEXT,\n    text         TEXT,\n    type         TEXT,\n    uuid         TEXT\n        references cards (uuid)\n);\n\nCREATE TABLE \"legalities\"\n(\n    id     INTEGER not null\n        primary key autoincrement,\n    format TEXT,\n    status TEXT,\n    uuid   TEXT\n        references cards (uuid)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE \"sets\"\n(\n    id               INTEGER           not null\n        primary key autoincrement,\n    baseSetSize      INTEGER,\n    block            TEXT,\n    booster          TEXT,\n    code             TEXT              not null\n        unique,\n    isFoilOnly       INTEGER default 0 not null,\n    isForeignOnly    INTEGER default 0 not null,\n    isNonFoilOnly    INTEGER default 0 not null,\n    isOnlineOnly     INTEGER default 0 not null,\n    isPartialPreview INTEGER default 0 not null,\n    keyruneCode      TEXT,\n    mcmId            INTEGER,\n    mcmIdExtras      INTEGER,\n    mcmName          TEXT,\n    mtgoCode         TEXT,\n    name             TEXT,\n    parentCode       TEXT,\n    releaseDate      DATE,\n    tcgplayerGroupId INTEGER,\n    totalSetSize     INTEGER,\n    type             TEXT\n);\n\nCREATE TABLE \"set_translations\"\n(\n    id          INTEGER not null\n        primary key autoincrement,\n    language    TEXT,\n    setCode     TEXT\n        references sets (code)\n            on update cascade on delete cascade,\n    translation TEXT\n);\n\nCREATE TABLE \"rulings\"\n(\n    id   INTEGER not null\n        primary key autoincrement,\n    date DATE,\n    text TEXT,\n    uuid TEXT\n        references cards (uuid)\n            on update cascade on delete cascade\n);",
+  "q1": "SELECT COUNT(id) FROM cards WHERE (cardKingdomId IS NULL OR cardKingdomFoilId IS NULL) AND artist = 'John Avon'",
+  "q2": "SELECT COUNT(*) FROM cards WHERE artist = 'John Avon' AND NOT cardKingdomId IS NULL AND NOT cardKingdomFoilId IS NULL AND power IS NULL",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT COUNT(id) FROM cards WHERE (cardKingdomId IS NULL OR cardKingdomFoilId IS NULL) AND artist = 'John Avon'",
+  "q2_prompt_sql": "SELECT COUNT(*) FROM cards WHERE artist = 'John Avon' AND NOT cardKingdomId IS NULL AND NOT cardKingdomFoilId IS NULL AND power IS NULL",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO cards (id, artist, cardKingdomId, cardKingdomFoilId, power, uuid) VALUES (1, 'John Avon', NULL, '123', '2', 'uuid1');\nINSERT INTO cards (id, artist, cardKingdomId, cardKingdomFoilId, power, uuid) VALUES (2, 'John Avon', '456', '789', NULL, 'uuid2');",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 counts John Avon cards with at least one of cardKingdomId or cardKingdomFoilId NULL. Q2 counts John Avon cards with both IDs non-NULL and power NULL. They have opposite ID conditions and Q2 adds a power NULL requirement.",
+  "counterexample_dsp": "Two John Avon cards: one with cardKingdomId NULL (Q1 counts it, Q2 doesn't), another with both IDs non-NULL but power NULL (Q2 counts it, Q1 doesn't).",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 counts John Avon cards with at least one of cardKingdomId or cardKingdomFoilId NULL. Q2 counts John Avon cards with both IDs non-NULL and power NULL. They have opposite ID conditions and Q2 adds a power NULL requirement.\",\n\"counterexample_dsp\": \"Two John Avon cards: one with cardKingdomId NULL (Q1 counts it, Q2 doesn't), another with both IDs non-NULL but power NULL (Q2 counts it, Q1 doesn't).\",\n\"counterexample\": \"INSERT INTO cards (id, artist, cardKingdomId, cardKingdomFoilId, power, uuid) VALUES (1, 'John Avon', NULL, '123', '2', 'uuid1');\\nINSERT INTO cards (id, artist, cardKingdomId, cardKingdomFoilId, power, uuid) VALUES (2, 'John Avon', '456', '789', NULL, 'uuid2');\"\n}",
+  "reasoning": "\nOkay, let's see. I need to figure out if Q1 and Q2 are semantically equivalent. Let me start by understanding each query.\n\nQ1 is counting the number of cards where either cardKingdomId or cardKingdomFoilId is NULL, and the artist is John Avon. So the condition is (cardKingdomId IS NULL OR cardKingdomFoilId IS NULL) AND artist = 'John Avon'. That means it's looking for cards by John Avon that are missing at least one of those two IDs.\n\nQ2 is counting all rows where artist is John Avon, both cardKingdomId and cardKingdomFoilId are not NULL, and power is NULL. The condition here is artist = 'John Avon' AND NOT cardKingdomId IS NULL AND NOT cardKingdomFoilId IS NULL AND power IS NULL. So this is looking for John Avon's cards that have both IDs present but have a NULL power.\n\nSo the main differences here are:\n\n1. Q1 checks for at least one of the IDs being NULL, while Q2 checks for both IDs being NOT NULL.\n2. Q2 also adds a condition on power being NULL, which Q1 doesn't have.\n\nTherefore, these two queries are not equivalent. They are looking for different sets of conditions. \n\nFor example, if there's a card by John Avon with cardKingdomId NULL but cardKingdomFoilId not NULL, and power is not NULL, Q1 would count it, but Q2 would not. Conversely, if there's a card with both IDs present but power is NULL, Q2 would count it, but Q1 wouldn't. Also, any card that meets Q2's conditions would not meet Q1's because Q1 requires at least one ID to be NULL, while Q2 requires both to be non-NULL.\n\nTo create a counterexample, I can make two test cards. Let's say:\n\nCard1: artist is John Avon, cardKingdomId is NULL, cardKingdomFoilId is '123', power is '2' (so Q1 counts it, Q2 doesn't because power isn't NULL).\n\nCard2: artist is John Avon, both IDs are non-NULL, power is NULL (Q2 counts it, Q1 doesn't).\n\nSo in this case, Q1 would return 1 (Card1), Q2 would return 1 (Card2). Hence, different results.\n\nI need to make sure the schema constraints are followed. The 'id' is primary key, and 'uuid' is unique. So inserting two cards with different ids and uuids should be okay. Also, other fields can be filled with dummy data as needed.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 1288,
+    "total_tokens": 2086,
+    "completion_tokens": 798,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 568
+    },
+    "generation_seconds": 27.703
+  },
+  "started_at": "2026-10-06T20:26:45.070193+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      1
+    ]
+  ],
+  "q2_output": [
+    [
+      1
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT COUNT(id) FROM cards WHERE (cardKingdomId IS NULL OR cardKingdomFoilId IS NULL) AND artist = 'John Avon'",
+  "q2_validation_sql": "SELECT COUNT(*) FROM cards WHERE artist = 'John Avon' AND NOT cardKingdomId IS NULL AND NOT cardKingdomFoilId IS NULL AND power IS NULL"
+}

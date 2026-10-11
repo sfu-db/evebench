@@ -1,0 +1,55 @@
+{
+  "dbid": "debit_card_specializing",
+  "index": "874",
+  "source_index": "1529",
+  "schema_ddl": "CREATE TABLE customers\n(\n    CustomerID INTEGER UNIQUE     not null\n        primary key,\n    Segment    TEXT null,\n    Currency   TEXT null\n);\n\nCREATE TABLE gasstations\n(\n    GasStationID INTEGER    UNIQUE   not null\n        primary key,\n    ChainID      INTEGER          null,\n    Country      TEXT null,\n    Segment      TEXT null\n);\n\nCREATE TABLE products\n(\n    ProductID   INTEGER   UNIQUE      not null\n        primary key,\n    Description TEXT null\n);\n\nCREATE TABLE \"transactions_1k\"\n(\n    TransactionID INTEGER\n        primary key autoincrement,\n    Date          DATE,\n    Time          TEXT,\n    CustomerID    INTEGER,\n    CardID        INTEGER,\n    GasStationID  INTEGER,\n    ProductID     INTEGER,\n    Amount        INTEGER,\n    Price         REAL\n);\n\nCREATE TABLE \"yearmonth\"\n(\n    CustomerID  INTEGER not null\n        references customers\n            on update cascade on delete cascade\n        references customers,\n    Date        TEXT    not null,\n    Consumption REAL,\n    primary key (Date, CustomerID)\n);",
+  "q1": "SELECT CAST(SUM(IIF(Country = 'SVK' AND Segment = 'Premium', 1, 0)) AS REAL) * 100 / SUM(IIF(Country = 'SVK', 1, 0)) FROM gasstations",
+  "q2": "SELECT (CAST(SUM(CASE WHEN Segment = 'premium' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(*)) AS Percentage FROM gasstations WHERE Country = 'SVK'",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT CAST(SUM(IIF(Country = 'SVK' AND Segment = 'Premium', 1, 0)) AS REAL) * 100 / SUM(IIF(Country = 'SVK', 1, 0)) FROM gasstations",
+  "q2_prompt_sql": "SELECT (CAST(SUM(CASE WHEN Segment = 'premium' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(*)) AS Percentage FROM gasstations WHERE Country = 'SVK'",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO gasstations (GasStationID, Country, Segment) VALUES (1, 'SVK', 'Premium');\nINSERT INTO gasstations (GasStationID, Country, Segment) VALUES (2, 'SVK', 'premium');\nINSERT INTO gasstations (GasStationID, Country, Segment) VALUES (3, 'SVK', 'Regular');",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 uses 'Premium' (case-sensitive) in its condition, while Q2 uses 'premium' (lowercase). If gas stations have mixed-case 'Segment' values, the counts differ. Q1 ignores lowercase 'premium', while Q2 includes it.",
+  "counterexample_dsp": "Three gas stations in Slovakia (SVK): one with Segment 'Premium', one with 'premium', and one with 'Regular'. Q1 counts only 'Premium' (1), Q2 counts both 'Premium' and 'premium' (2).",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 uses 'Premium' (case-sensitive) in its condition, while Q2 uses 'premium' (lowercase). If gas stations have mixed-case 'Segment' values, the counts differ. Q1 ignores lowercase 'premium', while Q2 includes it.\",\n  \"counterexample_dsp\": \"Three gas stations in Slovakia (SVK): one with Segment 'Premium', one with 'premium', and one with 'Regular'. Q1 counts only 'Premium' (1), Q2 counts both 'Premium' and 'premium' (2).\",\n  \"counterexample\": [\n    \"INSERT INTO gasstations (GasStationID, Country, Segment) VALUES (1, 'SVK', 'Premium');\",\n    \"INSERT INTO gasstations (GasStationID, Country, Segment) VALUES (2, 'SVK', 'premium');\",\n    \"INSERT INTO gasstations (GasStationID, Country, Segment) VALUES (3, 'SVK', 'Regular');\"\n  ]\n}",
+  "reasoning": "\nOkay, let's tackle this problem. The user wants a counterexample where Q1 and Q2 return different results. First, I need to understand what each query does.\n\nLooking at Q1: It calculates the sum of 1s where Country is 'SVK' and Segment is 'Premium', then divides that by the sum of all 'SVK' entries, multiplied by 100. So it's the percentage of Premium segments in Slovakia out of all Slovakia gas stations.\n\nQ2: It filters gas stations to only those in 'SVK', then calculates the sum of Premium segments (using CASE WHEN) divided by the count of all those gas stations, multiplied by 100. That's the same as Q1's logic, right? Wait, maybe not. Wait, in Q1, the denominator is the count of all 'SVK' entries, which is SUM(IIF(Country='SVK', 1, 0)). That's equivalent to COUNT(*) for Country='SVK' in Q2. But in Q1, the numerator is the count of Premium in Slovakia. So Q1 is (Premium in Slovakia / total Slovakia) * 100. Q2 is (Premium in Slovakia / total Slovakia) * 100. Wait, that seems the same. But the user says they are not equivalent. Hmm, maybe I'm missing something.\n\nWait, looking at the tables. The gasstations table has Country and Segment. Both queries are using the gasstations table. So Q1 is summing the count of Premium in Slovakia, divided by total Slovakia. Q2 is doing the same. Wait, why are they different?\n\nWait, in Q1, the denominator is SUM(IIF(Country='SVK', 1, 0)), which is the total number of gas stations in Slovakia. The numerator is SUM(IIF(Country='SVK' AND Segment='Premium', 1, 0)), which is the count of Premium in Slovakia. So Q1 is (Premium count / total Slovakia) * 100.\n\nIn Q2, the WHERE clause filters Country='SVK', so COUNT(*) is the total Slovakia gas stations. The numerator is SUM(CASE WHEN Segment='Premium' THEN 1 ELSE 0 END), which is same as count of Premium. So Q2 is (Premium count / total Slovakia) * 100. So they should be the same. But the user says they are not. So there must be a mistake here. Wait, maybe the Segment in Q1 is case-sensitive? Like 'Premium' vs 'premium'? Let me check the queries again.\n\nIn Q1, the condition is Segment = 'Premium', and in Q2, it's Segment = 'premium'? Wait, looking at the original queries:\n\nQ1 has 'Premium' (capital P), and Q2 has 'premium' (lowercase p)? Wait no, the user's Q2 says:\n\nCASE WHEN Segment = 'premium' THEN 1 ELSE 0 END. So the case matters. If the Segment values in the database are stored with different cases, like 'Premium' vs 'premium', then Q1 and Q2 would count differently. For example, if a gas station's Segment is 'premium', then Q1's condition (Segment='Premium') would not count it, but Q2's CASE WHEN (Segment='premium') would. Therefore, if there are entries with Segment='premium' (lowercase), Q1 would miss them, while Q2 would include them. That's a possible difference.\n\nSo the key is that Q1 uses 'Premium' (uppercase), and Q2 uses 'premium' (lowercase). So if there are gas stations in Slovakia with Segment 'premium', then Q1 would not count them in the numerator, but Q2 would. Therefore, the two queries would give different results.\n\nSo to create a counterexample, I need to have gas stations in Slovakia with Segment 'premium' (lowercase) and others with 'Premium' (uppercase). Let's say:\n\n- One gas station in Slovakia with Segment 'Premium' (uppercase)\n- One gas station in Slovakia with Segment 'premium' (lowercase)\n- Another gas station in Slovakia with Segment 'Regular' (so not counted in either)\n\nThen Q1's numerator would be 1 (only the uppercase 'Premium'), denominator is 3 (total Slovakia gas stations). So 1/3 *100 ≈33.33%.\n\nQ2's numerator would be 1 (uppercase) +1 (lowercase) =2. Denominator is 3. So 2/3 *100 ≈66.66%. So the two queries would return different results.\n\nBut wait, in the gasstations table, the Segment is stored as TEXT. So if the data has mixed cases, that's possible. Therefore, the difference comes from the case sensitivity in the conditions.\n\nSo the explanation is that Q1 uses 'Premium' (uppercase) while Q2 uses 'premium' (lowercase), leading to different counts if the data has mixed cases.\n\nNow, to create the test data. Insert into gasstations:\n\n- GasStationID 1: Country 'SVK', Segment 'Premium'\n- GasStationID 2: Country 'SVK', Segment 'premium'\n- GasStationID 3: Country 'SVK', Segment 'Regular'\n\nThis would make Q1's numerator 1 (only the first), denominator 3. Q2's numerator is 2 (first and second), denominator 3. So the results differ.\n\nAlso, need to ensure that the other tables (customers, products, transactions_1k, yearmonth) have no entries, but since the queries only use gasstations, maybe inserting into gasstations is sufficient. However, the schema requires that the tables exist, but for the counterexample, maybe inserting into gasstations is enough. The other tables can be left empty as long as the constraints are met. But the problem says the counterexample should not violate constraints. For example, if other tables have foreign keys, but since the queries don't use them, maybe we can ignore them. However, the schema has gasstations with ChainID, Country, Segment, etc. So inserting into gasstations with valid data.\n\nSo the counterexample is inserting three gas stations as described. The explanation is that Q1 and Q2 have different case sensitivity in the Segment condition, leading to different counts.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 515,
+    "total_tokens": 2063,
+    "completion_tokens": 1548,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1335
+    },
+    "generation_seconds": 50.157
+  },
+  "started_at": "2026-10-06T18:05:16.152911+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      33.333333333333336
+    ]
+  ],
+  "q2_output": [
+    [
+      33.333333333333336
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT CAST(SUM(IIF(Country = 'SVK' AND Segment = 'Premium', 1, 0)) AS REAL) * 100 / SUM(IIF(Country = 'SVK', 1, 0)) FROM gasstations",
+  "q2_validation_sql": "SELECT (CAST(SUM(CASE WHEN Segment = 'premium' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(*)) AS Percentage FROM gasstations WHERE Country = 'SVK'"
+}

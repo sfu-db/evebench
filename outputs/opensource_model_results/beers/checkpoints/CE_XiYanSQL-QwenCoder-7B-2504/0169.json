@@ -1,0 +1,55 @@
+{
+  "dbid": "beers",
+  "index": "169",
+  "source_index": "3384",
+  "schema_ddl": "CREATE TABLE Bar (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Beer (\n    name VARCHAR NOT NULL,\n    brewer VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Drinker (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Frequents (\n    drinker VARCHAR NOT NULL,\n    bar VARCHAR NOT NULL,\n    times_a_week SMALLINT NOT NULL,\n    PRIMARY KEY (drinker, bar),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (bar) REFERENCES Bar(name)\n);\n\nCREATE TABLE Serves (\n    bar VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    price DECIMAL(5,2) NOT NULL,\n    PRIMARY KEY (bar, beer),\n    FOREIGN KEY (bar) REFERENCES Bar(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);\n\nCREATE TABLE Likes (\n    drinker VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    PRIMARY KEY (drinker, beer),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);",
+  "q1": "SELECT b1.name AS bar1, b2.name AS bar2 FROM bar AS b1, bar AS b2 WHERE NOT EXISTS(SELECT s1.beer FROM serves AS s1 WHERE s1.bar = b1.name AND NOT EXISTS(SELECT 1 FROM serves AS s2 WHERE s2.bar = b2.name AND s2.beer = s1.beer)) AND EXISTS(SELECT s2.beer FROM serves AS s2 WHERE s2.bar = b2.name AND NOT EXISTS(SELECT 1 FROM serves AS s1 WHERE s1.bar = b1.name AND s1.beer = s2.beer))",
+  "q2": "SELECT a.bar, b.bar FROM serves AS a LEFT JOIN serves AS b ON a.bar <> b.bar AND a.beer = b.beer WHERE b.beer IS NULL",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "beers",
+  "q1_prompt_sql": "SELECT b1.name AS bar1, b2.name AS bar2 FROM bar AS b1, bar AS b2 WHERE NOT EXISTS(SELECT s1.beer FROM serves AS s1 WHERE s1.bar = b1.name AND NOT EXISTS(SELECT 1 FROM serves AS s2 WHERE s2.bar = b2.name AND s2.beer = s1.beer)) AND EXISTS(SELECT s2.beer FROM serves AS s2 WHERE s2.bar = b2.name AND NOT EXISTS(SELECT 1 FROM serves AS s1 WHERE s1.bar = b1.name AND s1.beer = s2.beer))",
+  "q2_prompt_sql": "SELECT a.bar, b.bar FROM serves AS a LEFT JOIN serves AS b ON a.bar <> b.bar AND a.beer = b.beer WHERE b.beer IS NULL",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO Bar (name, address) VALUES ('Bar A', 'Address A'), ('Bar B', 'Address B'); INSERT INTO Beer (name, brewer) VALUES ('Beer X', 'Brewer X'), ('Beer Y', 'Brewer Y'); INSERT INTO Serves (bar, beer, price) VALUES ('Bar A', 'Beer X', 10.00), ('Bar A', 'Beer Y', 12.00), ('Bar B', 'Beer X', 10.00);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not equivalent because they are checking for different conditions. Q1 is checking for bars that serve a beer that no other bar serves, while Q2 is checking for beers that a bar serves that no other bar serves.",
+  "counterexample_dsp": "The test data should have at least two bars, 'Bar A' and 'Bar B', and at least two beers, 'Beer X' and 'Beer Y'. 'Bar A' should serve 'Beer X' and 'Beer Y', while 'Bar B' should only serve 'Beer X'. This should cause Q1 to return 'Bar A' and 'Bar B' as the result, because 'Beer Y' is only served by 'Bar A', while Q2 should return 'Bar A' as the result, because 'Beer Y' is only served by 'Bar A' and 'Bar B' does not serve 'Beer Y'.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 and Q2 are not equivalent because they are checking for different conditions. Q1 is checking for bars that serve a beer that no other bar serves, while Q2 is checking for beers that a bar serves that no other bar serves.\",\n  \"counterexample_dsp\": \"The test data should have at least two bars, 'Bar A' and 'Bar B', and at least two beers, 'Beer X' and 'Beer Y'. 'Bar A' should serve 'Beer X' and 'Beer Y', while 'Bar B' should only serve 'Beer X'. This should cause Q1 to return 'Bar A' and 'Bar B' as the result, because 'Beer Y' is only served by 'Bar A', while Q2 should return 'Bar A' as the result, because 'Beer Y' is only served by 'Bar A' and 'Bar B' does not serve 'Beer Y'.\",\n  \"counterexample\": \"INSERT INTO Bar (name, address) VALUES ('Bar A', 'Address A'), ('Bar B', 'Address B'); INSERT INTO Beer (name, brewer) VALUES ('Beer X', 'Brewer X'), ('Beer Y', 'Brewer Y'); INSERT INTO Serves (bar, beer, price) VALUES ('Bar A', 'Beer X', 10.00), ('Bar A', 'Beer Y', 12.00), ('Bar B', 'Beer X', 10.00);\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 617,
+    "total_tokens": 935,
+    "completion_tokens": 318,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 5.438
+  },
+  "started_at": "2026-10-06T08:01:22.312592+00:00",
+  "elapsed_seconds": 0.219,
+  "q1_output": [
+    [
+      "Bar B",
+      "Bar A"
+    ]
+  ],
+  "q2_output": [
+    [
+      "Bar A",
+      null
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT b1.name AS bar1, b2.name AS bar2 FROM bar AS b1, bar AS b2 WHERE NOT EXISTS(SELECT s1.beer FROM serves AS s1 WHERE s1.bar = b1.name AND NOT EXISTS(SELECT 1 FROM serves AS s2 WHERE s2.bar = b2.name AND s2.beer = s1.beer)) AND EXISTS(SELECT s2.beer FROM serves AS s2 WHERE s2.bar = b2.name AND NOT EXISTS(SELECT 1 FROM serves AS s1 WHERE s1.bar = b1.name AND s1.beer = s2.beer))",
+  "q2_validation_sql": "SELECT a.bar, b.bar FROM serves AS a LEFT JOIN serves AS b ON a.bar <> b.bar AND a.beer = b.beer WHERE b.beer IS NULL"
+}

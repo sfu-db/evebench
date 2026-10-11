@@ -1,0 +1,58 @@
+{
+  "dbid": "card_games",
+  "index": "318",
+  "source_index": "530",
+  "schema_ddl": "CREATE TABLE \"cards\"\n(\n    id                      INTEGER           not null\n        primary key autoincrement,\n    artist                  TEXT,\n    asciiName               TEXT,\n    availability            TEXT,\n    borderColor             TEXT,\n    cardKingdomFoilId       TEXT,\n    cardKingdomId           TEXT,\n    colorIdentity           TEXT,\n    colorIndicator          TEXT,\n    colors                  TEXT,\n    convertedManaCost       REAL,\n    duelDeck                TEXT,\n    edhrecRank              INTEGER,\n    faceConvertedManaCost   REAL,\n    faceName                TEXT,\n    flavorName              TEXT,\n    flavorText              TEXT,\n    frameEffects            TEXT,\n    frameVersion            TEXT,\n    hand                    TEXT,\n    hasAlternativeDeckLimit INTEGER default 0 not null,\n    hasContentWarning       INTEGER default 0 not null,\n    hasFoil                 INTEGER default 0 not null,\n    hasNonFoil              INTEGER default 0 not null,\n    isAlternative           INTEGER default 0 not null,\n    isFullArt               INTEGER default 0 not null,\n    isOnlineOnly            INTEGER default 0 not null,\n    isOversized             INTEGER default 0 not null,\n    isPromo                 INTEGER default 0 not null,\n    isReprint               INTEGER default 0 not null,\n    isReserved              INTEGER default 0 not null,\n    isStarter               INTEGER default 0 not null,\n    isStorySpotlight        INTEGER default 0 not null,\n    isTextless              INTEGER default 0 not null,\n    isTimeshifted           INTEGER default 0 not null,\n    keywords                TEXT,\n    layout                  TEXT,\n    leadershipSkills        TEXT,\n    life                    TEXT,\n    loyalty                 TEXT,\n    manaCost                TEXT,\n    mcmId                   TEXT,\n    mcmMetaId               TEXT,\n    mtgArenaId              TEXT,\n    mtgjsonV4Id             TEXT,\n    mtgoFoilId              TEXT,\n    mtgoId                  TEXT,\n    multiverseId            TEXT,\n    name                    TEXT,\n    number                  TEXT,\n    originalReleaseDate     TEXT,\n    originalText            TEXT,\n    originalType            TEXT,\n    otherFaceIds            TEXT,\n    power                   TEXT,\n    printings               TEXT,\n    promoTypes              TEXT,\n    purchaseUrls            TEXT,\n    rarity                  TEXT,\n    scryfallId              TEXT,\n    scryfallIllustrationId  TEXT,\n    scryfallOracleId        TEXT,\n    setCode                 TEXT,\n    side                    TEXT,\n    subtypes                TEXT,\n    supertypes              TEXT,\n    tcgplayerProductId      TEXT,\n    text                    TEXT,\n    toughness               TEXT,\n    type                    TEXT,\n    types                   TEXT,\n    uuid                    TEXT              not null\n        unique,\n    variations              TEXT,\n    watermark               TEXT\n);\n\nCREATE TABLE \"foreign_data\"\n(\n    id           INTEGER not null\n        primary key autoincrement,\n    flavorText   TEXT,\n    language     TEXT,\n    multiverseid INTEGER,\n    name         TEXT,\n    text         TEXT,\n    type         TEXT,\n    uuid         TEXT\n        references cards (uuid)\n);\n\nCREATE TABLE \"legalities\"\n(\n    id     INTEGER not null\n        primary key autoincrement,\n    format TEXT,\n    status TEXT,\n    uuid   TEXT\n        references cards (uuid)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE \"sets\"\n(\n    id               INTEGER           not null\n        primary key autoincrement,\n    baseSetSize      INTEGER,\n    block            TEXT,\n    booster          TEXT,\n    code             TEXT              not null\n        unique,\n    isFoilOnly       INTEGER default 0 not null,\n    isForeignOnly    INTEGER default 0 not null,\n    isNonFoilOnly    INTEGER default 0 not null,\n    isOnlineOnly     INTEGER default 0 not null,\n    isPartialPreview INTEGER default 0 not null,\n    keyruneCode      TEXT,\n    mcmId            INTEGER,\n    mcmIdExtras      INTEGER,\n    mcmName          TEXT,\n    mtgoCode         TEXT,\n    name             TEXT,\n    parentCode       TEXT,\n    releaseDate      DATE,\n    tcgplayerGroupId INTEGER,\n    totalSetSize     INTEGER,\n    type             TEXT\n);\n\nCREATE TABLE \"set_translations\"\n(\n    id          INTEGER not null\n        primary key autoincrement,\n    language    TEXT,\n    setCode     TEXT\n        references sets (code)\n            on update cascade on delete cascade,\n    translation TEXT\n);\n\nCREATE TABLE \"rulings\"\n(\n    id   INTEGER not null\n        primary key autoincrement,\n    date DATE,\n    text TEXT,\n    uuid TEXT\n        references cards (uuid)\n            on update cascade on delete cascade\n);",
+  "q1": "SELECT name FROM sets WHERE code IN (SELECT setCode FROM set_translations WHERE language = 'Korean' AND NOT language LIKE '%Japanese%')",
+  "q2": "SELECT T1.name FROM sets AS T1 INNER JOIN set_translations AS T2 ON T1.code = T2.setCode WHERE T2.language = 'Korean' AND NOT T1.code IN (SELECT setCode FROM set_translations WHERE language = 'Japanese')",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT name FROM sets WHERE code IN (SELECT setCode FROM set_translations WHERE language = 'Korean' AND NOT language LIKE '%Japanese%')",
+  "q2_prompt_sql": "SELECT T1.name FROM sets AS T1 INNER JOIN set_translations AS T2 ON T1.code = T2.setCode WHERE T2.language = 'Korean' AND NOT T1.code IN (SELECT setCode FROM set_translations WHERE language = 'Japanese')",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO sets (code, name) VALUES ('ABC', 'Set A'), ('DEF', 'Set D');\nINSERT INTO set_translations (setCode, language) VALUES ('ABC', 'Korean'), ('ABC', 'Japanese'), ('DEF', 'Korean');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 includes any set with a Korean translation, regardless of other languages. Q2 excludes sets that have Japanese translations. A set with both Korean and Japanese translations would be in Q1's result but excluded from Q2's.",
+  "counterexample_dsp": "A set 'ABC' with Korean and Japanese translations, and a set 'DEF' with only Korean translations. Q1 returns both, Q2 returns only DEF.",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 includes any set with a Korean translation, regardless of other languages. Q2 excludes sets that have Japanese translations. A set with both Korean and Japanese translations would be in Q1's result but excluded from Q2's.\",\n  \"counterexample_dsp\": \"A set 'ABC' with Korean and Japanese translations, and a set 'DEF' with only Korean translations. Q1 returns both, Q2 returns only DEF.\",\n  \"counterexample\": [\n    \"INSERT INTO sets (code, name) VALUES ('ABC', 'Set A'), ('DEF', 'Set D');\",\n    \"INSERT INTO set_translations (setCode, language) VALUES ('ABC', 'Korean'), ('ABC', 'Japanese'), ('DEF', 'Korean');\"\n  ]\n}",
+  "reasoning": "\nOkay, I need to figure out why Q1 and Q2 are not equivalent and create a counterexample where they return different results. Let's start by analyzing the two queries.\n\nQ1: SELECT name FROM sets WHERE code IN (SELECT setCode FROM set_translations WHERE language = 'Korean' AND NOT language LIKE '%Japanese%')\n\nWait, the condition here is language = 'Korean' AND NOT language LIKE '%Japanese%'. But since language is 'Korean', the LIKE condition is redundant. Because 'Korean' doesn't contain 'Japanese', so the NOT LIKE is always true. So this subquery is effectively selecting setCode where language is Korean. So Q1 is getting all sets that have a Korean translation.\n\nQ2: SELECT T1.name FROM sets AS T1 INNER JOIN set_translations AS T2 ON T1.code = T2.setCode WHERE T2.language = 'Korean' AND NOT T1.code IN (SELECT setCode FROM set_translations WHERE language = 'Japanese')\n\nSo Q2 is joining sets with set_translations where the translation is Korean, but also ensuring that the set's code is not in any set_translations entries where the language is Japanese. So Q2 is selecting sets that have a Korean translation and do not have any Japanese translations.\n\nAh, so the difference is that Q1 includes any set that has a Korean translation, regardless of whether it has Japanese translations. Q2 excludes any set that has a Japanese translation. Therefore, if there's a set that has both Korean and Japanese translations, Q1 would include it, but Q2 would exclude it.\n\nSo the counterexample needs a set that has both Korean and Japanese translations. Then Q1 would include it, but Q2 would not.\n\nLet me create such a scenario. Let's say there's a set with code 'ABC' that has translations in Korean and Japanese. Then Q1 would include it (since it has Korean), but Q2 would exclude it because the set's code is in the Japanese translation list.\n\nSo the test data should have:\n\n- A set with code 'ABC' and name 'Set A'.\n- In set_translations, entries for 'ABC' with language 'Korean' and another entry with 'Japanese'.\n\nAnother set with code 'DEF' that only has Korean translation. This would be included in both Q1 and Q2.\n\nSo the counterexample would have:\n\nInsert into sets: code 'ABC', name 'Set A'; code 'DEF', name 'Set D'.\n\nInsert into set_translations: setCode 'ABC', language 'Korean'; setCode 'ABC', language 'Japanese'; setCode 'DEF', language 'Korean'.\n\nNow, Q1 would return 'Set A' and 'Set D' because they both have Korean translations. Q2 would return only 'Set D' because 'Set A' has a Japanese translation, so the NOT IN condition excludes it.\n\nTherefore, the explanation is that Q1 includes sets with Korean translations regardless of other languages, while Q2 excludes those that have Japanese translations. The counterexample includes a set with both Korean and Japanese translations, which is included in Q1 but excluded in Q2.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 1248,
+    "total_tokens": 2066,
+    "completion_tokens": 818,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 650
+    },
+    "generation_seconds": 27.891
+  },
+  "started_at": "2026-10-06T16:50:20.394402+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "Set A"
+    ],
+    [
+      "Set D"
+    ]
+  ],
+  "q2_output": [
+    [
+      "Set D"
+    ]
+  ],
+  "q1_row_count": 2,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT name FROM sets WHERE code IN (SELECT setCode FROM set_translations WHERE language = 'Korean' AND NOT language LIKE '%Japanese%')",
+  "q2_validation_sql": "SELECT T1.name FROM sets AS T1 INNER JOIN set_translations AS T2 ON T1.code = T2.setCode WHERE T2.language = 'Korean' AND NOT T1.code IN (SELECT setCode FROM set_translations WHERE language = 'Japanese')"
+}

@@ -1,0 +1,58 @@
+{
+  "dbid": "toxicology",
+  "index": "198",
+  "source_index": "291",
+  "schema_ddl": "CREATE TABLE `atom` (\n  `atom_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `element` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `bond` (\n  `bond_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `bond_type` TEXT DEFAULT NULL,\n  PRIMARY KEY (`bond_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `connected` (\n  `atom_id` TEXT NOT NULL,\n  `atom_id2` TEXT NOT NULL,\n  `bond_id` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`,`atom_id2`),\n  FOREIGN KEY (`atom_id`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`atom_id2`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`bond_id`) REFERENCES `bond` (`bond_id`) ON DELETE CASCADE ON UPDATE CASCADE\n);\n\nCREATE TABLE `molecule` (\n  `molecule_id` TEXT NOT NULL,\n  `label` TEXT DEFAULT NULL,\n  PRIMARY KEY (`molecule_id`)\n);",
+  "q1": "SELECT DISTINCT T.element FROM atom AS T WHERE T.molecule_id = 'TR151'",
+  "q2": "SELECT T1.element FROM atom AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id WHERE T2.label = 'TR151' AND T1.element IN ('cl', 'br', 'f', 'i', 'pb', 'te')",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT DISTINCT T.element FROM atom AS T WHERE T.molecule_id = 'TR151'",
+  "q2_prompt_sql": "SELECT T1.element FROM atom AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id WHERE T2.label = 'TR151' AND T1.element IN ('cl', 'br', 'f', 'i', 'pb', 'te')",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO molecule (molecule_id, label) VALUES ('TR151', 'TR151');\nINSERT INTO atom (atom_id, molecule_id, element) VALUES ('a1', 'TR151', 'cl');\nINSERT INTO atom (atom_id, molecule_id, element) VALUES ('a2', 'TR151', 'o');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 returns all distinct elements for molecule_id 'TR151', while Q2 restricts elements to a specific IN list. When the molecule contains elements not in the list, Q1 includes them but Q2 excludes them, creating a discrepancy.",
+  "counterexample_dsp": "A molecule 'TR151' with elements 'cl' (in Q2's list) and 'o' (not in Q2's list). Q1 returns both, Q2 returns only 'cl'.",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 returns all distinct elements for molecule_id 'TR151', while Q2 restricts elements to a specific IN list. When the molecule contains elements not in the list, Q1 includes them but Q2 excludes them, creating a discrepancy.\",\n  \"counterexample_dsp\": \"A molecule 'TR151' with elements 'cl' (in Q2's list) and 'o' (not in Q2's list). Q1 returns both, Q2 returns only 'cl'.\",\n  \"counterexample\": [\n    \"INSERT INTO molecule (molecule_id, label) VALUES ('TR151', 'TR151');\",\n    \"INSERT INTO atom (atom_id, molecule_id, element) VALUES ('a1', 'TR151', 'cl');\",\n    \"INSERT INTO atom (atom_id, molecule_id, element) VALUES ('a2', 'TR151', 'o');\"\n  ]\n}",
+  "reasoning": "\nOkay, let me try to figure out why Q1 and Q2 aren't equivalent and come up with a counterexample.\n\nFirst, looking at Q1: It selects distinct elements from the atom table where molecule_id is 'TR151'. So it's getting all unique elements for that molecule, regardless of any other conditions.\n\nQ2 is a bit different. It joins atom with molecule on molecule_id, filters where molecule.label is 'TR151', and then adds an IN clause on element with specific values: 'cl', 'br', 'f', 'i', 'pb', 'te'. So Q2 is only returning elements that are in that specific list, while Q1 returns all elements for the molecule.\n\nSo the key difference is that Q1 includes all elements, whereas Q2 only includes those specific ones. Therefore, if the molecule 'TR151' has elements not in that list, Q1 would return them, but Q2 wouldn't. Conversely, if the molecule only has elements in that list, both would return the same. But if there's at least one element in Q1's result that's not in the IN list of Q2, then they differ.\n\nSo for a counterexample, I need a molecule with molecule_id 'TR151' (or label 'TR151') that has elements both inside and outside the IN list. Wait, but Q2 uses molecule.label = 'TR151', while Q1 uses molecule_id = 'TR151'. Wait, the molecule table has molecule_id and label. So molecule_id is the primary key, and label is a separate field. So if the molecule with molecule_id 'TR151' has label 'TR151', then both queries would refer to the same molecule. But if molecule_id is different from label, then Q1 is looking at molecule_id, and Q2 is looking at label. However, the problem says that Q1 uses molecule_id = 'TR151', and Q2 uses label = 'TR151'. So maybe the molecule with molecule_id 'TR151' has label 'TR151', which would make both refer to the same molecule.\n\nBut to make sure, let me check. Suppose the molecule table has molecule_id = 'TR151' and label = 'TR151'. Then Q1 is selecting atoms where molecule_id is 'TR151', and Q2 is selecting atoms where molecule.label is 'TR151'. So they refer to the same molecule. So the difference comes from the IN clause in Q2.\n\nTherefore, if the molecule 'TR151' has elements both in the list and not in the list, then Q1 would return all elements (including those not in the list), while Q2 would only return those in the list. So the counterexample would be a molecule with molecule_id 'TR151' (and label 'TR151') that has elements like 'o' (not in the list) and 'cl' (in the list). Then Q1 would return both 'o' and 'cl', while Q2 would only return 'cl'.\n\nAlternatively, if the molecule has elements not in the list, then Q1 includes them, Q2 doesn't. So that's the difference.\n\nSo to create the counterexample, I need to insert into the molecule table a row where molecule_id is 'TR151' and label is 'TR151'. Then insert into the atom table rows with molecule_id 'TR151' and elements both in the IN list (like 'cl') and not in it (like 'o'). Then Q1 would return both, Q2 would return only the ones in the list.\n\nLet me check the schema again. The molecule table has molecule_id and label. The atom table has molecule_id as a foreign key to molecule(molecule_id). So inserting into molecule first, then into atom.\n\nSo the test data would be:\n\nmolecule: (molecule_id='TR151', label='TR151')\n\natom entries:\n- (atom_id='a1', molecule_id='TR151', element='cl')\n- (atom_id='a2', molecule_id='TR151', element='o')\n\nIn this case, Q1 returns {'cl', 'o'}, Q2 returns {'cl'}.\n\nThat's a valid counterexample. So the explanation would be that Q1 returns all elements for the molecule, while Q2 filters to only those in the specified list. Hence, when there are elements outside that list, the results differ.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 545,
+    "total_tokens": 1713,
+    "completion_tokens": 1168,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 960
+    },
+    "generation_seconds": 38.329
+  },
+  "started_at": "2026-10-06T18:33:25.037451+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "cl"
+    ],
+    [
+      "o"
+    ]
+  ],
+  "q2_output": [
+    [
+      "cl"
+    ]
+  ],
+  "q1_row_count": 2,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DISTINCT T.element FROM atom AS T WHERE T.molecule_id = 'TR151'",
+  "q2_validation_sql": "SELECT T1.element FROM atom AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id WHERE T2.label = 'TR151' AND T1.element IN ('cl', 'br', 'f', 'i', 'pb', 'te')"
+}

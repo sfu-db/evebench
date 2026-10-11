@@ -1,0 +1,58 @@
+{
+  "dbid": "7",
+  "index": "9",
+  "source_index": "8",
+  "schema_ddl": "CREATE TABLE R (A INT, B INT, C INT);",
+  "q1": "SELECT X.B AS XB FROM R AS X WHERE X.A = 5 AND X.C < 1",
+  "q2": "SELECT X.B AS XB FROM R AS X WHERE X.A < 10",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "literature",
+  "q1_prompt_sql": "SELECT X.B AS XB FROM R AS X WHERE X.A = 5 AND X.C < 1",
+  "q2_prompt_sql": "SELECT X.B AS XB FROM R AS X WHERE X.A < 10",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO R (A, B, C) VALUES (5, 10, 0);\nINSERT INTO R (A, B, C) VALUES (6, 20, 0);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 requires A=5 AND C<1, while Q2 only requires A<10. Q2 includes rows where A is less than 10 but not equal to 5, or where A=5 but C is not less than 1. These rows are excluded by Q1 but included by Q2.",
+  "counterexample_dsp": "Insert two rows: one where A=5 and C=0 (included in both Q1 and Q2), and another where A=6 and C=0 (included in Q2 but not Q1).",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 requires A=5 AND C<1, while Q2 only requires A<10. Q2 includes rows where A is less than 10 but not equal to 5, or where A=5 but C is not less than 1. These rows are excluded by Q1 but included by Q2.\",\n  \"counterexample_dsp\": \"Insert two rows: one where A=5 and C=0 (included in both Q1 and Q2), and another where A=6 and C=0 (included in Q2 but not Q1).\",\n  \"counterexample\": [\n    \"INSERT INTO R (A, B, C) VALUES (5, 10, 0);\",\n    \"INSERT INTO R (A, B, C) VALUES (6, 20, 0);\"\n  ]\n}",
+  "reasoning": "\nOkay, let's tackle this problem. The user wants a counterexample where Q1 and Q2 return different results. Let me first understand what each query does.\n\nQ1 selects B from table R where A equals 5 and C is less than 1. So, it's very specific: only rows with A=5 and C<1. \n\nQ2 selects B from R where A is less than 10. That's a much broader condition. Any row with A value under 10 will be included, regardless of C's value.\n\nSo, for these two to differ, there must be rows that satisfy Q2's condition but not Q1's. Let me think of a scenario where there's a row with A=5 (so it's included in Q2) but C is not less than 1 (so it's excluded from Q1). Also, there could be rows with A < 10 but not 5, which would be in Q2 but not Q1.\n\nWait, but Q1's condition is A=5 AND C < 1. So, any row that meets Q1's condition will automatically meet Q2's condition because 5 is less than 10. Therefore, Q1's result set is a subset of Q2's. But for them to be different, Q2 must have at least one row that isn't in Q1. That would happen if there's a row in R where A is less than 10 but not equal to 5, or a row where A is 5 but C is not less than 1.\n\nSo, if I create a table with a row where A=5 and C=0 (which would be in Q1) and another row where A=5 and C=1 (so not in Q1 but A is 5 < 10, so in Q2). Wait, no, A=5 is less than 10, so that row would be in Q2. But since C=1 is not less than 1, that row isn't in Q1. So Q2 would return that row's B, but Q1 wouldn't. Therefore, that would be a case where they differ.\n\nAlternatively, a row where A is 6 (so less than 10) and C is any value. That row would be in Q2 but not in Q1 because A isn't 5.\n\nSo, let's create a test case with two rows. Let's say:\n\nRow 1: A=5, C=0 (included in Q1 and Q2)\nRow 2: A=5, C=1 (included in Q2 but not Q1)\nRow 3: A=6, C=2 (included in Q2 but not Q1)\n\nBut maybe even simpler. Let's take one row where A=5 and C=0 (so Q1 returns B, Q2 returns B). Then another row where A=6 and C=0. Then Q2 would return both Bs, but Q1 would only return the first. So that's a difference.\n\nWait, but the user wants a counterexample where the two queries return different results. So, if I have a row that's in Q2 but not in Q1, then the results would differ.\n\nLet me create a small example. Suppose the table R has two rows:\n\nRow 1: A=5, B=10, C=0 → satisfies Q1 (A=5 and C<1) → included in Q1 and Q2.\nRow 2: A=6, B=20, C=0 → satisfies Q2 (A < 10) but not Q1 (A≠5) → included in Q2 but not Q1.\n\nIn this case, Q1 returns [10], Q2 returns [10, 20]. So they are different. That's a valid counterexample.\n\nAnother possibility is a row with A=5 but C=1. Then Q2 includes it (A=5 < 10) but Q1 excludes it (C=1 not < 1). So that row would be in Q2 but not Q1. So if there's such a row, then Q2's result would have more rows than Q1's.\n\nSo, the counterexample could be inserting two rows: one that meets both conditions (A=5, C<1) and another that meets Q2's condition but not Q1's (like A=5, C=1 or A=6, C=any).\n\nLet me pick the second example. Let's say:\n\nINSERT INTO R (A, B, C) VALUES (5, 10, 0); → included in Q1 and Q2\nINSERT INTO R (A, B, C) VALUES (5, 20, 1); → included in Q2 (A=5 <10) but not Q1 (C=1 not <1)\n\nThen Q1 returns B=10, Q2 returns B=10 and B=20. So different results.\n\nAlternatively, another example with A=6:\n\nINSERT INTO R (A, B, C) VALUES (5, 10, 0); → Q1 and Q2\nINSERT INTO R (A, B, C) VALUES (6, 20, 5); → Q2 only.\n\nEither way, the difference is clear. The explanation would be that Q1 has stricter conditions (A=5 and C<1) while Q2 only requires A<10. So any row with A=5 and C>=1, or A not 5 but less than 10 would be in Q2 but not Q1.\n\nSo the counterexample needs to have at least one row that's in Q2 but not in Q1. The simplest case is a row where A=6 (so less than 10, not equal to 5) and any C value. Then Q2 returns that row's B, but Q1 doesn't.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 250,
+    "total_tokens": 1699,
+    "completion_tokens": 1449,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1262
+    },
+    "generation_seconds": 43.359
+  },
+  "started_at": "2026-10-06T07:29:53.229737+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      10
+    ]
+  ],
+  "q2_output": [
+    [
+      10
+    ],
+    [
+      20
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT X.B AS XB FROM R AS X WHERE X.A = 5 AND X.C < 1",
+  "q2_validation_sql": "SELECT X.B AS XB FROM R AS X WHERE X.A < 10"
+}

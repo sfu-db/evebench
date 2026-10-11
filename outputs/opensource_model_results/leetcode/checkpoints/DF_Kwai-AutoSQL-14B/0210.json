@@ -1,0 +1,61 @@
+{
+  "dbid": "607",
+  "index": "210",
+  "source_index": "399",
+  "schema_ddl": "CREATE TABLE SALESPERSON (\n    SALES_ID INT,\n    NAME VARCHAR(255),\n    SALARY INT,\n    COMMISSION_RATE INT,\n    HIRE_DATE VARCHAR(255)\n);\n\nCREATE TABLE COMPANY (\n    COM_ID INT,\n    NAME VARCHAR(255),\n    CITY VARCHAR(255)\n);\n\nCREATE TABLE ORDERS (\n    ORDER_ID INT,\n    COM_ID INT,\n    SALES_ID INT,\n    ORDER_DATE VARCHAR(255),\n    AMOUNT INT\n);",
+  "q1": "SELECT NAME FROM SALESPERSON AS S WHERE 0 = ( SELECT COUNT(*) FROM ORDERS AS O JOIN COMPANY AS C ON O.COM_ID = C.COM_ID WHERE O.SALES_ID = S.SALES_ID AND C.NAME = 'RED' )",
+  "q2": "SELECT NAME FROM SALESPERSON WHERE NAME NOT IN ( SELECT S.NAME FROM SALESPERSON S, COMPANY C, ORDERS O WHERE O.COM_ID = C.COM_ID AND O.SALES_ID = S.SALES_ID AND C.NAME = 'RED' )",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT NAME FROM SALESPERSON AS S WHERE 0 = ( SELECT COUNT(*) FROM ORDERS AS O JOIN COMPANY AS C ON O.COM_ID = C.COM_ID WHERE O.SALES_ID = S.SALES_ID AND C.NAME = 'RED' )",
+  "q2_prompt_sql": "SELECT NAME FROM SALESPERSON WHERE NAME NOT IN ( SELECT S.NAME FROM SALESPERSON S, COMPANY C, ORDERS O WHERE O.COM_ID = C.COM_ID AND O.SALES_ID = S.SALES_ID AND C.NAME = 'RED' )",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO SALESPERSON (SALES_ID, NAME, SALARY, COMMISSION_RATE, HIRE_DATE) VALUES (1, 'John', 50000, 5, '2020-01-01'), (2, 'Alice', 60000, 6, '2020-02-01');\nINSERT INTO COMPANY (COM_ID, NAME, CITY) VALUES (1, 'RED', 'New York'), (2, 'BLUE', 'Los Angeles');\nINSERT INTO ORDERS (ORDER_ID, COM_ID, SALES_ID, ORDER_DATE, AMOUNT) VALUES (1, 2, 2, '2020-03-01', 1000);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent. Q1 returns salespersons who have zero orders associated with the company named 'RED'. Q2 returns salespersons whose name is not in the set of salespersons who have orders associated with the company named 'RED'. These two queries differ when a salesperson has no orders at all (not just no orders with 'RED'). In such a case, Q1 would include that salesperson, but Q2 would not because the subquery in Q2 would return an empty set, and NOT IN with an empty set would still return the salesperson. However, if NULLs are involved or there is no matching row, the behavior may vary.",
+  "counterexample_dsp": "A salesperson named 'John' with no orders at all. Q1 would include 'John' because he has zero orders with 'RED'. Q2 would also include 'John' because there are no salespersons in the subquery. However, a salesperson named 'Alice' who has orders with other companies but not with 'RED' would be included in Q1 but not in Q2, depending on how the NOT IN handles empty results. A more concrete example shows the difference.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n  \"equiv\": \"N\",\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent. Q1 returns salespersons who have zero orders associated with the company named 'RED'. Q2 returns salespersons whose name is not in the set of salespersons who have orders associated with the company named 'RED'. These two queries differ when a salesperson has no orders at all (not just no orders with 'RED'). In such a case, Q1 would include that salesperson, but Q2 would not because the subquery in Q2 would return an empty set, and NOT IN with an empty set would still return the salesperson. However, if NULLs are involved or there is no matching row, the behavior may vary.\",\n  \"counterexample_dsp\": \"A salesperson named 'John' with no orders at all. Q1 would include 'John' because he has zero orders with 'RED'. Q2 would also include 'John' because there are no salespersons in the subquery. However, a salesperson named 'Alice' who has orders with other companies but not with 'RED' would be included in Q1 but not in Q2, depending on how the NOT IN handles empty results. A more concrete example shows the difference.\",\n  \"counterexample\": \"INSERT INTO SALESPERSON (SALES_ID, NAME, SALARY, COMMISSION_RATE, HIRE_DATE) VALUES (1, 'John', 50000, 5, '2020-01-01'), (2, 'Alice', 60000, 6, '2020-02-01');\\nINSERT INTO COMPANY (COM_ID, NAME, CITY) VALUES (1, 'RED', 'New York'), (2, 'BLUE', 'Los Angeles');\\nINSERT INTO ORDERS (ORDER_ID, COM_ID, SALES_ID, ORDER_DATE, AMOUNT) VALUES (1, 2, 2, '2020-03-01', 1000);\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 465,
+    "total_tokens": 905,
+    "completion_tokens": 440,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 14.469
+  },
+  "started_at": "2026-10-06T15:34:26.043189+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "John"
+    ],
+    [
+      "Alice"
+    ]
+  ],
+  "q2_output": [
+    [
+      "John"
+    ],
+    [
+      "Alice"
+    ]
+  ],
+  "q1_row_count": 2,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT NAME FROM SALESPERSON AS S WHERE 0 = ( SELECT COUNT(*) FROM ORDERS AS O JOIN COMPANY AS C ON O.COM_ID = C.COM_ID WHERE O.SALES_ID = S.SALES_ID AND C.NAME = 'RED' )",
+  "q2_validation_sql": "SELECT NAME FROM SALESPERSON WHERE NAME NOT IN ( SELECT S.NAME FROM SALESPERSON S, COMPANY C, ORDERS O WHERE O.COM_ID = C.COM_ID AND O.SALES_ID = S.SALES_ID AND C.NAME = 'RED' )"
+}

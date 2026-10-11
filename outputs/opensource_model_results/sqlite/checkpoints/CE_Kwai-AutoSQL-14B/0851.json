@@ -1,0 +1,55 @@
+{
+  "dbid": "debit_card_specializing",
+  "index": "851",
+  "source_index": "1497",
+  "schema_ddl": "CREATE TABLE customers\n(\n    CustomerID INTEGER UNIQUE     not null\n        primary key,\n    Segment    TEXT null,\n    Currency   TEXT null\n);\n\nCREATE TABLE gasstations\n(\n    GasStationID INTEGER    UNIQUE   not null\n        primary key,\n    ChainID      INTEGER          null,\n    Country      TEXT null,\n    Segment      TEXT null\n);\n\nCREATE TABLE products\n(\n    ProductID   INTEGER   UNIQUE      not null\n        primary key,\n    Description TEXT null\n);\n\nCREATE TABLE \"transactions_1k\"\n(\n    TransactionID INTEGER\n        primary key autoincrement,\n    Date          DATE,\n    Time          TEXT,\n    CustomerID    INTEGER,\n    CardID        INTEGER,\n    GasStationID  INTEGER,\n    ProductID     INTEGER,\n    Amount        INTEGER,\n    Price         REAL\n);\n\nCREATE TABLE \"yearmonth\"\n(\n    CustomerID  INTEGER not null\n        references customers\n            on update cascade on delete cascade\n        references customers,\n    Date        TEXT    not null,\n    Consumption REAL,\n    primary key (Date, CustomerID)\n);",
+  "q1": "SELECT T1.Segment FROM customers AS T1 INNER JOIN yearmonth AS T2 ON T1.CustomerID = T2.CustomerID WHERE T2.Date = '201309' GROUP BY T1.CustomerID ORDER BY SUM(T2.Consumption) ASC LIMIT 1",
+  "q2": "SELECT Segment FROM customers AS T1 INNER JOIN yearmonth AS T2 ON T1.CustomerID = T2.CustomerID WHERE T2.Date = '201309' GROUP BY T1.Segment ORDER BY SUM(T2.Consumption) ASC LIMIT 1",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT T1.Segment FROM customers AS T1 INNER JOIN yearmonth AS T2 ON T1.CustomerID = T2.CustomerID WHERE T2.Date = '201309' GROUP BY T1.CustomerID ORDER BY SUM(T2.Consumption) ASC LIMIT 1",
+  "q2_prompt_sql": "SELECT Segment FROM customers AS T1 INNER JOIN yearmonth AS T2 ON T1.CustomerID = T2.CustomerID WHERE T2.Date = '201309' GROUP BY T1.Segment ORDER BY SUM(T2.Consumption) ASC LIMIT 1",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO customers (CustomerID, Segment, Currency) VALUES (1, 'Platinum', 'USD');\nINSERT INTO customers (CustomerID, Segment, Currency) VALUES (2, 'Platinum', 'USD');\nINSERT INTO customers (CustomerID, Segment, Currency) VALUES (3, 'Gold', 'USD');\nINSERT INTO yearmonth (CustomerID, Date, Consumption) VALUES (1, '201309', 10);\nINSERT INTO yearmonth (CustomerID, Date, Consumption) VALUES (2, '201309', 20);\nINSERT INTO yearmonth (CustomerID, Date, Consumption) VALUES (3, '201309', 15);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 groups by individual customers and returns the segment of the customer with the least consumption. Q2 groups by segment and returns the segment with the least total consumption across all customers in that segment. These can differ when a segment with higher total consumption contains a customer with the minimum individual consumption.",
+  "counterexample_dsp": "Three customers: two in 'Platinum' with consumption 10 and 20, one in 'Gold' with consumption 15. Q1 returns 'Platinum' (customer with least individual consumption), Q2 returns 'Gold' (segment with least total consumption).",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 groups by individual customers and returns the segment of the customer with the least consumption. Q2 groups by segment and returns the segment with the least total consumption across all customers in that segment. These can differ when a segment with higher total consumption contains a customer with the minimum individual consumption.\",\n  \"counterexample_dsp\": \"Three customers: two in 'Platinum' with consumption 10 and 20, one in 'Gold' with consumption 15. Q1 returns 'Platinum' (customer with least individual consumption), Q2 returns 'Gold' (segment with least total consumption).\",\n  \"counterexample\": [\n    \"INSERT INTO customers (CustomerID, Segment, Currency) VALUES (1, 'Platinum', 'USD');\",\n    \"INSERT INTO customers (CustomerID, Segment, Currency) VALUES (2, 'Platinum', 'USD');\",\n    \"INSERT INTO customers (CustomerID, Segment, Currency) VALUES (3, 'Gold', 'USD');\",\n    \"INSERT INTO yearmonth (CustomerID, Date, Consumption) VALUES (1, '201309', 10);\",\n    \"INSERT INTO yearmonth (CustomerID, Date, Consumption) VALUES (2, '201309', 20);\",\n    \"INSERT INTO yearmonth (CustomerID, Date, Consumption) VALUES (3, '201309', 15);\"\n  ]\n}",
+  "reasoning": "\nOkay, I need to figure out why Q1 and Q2 are not equivalent and create a counterexample where they return different results. Let me start by understanding each query.\n\nQ1 selects T1.Segment from customers joined with yearmonth on CustomerID, where Date is '201309'. It groups by T1.CustomerID, orders by SUM(Consumption) ascending, and takes the first one. So, this gives the segment of the customer who has the least total consumption in that month.\n\nQ2 is similar but groups by T1.Segment instead of CustomerID. Then it orders by SUM(Consumption) ascending and takes the first. This would give the segment (like 'Platinum') with the least total consumption across all customers in that segment for that month.\n\nThe difference is that Q1 groups by individual customers, so each customer's consumption is summed, then ordered to find the one with the minimum. Q2 groups by segment, sums all consumption for each segment, then picks the segment with the minimum sum.\n\nSo, for Q1, the result is a single customer's segment. For Q2, it's the segment name. They could differ if, for example, two customers in the same segment have different consumption sums. Let me think of a scenario where the customer with the least consumption is in a segment that isn't the segment with the least total consumption.\n\nFor example, suppose there are two segments: 'Platinum' and 'Gold'. In 'Platinum', there are two customers: one with consumption 10 and another with 20. In 'Gold', one customer with consumption 15. \n\nFor Q1: the customer with consumption 10 (Platinum) would be the first. So Q1 returns 'Platinum'.\n\nFor Q2: the sum for Platinum is 30, Gold is 15. So Q2 returns 'Gold'.\n\nThus, the results differ. That's the case I need to create.\n\nNow, I need to set up the test data. Let's create three customers. Customer 1 and 2 in Platinum, Customer 3 in Gold. Their consumption in yearmonth for '201309' would be 10, 20, and 15 respectively.\n\nSo:\n\ncustomers table:\nCustomerID | Segment  | Currency\n1          | Platinum | ...\n2          | Platinum | ...\n3          | Gold     | ...\n\nyearmonth table:\nCustomerID | Date     | Consumption\n1          | 201309   | 10\n2          | 201309   | 20\n3          | 201309   | 15\n\nThen, Q1 groups by CustomerID, sums Consumption (each row is one customer's consumption for that date). Orders ascending, so Customer 1 (sum 10) comes first. The Segment is Platinum.\n\nQ2 groups by Segment. Platinum has sum 30 (10+20), Gold has 15. Ordered ascending, Gold comes first. So Q2 returns 'Gold'.\n\nThus, the two queries return different results. That's the counterexample.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 533,
+    "total_tokens": 1504,
+    "completion_tokens": 971,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 660
+    },
+    "generation_seconds": 33.375
+  },
+  "started_at": "2026-10-06T19:57:24.604940+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "Platinum"
+    ]
+  ],
+  "q2_output": [
+    [
+      "Gold"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT T1.Segment FROM customers AS T1 INNER JOIN yearmonth AS T2 ON T1.CustomerID = T2.CustomerID WHERE T2.Date = '201309' GROUP BY T1.CustomerID ORDER BY SUM(T2.Consumption) ASC LIMIT 1",
+  "q2_validation_sql": "SELECT Segment FROM customers AS T1 INNER JOIN yearmonth AS T2 ON T1.CustomerID = T2.CustomerID WHERE T2.Date = '201309' GROUP BY T1.Segment ORDER BY SUM(T2.Consumption) ASC LIMIT 1"
+}

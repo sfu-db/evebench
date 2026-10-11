@@ -1,0 +1,53 @@
+{
+  "dbid": "beers",
+  "index": "2",
+  "source_index": "25",
+  "schema_ddl": "CREATE TABLE Bar (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Beer (\n    name VARCHAR NOT NULL,\n    brewer VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Drinker (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Frequents (\n    drinker VARCHAR NOT NULL,\n    bar VARCHAR NOT NULL,\n    times_a_week SMALLINT NOT NULL,\n    PRIMARY KEY (drinker, bar),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (bar) REFERENCES Bar(name)\n);\n\nCREATE TABLE Serves (\n    bar VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    price DECIMAL(5,2) NOT NULL,\n    PRIMARY KEY (bar, beer),\n    FOREIGN KEY (bar) REFERENCES Bar(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);\n\nCREATE TABLE Likes (\n    drinker VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    PRIMARY KEY (drinker, beer),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);",
+  "q1": "SELECT name FROM drinker WHERE NOT EXISTS(SELECT f.bar FROM frequents AS f, serves AS s WHERE f.drinker = drinker.name AND f.bar = s.bar AND NOT s.beer IN (SELECT beer FROM likes WHERE drinker = drinker.name))",
+  "q2": "SELECT name FROM drinker WHERE NOT EXISTS(SELECT f.bar FROM frequents AS f, serves AS s WHERE f.drinker = drinker.name AND f.bar = s.bar AND s.beer IN (SELECT beer FROM likes WHERE drinker = drinker.name))",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "beers",
+  "q1_prompt_sql": "SELECT name FROM drinker WHERE NOT EXISTS(SELECT f.bar FROM frequents AS f, serves AS s WHERE f.drinker = drinker.name AND f.bar = s.bar AND NOT s.beer IN (SELECT beer FROM likes WHERE drinker = drinker.name))",
+  "q2_prompt_sql": "SELECT name FROM drinker WHERE NOT EXISTS(SELECT f.bar FROM frequents AS f, serves AS s WHERE f.drinker = drinker.name AND f.bar = s.bar AND s.beer IN (SELECT beer FROM likes WHERE drinker = drinker.name))",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO Drinker (name, address) VALUES ('D1', 'A1'); INSERT INTO Beer (name, brewer) VALUES ('B1', 'Brewer1'); INSERT INTO Likes (drinker, beer) VALUES ('D1', 'B1');",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 checks for drinkers who do not serve any beer that they like, while Q2 checks for drinkers who serve any beer that they like. The difference lies in the negation of the condition related to the 'likes' table.",
+  "counterexample_dsp": "A drinker who likes beer A but the bar does not serve beer A.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 checks for drinkers who do not serve any beer that they like, while Q2 checks for drinkers who serve any beer that they like. The difference lies in the negation of the condition related to the 'likes' table.\",\n  \"counterexample_dsp\": \"A drinker who likes beer A but the bar does not serve beer A.\",\n  \"counterexample\": \"INSERT INTO Drinker (name, address) VALUES ('D1', 'A1'); INSERT INTO Beer (name, brewer) VALUES ('B1', 'Brewer1'); INSERT INTO Likes (drinker, beer) VALUES ('D1', 'B1');\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 563,
+    "total_tokens": 706,
+    "completion_tokens": 143,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 2.781
+  },
+  "started_at": "2026-10-06T08:00:33.489554+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "D1"
+    ]
+  ],
+  "q2_output": [
+    [
+      "D1"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT name FROM drinker WHERE NOT EXISTS(SELECT f.bar FROM frequents AS f, serves AS s WHERE f.drinker = drinker.name AND f.bar = s.bar AND NOT s.beer IN (SELECT beer FROM likes WHERE drinker = drinker.name))",
+  "q2_validation_sql": "SELECT name FROM drinker WHERE NOT EXISTS(SELECT f.bar FROM frequents AS f, serves AS s WHERE f.drinker = drinker.name AND f.bar = s.bar AND s.beer IN (SELECT beer FROM likes WHERE drinker = drinker.name))"
+}

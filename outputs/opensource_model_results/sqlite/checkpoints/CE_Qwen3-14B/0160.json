@@ -1,0 +1,55 @@
+{
+  "dbid": "toxicology",
+  "index": "160",
+  "source_index": "226",
+  "schema_ddl": "CREATE TABLE `atom` (\n  `atom_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `element` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `bond` (\n  `bond_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `bond_type` TEXT DEFAULT NULL,\n  PRIMARY KEY (`bond_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `connected` (\n  `atom_id` TEXT NOT NULL,\n  `atom_id2` TEXT NOT NULL,\n  `bond_id` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`,`atom_id2`),\n  FOREIGN KEY (`atom_id`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`atom_id2`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`bond_id`) REFERENCES `bond` (`bond_id`) ON DELETE CASCADE ON UPDATE CASCADE\n);\n\nCREATE TABLE `molecule` (\n  `molecule_id` TEXT NOT NULL,\n  `label` TEXT DEFAULT NULL,\n  PRIMARY KEY (`molecule_id`)\n);",
+  "q1": "SELECT DISTINCT T.molecule_id FROM bond AS T WHERE T.bond_type = '=' ORDER BY T.molecule_id LIMIT 5",
+  "q2": "SELECT T1.label FROM molecule AS T1 INNER JOIN bond AS T2 ON T1.molecule_id = T2.molecule_id WHERE T2.bond_type = ' = ' ORDER BY T1.label ASC LIMIT 5",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT DISTINCT T.molecule_id FROM bond AS T WHERE T.bond_type = '=' ORDER BY T.molecule_id LIMIT 5",
+  "q2_prompt_sql": "SELECT T1.label FROM molecule AS T1 INNER JOIN bond AS T2 ON T1.molecule_id = T2.molecule_id WHERE T2.bond_type = ' = ' ORDER BY T1.label ASC LIMIT 5",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO molecule (molecule_id, label) VALUES ('mol1', 'A'), ('mol2', 'B');\nINSERT INTO bond (bond_id, molecule_id, bond_type) VALUES ('b1', 'mol1', '='), ('b2', 'mol2', ' = ');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 filters bonds with bond_type '=', while Q2 filters for ' = ' (with spaces). If molecules have bonds with these different types, the queries return different results.",
+  "counterexample_dsp": "Two molecules: mol1 with a bond of type '=', and mol2 with a bond of type ' = '. Q1 returns mol1's ID, Q2 returns mol2's label.",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 filters bonds with bond_type '=', while Q2 filters for ' = ' (with spaces). If molecules have bonds with these different types, the queries return different results.\",\n  \"counterexample_dsp\": \"Two molecules: mol1 with a bond of type '=', and mol2 with a bond of type ' = '. Q1 returns mol1's ID, Q2 returns mol2's label.\",\n  \"counterexample\": [\n    \"INSERT INTO molecule (molecule_id, label) VALUES ('mol1', 'A'), ('mol2', 'B');\",\n    \"INSERT INTO bond (bond_id, molecule_id, bond_type) VALUES ('b1', 'mol1', '='), ('b2', 'mol2', ' = ');\"\n  ]\n}",
+  "reasoning": "\nOkay, let's see. I need to find a counterexample where Q1 and Q2 return different results. Let me first understand what each query is doing.\n\nQ1 selects distinct molecule_id from the bond table where bond_type is '=', then orders and limits to 5. So it's getting molecule IDs that have at least one bond of type '='.\n\nQ2 does an inner join between molecule (T1) and bond (T2) on molecule_id, filtering where bond_type is ' = ' (note the space before and after?), then selects T1.label, orders by label, and limits to 5. Wait, the bond_type in Q2 is ' = ' with spaces? The original Q1 uses '=' without spaces. That's a key difference. So the bond_type in Q2 is checking for a string with spaces around the equals sign, whereas Q1 is checking for exactly '='. So if there are bonds with bond_type ' = ' (with spaces), Q1 would not include them, but Q2 would if the bond_type is exactly ' = '.\n\nWait, looking back at the queries: Q1 has WHERE T.bond_type = '=' and Q2 has WHERE T2.bond_type = ' = ' (with spaces). So that's a typo? Or maybe a mistake in the user's input. But assuming that's correct, then the bond_type in Q2 is looking for ' = ' (with spaces), which is different from Q1's '='.\n\nSo if there are bonds with bond_type '=', they would be included in Q1 but not in Q2. Conversely, if there are bonds with bond_type ' = ', they would be in Q2 but not in Q1. However, the problem says that Q1 and Q2 are not semantically equivalent, so the difference here is due to the bond_type condition.\n\nBut wait, the user might have made a typo in the bond_type in Q2. Let me check again. The original Q2's WHERE clause is T2.bond_type = ' = ' — that's a string with spaces around the equals sign. So if the bond_type in the database has entries with ' = ' (with spaces) and entries with '=', then Q1 and Q2 would return different results.\n\nSo to create a counterexample, I need to have some molecules with bonds of type '=' and others with ' = '.\n\nBut Q1 is looking for bond_type '=', and Q2 is looking for bond_type ' = '.\n\nSo if there's a molecule that has a bond with '=', then Q1 would include it. If there's another molecule with a bond of ' = ', then Q2 would include it. But since Q2 is joining with molecule, it would return the label of the molecule. However, Q1 returns the molecule_id. So if the molecule_ids are different, but the labels are same or different, the results would vary.\n\nWait, but the problem says that Q1 and Q2 are not equivalent. So the difference could be in the bond_type condition, but also in the output columns. Q1 returns molecule_id, Q2 returns label. So even if the same molecules are selected, if the labels are different, the results would differ. However, the main issue is the bond_type condition.\n\nSo to create a counterexample, let's create a scenario where there are molecules with bonds of both '=' and ' = '.\n\nLet me think of a test case. Suppose:\n\n- Molecule A has a bond with bond_type '='. So Q1 would include A's molecule_id. But Q2 would not include it unless there's a bond with ' = '.\n\n- Molecule B has a bond with bond_type ' = ', so Q2 would include B's label, but Q1 would not.\n\nBut then Q1 would return A's molecule_id, and Q2 would return B's label. So if the labels are different, then the outputs are different.\n\nBut the problem is to make sure that the two queries return different results. So if there's a molecule that has a bond with '=', then Q1 will have that molecule_id, but Q2 would not have it unless there's a bond with ' = '.\n\nAlternatively, if there's a molecule with a bond of ' = ', then Q2 will include it (assuming the molecule exists and the bond is present), but Q1 would not.\n\nSo to create a counterexample, let's insert:\n\n- A molecule 'mol1' with label 'Molecule 1' and a bond with bond_type '='.\n\n- Another molecule 'mol2' with label 'Molecule 2' and a bond with bond_type ' = '.\n\nThen Q1 would return 'mol1' (since it has a bond with '='), and Q2 would return 'Molecule 2' (since it has a bond with ' = '). So the outputs are different.\n\nBut also, need to make sure that the molecule_ids are correctly referenced in the bond table.\n\nSo, the steps would be:\n\n1. Insert into molecule: mol1 and mol2.\n\n2. Insert into bond: for mol1, a bond with bond_type '=', and for mol2, a bond with bond_type ' = '.\n\nThen, when Q1 runs, it selects DISTINCT molecule_id where bond_type is '=', so mol1. Q2 selects labels where bond_type is ' = ', so mol2's label.\n\nSo the two queries return different results.\n\nAnother possibility is that there's a molecule that has both types of bonds. But in that case, Q1 would include it, and Q2 would also include it if the bond_type is ' = '.\n\nBut in the counterexample, we need to ensure that the two queries return different results. So if there's at least one molecule in Q1's result that's not in Q2's, and vice versa.\n\nBut the problem is that Q1 returns molecule_ids, Q2 returns labels. So even if the same molecule is selected, the output would be different (id vs label). However, if the molecule's label is same as another's id, maybe, but that's not necessary.\n\nBut perhaps the main issue is the bond_type condition. So creating a scenario where the bond_type is different in each query's condition.\n\nTherefore, the counterexample would be:\n\n- Molecule 'mol1' with label 'A' and a bond with bond_type '='.\n\n- Molecule 'mol2' with label 'B' and a bond with bond_type ' = '.\n\nThen Q1 would return 'mol1', and Q2 would return 'B'.\n\nSo the two queries have different results.\n\nNow, I need to make sure that the schema constraints are respected. The bond table has molecule_id as a foreign key to molecule. So inserting into bond requires that the molecule_id exists in molecule.\n\nSo the SQL statements would be:\n\nINSERT INTO molecule (molecule_id, label) VALUES ('mol1', 'A'), ('mol2', 'B');\n\nINSERT INTO bond (bond_id, molecule_id, bond_type) VALUES ('b1', 'mol1', '='), ('b2', 'mol2', ' = ');\n\nBut also, the atom table and connected table may not be needed for this example. Since the queries only involve molecule and bond tables. So the other tables can be left empty.\n\nSo the counterexample_dsp is: Two molecules, mol1 with bond_type '=', mol2 with bond_type ' = ', leading Q1 to return mol1's id and Q2 to return mol2's label.\n\nThe explanation is that Q1 checks for bond_type '=', while Q2 checks for ' = ' (with spaces), leading to different results when bonds have these different types.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 538,
+    "total_tokens": 2287,
+    "completion_tokens": 1749,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1582
+    },
+    "generation_seconds": 61.156
+  },
+  "started_at": "2026-10-06T16:32:57.303011+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "mol1"
+    ]
+  ],
+  "q2_output": [
+    [
+      "B"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DISTINCT T.molecule_id FROM bond AS T WHERE T.bond_type = '=' ORDER BY T.molecule_id LIMIT 5",
+  "q2_validation_sql": "SELECT T1.label FROM molecule AS T1 INNER JOIN bond AS T2 ON T1.molecule_id = T2.molecule_id WHERE T2.bond_type = ' = ' ORDER BY T1.label ASC LIMIT 5"
+}

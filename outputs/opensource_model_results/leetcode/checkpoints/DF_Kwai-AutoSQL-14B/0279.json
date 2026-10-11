@@ -1,0 +1,73 @@
+{
+  "dbid": "614",
+  "index": "279",
+  "source_index": "100",
+  "schema_ddl": "CREATE TABLE FOLLOW (\n    FOLLOWEE VARCHAR(255),\n    FOLLOWER VARCHAR(255),\n    PRIMARY KEY (FOLLOWEE, FOLLOWER),\n    CHECK (FOLLOWEE <> FOLLOWER)\n);",
+  "q1": "SELECT FOLLOWEE AS FOLLOWER, COUNT(FOLLOWEE) AS NUM FROM FOLLOW WHERE FOLLOWEE IN (SELECT FOLLOWER FROM FOLLOW) GROUP BY 1 ORDER BY 1",
+  "q2": "SELECT F.FOLLOWEE AS FOLLOWER, COUNT(DISTINCT F.FOLLOWER) NUM FROM FOLLOW F WHERE F.FOLLOWEE IN (SELECT FOLLOWER FROM FOLLOW) AND F.FOLLOWEE != F.FOLLOWER GROUP BY F.FOLLOWEE ORDER BY F.FOLLOWEE",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT FOLLOWEE AS FOLLOWER, COUNT(FOLLOWEE) AS NUM FROM FOLLOW WHERE FOLLOWEE IN (SELECT FOLLOWER FROM FOLLOW) GROUP BY 1 ORDER BY 1",
+  "q2_prompt_sql": "SELECT F.FOLLOWEE AS FOLLOWER, COUNT(DISTINCT F.FOLLOWER) NUM FROM FOLLOW F WHERE F.FOLLOWEE IN (SELECT FOLLOWER FROM FOLLOW) AND F.FOLLOWEE != F.FOLLOWER GROUP BY F.FOLLOWEE ORDER BY F.FOLLOWEE",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO FOLLOW (FOLLOWEE, FOLLOWER) VALUES ('A', 'B');\nINSERT INTO FOLLOW (FOLLOWEE, FOLLOWER) VALUES ('A', 'C');\nINSERT INTO FOLLOW (FOLLOWEE, FOLLOWER) VALUES ('B', 'A');\nINSERT INTO FOLLOW (FOLLOWEE, FOLLOWER) VALUES ('C', 'A');",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent. Q1 counts the number of times each followee appears as a followee in the FOLLOW table where the followee also appears as a follower in the same table. Q2 counts distinct followers for each followee who also appears as a follower in the FOLLOW table, excluding cases where followee equals follower (which is already enforced by the schema). Q2 also explicitly excludes rows where FOLLOWEE = FOLLOWER, though the schema already enforces this via CHECK constraint.",
+  "counterexample_dsp": "A test case where a followee appears multiple times as a followee for the same follower, but Q1 counts those duplicates while Q2 counts distinct followers only.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n  \"equiv\": \"N\",\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent. Q1 counts the number of times each followee appears as a followee in the FOLLOW table where the followee also appears as a follower in the same table. Q2 counts distinct followers for each followee who also appears as a follower in the FOLLOW table, excluding cases where followee equals follower (which is already enforced by the schema). Q2 also explicitly excludes rows where FOLLOWEE = FOLLOWER, though the schema already enforces this via CHECK constraint.\",\n  \"counterexample_dsp\": \"A test case where a followee appears multiple times as a followee for the same follower, but Q1 counts those duplicates while Q2 counts distinct followers only.\",\n  \"counterexample\": \"INSERT INTO FOLLOW (FOLLOWEE, FOLLOWER) VALUES ('A', 'B');\\nINSERT INTO FOLLOW (FOLLOWEE, FOLLOWER) VALUES ('A', 'C');\\nINSERT INTO FOLLOW (FOLLOWEE, FOLLOWER) VALUES ('B', 'A');\\nINSERT INTO FOLLOW (FOLLOWEE, FOLLOWER) VALUES ('C', 'A');\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 392,
+    "total_tokens": 642,
+    "completion_tokens": 250,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 8.313
+  },
+  "started_at": "2026-10-06T15:40:02.627101+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "A",
+      2
+    ],
+    [
+      "B",
+      1
+    ],
+    [
+      "C",
+      1
+    ]
+  ],
+  "q2_output": [
+    [
+      "A",
+      2
+    ],
+    [
+      "B",
+      1
+    ],
+    [
+      "C",
+      1
+    ]
+  ],
+  "q1_row_count": 3,
+  "q2_row_count": 3,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT FOLLOWEE AS FOLLOWER, COUNT(FOLLOWEE) AS NUM FROM FOLLOW WHERE FOLLOWEE IN (SELECT FOLLOWER FROM FOLLOW) GROUP BY 1 ORDER BY 1",
+  "q2_validation_sql": "SELECT F.FOLLOWEE AS FOLLOWER, COUNT(DISTINCT F.FOLLOWER) NUM FROM FOLLOW F WHERE F.FOLLOWEE IN (SELECT FOLLOWER FROM FOLLOW) AND F.FOLLOWEE != F.FOLLOWER GROUP BY F.FOLLOWEE ORDER BY F.FOLLOWEE"
+}

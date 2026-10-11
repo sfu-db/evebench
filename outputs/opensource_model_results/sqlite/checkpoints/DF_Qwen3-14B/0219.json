@@ -1,0 +1,64 @@
+{
+  "dbid": "toxicology",
+  "index": "219",
+  "source_index": "329",
+  "schema_ddl": "CREATE TABLE `atom` (\n  `atom_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `element` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `bond` (\n  `bond_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `bond_type` TEXT DEFAULT NULL,\n  PRIMARY KEY (`bond_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `connected` (\n  `atom_id` TEXT NOT NULL,\n  `atom_id2` TEXT NOT NULL,\n  `bond_id` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`,`atom_id2`),\n  FOREIGN KEY (`atom_id`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`atom_id2`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`bond_id`) REFERENCES `bond` (`bond_id`) ON DELETE CASCADE ON UPDATE CASCADE\n);\n\nCREATE TABLE `molecule` (\n  `molecule_id` TEXT NOT NULL,\n  `label` TEXT DEFAULT NULL,\n  PRIMARY KEY (`molecule_id`)\n);",
+  "q1": "SELECT T1.element FROM atom AS T1 INNER JOIN bond AS T2 ON T1.molecule_id = T2.molecule_id WHERE T1.molecule_id = 'TR024' AND T2.bond_type = '='",
+  "q2": "SELECT T1.element FROM atom AS T1 INNER JOIN connected AS T2 ON T1.atom_id = T2.atom_id INNER JOIN bond AS T3 ON T2.bond_id = T3.bond_id WHERE T3.bond_type = '=' AND T1.molecule_id = 'TR024'",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT T1.element FROM atom AS T1 INNER JOIN bond AS T2 ON T1.molecule_id = T2.molecule_id WHERE T1.molecule_id = 'TR024' AND T2.bond_type = '='",
+  "q2_prompt_sql": "SELECT T1.element FROM atom AS T1 INNER JOIN connected AS T2 ON T1.atom_id = T2.atom_id INNER JOIN bond AS T3 ON T2.bond_id = T3.bond_id WHERE T3.bond_type = '=' AND T1.molecule_id = 'TR024'",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO molecule (molecule_id) VALUES ('TR024');\nINSERT INTO atom (atom_id, molecule_id, element) VALUES ('A1', 'TR024', 'C'), ('A2', 'TR024', 'O');\nINSERT INTO bond (bond_id, molecule_id, bond_type) VALUES ('B1', 'TR024', '='), ('B2', 'TR024', '=');\nINSERT INTO connected (atom_id, atom_id2, bond_id) VALUES ('A1', 'A2', 'B1');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 joins atoms and bonds on molecule_id, which may include atoms not directly linked to the bond. Q2 uses connected table to explicitly link atoms to bonds via bond_id, ensuring only atoms directly connected to bonds of type '=' are selected. This leads to different results when bonds exist without connected entries.",
+  "counterexample_dsp": "A molecule with two atoms and two bonds: one validly connected via connected table, another bond with no connected entries. Q1 includes all atoms for both bonds, Q2 only includes atoms for the connected bond.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 joins atoms and bonds on molecule_id, which may include atoms not directly linked to the bond. Q2 uses connected table to explicitly link atoms to bonds via bond_id, ensuring only atoms directly connected to bonds of type '=' are selected. This leads to different results when bonds exist without connected entries.\",\n\"counterexample_dsp\": \"A molecule with two atoms and two bonds: one validly connected via connected table, another bond with no connected entries. Q1 includes all atoms for both bonds, Q2 only includes atoms for the connected bond.\",\n\"counterexample\": \"INSERT INTO molecule (molecule_id) VALUES ('TR024');\\nINSERT INTO atom (atom_id, molecule_id, element) VALUES ('A1', 'TR024', 'C'), ('A2', 'TR024', 'O');\\nINSERT INTO bond (bond_id, molecule_id, bond_type) VALUES ('B1', 'TR024', '='), ('B2', 'TR024', '=');\\nINSERT INTO connected (atom_id, atom_id2, bond_id) VALUES ('A1', 'A2', 'B1');\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem. I need to determine if Q1 and Q2 are semantically equivalent based on the given schema. Let's start by understanding each query.\n\nQ1 selects elements from the atom table by joining with the bond table on molecule_id. The conditions are that the molecule_id is 'TR024' and the bond_type is '='. So, this query is finding all atoms in molecule TR024 that are part of bonds of type '='.\n\nQ2 is more complex. It joins atom with connected on atom_id, then connected with bond on bond_id. The conditions are again bond_type '=' and molecule_id 'TR024'. The connected table links atoms to bonds. So, this query is getting atoms in TR024 that are connected via bonds of type '=' through the connected table.\n\nNow, the key difference is how they join the tables. Q1 directly joins atom and bond on molecule_id, which might imply that each bond is associated with a molecule, and the atoms in that molecule are linked to the bond. However, the connected table in Q2 serves as a bridge between atoms and bonds. \n\nWait, the bond table has a molecule_id, so each bond belongs to a molecule. The connected table has entries for each bond connecting two atoms. So, for a bond in molecule TR024, the connected table would list the two atoms involved in that bond. \n\nIn Q1, the join is on molecule_id, which might not directly link atoms to bonds unless each bond is associated with atoms in the same molecule. But the bond table's molecule_id is the same as the atom's, so maybe Q1 is assuming that bonds are associated with atoms in the same molecule. However, without a direct link between atoms and bonds, Q1 might be incorrect. Wait, the original schema doesn't have a direct foreign key from atom to bond. The connected table is the intermediary.\n\nSo Q1's join on molecule_id between atom and bond could be incorrect. Because a bond's molecule_id is the same as the atom's, but that doesn't necessarily mean the atom is part of that bond. The connected table is needed to link atoms to bonds. \n\nTherefore, Q1 might be joining on molecule_id, which could result in including atoms that are in the same molecule as the bond but not actually connected by that bond. Whereas Q2 uses the connected table to explicitly link atoms to bonds via their bond_id. \n\nThis suggests that Q1 and Q2 are not equivalent. For example, if there's a bond in molecule TR024 with type '=', but no connected entries for that bond, Q1 would include atoms from that molecule, but Q2 wouldn't. Alternatively, if an atom is in the same molecule as a bond but not connected by that bond, Q1 would include it, but Q2 wouldn't.\n\nLet me think of a counterexample. Suppose molecule TR024 has two atoms, A1 and A2. There's a bond B1 with bond_type '=' in TR024. The connected table has an entry for B1 linking A1 and A2. Then Q1 would join atom (A1, A2) with bond B1 (same molecule_id), so both atoms would be selected. Q2 would also select both atoms via the connected table. But if there's a bond B2 in TR024 with '=', but no connected entries (maybe invalid, but the schema allows it?), then Q1 would include atoms from TR024, but Q2 would not. However, the connected table's bond_id is a foreign key to bond, so if a bond exists, there should be connected entries? Or maybe not. The connected table's bond_id is optional. Wait, the connected table's bond_id is DEFAULT NULL. So a bond could exist without being in the connected table. But that might not be allowed if the schema requires that bonds are connected to atoms. However, according to the schema, the bond table's molecule_id is a foreign key to molecule, but there's no constraint that a bond must be in the connected table. So if a bond exists without connected entries, then Q1 would include atoms from that molecule (since molecule_id matches), but Q2 would not find any atoms connected to that bond.\n\nSo, let's create a test case. Suppose:\n\n- Molecule TR024 exists.\n- Atom A1 (element 'C') in TR024.\n- Atom A2 (element 'O') in TR024.\n- Bond B1 (bond_type '=') in TR024.\n- Connected table entry for B1 connecting A1 and A2.\n- Bond B2 (bond_type '=') in TR024, but no connected entries.\n\nIn Q1, when joining atom and bond on molecule_id, the atoms A1 and A2 would be joined with B1 and B2. But since B2 has no connected entries, does that affect Q1? Wait, Q1's join is on molecule_id, which is same for both. So Q1 would return A1 and A2 (since they are in the same molecule as B1 and B2). However, Q2 would only include atoms connected via bonds. For B1, A1 and A2 are included. For B2, since there's no connected entry, no atoms are included. So Q1 would return A1 and A2 (assuming they are in the molecule and the bond exists), while Q2 would return only A1 and A2 for B1. Wait, but Q1's WHERE clause is T1.molecule_id = 'TR024' and T2.bond_type = '='. So all bonds in TR024 of type '=' are considered. But the join between atom and bond is on molecule_id, which is same for all atoms in the molecule. So for each bond in TR024 with '=', all atoms in the molecule would be selected. That's incorrect, because the bond is between specific atoms, not all atoms in the molecule. So Q1 is wrong in that sense. For example, if there's a bond B2 in TR024 with '=', but no connected entries, then Q1 would include all atoms in TR024, but Q2 would not. Wait, no, the connected table is required for Q2. So in this case, if B2 exists but isn't in connected, then Q2 would not include any atoms for B2. But Q1 would include all atoms in the molecule, regardless of the bond. That's a problem.\n\nSo, the counterexample would be a molecule with some bonds that are not connected to any atoms (invalid, but allowed by the schema), leading Q1 to return more atoms than Q2. Therefore, Q1 and Q2 are not equivalent.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 633,
+    "total_tokens": 2307,
+    "completion_tokens": 1674,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1415
+    },
+    "generation_seconds": 54.766
+  },
+  "started_at": "2026-10-06T20:25:49.324868+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "C"
+    ],
+    [
+      "C"
+    ],
+    [
+      "O"
+    ],
+    [
+      "O"
+    ]
+  ],
+  "q2_output": [
+    [
+      "C"
+    ]
+  ],
+  "q1_row_count": 4,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT T1.element FROM atom AS T1 INNER JOIN bond AS T2 ON T1.molecule_id = T2.molecule_id WHERE T1.molecule_id = 'TR024' AND T2.bond_type = '='",
+  "q2_validation_sql": "SELECT T1.element FROM atom AS T1 INNER JOIN connected AS T2 ON T1.atom_id = T2.atom_id INNER JOIN bond AS T3 ON T2.bond_id = T3.bond_id WHERE T3.bond_type = '=' AND T1.molecule_id = 'TR024'"
+}

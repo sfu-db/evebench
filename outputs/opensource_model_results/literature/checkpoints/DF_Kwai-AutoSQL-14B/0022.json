@@ -1,0 +1,57 @@
+{
+  "dbid": "19",
+  "index": "22",
+  "source_index": "26",
+  "schema_ddl": "CREATE TABLE DEPT (DEPTNO INT, NAME INT);",
+  "q1": "SELECT DEPT.NAME AS DNAME, COUNT(*) AS C FROM DEPT AS DEPT GROUP BY DEPT.NAME HAVING DEPT.NAME = 10",
+  "q2": "SELECT T2.DNAME, T2.CNT AS C FROM (SELECT DEPT0.NAME AS DNAME, COUNT(*) AS CNT FROM DEPT AS DEPT0 GROUP BY DEPT0.NAME) AS T2 WHERE T2.DNAME = 10",
+  "dialect": "sqlite",
+  "ground_truth": "EQ",
+  "source": "literature",
+  "q1_prompt_sql": "SELECT DEPT.NAME AS DNAME, COUNT(*) AS C FROM DEPT AS DEPT GROUP BY DEPT.NAME HAVING DEPT.NAME = 10",
+  "q2_prompt_sql": "SELECT T2.DNAME, T2.CNT AS C FROM (SELECT DEPT0.NAME AS DNAME, COUNT(*) AS CNT FROM DEPT AS DEPT0 GROUP BY DEPT0.NAME) AS T2 WHERE T2.DNAME = 10",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO DEPT (DEPTNO, NAME) VALUES (1, 10);\nINSERT INTO DEPT (DEPTNO, NAME) VALUES (2, 10);\nINSERT INTO DEPT (DEPTNO, NAME) VALUES (3, 20);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent because Q1 applies the HAVING condition on the department name directly, but DEPT.NAME is an integer (based on the schema). Comparing an integer to 10 is valid, but Q2 applies the filter on the outer query on T2.DNAME, which also holds integer values. However, the difference lies in how the grouping and filtering interact with the schema type and the intent of the query. The main issue is that Q1 groups by DEPT.NAME (an integer) and filters via HAVING, while Q2 groups in a subquery and filters on the outer query. In some edge cases, especially with implicit type conversion or aggregation behavior, the results could differ.",
+  "counterexample_dsp": "Create a DEPT table with multiple rows having DEPT.NAME = 10 and other integer values. Q1 groups by DEPT.NAME and applies HAVING DEPT.NAME = 10 on the grouped rows. Q2 does the same logic in a subquery, but could behave differently if the outer WHERE filter is misinterpreted.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n  \"equiv\": \"N\",\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent because Q1 applies the HAVING condition on the department name directly, but DEPT.NAME is an integer (based on the schema). Comparing an integer to 10 is valid, but Q2 applies the filter on the outer query on T2.DNAME, which also holds integer values. However, the difference lies in how the grouping and filtering interact with the schema type and the intent of the query. The main issue is that Q1 groups by DEPT.NAME (an integer) and filters via HAVING, while Q2 groups in a subquery and filters on the outer query. In some edge cases, especially with implicit type conversion or aggregation behavior, the results could differ.\",\n  \"counterexample_dsp\": \"Create a DEPT table with multiple rows having DEPT.NAME = 10 and other integer values. Q1 groups by DEPT.NAME and applies HAVING DEPT.NAME = 10 on the grouped rows. Q2 does the same logic in a subquery, but could behave differently if the outer WHERE filter is misinterpreted.\",\n  \"counterexample\": [\n    \"INSERT INTO DEPT (DEPTNO, NAME) VALUES (1, 10);\",\n    \"INSERT INTO DEPT (DEPTNO, NAME) VALUES (2, 10);\",\n    \"INSERT INTO DEPT (DEPTNO, NAME) VALUES (3, 20);\"\n  ]\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 355,
+    "total_tokens": 674,
+    "completion_tokens": 319,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 9.906
+  },
+  "started_at": "2026-10-06T07:53:02.119146+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      10,
+      2
+    ]
+  ],
+  "q2_output": [
+    [
+      10,
+      2
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DEPT.NAME AS DNAME, COUNT(*) AS C FROM DEPT AS DEPT GROUP BY DEPT.NAME HAVING DEPT.NAME = 10",
+  "q2_validation_sql": "SELECT T2.DNAME, T2.CNT AS C FROM (SELECT DEPT0.NAME AS DNAME, COUNT(*) AS CNT FROM DEPT AS DEPT0 GROUP BY DEPT0.NAME) AS T2 WHERE T2.DNAME = 10"
+}

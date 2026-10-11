@@ -1,0 +1,52 @@
+{
+  "dbid": "32",
+  "index": "44",
+  "source_index": "51",
+  "schema_ddl": "CREATE TABLE COURSE (COURSE_ID INT, TITLE INT, DEPT_NAME INT, CREDITS INT);\nCREATE TABLE DEPARTMENT (DEPT_NAME INT, BUILDING INT, BUDGET INT);\nCREATE TABLE INSTRUCTOR (ID INT, NAME INT, SALARY INT, DEPT_NAME INT);\nCREATE TABLE TEACHES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, SEMESTER INT, INSTRUCTOR INT);\nCREATE TABLE SECTION (COURSE_ID INT, SEC_ID INT, YEAR INT, BUILDING INT, ROOM_NUMBER INT, TIME_SLOT_ID INT);\nCREATE TABLE TAKES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, GRADE INT);\nCREATE TABLE STUDENT (ID INT, NAME INT, DEPT_NAME INT, TOT_CRED INT);",
+  "q1": "SELECT C.DEPT_NAME, SUM(I.SALARY) FROM COURSE AS C INNER JOIN DEPARTMENT AS D ON (C.DEPT_NAME = D.DEPT_NAME) INNER JOIN INSTRUCTOR AS I ON (D.DEPT_NAME = I.DEPT_NAME) GROUP BY C.DEPT_NAME HAVING SUM(I.SALARY) > 100 AND MAX(I.SALARY) < 75",
+  "q2": "SELECT C.DEPT_NAME, SUM(I.SALARY) FROM COURSE AS C INNER JOIN DEPARTMENT AS D ON (C.DEPT_NAME = D.DEPT_NAME) INNER JOIN INSTRUCTOR AS I ON (D.DEPT_NAME = I.DEPT_NAME) GROUP BY C.DEPT_NAME HAVING SUM(I.SALARY) >= 100 AND MAX(I.SALARY) < 75",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "literature",
+  "q1_prompt_sql": "SELECT C.DEPT_NAME, SUM(I.SALARY) FROM COURSE AS C INNER JOIN DEPARTMENT AS D ON (C.DEPT_NAME = D.DEPT_NAME) INNER JOIN INSTRUCTOR AS I ON (D.DEPT_NAME = I.DEPT_NAME) GROUP BY C.DEPT_NAME HAVING SUM(I.SALARY) > 100 AND MAX(I.SALARY) < 75",
+  "q2_prompt_sql": "SELECT C.DEPT_NAME, SUM(I.SALARY) FROM COURSE AS C INNER JOIN DEPARTMENT AS D ON (C.DEPT_NAME = D.DEPT_NAME) INNER JOIN INSTRUCTOR AS I ON (D.DEPT_NAME = I.DEPT_NAME) GROUP BY C.DEPT_NAME HAVING SUM(I.SALARY) >= 100 AND MAX(I.SALARY) < 75",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO DEPARTMENT (DEPT_NAME, BUILDING, BUDGET) VALUES (1, 100, 100000);\nINSERT INTO COURSE (COURSE_ID, TITLE, DEPT_NAME, CREDITS) VALUES (1, 101, 1, 3);\nINSERT INTO INSTRUCTOR (ID, NAME, SALARY, DEPT_NAME) VALUES (1, 1001, 50, 1);\nINSERT INTO INSTRUCTOR (ID, NAME, SALARY, DEPT_NAME) VALUES (2, 1002, 50, 1);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 differ in the SUM(I.SALARY) condition (Q1 uses > 100, Q2 uses >= 100). A department with total instructor salaries exactly 100 and max salary <75 will be included in Q2 but excluded in Q1.",
+  "counterexample_dsp": "A department with two instructors earning $50 each (sum=100, max=50). Q2 includes this (sum >=100), but Q1 excludes it (sum >100 fails).",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 and Q2 differ in the SUM(I.SALARY) condition (Q1 uses > 100, Q2 uses >= 100). A department with total instructor salaries exactly 100 and max salary <75 will be included in Q2 but excluded in Q1.\",\n  \"counterexample_dsp\": \"A department with two instructors earning $50 each (sum=100, max=50). Q2 includes this (sum >=100), but Q1 excludes it (sum >100 fails).\",\n  \"counterexample\": \"INSERT INTO DEPARTMENT (DEPT_NAME, BUILDING, BUDGET) VALUES (1, 100, 100000);\\nINSERT INTO COURSE (COURSE_ID, TITLE, DEPT_NAME, CREDITS) VALUES (1, 101, 1, 3);\\nINSERT INTO INSTRUCTOR (ID, NAME, SALARY, DEPT_NAME) VALUES (1, 1001, 50, 1);\\nINSERT INTO INSTRUCTOR (ID, NAME, SALARY, DEPT_NAME) VALUES (2, 1002, 50, 1);\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem. So, the user wants a counterexample where Q1 and Q2 return different results. The two queries are almost the same except for the SUM condition in the HAVING clause. Q1 has SUM(I.SALARY) > 100, while Q2 uses SUM(I.SALARY) >= 100. The rest of the HAVING clause is the same: MAX(I.SALARY) < 75.\n\nFirst, I need to understand why these two queries aren't equivalent. The difference is in the sum condition. So, if there's a department where the sum of salaries is exactly 100, Q1 would exclude it because it's not greater than 100, but Q2 would include it because it's greater than or equal to 100. However, the MAX condition must also be considered. For the counterexample, we need a scenario where the sum is exactly 100 and the max salary is less than 75. That way, Q2 would include this department, but Q1 would not.\n\nNow, I need to create a test database that meets this condition. Let's think about the tables involved. The COURSE, DEPARTMENT, and INSTRUCTOR tables are joined. The DEPARTMENT table links COURSE and INSTRUCTOR via DEPT_NAME. \n\nLet's imagine a department with DEPT_NAME = 1. Suppose there are two instructors in this department. Let's say their salaries are 50 and 50. The sum would be 100, and the max is 50, which is less than 75. This would satisfy Q2's HAVING clause but not Q1's. \n\nBut wait, the COURSE table needs to have entries for the department. Let's say there's a course in DEPT_NAME 1. So, inserting a course with DEPT_NAME 1. The DEPARTMENT table should have an entry for DEPT_NAME 1. Then, inserting two instructors in DEPT_NAME 1 with salaries 50 each. \n\nSo, the test data would be:\n\n- DEPARTMENT: (DEPT_NAME=1, BUILDING=..., BUDGET=...)\n- COURSE: (COURSE_ID=1, TITLE=..., DEPT_NAME=1, CREDITS=...)\n- INSTRUCTOR: (ID=1, NAME=..., SALARY=50, DEPT_NAME=1), (ID=2, NAME=..., SALARY=50, DEPT_NAME=1)\n\nIn this case, the sum of salaries is 100, which meets Q2's condition but not Q1's. The MAX is 50 <75, so both conditions are met for Q2. Hence, Q2 would return this department, but Q1 would not. That's the difference.\n\nI need to make sure that the other tables (like TEACHES, SECTION, TAKES, STUDENT) don't have any data that might interfere. Since the queries don't reference those tables, maybe they can be left empty. But the schema requires that the tables exist, so perhaps inserting minimal data or just the necessary parts.\n\nWait, the problem says the counterexample should not violate constraints. The schema doesn't specify primary keys or foreign keys, but the CREATE statements have columns with INT types. So, as long as the data is inserted correctly, even if some fields are arbitrary, it should be okay.\n\nSo, the counterexample would involve inserting the DEPARTMENT, COURSE, and INSTRUCTOR tables as described. The other tables can be left empty or have dummy data, but since the queries don't use them, it's safe.\n\nThus, the explanation is that Q1 and Q2 differ in the SUM condition, and the counterexample is a department with sum exactly 100 and max salary less than 75. This would be included in Q2 but excluded in Q1.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 534,
+    "total_tokens": 1628,
+    "completion_tokens": 1094,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 821
+    },
+    "generation_seconds": 36.328
+  },
+  "started_at": "2026-10-06T07:21:33.971795+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [],
+  "q2_output": [
+    [
+      1,
+      100
+    ]
+  ],
+  "q1_row_count": 0,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT C.DEPT_NAME, SUM(I.SALARY) FROM COURSE AS C INNER JOIN DEPARTMENT AS D ON (C.DEPT_NAME = D.DEPT_NAME) INNER JOIN INSTRUCTOR AS I ON (D.DEPT_NAME = I.DEPT_NAME) GROUP BY C.DEPT_NAME HAVING SUM(I.SALARY) > 100 AND MAX(I.SALARY) < 75",
+  "q2_validation_sql": "SELECT C.DEPT_NAME, SUM(I.SALARY) FROM COURSE AS C INNER JOIN DEPARTMENT AS D ON (C.DEPT_NAME = D.DEPT_NAME) INNER JOIN INSTRUCTOR AS I ON (D.DEPT_NAME = I.DEPT_NAME) GROUP BY C.DEPT_NAME HAVING SUM(I.SALARY) >= 100 AND MAX(I.SALARY) < 75"
+}

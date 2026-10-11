@@ -1,0 +1,55 @@
+{
+  "dbid": "1075",
+  "index": "334",
+  "source_index": "178",
+  "schema_ddl": "CREATE TABLE EMPLOYEE (\n    EMPLOYEE_ID INT,\n    NAME VARCHAR(255),\n    EXPERIENCE_YEARS INT,\n    PRIMARY KEY (EMPLOYEE_ID),\n    CHECK (EXPERIENCE_YEARS >= 0)\n);\nCREATE TABLE PROJECT (\n    PROJECT_ID INT,\n    EMPLOYEE_ID INT,\n    PRIMARY KEY (PROJECT_ID, EMPLOYEE_ID),\n    FOREIGN KEY (EMPLOYEE_ID) REFERENCES EMPLOYEE(EMPLOYEE_ID)\n);",
+  "q1": "SELECT A.PROJECT_ID, ROUND(AVG(B.EXPERIENCE_YEARS), 2) AS AVERAGE_YEARS FROM PROJECT AS A INNER JOIN EMPLOYEE AS B ON A.EMPLOYEE_ID = B.EMPLOYEE_ID GROUP BY A.PROJECT_ID",
+  "q2": "SELECT PROJECT_ID, ROUND(SUM(EXPERIENCE_YEARS)/COUNT(*) ,2) AS AVERAGE_YEARS FROM PROJECT A LEFT JOIN EMPLOYEE B USING (EMPLOYEE_ID) GROUP BY PROJECT_ID",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT A.PROJECT_ID, ROUND(AVG(B.EXPERIENCE_YEARS), 2) AS AVERAGE_YEARS FROM PROJECT AS A INNER JOIN EMPLOYEE AS B ON A.EMPLOYEE_ID = B.EMPLOYEE_ID GROUP BY A.PROJECT_ID",
+  "q2_prompt_sql": "SELECT PROJECT_ID, ROUND(SUM(EXPERIENCE_YEARS)/COUNT(*) ,2) AS AVERAGE_YEARS FROM PROJECT A LEFT JOIN EMPLOYEE B USING (EMPLOYEE_ID) GROUP BY PROJECT_ID",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO EMPLOYEE (EMPLOYEE_ID, NAME, EXPERIENCE_YEARS) VALUES (1, 'John Doe', 0); INSERT INTO PROJECT (PROJECT_ID, EMPLOYEE_ID) VALUES (1, 1);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not equivalent because Q1 uses AVG() which calculates the average of non-NULL values, while Q2 uses SUM() and COUNT() to calculate the average, which can lead to different results if there are NULL values in the EXPERIENCE_YEARS column.",
+  "counterexample_dsp": "A project with an employee who has 0 experience years. Q1 will exclude this employee from the average calculation, while Q2 will include it, leading to a different average.",
+  "equiv": "N",
+  "raw_response": "{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 and Q2 are not equivalent because Q1 uses AVG() which calculates the average of non-NULL values, while Q2 uses SUM() and COUNT() to calculate the average, which can lead to different results if there are NULL values in the EXPERIENCE_YEARS column.\",\n\"counterexample_dsp\": \"A project with an employee who has 0 experience years. Q1 will exclude this employee from the average calculation, while Q2 will include it, leading to a different average.\",\n\"counterexample\": \"INSERT INTO EMPLOYEE (EMPLOYEE_ID, NAME, EXPERIENCE_YEARS) VALUES (1, 'John Doe', 0); INSERT INTO PROJECT (PROJECT_ID, EMPLOYEE_ID) VALUES (1, 1);\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 466,
+    "total_tokens": 633,
+    "completion_tokens": 167,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 2.906
+  },
+  "started_at": "2026-10-06T14:33:43.442012+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      1,
+      "0.00"
+    ]
+  ],
+  "q2_output": [
+    [
+      1,
+      "0.00"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT A.PROJECT_ID, ROUND(AVG(B.EXPERIENCE_YEARS), 2) AS AVERAGE_YEARS FROM PROJECT AS A INNER JOIN EMPLOYEE AS B ON A.EMPLOYEE_ID = B.EMPLOYEE_ID GROUP BY A.PROJECT_ID",
+  "q2_validation_sql": "SELECT PROJECT_ID, ROUND(SUM(EXPERIENCE_YEARS)/COUNT(*) ,2) AS AVERAGE_YEARS FROM PROJECT A LEFT JOIN EMPLOYEE B USING (EMPLOYEE_ID) GROUP BY PROJECT_ID"
+}

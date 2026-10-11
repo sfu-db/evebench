@@ -1,0 +1,53 @@
+{
+  "dbid": "7",
+  "index": "9",
+  "source_index": "8",
+  "schema_ddl": "CREATE TABLE R (A INT, B INT, C INT);",
+  "q1": "SELECT X.B AS XB FROM R AS X WHERE X.A = 5 AND X.C < 1",
+  "q2": "SELECT X.B AS XB FROM R AS X WHERE X.A < 10",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "literature",
+  "q1_prompt_sql": "SELECT X.B AS XB FROM R AS X WHERE X.A = 5 AND X.C < 1",
+  "q2_prompt_sql": "SELECT X.B AS XB FROM R AS X WHERE X.A < 10",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO R (A, B, C) VALUES (5, 10, 0);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not equivalent because they have different conditions in the WHERE clause. Q1 selects rows where A = 5 and C < 1, while Q2 selects rows where A < 10. These conditions do not overlap, leading to potentially different results.",
+  "counterexample_dsp": "A test case where A = 5 and C < 1 triggers a difference in results between Q1 and Q2.",
+  "equiv": "N",
+  "raw_response": "{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 and Q2 are not equivalent because they have different conditions in the WHERE clause. Q1 selects rows where A = 5 and C < 1, while Q2 selects rows where A < 10. These conditions do not overlap, leading to potentially different results.\",\n\"counterexample_dsp\": \"A test case where A = 5 and C < 1 triggers a difference in results between Q1 and Q2.\",\n\"counterexample\": \"INSERT INTO R (A, B, C) VALUES (5, 10, 0);\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 327,
+    "total_tokens": 457,
+    "completion_tokens": 130,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 2.438
+  },
+  "started_at": "2026-10-06T07:36:48.048894+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      10
+    ]
+  ],
+  "q2_output": [
+    [
+      10
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT X.B AS XB FROM R AS X WHERE X.A = 5 AND X.C < 1",
+  "q2_validation_sql": "SELECT X.B AS XB FROM R AS X WHERE X.A < 10"
+}

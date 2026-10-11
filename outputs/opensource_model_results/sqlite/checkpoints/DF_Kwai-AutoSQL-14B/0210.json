@@ -1,0 +1,56 @@
+{
+  "dbid": "toxicology",
+  "index": "210",
+  "source_index": "316",
+  "schema_ddl": "CREATE TABLE `atom` (\n  `atom_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `element` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `bond` (\n  `bond_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `bond_type` TEXT DEFAULT NULL,\n  PRIMARY KEY (`bond_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `connected` (\n  `atom_id` TEXT NOT NULL,\n  `atom_id2` TEXT NOT NULL,\n  `bond_id` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`,`atom_id2`),\n  FOREIGN KEY (`atom_id`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`atom_id2`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`bond_id`) REFERENCES `bond` (`bond_id`) ON DELETE CASCADE ON UPDATE CASCADE\n);\n\nCREATE TABLE `molecule` (\n  `molecule_id` TEXT NOT NULL,\n  `label` TEXT DEFAULT NULL,\n  PRIMARY KEY (`molecule_id`)\n);",
+  "q1": "SELECT DISTINCT T1.molecule_id FROM atom AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id WHERE T1.element = 'cl' AND T2.label = '+'",
+  "q2": "SELECT DISTINCT T1.molecule_id, T1.label FROM molecule AS T1 INNER JOIN atom AS T2 ON T1.molecule_id = T2.molecule_id WHERE T2.element = 'cl' AND T1.label = '+'",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT DISTINCT T1.molecule_id FROM atom AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id WHERE T1.element = 'cl' AND T2.label = '+'",
+  "q2_prompt_sql": "SELECT DISTINCT T1.molecule_id, T1.label FROM molecule AS T1 INNER JOIN atom AS T2 ON T1.molecule_id = T2.molecule_id WHERE T2.element = 'cl' AND T1.label = '+'",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO molecule (molecule_id, label) VALUES ('mol1', '+');\nINSERT INTO atom (atom_id, molecule_id, element) VALUES ('a1', 'mol1', 'cl');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent. Q1 selects distinct molecule_ids from atom joined with molecule where element = 'cl' and label = '+'. Q2 selects distinct molecule_id and label from molecule joined with atom with the same conditions but returns both columns. Since Q2 returns two columns and Q1 returns one, they can differ in output when label is not always '+'. However, since T1.label = '+' in Q2 is on the molecule table, and Q1 uses T2.label = '+', they are logically similar but Q2 returns more columns, making them not equivalent in output.",
+  "counterexample_dsp": "A molecule with label '+' has atoms with element 'cl'. Q2 will return molecule_id and label, while Q1 returns only molecule_id. If molecule label changes, but Q2 still returns label, they will differ.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n  \"equiv\": \"N\",\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent. Q1 selects distinct molecule_ids from atom joined with molecule where element = 'cl' and label = '+'. Q2 selects distinct molecule_id and label from molecule joined with atom with the same conditions but returns both columns. Since Q2 returns two columns and Q1 returns one, they can differ in output when label is not always '+'. However, since T1.label = '+' in Q2 is on the molecule table, and Q1 uses T2.label = '+', they are logically similar but Q2 returns more columns, making them not equivalent in output.\",\n  \"counterexample_dsp\": \"A molecule with label '+' has atoms with element 'cl'. Q2 will return molecule_id and label, while Q1 returns only molecule_id. If molecule label changes, but Q2 still returns label, they will differ.\",\n  \"counterexample\": \"INSERT INTO molecule (molecule_id, label) VALUES ('mol1', '+');\\nINSERT INTO atom (atom_id, molecule_id, element) VALUES ('a1', 'mol1', 'cl');\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 614,
+    "total_tokens": 861,
+    "completion_tokens": 247,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 7.766
+  },
+  "started_at": "2026-10-06T21:15:23.736126+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "mol1"
+    ]
+  ],
+  "q2_output": [
+    [
+      "mol1",
+      "+"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DISTINCT T1.molecule_id FROM atom AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id WHERE T1.element = 'cl' AND T2.label = '+'",
+  "q2_validation_sql": "SELECT DISTINCT T1.molecule_id, T1.label FROM molecule AS T1 INNER JOIN atom AS T2 ON T1.molecule_id = T2.molecule_id WHERE T2.element = 'cl' AND T1.label = '+'"
+}

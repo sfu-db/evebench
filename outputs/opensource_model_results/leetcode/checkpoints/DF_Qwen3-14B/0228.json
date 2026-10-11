@@ -1,0 +1,39 @@
+{
+  "dbid": "1149",
+  "index": "228",
+  "source_index": "244",
+  "schema_ddl": "CREATE TABLE VIEWS (\n    ARTICLE_ID INT,\n    AUTHOR_ID INT,\n    VIEWER_ID INT,\n    VIEW_DATE DATE\n);",
+  "q1": "SELECT DISTINCT VIEWER_ID AS ID FROM VIEWS GROUP BY VIEW_DATE, VIEWER_ID HAVING COUNT(DISTINCT ARTICLE_ID) > 1 ORDER BY ID",
+  "q2": "SELECT DISTINCT VIEWER_ID ID FROM VIEWS GROUP BY VIEW_DATE,VIEWER_ID HAVING COUNT(DISTINCT ARTICLE_ID)>1 ORDER BY VIEWER_ID",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT DISTINCT VIEWER_ID AS ID FROM VIEWS GROUP BY VIEW_DATE, VIEWER_ID HAVING COUNT(DISTINCT ARTICLE_ID) > 1 ORDER BY ID",
+  "q2_prompt_sql": "SELECT DISTINCT VIEWER_ID ID FROM VIEWS GROUP BY VIEW_DATE,VIEWER_ID HAVING COUNT(DISTINCT ARTICLE_ID)>1 ORDER BY VIEWER_ID",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries select distinct VIEWER_IDs grouped by VIEW_DATE and VIEWER_ID, filtering those with more than one distinct ARTICLE_ID. The ORDER BY clauses are functionally identical since 'ID' (alias) and 'VIEWER_ID' refer to the same column values. The difference in alias usage does not affect the result ordering.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries select distinct VIEWER_IDs grouped by VIEW_DATE and VIEWER_ID, filtering those with more than one distinct ARTICLE_ID. The ORDER BY clauses are functionally identical since 'ID' (alias) and 'VIEWER_ID' refer to the same column values. The difference in alias usage does not affect the result ordering.\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem. So, I need to determine if the two SQL queries Q1 and Q2 are semantically equivalent. If they're not, I have to come up with a counterexample.\n\nFirst, let me understand what each query is doing. \n\nLooking at Q1: It selects distinct VIEWER_ID as ID from the VIEWS table. The grouping is done by VIEW_DATE and VIEWER_ID. The HAVING clause checks that the count of distinct ARTICLE_IDs is greater than 1. Then it orders by ID. \n\nQ2 is almost the same, except that in the ORDER BY clause, it uses VIEWER_ID instead of the alias ID. Wait, in Q1, the alias is ID, so ORDER BY ID would refer to the VIEWER_ID. But in Q2, they didn't use an alias; they just wrote ORDER BY VIEWER_ID. \n\nWait, but in SQL, when you use an alias in the SELECT clause, you can reference it in the ORDER BY. However, in Q2, the SELECT is DISTINCT VIEWER_ID ID, so the alias is ID. But the ORDER BY is using VIEWER_ID, which is the original column name. But since the alias is ID, maybe in Q1, the ORDER BY ID is the same as ORDER BY VIEWER_ID. But in Q2, the ORDER BY is also using VIEWER_ID. Wait, no. Wait, in Q1, the SELECT is SELECT DISTINCT VIEWER_ID AS ID, so the result column is named ID. Then ORDER BY ID would order by that alias. In Q2, the SELECT is SELECT DISTINCT VIEWER_ID ID, which is the same as aliasing. But the ORDER BY is VIEWER_ID. Wait, but the alias is ID. So in Q2, the ORDER BY is using the original column name, not the alias. But since the alias is ID, which is the same as the original VIEWER_ID, maybe they are the same. Wait, but in the SELECT clause, the alias is ID, but the ORDER BY in Q2 is using VIEWER_ID. However, in SQL, the ORDER BY can refer to either the column name or the alias. But in this case, since the alias is ID, which is a different name from VIEWER_ID, but the actual value is the same. So, does that matter?\n\nWait, but the problem is that in Q1, the ORDER BY is using the alias ID, which is the same as the VIEWER_ID. In Q2, the ORDER BY is using the column name VIEWER_ID. But since they are the same value, the order should be the same. So maybe the two queries are equivalent except for the alias in the ORDER BY. But maybe there's a case where the alias and the column name are different, but in this case, the alias is ID, and the column is VIEWER_ID. Wait, the SELECT clause in Q1 is SELECT DISTINCT VIEWER_ID AS ID. So the result is a column named ID with the values of VIEWER_ID. Then, the ORDER BY ID would order by the ID column, which is the same as the VIEWER_ID. In Q2, the ORDER BY is VIEWER_ID, which is the original column name. But since the SELECT is DISTINCT VIEWER_ID, the result is the same as ID. So the order should be the same. \n\nWait, but the only difference between Q1 and Q2 is the alias in the ORDER BY. But in SQL, when you use an alias in the ORDER BY, it's allowed. However, in Q2, the ORDER BY uses the original column name. But since the alias is the same as the original column's value, the order should be the same. Therefore, the two queries should be equivalent. \n\nWait, but maybe there's a case where the alias is different. But in this case, the alias is ID, which is just a different name for the same value. So the order would be the same. Therefore, the two queries are equivalent. \n\nBut wait, the problem says that the user is asking if they are semantically equivalent. So maybe the answer is that they are equivalent. But maybe there's a case where the alias is not the same. But in this case, the alias is ID, which is just a name. So the ORDER BY should not affect the result. Therefore, the two queries are equivalent. \n\nWait, but maybe the problem is that in Q1, the ORDER BY is using the alias, which is allowed, but in Q2, the ORDER BY is using the original column. However, since the alias is the same as the original column's value, the order is the same. Therefore, the two queries are equivalent. \n\nBut maybe there's a case where the alias is different. For example, if the alias was something else. But in this case, the alias is ID, which is a different name, but the value is the same. So the order should be the same. \n\nTherefore, the answer would be that they are equivalent. But wait, maybe the problem is that in Q2, the ORDER BY is using the original column name, but the SELECT is using an alias. However, in SQL, the ORDER BY can refer to columns by their original names or aliases. So in Q1, the ORDER BY ID refers to the alias, which is the same as the original column. In Q2, the ORDER BY is using the original column. But the result is the same. Therefore, the two queries are equivalent. \n\nSo the answer would be that they are equivalent. Therefore, the equiv is Y. \n\nWait, but maybe there's a case where the alias is not the same. Wait, but in this case, the alias is just a name. The actual data is the same. Therefore, the order is the same. So the two queries are equivalent. \n\nSo the explanation is that both queries select the same data and order by the same column (VIEWER_ID), just using different names in the ORDER BY clause. Since the alias in Q1 (ID) is the same as the original column (VIEWER_ID), the ordering is identical. Hence, they are semantically equivalent.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 348,
+    "total_tokens": 1719,
+    "completion_tokens": 1371,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1287
+    },
+    "generation_seconds": 41.953
+  },
+  "started_at": "2026-10-06T14:56:20.595960+00:00",
+  "elapsed_seconds": 0.0
+}

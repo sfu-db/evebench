@@ -1,0 +1,61 @@
+{
+  "dbid": "1084",
+  "index": "480",
+  "source_index": "418",
+  "schema_ddl": "CREATE TABLE PRODUCT (\n    PRODUCT_ID INT,\n    PRODUCT_NAME VARCHAR(255),\n    UNIT_PRICE INT,\n    PRIMARY KEY (PRODUCT_ID),\n    CHECK (UNIT_PRICE > 0)\n);\n\nCREATE TABLE SALES (\n    PRODUCT_ID INT,\n    SELLER_ID INT,\n    BUYER_ID INT,\n    SALE_DATE DATE,\n    QUANTITY INT,\n    PRICE INT,\n    FOREIGN KEY (PRODUCT_ID) REFERENCES PRODUCT(PRODUCT_ID),\n    CHECK (QUANTITY > 0),\n    CHECK (PRICE > 0)\n);",
+  "q1": "SELECT P.PRODUCT_ID, P.PRODUCT_NAME FROM PRODUCT P INNER JOIN ( SELECT PRODUCT_ID FROM SALES GROUP BY PRODUCT_ID HAVING MIN(SALE_DATE) >= '2019-01-01' AND MAX(SALE_DATE) <= '2019-03-31' ) S ON (P.PRODUCT_ID = S.PRODUCT_ID)",
+  "q2": "WITH CTE AS ( SELECT PRODUCT.PRODUCT_ID, PRODUCT.PRODUCT_NAME FROM PRODUCT INNER JOIN SALES ON PRODUCT.PRODUCT_ID = SALES.PRODUCT_ID WHERE SALES.SALE_DATE NOT BETWEEN '2019-01-01' AND '2019-03-31' ) SELECT PRODUCT_ID, PRODUCT_NAME FROM PRODUCT WHERE PRODUCT_ID NOT IN ( SELECT CTE.PRODUCT_ID FROM CTE )",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT P.PRODUCT_ID, P.PRODUCT_NAME FROM PRODUCT P INNER JOIN ( SELECT PRODUCT_ID FROM SALES GROUP BY PRODUCT_ID HAVING MIN(SALE_DATE) >= '2019-01-01' AND MAX(SALE_DATE) <= '2019-03-31' ) S ON (P.PRODUCT_ID = S.PRODUCT_ID)",
+  "q2_prompt_sql": "WITH CTE AS ( SELECT PRODUCT.PRODUCT_ID, PRODUCT.PRODUCT_NAME FROM PRODUCT INNER JOIN SALES ON PRODUCT.PRODUCT_ID = SALES.PRODUCT_ID WHERE SALES.SALE_DATE NOT BETWEEN '2019-01-01' AND '2019-03-31' ) SELECT PRODUCT_ID, PRODUCT_NAME FROM PRODUCT WHERE PRODUCT_ID NOT IN ( SELECT CTE.PRODUCT_ID FROM CTE )",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO PRODUCT (PRODUCT_ID, PRODUCT_NAME, UNIT_PRICE) VALUES (1, 'Product A', 10);\nINSERT INTO PRODUCT (PRODUCT_ID, PRODUCT_NAME, UNIT_PRICE) VALUES (2, 'Product B', 20);\nINSERT INTO SALES (PRODUCT_ID, SELLER_ID, BUYER_ID, SALE_DATE, QUANTITY, PRICE) VALUES (1, 101, 201, '2019-02-15', 5, 50);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 requires all sales of a product to be within the date range, while Q2 includes products with no sales outside the range (including products with no sales at all). Products with no sales are excluded by Q1 (due to no matching rows in the subquery) but included by Q2 (as they are not in the CTE).",
+  "counterexample_dsp": "A product with no sales (e.g., PRODUCT_ID=2) is included in Q2's result but excluded from Q1's result. Q1 only includes products with sales in the date range, while Q2 includes products with no sales outside the range.",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 requires all sales of a product to be within the date range, while Q2 includes products with no sales outside the range (including products with no sales at all). Products with no sales are excluded by Q1 (due to no matching rows in the subquery) but included by Q2 (as they are not in the CTE).\",\n  \"counterexample_dsp\": \"A product with no sales (e.g., PRODUCT_ID=2) is included in Q2's result but excluded from Q1's result. Q1 only includes products with sales in the date range, while Q2 includes products with no sales outside the range.\",\n  \"counterexample\": [\n    \"INSERT INTO PRODUCT (PRODUCT_ID, PRODUCT_NAME, UNIT_PRICE) VALUES (1, 'Product A', 10);\",\n    \"INSERT INTO PRODUCT (PRODUCT_ID, PRODUCT_NAME, UNIT_PRICE) VALUES (2, 'Product B', 20);\",\n    \"INSERT INTO SALES (PRODUCT_ID, SELLER_ID, BUYER_ID, SALE_DATE, QUANTITY, PRICE) VALUES (1, 101, 201, '2019-02-15', 5, 50);\"\n  ]\n}",
+  "reasoning": "\nOkay, let's see. I need to find a counterexample where Q1 and Q2 return different results. First, I should understand what each query is doing.\n\nStarting with Q1: It selects products that have all their sales within the date range from '2019-01-01' to '2019-03-31'. The subquery groups sales by product_id and checks that the minimum sale date is >= start date and max sale date <= end date. So, any product that has all sales in that period will be included.\n\nNow Q2 uses a CTE to find products that have at least one sale outside the date range. Then, the main query selects products whose IDs are not in that CTE. So, Q2 is selecting products that have no sales outside the date range. Wait, that's the same as Q1? Wait, no. Wait, Q1 is products where all sales are within the date range. Q2 is products that do not have any sales outside the date range. So they should be equivalent, right? But the problem says they are not. So maybe I'm missing something here.\n\nWait, maybe there's a difference in how the conditions are applied. Let me re-examine the queries.\n\nQ1's subquery: HAVING MIN(SALE_DATE) >= '2019-01-01' AND MAX(SALE_DATE) <= '2019-03-31'. That means all sales for the product are between those dates. Because the earliest sale is on or after Jan 1 and the latest is on or before March 31. So that product's sales are entirely within that period.\n\nQ2's CTE selects products that have sales not between those dates. Then, the main query selects products not in that CTE. So, if a product has no sales outside the date range, it's included. So that's the same as Q1. But the problem says they are not equivalent. So there must be a case where they differ.\n\nWait, maybe the difference is when a product has no sales at all? Let me think. For Q1, the subquery is a group by product_id. If a product has no sales, then the subquery would not include it, because the inner join would not find any rows. So Q1 would not return such products. However, Q2's CTE is based on joining product and sales. So if a product has no sales, the CTE would not have that product. Then, the main query of Q2 is selecting products not in the CTE. So if a product has no sales, it's not in the CTE, so it's included in Q2's result. But Q1 would not include it because the subquery doesn't have that product. Therefore, Q1 and Q2 would differ in such a case.\n\nSo, if there's a product with no sales, Q2 would include it, but Q1 would not. That's a possible counterexample.\n\nLet me test this scenario. Suppose there's a product with no sales. Then:\n\nFor Q1: The subquery groups by product_id, but since there are no sales, the subquery returns nothing. So the inner join would not include that product. Therefore, Q1 would not return it.\n\nFor Q2: The CTE is from product joined with sales. So the product with no sales would not be in the CTE. Then, the main query selects products not in the CTE. So that product would be included in Q2's result.\n\nTherefore, in this case, Q1 and Q2 would return different results. So that's the counterexample.\n\nSo, the test data should include a product with no sales. Let's create such a scenario.\n\nLet me create two products: product 1 has sales within the date range, product 2 has no sales. Then:\n\nQ1 would return product 1.\n\nQ2 would return product 1 and product 2.\n\nSo the difference is product 2.\n\nTherefore, the counterexample needs to have a product with no sales.\n\nNow, let's structure the SQL inserts.\n\nFirst, create the product table with two entries: product_id 1 and 2. Then, insert sales for product 1 with dates between Jan 1 and March 31. Product 2 has no sales.\n\nSo:\n\nINSERT INTO PRODUCT (PRODUCT_ID, PRODUCT_NAME, UNIT_PRICE) VALUES (1, 'Product A', 10), (2, 'Product B', 20);\n\nThen, insert sales for product 1:\n\nINSERT INTO SALES (PRODUCT_ID, SELLER_ID, BUYER_ID, SALE_DATE, QUANTITY, PRICE) VALUES (1, 101, 201, '2019-02-15', 5, 50);\n\nThis sale is within the date range.\n\nNow, Q1 will select product 1 (since all sales are in the period), and Q2 will select product 1 (since it has no sales outside) and product 2 (since it has no sales at all, hence not in CTE).\n\nSo, Q1 returns product 1, Q2 returns product 1 and 2. Therefore, the results differ.\n\nAnother possible case: product with sales both inside and outside the date range. Let's think. Suppose product 3 has sales both inside and outside. Then, Q1 would exclude it (since min and max would not be within the dates). Q2's CTE would include product 3 (since it has sales outside), so the main query would exclude it. So in that case, both Q1 and Q2 would not include it. So that's not a counterexample.\n\nBut the case where a product has no sales is a valid counterexample.\n\nSo the explanation is that Q1 requires that all sales of a product are within the date range, while Q2 includes products that have no sales outside the date range (including those with no sales at all). Therefore, products with no sales are included in Q2 but not in Q1.\n\nSo the counterexample is a product with no sales.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 475,
+    "total_tokens": 2027,
+    "completion_tokens": 1552,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1283
+    },
+    "generation_seconds": 54.484
+  },
+  "started_at": "2026-10-06T11:51:34.075008+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      1,
+      "Product A"
+    ]
+  ],
+  "q2_output": [
+    [
+      1,
+      "Product A"
+    ],
+    [
+      2,
+      "Product B"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT P.PRODUCT_ID, P.PRODUCT_NAME FROM PRODUCT P INNER JOIN ( SELECT PRODUCT_ID FROM SALES GROUP BY PRODUCT_ID HAVING MIN(SALE_DATE) >= '2019-01-01' AND MAX(SALE_DATE) <= '2019-03-31' ) S ON (P.PRODUCT_ID = S.PRODUCT_ID)",
+  "q2_validation_sql": "WITH CTE AS ( SELECT PRODUCT.PRODUCT_ID, PRODUCT.PRODUCT_NAME FROM PRODUCT INNER JOIN SALES ON PRODUCT.PRODUCT_ID = SALES.PRODUCT_ID WHERE SALES.SALE_DATE NOT BETWEEN '2019-01-01' AND '2019-03-31' ) SELECT PRODUCT_ID, PRODUCT_NAME FROM PRODUCT WHERE PRODUCT_ID NOT IN ( SELECT CTE.PRODUCT_ID FROM CTE )"
+}

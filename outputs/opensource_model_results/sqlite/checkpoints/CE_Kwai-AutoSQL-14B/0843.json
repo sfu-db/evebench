@@ -1,0 +1,55 @@
+{
+  "dbid": "debit_card_specializing",
+  "index": "843",
+  "source_index": "1486",
+  "schema_ddl": "CREATE TABLE customers\n(\n    CustomerID INTEGER UNIQUE     not null\n        primary key,\n    Segment    TEXT null,\n    Currency   TEXT null\n);\n\nCREATE TABLE gasstations\n(\n    GasStationID INTEGER    UNIQUE   not null\n        primary key,\n    ChainID      INTEGER          null,\n    Country      TEXT null,\n    Segment      TEXT null\n);\n\nCREATE TABLE products\n(\n    ProductID   INTEGER   UNIQUE      not null\n        primary key,\n    Description TEXT null\n);\n\nCREATE TABLE \"transactions_1k\"\n(\n    TransactionID INTEGER\n        primary key autoincrement,\n    Date          DATE,\n    Time          TEXT,\n    CustomerID    INTEGER,\n    CardID        INTEGER,\n    GasStationID  INTEGER,\n    ProductID     INTEGER,\n    Amount        INTEGER,\n    Price         REAL\n);\n\nCREATE TABLE \"yearmonth\"\n(\n    CustomerID  INTEGER not null\n        references customers\n            on update cascade on delete cascade\n        references customers,\n    Date        TEXT    not null,\n    Consumption REAL,\n    primary key (Date, CustomerID)\n);",
+  "q1": "SELECT SUM(IIF(CustomerID = 7, Consumption, 0)) - SUM(IIF(CustomerID = 5, Consumption, 0)) FROM yearmonth WHERE Date = '201304'",
+  "q2": "SELECT (SELECT Consumption FROM yearmonth WHERE CustomerID = 7 AND Date = '201304') - (SELECT Consumption FROM yearmonth WHERE CustomerID = 5 AND Date = '201304')",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT SUM(IIF(CustomerID = 7, Consumption, 0)) - SUM(IIF(CustomerID = 5, Consumption, 0)) FROM yearmonth WHERE Date = '201304'",
+  "q2_prompt_sql": "SELECT (SELECT Consumption FROM yearmonth WHERE CustomerID = 7 AND Date = '201304') - (SELECT Consumption FROM yearmonth WHERE CustomerID = 5 AND Date = '201304')",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO customers (CustomerID) VALUES (5);\nINSERT INTO customers (CustomerID) VALUES (7);\nINSERT INTO yearmonth (CustomerID, Date, Consumption) VALUES (7, '201304', 100);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 uses SUM with IIF to default to 0 when a customer is not found, while Q2 uses scalar subqueries which return NULL when no matching row exists. This leads to different results when one of the customers (7 or 5) is absent in yearmonth for the given date.",
+  "counterexample_dsp": "yearmonth has a row for CustomerID 7 with Consumption 100 and no row for CustomerID 5 on '201304'. Q1 returns 100 - 0 = 100, while Q2 returns 100 - NULL = NULL.",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 uses SUM with IIF to default to 0 when a customer is not found, while Q2 uses scalar subqueries which return NULL when no matching row exists. This leads to different results when one of the customers (7 or 5) is absent in yearmonth for the given date.\",\n  \"counterexample_dsp\": \"yearmonth has a row for CustomerID 7 with Consumption 100 and no row for CustomerID 5 on '201304'. Q1 returns 100 - 0 = 100, while Q2 returns 100 - NULL = NULL.\",\n  \"counterexample\": [\n    \"INSERT INTO customers (CustomerID) VALUES (5);\",\n    \"INSERT INTO customers (CustomerID) VALUES (7);\",\n    \"INSERT INTO yearmonth (CustomerID, Date, Consumption) VALUES (7, '201304', 100);\"\n  ]\n}",
+  "reasoning": "\nOkay, let's see. I need to find a counterexample where Q1 and Q2 give different results. First, I should understand what each query does.\n\nQ1 uses SUM with IIF conditions. For each row in yearmonth where Date is '201304', it sums the Consumption for CustomerID 7 and subtracts the sum for CustomerID 5. Since the primary key of yearmonth is (Date, CustomerID), there should be at most one row per CustomerID per Date. But what if there are multiple rows for the same CustomerID and Date? Wait, no, the primary key is Date and CustomerID, so each combination is unique. So SUM here would just add up the single value for each customer. So Q1 is effectively (Consumption of 7) minus (Consumption of 5) for that date. Wait, but what if one of the customers isn't present? Then IIF would return 0. So if CustomerID 7 isn't in the table, then that sum is 0. Same for 5.\n\nQ2 uses two subqueries. The first subquery gets Consumption where CustomerID = 7 and Date = '201304'. The second does the same for 5, and subtracts them. But if a customer isn't found, the subquery would return NULL. So if CustomerID 7 isn't present, then the first part would be NULL, and subtracting the second part (say, a number) would result in NULL. Similarly, if CustomerID 5 isn't present, the second subquery returns NULL, and subtracting NULL from a number would also be NULL. So in cases where either customer isn't present, Q2 returns NULL, whereas Q1 would return 0 minus whatever (or vice versa), depending on which one is missing.\n\nSo the difference arises when one of the customers (7 or 5) is not present in the yearmonth table for that date. Let's think of a scenario where one of them is missing. For example, suppose CustomerID 7 has no entry in yearmonth for '201304', but CustomerID 5 does. Then Q1 would compute SUM(IIF(7, ...)) which is 0 (since no rows match), minus SUM(IIF(5, ...)) which is the Consumption of 5. So Q1 returns -Consumption_5. But Q2 would have the first subquery return NULL (no rows found), so NULL minus Consumption_5 is NULL. Therefore, the results differ.\n\nAnother scenario: if both customers are missing, then Q1 returns 0 - 0 = 0, whereas Q2 returns NULL - NULL = NULL. So that's another difference.\n\nAlternatively, if only CustomerID 5 is missing. Then Q1 would be Consumption_7 - 0 = Consumption_7. Q2 would be Consumption_7 - NULL = NULL.\n\nSo the key difference is that Q1 uses 0 when no rows are found, while Q2 returns NULL. So inserting data where one customer is present and the other isn't would create a difference.\n\nSo to create a counterexample, I can have in yearmonth:\n\nFor Date '201304', CustomerID 7 has Consumption 100, and CustomerID 5 does not exist. Then Q1 would be 100 - 0 = 100. Q2 would be (100) - (NULL) = NULL. But wait, the second subquery for CustomerID 5 would return NULL, so the subtraction would be NULL.\n\nWait, but in the yearmonth table, the primary key is Date and CustomerID. So if CustomerID 5 isn't in yearmonth for that date, then the subquery for CustomerID 5 returns no rows. In SQLite, a scalar subquery that returns no rows returns NULL. So Q2's second part is NULL. So 100 - NULL is NULL. Therefore, Q1 returns 100, Q2 returns NULL. Different results.\n\nAlternatively, if CustomerID 5 is present but CustomerID 7 is not. Then Q1 returns 0 - Consumption_5. Q2 returns NULL - Consumption_5 = NULL. So different again.\n\nSo the counterexample could be inserting into yearmonth a row for CustomerID 7 with Date '201304' and Consumption 100, but no row for CustomerID 5. Then Q1 would be 100 - 0 = 100, Q2 would be 100 - NULL = NULL.\n\nAnother possibility is that both customers have entries but the Consumption for 7 is zero. Wait, no. Then Q1 would be 0 - Consumption_5. Q2 would be 0 - Consumption_5. So same result. But if the Consumption for 5 is zero, then Q1 would be 0 - 0 = 0, Q2 would be 0 - 0 = 0. So same. So that's not a counterexample.\n\nSo the key is when one customer's entry is missing. Let me structure that.\n\nNow, the schema requires that yearmonth's CustomerID references customers. So I need to have CustomerIDs 5 and 7 in the customers table. But for the counterexample, I can have CustomerID 7 in yearmonth for that date, and not CustomerID 5.\n\nSo the steps:\n\n1. Insert CustomerID 5 and 7 into customers table.\n2. Insert a row into yearmonth for CustomerID 7, Date '201304', Consumption 100.\n3. Do not insert a row for CustomerID 5 in yearmonth for that date.\n\nThen Q1 would be 100 - 0 = 100, and Q2 would be 100 - NULL = NULL. So different results.\n\nAnother case: if CustomerID 5 is present but CustomerID 7 is not. Then Q1 returns 0 - Consumption_5, which is negative. Q2 returns NULL - Consumption_5 = NULL. So different again.\n\nSo I can choose either scenario. Let me pick the first one where CustomerID 7 is present and 5 is not.\n\nNow, the other tables (gasstations, products, transactions_1k) are not used in the queries. So I don't need to insert data into them. The yearmonth table is the only one involved in Q1 and Q2.\n\nSo the counterexample SQL would be:\n\nINSERT INTO customers (CustomerID) VALUES (5), (7);\nINSERT INTO yearmonth (CustomerID, Date, Consumption) VALUES (7, '201304', 100);\n\nBut also, the yearmonth table's Date is TEXT. The format in the query is '201304', which is a 6-digit string (YYYYMM). So that's acceptable.\n\nSo with this data, Q1 returns 100 - 0 = 100, Q2 returns 100 - NULL = NULL. Hence different results.\n\nAnother thing to check: the primary key of yearmonth is (Date, CustomerID). So inserting one row for (7, '201304', 100) is valid.\n\nYes. So this setup should work.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 508,
+    "total_tokens": 2264,
+    "completion_tokens": 1756,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1545
+    },
+    "generation_seconds": 62.922
+  },
+  "started_at": "2026-10-06T19:55:26.164247+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      100.0
+    ]
+  ],
+  "q2_output": [
+    [
+      null
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT SUM(IIF(CustomerID = 7, Consumption, 0)) - SUM(IIF(CustomerID = 5, Consumption, 0)) FROM yearmonth WHERE Date = '201304'",
+  "q2_validation_sql": "SELECT (SELECT Consumption FROM yearmonth WHERE CustomerID = 7 AND Date = '201304') - (SELECT Consumption FROM yearmonth WHERE CustomerID = 5 AND Date = '201304')"
+}

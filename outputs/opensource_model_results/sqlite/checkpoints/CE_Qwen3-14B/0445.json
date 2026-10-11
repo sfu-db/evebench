@@ -1,0 +1,51 @@
+{
+  "dbid": "superhero",
+  "index": "445",
+  "source_index": "840",
+  "schema_ddl": "CREATE TABLE alignment\n(\n    id        INTEGER not null\n            primary key,\n    alignment TEXT default NULL\n);\n\nCREATE TABLE attribute\n(\n    id             INTEGER not null\n            primary key,\n    attribute_name TEXT default NULL\n);\n\nCREATE TABLE colour\n(\n    id     INTEGER not null\n            primary key,\n    colour TEXT default NULL\n);\n\nCREATE TABLE gender\n(\n    id     INTEGER not null\n            primary key,\n    gender TEXT default NULL\n);\n\nCREATE TABLE publisher\n(\n    id             INTEGER not null\n            primary key,\n    publisher_name TEXT default NULL\n);\n\nCREATE TABLE race\n(\n    id   INTEGER not null\n            primary key,\n    race TEXT default NULL\n);\n\nCREATE TABLE superhero\n(\n    id             INTEGER not null\n            primary key,\n    superhero_name TEXT default NULL,\n    full_name      TEXT default NULL,\n    gender_id      INTEGER          default NULL,\n    eye_colour_id  INTEGER          default NULL,\n    hair_colour_id INTEGER          default NULL,\n    skin_colour_id INTEGER          default NULL,\n    race_id        INTEGER          default NULL,\n    publisher_id   INTEGER          default NULL,\n    alignment_id   INTEGER          default NULL,\n    height_cm      INTEGER          default NULL,\n    weight_kg      INTEGER          default NULL,\n    foreign key (alignment_id) references alignment(id),\n    foreign key (eye_colour_id) references colour(id),\n    foreign key (gender_id) references gender(id),\n    foreign key (hair_colour_id) references colour(id),\n    foreign key (publisher_id) references publisher(id),\n    foreign key (race_id) references race(id),\n    foreign key (skin_colour_id) references colour(id)\n);\n\nCREATE TABLE hero_attribute\n(\n    hero_id         INTEGER default NULL,\n    attribute_id    INTEGER default NULL,\n    attribute_value INTEGER default NULL,\n    foreign key (attribute_id) references attribute(id),\n    foreign key (hero_id) references superhero(id)\n);\n\nCREATE TABLE superpower\n(\n    id         INTEGER not null\n            primary key,\n    power_name TEXT default NULL\n);\n\nCREATE TABLE hero_power\n(\n    hero_id  INTEGER default NULL,\n    power_id INTEGER default NULL,\n    foreign key (hero_id) references superhero(id),\n    foreign key (power_id) references superpower(id)\n);",
+  "q1": "SELECT T1.full_name FROM superhero AS T1 INNER JOIN colour AS T2 ON T1.eye_colour_id = T2.id WHERE T1.weight_kg < 100 AND T2.colour = 'Brown'",
+  "q2": "SELECT superhero.full_name FROM superhero INNER JOIN colour ON superhero.eye_colour_id = colour.id WHERE superhero.weight_kg < 100 AND colour.colour = 'brown'",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT T1.full_name FROM superhero AS T1 INNER JOIN colour AS T2 ON T1.eye_colour_id = T2.id WHERE T1.weight_kg < 100 AND T2.colour = 'Brown'",
+  "q2_prompt_sql": "SELECT superhero.full_name FROM superhero INNER JOIN colour ON superhero.eye_colour_id = colour.id WHERE superhero.weight_kg < 100 AND colour.colour = 'brown'",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO colour (id, colour) VALUES (1, 'brown');\nINSERT INTO superhero (id, full_name, eye_colour_id, weight_kg) VALUES (1, 'Test Hero', 1, 90);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 uses 'Brown' (capitalized) in the WHERE clause while Q2 uses 'brown' (lowercase). If the colour table contains entries with case-sensitive values, this will produce different results.",
+  "counterexample_dsp": "Create a superhero with weight < 100 whose eye_colour_id points to a colour entry with 'brown' (lowercase). Q2 will include this hero, but Q1 will not due to case sensitivity.",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 uses 'Brown' (capitalized) in the WHERE clause while Q2 uses 'brown' (lowercase). If the colour table contains entries with case-sensitive values, this will produce different results.\",\n  \"counterexample_dsp\": \"Create a superhero with weight < 100 whose eye_colour_id points to a colour entry with 'brown' (lowercase). Q2 will include this hero, but Q1 will not due to case sensitivity.\",\n  \"counterexample\": [\n    \"INSERT INTO colour (id, colour) VALUES (1, 'brown');\",\n    \"INSERT INTO superhero (id, full_name, eye_colour_id, weight_kg) VALUES (1, 'Test Hero', 1, 90);\"\n  ]\n}",
+  "reasoning": "\nOkay, let's tackle this problem. The user wants a counterexample where Q1 and Q2 return different results. First, I need to understand why these two queries might not be equivalent.\n\nLooking at Q1 and Q2, they seem very similar. Both select full names from superhero, join with colour on eye_colour_id, filter where weight_kg < 100 and colour is 'Brown' or 'brown'. Wait, the difference is in the case of the colour value. Q1 uses 'Brown' with a capital B, and Q2 uses 'brown' with lowercase. Oh right! The WHERE clause in Q1 checks for 'Brown' and Q2 for 'brown'. If the database has entries where the colour is stored as 'brown' (lowercase), then Q1 would not include them, while Q2 would. Alternatively, if there's a case sensitivity issue in the database's collation settings, but the problem states that the counterexample shouldn't violate schema constraints. So, the schema allows colour to be any text, including different cases.\n\nSo the key is that the two queries are using different case for the colour value. Therefore, if there's a row in the colour table where the colour is 'brown' (lowercase), then Q2 would include it, but Q1 wouldn't. Conversely, if there's a 'Brown' entry, Q1 would include it, but if the database has both, then the results would differ based on the case.\n\nSo, the counterexample needs to have a superhero with weight_kg < 100, whose eye_colour_id points to a colour entry with 'brown' (lowercase). Then Q2 would include that superhero, but Q1 wouldn't. Alternatively, if there's a 'Brown' entry, then Q1 would include it and Q2 wouldn't. But the problem says to make sure the counterexample doesn't violate schema constraints. The schema allows colour to be any text, so inserting 'brown' or 'Brown' is allowed.\n\nSo let's create a test case. Let's insert a colour entry with id 1 and colour 'brown'. Then create a superhero with eye_colour_id = 1, weight_kg = 90. Then Q2 would select this superhero, but Q1 would not because it's looking for 'Brown' (uppercase). Therefore, the two queries would return different results.\n\nAnother possibility is that the colour table has entries with different cases. So, if there's a superhero whose eye_colour_id points to a 'brown' entry, then Q2 would include it, but Q1 would not. Hence, the difference in results.\n\nSo the explanation is that Q1 checks for 'Brown' and Q2 for 'brown', leading to different results if the colour is stored in a different case. The counterexample would involve inserting a colour with 'brown' and a superhero with that eye colour and weight under 100. Then Q2 would return that superhero, but Q1 would not.\n\nNow, the SQL inserts need to be written. First, insert into colour: id 1, colour 'brown'. Then insert into superhero: id 1, full_name 'Test Hero', eye_colour_id 1, weight_kg 90. Then, other tables might need to have their foreign keys, but since other columns are optional (like gender_id, publisher_id, etc.), we can set them to NULL or insert minimal data. However, the superhero table's primary key is id, and the foreign keys are optional. So inserting the superhero with just the necessary fields.\n\nWait, the superhero table's columns have default NULL, so we can insert only the required fields. But the primary key is id, which is not null. So the insert for superhero would be:\n\nINSERT INTO superhero (id, full_name, eye_colour_id, weight_kg) VALUES (1, 'Test Hero', 1, 90);\n\nBut also, the eye_colour_id references colour.id, so the colour table must have id 1 with colour 'brown'.\n\nAdditionally, the other tables (alignment, gender, etc.) are not involved in the queries, so their data isn't necessary. So the minimal test data would be inserting into colour and superhero.\n\nSo the counterexample would have this data. Then, Q2 would return 'Test Hero', while Q1 would not, because Q1's WHERE clause checks for 'Brown' (uppercase), and the colour is stored as 'brown' (lowercase). Therefore, the two queries would return different results.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 736,
+    "total_tokens": 1840,
+    "completion_tokens": 1104,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 937
+    },
+    "generation_seconds": 37.204
+  },
+  "started_at": "2026-10-06T17:06:26.815249+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [],
+  "q2_output": [
+    [
+      "Test Hero"
+    ]
+  ],
+  "q1_row_count": 0,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT T1.full_name FROM superhero AS T1 INNER JOIN colour AS T2 ON T1.eye_colour_id = T2.id WHERE T1.weight_kg < 100 AND T2.colour = 'Brown'",
+  "q2_validation_sql": "SELECT superhero.full_name FROM superhero INNER JOIN colour ON superhero.eye_colour_id = colour.id WHERE superhero.weight_kg < 100 AND colour.colour = 'brown'"
+}

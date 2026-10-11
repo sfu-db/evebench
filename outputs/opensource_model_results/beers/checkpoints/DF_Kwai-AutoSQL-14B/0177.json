@@ -1,0 +1,69 @@
+{
+  "dbid": "beers",
+  "index": "177",
+  "source_index": "3652",
+  "schema_ddl": "CREATE TABLE Bar (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Beer (\n    name VARCHAR NOT NULL,\n    brewer VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Drinker (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Frequents (\n    drinker VARCHAR NOT NULL,\n    bar VARCHAR NOT NULL,\n    times_a_week SMALLINT NOT NULL,\n    PRIMARY KEY (drinker, bar),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (bar) REFERENCES Bar(name)\n);\n\nCREATE TABLE Serves (\n    bar VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    price DECIMAL(5,2) NOT NULL,\n    PRIMARY KEY (bar, beer),\n    FOREIGN KEY (bar) REFERENCES Bar(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);\n\nCREATE TABLE Likes (\n    drinker VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    PRIMARY KEY (drinker, beer),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);",
+  "q1": "SELECT beer.name, min_price, bar FROM beer LEFT OUTER JOIN (SELECT beer, MIN(price) AS min_price FROM serves GROUP BY beer) AS t ON beer.name = t.beer LEFT OUTER JOIN serves ON beer.name = serves.beer AND min_price = serves.price",
+  "q2": "WITH ValidBeers AS (SELECT beer FROM serves WHERE serves.bar IN (SELECT bar FROM frequents WHERE drinker LIKE 'B%') GROUP BY beer HAVING COUNT(bar) >= 2), BeerPrices AS (SELECT serves.beer, serves.price FROM serves FULL OUTER JOIN ValidBeers ON serves.beer = ValidBeers.beer) SELECT bp.beer, MAX(bp.price) - MIN(bp.price) AS price_gap, AVG(bp.price) AS avg_price FROM BeerPrices AS bp GROUP BY bp.beer ORDER BY bp.beer",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "beers",
+  "q1_prompt_sql": "SELECT beer.name, min_price, bar FROM beer LEFT OUTER JOIN (SELECT beer, MIN(price) AS min_price FROM serves GROUP BY beer) AS t ON beer.name = t.beer LEFT OUTER JOIN serves ON beer.name = serves.beer AND min_price = serves.price",
+  "q2_prompt_sql": "WITH ValidBeers AS (SELECT beer FROM serves WHERE serves.bar IN (SELECT bar FROM frequents WHERE drinker LIKE 'B%') GROUP BY beer HAVING COUNT(bar) >= 2), BeerPrices AS (SELECT serves.beer, serves.price FROM serves FULL OUTER JOIN ValidBeers ON serves.beer = ValidBeers.beer) SELECT bp.beer, MAX(bp.price) - MIN(bp.price) AS price_gap, AVG(bp.price) AS avg_price FROM BeerPrices AS bp GROUP BY bp.beer ORDER BY bp.beer",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO Bar (name, address) VALUES ('Bar1', 'addr1'), ('Bar2', 'addr2');\nINSERT INTO Drinker (name, address) VALUES ('B1', 'addr1'), ('B2', 'addr2');\nINSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('B1', 'Bar1', 3), ('B2', 'Bar2', 2);\nINSERT INTO Beer (name, brewer) VALUES ('BeerA', 'Brewer1'), ('BeerB', 'Brewer2');\nINSERT INTO Serves (bar, beer, price) VALUES ('Bar1', 'BeerA', 2), ('Bar2', 'BeerA', 3), ('Bar1', 'BeerB', 1);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 retrieves each beer's name, its minimum price, and the bar where that minimum price occurs. Q2 computes price_gap (max - min) and average price for beers served at at least two bars frequented by drinkers starting with 'B%'. They differ in objectives, output columns, and filtering conditions.",
+  "counterexample_dsp": "A beer not in ValidBeers (served at bars not frequented by B% drinkers) appears in Q1 but not in Q2. Another beer in ValidBeers shows different aggregation results in Q2 vs. min-price focus in Q1.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n  \"equiv\": \"N\",\n  \"explanation\": \"Q1 retrieves each beer's name, its minimum price, and the bar where that minimum price occurs. Q2 computes price_gap (max - min) and average price for beers served at at least two bars frequented by drinkers starting with 'B%'. They differ in objectives, output columns, and filtering conditions.\",\n  \"counterexample_dsp\": \"A beer not in ValidBeers (served at bars not frequented by B% drinkers) appears in Q1 but not in Q2. Another beer in ValidBeers shows different aggregation results in Q2 vs. min-price focus in Q1.\",\n  \"counterexample\": \"INSERT INTO Bar (name, address) VALUES ('Bar1', 'addr1'), ('Bar2', 'addr2');\\nINSERT INTO Drinker (name, address) VALUES ('B1', 'addr1'), ('B2', 'addr2');\\nINSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('B1', 'Bar1', 3), ('B2', 'Bar2', 2);\\nINSERT INTO Beer (name, brewer) VALUES ('BeerA', 'Brewer1'), ('BeerB', 'Brewer2');\\nINSERT INTO Serves (bar, beer, price) VALUES ('Bar1', 'BeerA', 2), ('Bar2', 'BeerA', 3), ('Bar1', 'BeerB', 1);\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem step by step. First, I need to understand what each query does and then compare them.\n\nStarting with Q1. The query selects beer.name, min_price, and bar from a LEFT OUTER JOIN of the Beer table with a subquery that finds the minimum price per beer from the Serves table. Then, it does another LEFT OUTER JOIN with the Serves table again, matching on beer.name and min_price equals serves.price. So essentially, Q1 is getting each beer's name, the minimum price it's served at, and the bar where that minimum price occurs. The LEFT JOINs mean even if there's no matching serve for the min_price, it would still return the beer name and min_price, but the bar might be NULL. But since the subquery already groups by beer and finds min_price, the second join would find the specific bar(s) where that min price is served.\n\nNow Q2. It uses two CTEs: ValidBeers and BeerPrices. ValidBeers selects beers from Serves where the bar is in the set of bars frequented by drinkers whose name starts with 'B%'. Then, it groups by beer and requires COUNT(bar) >= 2, meaning the beer must be served at at least two such bars. Then BeerPrices does a FULL OUTER JOIN between Serves and ValidBeers on beer, which would give all beers from ValidBeers and all serves, but since ValidBeers is a subset of beers from Serves (since it's derived from Serves), maybe it's just all serves for those valid beers. Then, Q2 groups by beer and computes price_gap (max price minus min price) and average price.\n\nSo Q1 is about finding the beer with its minimum price and the bar where that minimum occurs. Q2 is about beers that are served in at least two bars frequented by B% drinkers, then calculating price spread (max - min) and average price for those beers.\n\nClearly, these two queries have different objectives. Q1's output includes beer name, min_price, and bar, while Q2's output is beer name, price_gap, and avg_price. The first query is about finding the minimum price occurrence, the second is about the spread of prices for certain beers. Therefore, they are not equivalent.\n\nTo create a counterexample, I need a database where Q1 and Q2 produce different results. Let's think of a scenario where Q1's result would have some beer with min price and bar, but Q2's result would have a different beer or different aggregates.\n\nFor example, suppose there's a beer \"Bud\" served at bar \"Bar1\" for $2 and at bar \"Bar2\" for $3. If ValidBeers includes Bud because Bar1 and Bar2 are frequented by B% drinkers, then Q2 would compute max(2,3) - min(2,3) = 1 and avg 2.5. Q1 would return Bud, 2, Bar1 (assuming the first join picks the first occurrence). But if there's a beer not in ValidBeers, Q2 wouldn't include it, but Q1 would still include it. Alternatively, if a beer is in ValidBeers but Q1's joins don't match, but that seems unlikely.\n\nWait, but Q1 doesn't involve ValidBeers at all. Q1 is just about all beers and their minimum price and the bar where that minimum occurs. Q2 is about beers that meet certain conditions (served in at least two bars frequented by B% drinkers). So if there's a beer that is not in ValidBeers, Q2 won't return it, but Q1 will. So, for example, if there's a beer \"BeerX\" served at bar \"BarA\" for $1, and BarA is not frequented by any B% drinker. Then Q1 would return BeerX, 1, BarA, but Q2 wouldn't return BeerX at all. So in that case, their results differ.\n\nAlternatively, if there's a beer that is in ValidBeers but Q1's output for that beer's min_price and bar is different from Q2's aggregation. But the output columns are different, so even if the beer is present in both, the result sets are different because they have different columns.\n\nSo the counterexample would be a database where there's at least one beer present in Q1's output but not in Q2's, or vice versa, or the columns differ.\n\nLet me construct a simple test case. Let's say:\n\n- Bar: Bar1 (frequented by B1), Bar2 (frequented by B2)\n- Drinker: B1 (name 'B1'), B2 (name 'B2')\n- Frequents: B1 frequents Bar1, B2 frequents Bar2\n- Beer: BeerA, BeerB\n- Serves: BeerA at Bar1 for $2, BeerA at Bar2 for $3; BeerB at Bar1 for $1\n\nValidBeers would be beers served at bars frequented by B% drinkers. Since B1 and B2 both start with 'B', their frequented bars (Bar1 and Bar2) are considered. So ValidBeers would be BeerA (served at Bar1 and Bar2) and BeerB (served at Bar1). Then, the HAVING COUNT(bar) >= 2 would require at least two bars. So BeerA has two bars, BeerB has one bar. So ValidBeers includes BeerA only.\n\nBeerPrices would be the serves for BeerA (Bar1:2, Bar2:3). Then Q2 would group BeerA and compute max(3) - min(2) = 1, avg(2.5).\n\nQ1 would return BeerA's min price (2) and the bar where it's served (Bar1). So Q1's output for BeerA would be name, 2, Bar1. Q2's output for BeerA would be BeerA, 1, 2.5.\n\nSo the two queries have different output columns and different data. Therefore, they are not equivalent.\n\nAnother case: if there's a beer not in ValidBeers. Let's say BeerC is served at Bar3 (not frequented by any B% drinker). Then Q1 would return BeerC's min price and bar, but Q2 wouldn't include BeerC. So in this case, Q1 has BeerC in output, Q2 doesn't. Hence, different results.\n\nThus, the answer is not equivalent.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 658,
+    "total_tokens": 2356,
+    "completion_tokens": 1698,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1378
+    },
+    "generation_seconds": 55.5
+  },
+  "started_at": "2026-10-06T09:41:47.449564+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "BeerA",
+      2,
+      "Bar1"
+    ],
+    [
+      "BeerB",
+      1,
+      "Bar1"
+    ]
+  ],
+  "q2_output": [
+    [
+      "BeerA",
+      1,
+      2.5
+    ],
+    [
+      "BeerB",
+      0,
+      1.0
+    ]
+  ],
+  "q1_row_count": 2,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT beer.name, min_price, bar FROM beer LEFT OUTER JOIN (SELECT beer, MIN(price) AS min_price FROM serves GROUP BY beer) AS t ON beer.name = t.beer LEFT OUTER JOIN serves ON beer.name = serves.beer AND min_price = serves.price",
+  "q2_validation_sql": "WITH ValidBeers AS (SELECT beer FROM serves WHERE serves.bar IN (SELECT bar FROM frequents WHERE drinker LIKE 'B%') GROUP BY beer HAVING COUNT(bar) >= 2), BeerPrices AS (SELECT serves.beer, serves.price FROM serves FULL OUTER JOIN ValidBeers ON serves.beer = ValidBeers.beer) SELECT bp.beer, MAX(bp.price) - MIN(bp.price) AS price_gap, AVG(bp.price) AS avg_price FROM BeerPrices AS bp GROUP BY bp.beer ORDER BY bp.beer"
+}

@@ -1,0 +1,55 @@
+{
+  "dbid": "debit_card_specializing",
+  "index": "858",
+  "source_index": "1508",
+  "schema_ddl": "CREATE TABLE customers\n(\n    CustomerID INTEGER UNIQUE     not null\n        primary key,\n    Segment    TEXT null,\n    Currency   TEXT null\n);\n\nCREATE TABLE gasstations\n(\n    GasStationID INTEGER    UNIQUE   not null\n        primary key,\n    ChainID      INTEGER          null,\n    Country      TEXT null,\n    Segment      TEXT null\n);\n\nCREATE TABLE products\n(\n    ProductID   INTEGER   UNIQUE      not null\n        primary key,\n    Description TEXT null\n);\n\nCREATE TABLE \"transactions_1k\"\n(\n    TransactionID INTEGER\n        primary key autoincrement,\n    Date          DATE,\n    Time          TEXT,\n    CustomerID    INTEGER,\n    CardID        INTEGER,\n    GasStationID  INTEGER,\n    ProductID     INTEGER,\n    Amount        INTEGER,\n    Price         REAL\n);\n\nCREATE TABLE \"yearmonth\"\n(\n    CustomerID  INTEGER not null\n        references customers\n            on update cascade on delete cascade\n        references customers,\n    Date        TEXT    not null,\n    Consumption REAL,\n    primary key (Date, CustomerID)\n);",
+  "q1": "SELECT DISTINCT T1.Time FROM transactions_1k AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID WHERE T2.ChainID = 11",
+  "q2": "SELECT DISTINCT T2.Time FROM gasstations AS T1 INNER JOIN transactions_1k AS T2 ON T1.GasStationID = T2.GasStationID WHERE T1.ChainID = 11",
+  "dialect": "sqlite",
+  "ground_truth": "EQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT DISTINCT T1.Time FROM transactions_1k AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID WHERE T2.ChainID = 11",
+  "q2_prompt_sql": "SELECT DISTINCT T2.Time FROM gasstations AS T1 INNER JOIN transactions_1k AS T2 ON T1.GasStationID = T2.GasStationID WHERE T1.ChainID = 11",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO gasstations (GasStationID, ChainID, Country, Segment) VALUES (1, 11, 'USA', 'A');\nINSERT INTO gasstations (GasStationID, ChainID, Country, Segment) VALUES (2, 12, 'USA', 'A');\nINSERT INTO transactions_1k (TransactionID, Date, Time, CustomerID, CardID, GasStationID, ProductID, Amount, Price) VALUES (1, '2023-01-01', '10:00:00', 1, 100, 1, 1, 1, 10.0);\nINSERT INTO transactions_1k (TransactionID, Date, Time, CustomerID, CardID, GasStationID, ProductID, Amount, Price) VALUES (2, '2023-01-01', '11:00:00', 1, 101, 2, 1, 1, 15.0);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent because they are joining different tables as the first table in the join and using different aliases, which leads to the Time column being sourced from different tables. In Q1, Time comes from transactions_1k (T1), while in Q2, Time also comes from transactions_1k (T2). However, the ChainID condition is applied to different tables in each query, which can lead to different results when there are multiple gas stations with the same ChainID.",
+  "counterexample_dsp": "Create two gas stations with ChainID = 11 and one gas station with ChainID = 12. One transaction at each gas station. Q1 and Q2 will return different sets of times because Q1 joins gasstations on T1 and Q2 joins gasstations on T1 but aliases are different and the logic is subtly different.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 and Q2 are not semantically equivalent because they are joining different tables as the first table in the join and using different aliases, which leads to the Time column being sourced from different tables. In Q1, Time comes from transactions_1k (T1), while in Q2, Time also comes from transactions_1k (T2). However, the ChainID condition is applied to different tables in each query, which can lead to different results when there are multiple gas stations with the same ChainID.\",\n\"counterexample_dsp\": \"Create two gas stations with ChainID = 11 and one gas station with ChainID = 12. One transaction at each gas station. Q1 and Q2 will return different sets of times because Q1 joins gasstations on T1 and Q2 joins gasstations on T1 but aliases are different and the logic is subtly different.\",\n\"counterexample\": \"INSERT INTO gasstations (GasStationID, ChainID, Country, Segment) VALUES (1, 11, 'USA', 'A');\\nINSERT INTO gasstations (GasStationID, ChainID, Country, Segment) VALUES (2, 12, 'USA', 'A');\\nINSERT INTO transactions_1k (TransactionID, Date, Time, CustomerID, CardID, GasStationID, ProductID, Amount, Price) VALUES (1, '2023-01-01', '10:00:00', 1, 100, 1, 1, 1, 10.0);\\nINSERT INTO transactions_1k (TransactionID, Date, Time, CustomerID, CardID, GasStationID, ProductID, Amount, Price) VALUES (2, '2023-01-01', '11:00:00', 1, 101, 2, 1, 1, 15.0);\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 560,
+    "total_tokens": 991,
+    "completion_tokens": 431,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 13.797
+  },
+  "started_at": "2026-10-06T21:40:51.697893+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "10:00:00"
+    ]
+  ],
+  "q2_output": [
+    [
+      "10:00:00"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DISTINCT T1.Time FROM transactions_1k AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID WHERE T2.ChainID = 11",
+  "q2_validation_sql": "SELECT DISTINCT T2.Time FROM gasstations AS T1 INNER JOIN transactions_1k AS T2 ON T1.GasStationID = T2.GasStationID WHERE T1.ChainID = 11"
+}

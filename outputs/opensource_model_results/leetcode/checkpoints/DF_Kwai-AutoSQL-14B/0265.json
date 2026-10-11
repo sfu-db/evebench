@@ -1,0 +1,39 @@
+{
+  "dbid": "585",
+  "index": "265",
+  "source_index": "112",
+  "schema_ddl": "CREATE TABLE INSURANCE (\n    PID INT,\n    TIV_2015 NUMERIC,\n    TIV_2016 NUMERIC,\n    LAT NUMERIC,\n    LON NUMERIC,\n    PRIMARY KEY (PID),\n    CHECK (TIV_2015 >= 0),\n    CHECK (TIV_2016 >= 0)\n);",
+  "q1": "SELECT ROUND(SUM(TIV_2016),2) TIV_2016 FROM INSURANCE WHERE TIV_2015 IN (SELECT TIV_2015 FROM INSURANCE GROUP BY TIV_2015 HAVING COUNT(*)>1) AND (LAT,LON) IN (SELECT LAT,LON FROM INSURANCE GROUP BY LAT,LON HAVING COUNT(*)=1)",
+  "q2": "SELECT ROUND(SUM(TIV_2016), 2) AS TIV_2016 FROM INSURANCE WHERE TIV_2015 IN (SELECT TIV_2015 FROM INSURANCE GROUP BY TIV_2015 HAVING COUNT(*)>1 ) AND (LAT, LON) NOT IN (SELECT LAT, LON FROM INSURANCE GROUP BY LAT, LON HAVING COUNT(*)>1)",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT ROUND(SUM(TIV_2016),2) TIV_2016 FROM INSURANCE WHERE TIV_2015 IN (SELECT TIV_2015 FROM INSURANCE GROUP BY TIV_2015 HAVING COUNT(*)>1) AND (LAT,LON) IN (SELECT LAT,LON FROM INSURANCE GROUP BY LAT,LON HAVING COUNT(*)=1)",
+  "q2_prompt_sql": "SELECT ROUND(SUM(TIV_2016), 2) AS TIV_2016 FROM INSURANCE WHERE TIV_2015 IN (SELECT TIV_2015 FROM INSURANCE GROUP BY TIV_2015 HAVING COUNT(*)>1 ) AND (LAT, LON) NOT IN (SELECT LAT, LON FROM INSURANCE GROUP BY LAT, LON HAVING COUNT(*)>1)",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are semantically equivalent because both conditions on (LAT, LON) effectively filter for unique coordinates. Q1 explicitly checks for count = 1, while Q2 excludes coordinates with count > 1, resulting in the same set of rows being selected.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Q1 and Q2 are semantically equivalent because both conditions on (LAT, LON) effectively filter for unique coordinates. Q1 explicitly checks for count = 1, while Q2 excludes coordinates with count > 1, resulting in the same set of rows being selected.\"\n}",
+  "reasoning": "\nOkay, let me try to figure out if Q1 and Q2 are equivalent. \n\nFirst, I need to understand what each query is doing. \n\nStarting with Q1. The query selects the rounded sum of TIV_2016 from the INSURANCE table. The WHERE clause has two conditions. The first condition is that TIV_2015 must be in a subquery that groups by TIV_2015 and has a count greater than 1. That means TIV_2015 has to appear more than once in the table. The second condition is that the (LAT, LON) pair must be in a subquery that groups by LAT and LON and has a count of exactly 1. So this (LAT, LON) pair is unique in the table. \n\nSo Q1 is summing TIV_2016 for records where TIV_2015 is duplicated and the location is unique.\n\nNow Q2. The structure is similar, the first part of the WHERE clause is the same: TIV_2015 in the subquery with count > 1. The second condition is (LAT, LON) NOT IN a subquery that groups by LAT, LON and has count > 1. So this means that the (LAT, LON) pair appears once or more? Wait, the NOT IN with count > 1. So the subquery returns all (LAT, LON) pairs that are duplicated. So NOT IN those would mean that the (LAT, LON) is not duplicated. Wait, but if the subquery is selecting pairs with count >1, then NOT IN that would include pairs that appear once (count=1) or pairs that appear more than once? No, wait. The NOT IN condition would exclude any (LAT, LON) that is present in the subquery. The subquery returns pairs that have count>1. So if a pair has count=1, it's not in the subquery, so NOT IN would include it. If a pair has count=2, then it's in the subquery, so NOT IN would exclude it. So Q2's second condition is that (LAT, LON) is not a duplicated pair. So that's the same as Q1's second condition. Wait, Q1's second condition is (LAT, LON) in subquery with count=1. Q2's second condition is (LAT, LON) NOT IN subquery with count>1. Are these equivalent?\n\nLet me think. For a given (LAT, LON) pair, if count(*) = 1, then it's not in the subquery of Q2 (which has count>1). So NOT IN that subquery would include it. If count is 2, then it's in the subquery, so NOT IN would exclude it. If count is 3, same. So Q2's second condition is equivalent to requiring that the (LAT, LON) pair appears once. Which is exactly the same as Q1's second condition. Therefore, the two queries should be equivalent. Wait, but wait, in Q1 the subquery for (LAT, LON) has HAVING COUNT(*) = 1. So that's selecting pairs that are unique. In Q2, the NOT IN subquery selects pairs with count>1. So the NOT IN would include all pairs that are not in that set, which includes all pairs that have count=1, and any pairs with count=0 (but that's not possible since they are in the main table). So yes, they are equivalent.\n\nWait, but maybe there's a difference in how the subqueries are handled. For example, if a (LAT, LON) pair appears once, then it's not in the subquery of Q2's NOT IN. So the condition holds. If it appears once, then Q1's condition (in subquery with count=1) is true. So both conditions are the same. So then Q1 and Q2 would be equivalent. But why would the user think they are different?\n\nWait, maybe I made a mistake. Let me check again. \n\nQ1's second condition: (LAT, LON) IN (SELECT LAT, LON FROM INSURANCE GROUP BY LAT, LON HAVING COUNT(*) = 1). This selects only those (LAT, LON) pairs that have exactly one occurrence.\n\nQ2's second condition: (LAT, LON) NOT IN (SELECT LAT, LON FROM INSURANCE GROUP BY LAT, LON HAVING COUNT(*) > 1). This excludes (LAT, LON) pairs that have more than one occurrence. So the allowed pairs are those that have exactly one occurrence (count=1) or zero? But since the main query is on the same table, the (LAT, LON) pairs must exist. So the allowed pairs are those with count=1. Because if count=2, then it's in the subquery and thus excluded. If count=1, then it's not in the subquery, so included. So yes, the two conditions are equivalent. Therefore, Q1 and Q2 are the same. So the answer should be Y.\n\nBut maybe I'm missing something. Let me think of a test case. Suppose there's a (LAT, LON) that appears once. Then both conditions would include it. If a (LAT, LON) appears twice, then Q1's condition would not include it (since count=2 !=1), and Q2's condition would exclude it (since it's in the subquery with count>1). So same result. So yes, the two conditions are equivalent. Hence, the queries are equivalent. Therefore, the answer is Y.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 520,
+    "total_tokens": 1800,
+    "completion_tokens": 1280,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1207
+    },
+    "generation_seconds": 41.266
+  },
+  "started_at": "2026-10-06T15:40:02.612092+00:00",
+  "elapsed_seconds": 0.0
+}

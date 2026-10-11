@@ -1,0 +1,53 @@
+{
+  "dbid": "debit_card_specializing",
+  "index": "873",
+  "source_index": "1528",
+  "schema_ddl": "CREATE TABLE customers\n(\n    CustomerID INTEGER UNIQUE     not null\n        primary key,\n    Segment    TEXT null,\n    Currency   TEXT null\n);\n\nCREATE TABLE gasstations\n(\n    GasStationID INTEGER    UNIQUE   not null\n        primary key,\n    ChainID      INTEGER          null,\n    Country      TEXT null,\n    Segment      TEXT null\n);\n\nCREATE TABLE products\n(\n    ProductID   INTEGER   UNIQUE      not null\n        primary key,\n    Description TEXT null\n);\n\nCREATE TABLE \"transactions_1k\"\n(\n    TransactionID INTEGER\n        primary key autoincrement,\n    Date          DATE,\n    Time          TEXT,\n    CustomerID    INTEGER,\n    CardID        INTEGER,\n    GasStationID  INTEGER,\n    ProductID     INTEGER,\n    Amount        INTEGER,\n    Price         REAL\n);\n\nCREATE TABLE \"yearmonth\"\n(\n    CustomerID  INTEGER not null\n        references customers\n            on update cascade on delete cascade\n        references customers,\n    Date        TEXT    not null,\n    Consumption REAL,\n    primary key (Date, CustomerID)\n);",
+  "q1": "SELECT GasStationID FROM transactions_1k GROUP BY GasStationID ORDER BY SUM(Price) DESC LIMIT 1",
+  "q2": "SELECT GasStationID FROM transactions_1k GROUP BY GasStationID ORDER BY SUM(Price * Amount) DESC LIMIT 1",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT GasStationID FROM transactions_1k GROUP BY GasStationID ORDER BY SUM(Price) DESC LIMIT 1",
+  "q2_prompt_sql": "SELECT GasStationID FROM transactions_1k GROUP BY GasStationID ORDER BY SUM(Price * Amount) DESC LIMIT 1",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO gasstations (GasStationID) VALUES (1), (2); INSERT INTO transactions_1k (GasStationID, Price, Amount) VALUES (1, 10, 100), (1, 20, 50), (2, 15, 100), (2, 25, 30);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 calculates the gas station with the highest total sales amount, while Q2 calculates the gas station with the highest total sales revenue. The difference lies in the treatment of the 'Amount' column, which represents the quantity of the product purchased, and the 'Price' column, which represents the price per unit of the product. Q1 multiplies these two values to get the revenue for each transaction, while Q2 simply sums the product of 'Price' and 'Amount' for each transaction.",
+  "counterexample_dsp": "A test database with two gas stations, where one station has a higher total sales amount but a lower total sales revenue than the other station.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 calculates the gas station with the highest total sales amount, while Q2 calculates the gas station with the highest total sales revenue. The difference lies in the treatment of the 'Amount' column, which represents the quantity of the product purchased, and the 'Price' column, which represents the price per unit of the product. Q1 multiplies these two values to get the revenue for each transaction, while Q2 simply sums the product of 'Price' and 'Amount' for each transaction.\",\n  \"counterexample_dsp\": \"A test database with two gas stations, where one station has a higher total sales amount but a lower total sales revenue than the other station.\",\n  \"counterexample\": \"INSERT INTO gasstations (GasStationID) VALUES (1), (2); INSERT INTO transactions_1k (GasStationID, Price, Amount) VALUES (1, 10, 100), (1, 20, 50), (2, 15, 100), (2, 25, 30);\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 489,
+    "total_tokens": 719,
+    "completion_tokens": 230,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 4.266
+  },
+  "started_at": "2026-10-06T16:07:11.397254+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      2
+    ]
+  ],
+  "q2_output": [
+    [
+      2
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT GasStationID FROM transactions_1k GROUP BY GasStationID ORDER BY SUM(Price) DESC LIMIT 1",
+  "q2_validation_sql": "SELECT GasStationID FROM transactions_1k GROUP BY GasStationID ORDER BY SUM(Price * Amount) DESC LIMIT 1"
+}

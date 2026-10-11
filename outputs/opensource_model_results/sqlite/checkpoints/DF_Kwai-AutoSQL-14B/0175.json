@@ -1,0 +1,56 @@
+{
+  "dbid": "toxicology",
+  "index": "175",
+  "source_index": "249",
+  "schema_ddl": "CREATE TABLE `atom` (\n  `atom_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `element` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `bond` (\n  `bond_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `bond_type` TEXT DEFAULT NULL,\n  PRIMARY KEY (`bond_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `connected` (\n  `atom_id` TEXT NOT NULL,\n  `atom_id2` TEXT NOT NULL,\n  `bond_id` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`,`atom_id2`),\n  FOREIGN KEY (`atom_id`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`atom_id2`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`bond_id`) REFERENCES `bond` (`bond_id`) ON DELETE CASCADE ON UPDATE CASCADE\n);\n\nCREATE TABLE `molecule` (\n  `molecule_id` TEXT NOT NULL,\n  `label` TEXT DEFAULT NULL,\n  PRIMARY KEY (`molecule_id`)\n);",
+  "q1": "SELECT T2.atom_id, T2.atom_id2 FROM atom AS T1 INNER JOIN connected AS T2 ON T1.atom_id = T2.atom_id INNER JOIN bond AS T3 ON T2.bond_id = T3.bond_id WHERE T3.bond_type = '#' AND T3.molecule_id = 'TR447'",
+  "q2": "SELECT T1.atom_id FROM atom AS T1 INNER JOIN connected AS T2 ON T1.atom_id = T2.atom_id INNER JOIN bond AS T3 ON T2.bond_id = T3.bond_id WHERE T3.bond_type = '#' AND T1.molecule_id = 'TR447'",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT T2.atom_id, T2.atom_id2 FROM atom AS T1 INNER JOIN connected AS T2 ON T1.atom_id = T2.atom_id INNER JOIN bond AS T3 ON T2.bond_id = T3.bond_id WHERE T3.bond_type = '#' AND T3.molecule_id = 'TR447'",
+  "q2_prompt_sql": "SELECT T1.atom_id FROM atom AS T1 INNER JOIN connected AS T2 ON T1.atom_id = T2.atom_id INNER JOIN bond AS T3 ON T2.bond_id = T3.bond_id WHERE T3.bond_type = '#' AND T1.molecule_id = 'TR447'",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO molecule (molecule_id, label) VALUES ('TR447', 'Test Molecule');\nINSERT INTO atom (atom_id, molecule_id, element) VALUES ('A1', 'TR447', 'C');\nINSERT INTO atom (atom_id, molecule_id, element) VALUES ('A2', 'TR447', 'O');\nINSERT INTO bond (bond_id, molecule_id, bond_type) VALUES ('B1', 'TR447', '#');\nINSERT INTO connected (atom_id, atom_id2, bond_id) VALUES ('A1', 'A2', 'B1');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent. Q1 selects two columns (T2.atom_id and T2.atom_id2) from the connected table, while Q2 selects only T1.atom_id from the atom table. They return different sets of columns and may produce different results depending on the data.",
+  "counterexample_dsp": "A simple test case with one molecule, two atoms, and one bond connecting them. Q1 returns two columns with atom pairs, while Q2 returns only one column with the atom_id from the atom table.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 and Q2 are not semantically equivalent. Q1 selects two columns (T2.atom_id and T2.atom_id2) from the connected table, while Q2 selects only T1.atom_id from the atom table. They return different sets of columns and may produce different results depending on the data.\",\n\"counterexample_dsp\": \"A simple test case with one molecule, two atoms, and one bond connecting them. Q1 returns two columns with atom pairs, while Q2 returns only one column with the atom_id from the atom table.\",\n\"counterexample\": \"INSERT INTO molecule (molecule_id, label) VALUES ('TR447', 'Test Molecule');\\nINSERT INTO atom (atom_id, molecule_id, element) VALUES ('A1', 'TR447', 'C');\\nINSERT INTO atom (atom_id, molecule_id, element) VALUES ('A2', 'TR447', 'O');\\nINSERT INTO bond (bond_id, molecule_id, bond_type) VALUES ('B1', 'TR447', '#');\\nINSERT INTO connected (atom_id, atom_id2, bond_id) VALUES ('A1', 'A2', 'B1');\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 656,
+    "total_tokens": 927,
+    "completion_tokens": 271,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 8.906
+  },
+  "started_at": "2026-10-06T21:13:09.206716+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "A1",
+      "A2"
+    ]
+  ],
+  "q2_output": [
+    [
+      "A1"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT T2.atom_id, T2.atom_id2 FROM atom AS T1 INNER JOIN connected AS T2 ON T1.atom_id = T2.atom_id INNER JOIN bond AS T3 ON T2.bond_id = T3.bond_id WHERE T3.bond_type = '#' AND T3.molecule_id = 'TR447'",
+  "q2_validation_sql": "SELECT T1.atom_id FROM atom AS T1 INNER JOIN connected AS T2 ON T1.atom_id = T2.atom_id INNER JOIN bond AS T3 ON T2.bond_id = T3.bond_id WHERE T3.bond_type = '#' AND T1.molecule_id = 'TR447'"
+}

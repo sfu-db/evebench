@@ -1,0 +1,39 @@
+{
+  "dbid": "585",
+  "index": "265",
+  "source_index": "112",
+  "schema_ddl": "CREATE TABLE INSURANCE (\n    PID INT,\n    TIV_2015 NUMERIC,\n    TIV_2016 NUMERIC,\n    LAT NUMERIC,\n    LON NUMERIC,\n    PRIMARY KEY (PID),\n    CHECK (TIV_2015 >= 0),\n    CHECK (TIV_2016 >= 0)\n);",
+  "q1": "SELECT ROUND(SUM(TIV_2016),2) TIV_2016 FROM INSURANCE WHERE TIV_2015 IN (SELECT TIV_2015 FROM INSURANCE GROUP BY TIV_2015 HAVING COUNT(*)>1) AND (LAT,LON) IN (SELECT LAT,LON FROM INSURANCE GROUP BY LAT,LON HAVING COUNT(*)=1)",
+  "q2": "SELECT ROUND(SUM(TIV_2016), 2) AS TIV_2016 FROM INSURANCE WHERE TIV_2015 IN (SELECT TIV_2015 FROM INSURANCE GROUP BY TIV_2015 HAVING COUNT(*)>1 ) AND (LAT, LON) NOT IN (SELECT LAT, LON FROM INSURANCE GROUP BY LAT, LON HAVING COUNT(*)>1)",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT ROUND(SUM(TIV_2016),2) TIV_2016 FROM INSURANCE WHERE TIV_2015 IN (SELECT TIV_2015 FROM INSURANCE GROUP BY TIV_2015 HAVING COUNT(*)>1) AND (LAT,LON) IN (SELECT LAT,LON FROM INSURANCE GROUP BY LAT,LON HAVING COUNT(*)=1)",
+  "q2_prompt_sql": "SELECT ROUND(SUM(TIV_2016), 2) AS TIV_2016 FROM INSURANCE WHERE TIV_2015 IN (SELECT TIV_2015 FROM INSURANCE GROUP BY TIV_2015 HAVING COUNT(*)>1 ) AND (LAT, LON) NOT IN (SELECT LAT, LON FROM INSURANCE GROUP BY LAT, LON HAVING COUNT(*)>1)",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries sum TIV_2016 for records with duplicated TIV_2015 and unique (LAT, LON). Q1 checks (LAT, LON) in count=1 groups, Q2 checks (LAT, LON) not in count>1 groups. These conditions are logically equivalent.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries sum TIV_2016 for records with duplicated TIV_2015 and unique (LAT, LON). Q1 checks (LAT, LON) in count=1 groups, Q2 checks (LAT, LON) not in count>1 groups. These conditions are logically equivalent.\"\n}",
+  "reasoning": "\nOkay, let's start by understanding what each query is doing. \n\nLooking at Q1: The main part is selecting the sum of TIV_2016, rounded to two decimal places. The WHERE clause has two conditions. The first is that TIV_2015 must be in a subquery that groups by TIV_2015 and has a count greater than 1. So that's selecting records where TIV_2015 is not unique; there are multiple entries with the same TIV_2015. The second condition is that the (LAT, LON) pair must be in a subquery that groups by LAT and LON and has a count of exactly 1. That means the (LAT, LON) is unique in the table. So Q1 is summing TIV_2016 for records that have a duplicate TIV_2015 but a unique (LAT, LON).\n\nNow Q2: The structure is similar, but the second condition is different. Instead of checking for (LAT, LON) in a group with count 1, it's checking that (LAT, LON) is NOT IN a subquery where the group has a count greater than 1. So this condition is equivalent to (LAT, LON) being unique, right? Because if the count is not greater than 1, then it's either 1 or 0. But since the table has primary key PID, each record is unique, so the count for (LAT, LON) can't be zero. Wait, but the subquery in Q2 is selecting (LAT, LON) where the count is >1. So NOT IN that would mean (LAT, LON) is either unique (count 1) or maybe even if there are multiple entries but the count isn't >1? Wait, no. The subquery in Q2's second condition is selecting (LAT, LON) that have duplicates. So NOT IN that subquery would mean that the (LAT, LON) is not in the list of duplicates. So that would include all (LAT, LON) that are unique (count 1) and possibly (LAT, LON) that have count 1. Wait, because if a (LAT, LON) appears once, then the subquery in Q2's second condition (which is looking for count>1) would not include it. So NOT IN that subquery would include all (LAT, LON) that are not in the duplicates. Which is the same as (LAT, LON) being unique. Because if (LAT, LON) appears once, it's not in the subquery. If it appears more than once, it would be in the subquery. Therefore, the second condition in Q2 is equivalent to (LAT, LON) being unique. \n\nSo, comparing Q1 and Q2: Both have the same first condition (TIV_2015 is duplicated). The second condition in both is that (LAT, LON) is unique. Therefore, the two queries should be equivalent. Wait, but let me check again. \n\nWait, in Q1, the second condition is (LAT, LON) IN (subquery with count=1). In Q2, the second condition is (LAT, LON) NOT IN (subquery with count>1). Are these two conditions equivalent?\n\nYes. Because the subquery in Q1's second condition selects (LAT, LON) that have exactly one occurrence. The subquery in Q2's second condition selects (LAT, LON) that have more than one occurrence. So NOT IN that would be (LAT, LON) that are not in that list. Which would be (LAT, LON) that have exactly one occurrence (since if they have more than one, they are in the subquery, and if they have one, they are not). Therefore, the two conditions are equivalent. \n\nTherefore, Q1 and Q2 should be semantically equivalent. So the answer would be \"equiv\": \"Y\".\n\nBut wait, maybe there's a case where a (LAT, LON) pair appears once, but the subquery in Q2's condition is not including it. So the NOT IN would include it. So yes, they are equivalent. Therefore, the two queries are equivalent. So the answer is Y.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 520,
+    "total_tokens": 1522,
+    "completion_tokens": 1002,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 919
+    },
+    "generation_seconds": 33.391
+  },
+  "started_at": "2026-10-06T14:57:27.166381+00:00",
+  "elapsed_seconds": 0.0
+}

@@ -1,0 +1,56 @@
+{
+  "dbid": "codebase_community",
+  "index": "363",
+  "source_index": "662",
+  "schema_ddl": "CREATE TABLE badges\n(\n    Id     INTEGER          not null\n        primary key,\n    UserId INTEGER          null,\n    Name   TEXT null,\n    Date   DATETIME     null,\n        foreign key (UserId) references users (Id)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE comments\n(\n    Id              INTEGER          not null\n        primary key,\n    PostId          INTEGER          null,\n    Score           INTEGER          null,\n    Text            TEXT     null,\n    CreationDate    DATETIME     null,\n    UserId          INTEGER          null,\n    UserDisplayName TEXT null,\n        foreign key (PostId) references posts (Id)\n            on update cascade on delete cascade,\n        foreign key (UserId) references users (Id)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE postHistory\n(\n    Id                INTEGER          not null UNIQUE\n        primary key,\n    PostHistoryTypeId INTEGER          null,\n    PostId            INTEGER          null,\n    RevisionGUID      TEXT null,\n    CreationDate      DATETIME     null,\n    UserId            INTEGER          null,\n    Text              TEXT     null,\n    Comment           TEXT         null,\n    UserDisplayName   TEXT null,\n        foreign key (PostId) references posts (Id)\n            on update cascade on delete cascade,\n        foreign key (UserId) references users (Id)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE postLinks\n(\n    Id            INTEGER      not null\n        primary key,\n    CreationDate  DATETIME null,\n    PostId        INTEGER      null,\n    RelatedPostId INTEGER      null,\n    LinkTypeId    INTEGER      null,\n        foreign key (PostId) references posts (Id)\n            on update cascade on delete cascade,\n        foreign key (RelatedPostId) references posts (Id)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE posts\n(\n    Id                    INTEGER          not null UNIQUE\n        primary key,\n    PostTypeId            INTEGER          null,\n    AcceptedAnswerId      INTEGER          null,\n    CreaionDate           DATETIME     null,\n    Score                 INTEGER          null,\n    ViewCount             INTEGER          null,\n    Body                  TEXT     null,\n    OwnerUserId           INTEGER          null,\n    LasActivityDate       DATETIME     null,\n    Title                 TEXT null,\n    Tags                  TEXT null,\n    AnswerCount           INTEGER          null,\n    CommentCount          INTEGER          null,\n    FavoriteCount         INTEGER          null,\n    LastEditorUserId      INTEGER          null,\n    LastEditDate          DATETIME     null,\n    CommunityOwnedDate    DATETIME    null,\n    ParentId              INTEGER          null,\n    ClosedDate            DATETIME     null,\n    OwnerDisplayName      TEXT null,\n    LastEditorDisplayName TEXT null,\n        foreign key (LastEditorUserId) references users (Id)\n            on update cascade on delete cascade,\n        foreign key (OwnerUserId) references users (Id)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE tags\n(\n    Id            INTEGER          not null\n        primary key,\n    TagName       TEXT null,\n    Count         INTEGER          null,\n    ExcerptPostId INTEGER          null,\n    WikiPostId    INTEGER          null,\n    foreign key (ExcerptPostId) references posts (Id)\n        on update cascade on delete cascade\n);\n\nCREATE TABLE users\n(\n    Id              INTEGER          not null UNIQUE\n        primary key,\n    Reputation      INTEGER          null,\n    CreationDate    DATETIME     null,\n    DisplayName     TEXT null,\n    LastAccessDate  DATETIME     null,\n    WebsiteUrl      TEXT null,\n    Location        TEXT null,\n    AboutMe         TEXT     null,\n    Views           INTEGER          null,\n    UpVotes         INTEGER          null,\n    DownVotes       INTEGER          null,\n    AccountId       INTEGER          null,\n    Age             INTEGER          null,\n    ProfileImageUrl TEXT null\n);\n\nCREATE TABLE votes\n(\n    Id           INTEGER  not null\n        primary key,\n    PostId       INTEGER  null,\n    VoteTypeId   INTEGER  null,\n    CreationDate DATE null,\n    UserId       INTEGER  null,\n    BountyAmount INTEGER  null,\n        foreign key (PostId) references posts (Id)\n            on update cascade on delete cascade,\n        foreign key (UserId) references users (Id)\n            on update cascade on delete cascade\n);",
+  "q1": "SELECT Age FROM users WHERE Reputation = (SELECT MAX(Reputation) FROM users)",
+  "q2": "SELECT Age FROM users ORDER BY Reputation DESC LIMIT 1",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT Age FROM users WHERE Reputation = (SELECT MAX(Reputation) FROM users)",
+  "q2_prompt_sql": "SELECT Age FROM users ORDER BY Reputation DESC LIMIT 1",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO users (Id, Reputation, Age) VALUES (1, 1000, 30); INSERT INTO users (Id, Reputation, Age) VALUES (2, 1000, 35);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent because Q1 selects the Age of the user with the highest Reputation, while Q2 selects the Age of the user who has the highest Reputation. The difference lies in the phrasing: 'WHERE Reputation = (SELECT MAX(Reputation) FROM users)' in Q1 and 'ORDER BY Reputation DESC LIMIT 1' in Q2. The first query might not return any results if the Reputation value is not unique, while the second query will always return a result.",
+  "counterexample_dsp": "The test data should have at least two users with the same highest Reputation, but different ages. The first user's age should be the one returned by Q1, while the second user's age should be the one returned by Q2.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent because Q1 selects the Age of the user with the highest Reputation, while Q2 selects the Age of the user who has the highest Reputation. The difference lies in the phrasing: 'WHERE Reputation = (SELECT MAX(Reputation) FROM users)' in Q1 and 'ORDER BY Reputation DESC LIMIT 1' in Q2. The first query might not return any results if the Reputation value is not unique, while the second query will always return a result.\",\n  \"counterexample_dsp\": \"The test data should have at least two users with the same highest Reputation, but different ages. The first user's age should be the one returned by Q1, while the second user's age should be the one returned by Q2.\",\n  \"counterexample\": \"INSERT INTO users (Id, Reputation, Age) VALUES (1, 1000, 30); INSERT INTO users (Id, Reputation, Age) VALUES (2, 1000, 35);\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 1122,
+    "total_tokens": 1346,
+    "completion_tokens": 224,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 4.922
+  },
+  "started_at": "2026-10-06T16:00:22.852598+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      30
+    ],
+    [
+      35
+    ]
+  ],
+  "q2_output": [
+    [
+      30
+    ]
+  ],
+  "q1_row_count": 2,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT Age FROM users WHERE Reputation = (SELECT MAX(Reputation) FROM users)",
+  "q2_validation_sql": "SELECT Age FROM users ORDER BY Reputation DESC LIMIT 1"
+}

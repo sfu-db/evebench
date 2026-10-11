@@ -1,0 +1,67 @@
+{
+  "dbid": "toxicology",
+  "index": "158",
+  "source_index": "221",
+  "schema_ddl": "CREATE TABLE `atom` (\n  `atom_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `element` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `bond` (\n  `bond_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `bond_type` TEXT DEFAULT NULL,\n  PRIMARY KEY (`bond_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `connected` (\n  `atom_id` TEXT NOT NULL,\n  `atom_id2` TEXT NOT NULL,\n  `bond_id` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`,`atom_id2`),\n  FOREIGN KEY (`atom_id`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`atom_id2`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`bond_id`) REFERENCES `bond` (`bond_id`) ON DELETE CASCADE ON UPDATE CASCADE\n);\n\nCREATE TABLE `molecule` (\n  `molecule_id` TEXT NOT NULL,\n  `label` TEXT DEFAULT NULL,\n  PRIMARY KEY (`molecule_id`)\n);",
+  "q1": "SELECT DISTINCT T.element FROM atom AS T WHERE T.molecule_id = 'TR000' ORDER BY T.element LIMIT 3",
+  "q2": "SELECT element FROM atom WHERE molecule_id = 'TR000' ORDER BY element ASC LIMIT 3",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT DISTINCT T.element FROM atom AS T WHERE T.molecule_id = 'TR000' ORDER BY T.element LIMIT 3",
+  "q2_prompt_sql": "SELECT element FROM atom WHERE molecule_id = 'TR000' ORDER BY element ASC LIMIT 3",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO molecule (molecule_id, label) VALUES ('TR000', 'Test');\nINSERT INTO atom (atom_id, molecule_id, element) VALUES ('A1', 'TR000', 'H');\nINSERT INTO atom (atom_id, molecule_id, element) VALUES ('A2', 'TR000', 'H');\nINSERT INTO atom (atom_id, molecule_id, element) VALUES ('A3', 'TR000', 'H');\nINSERT INTO atom (atom_id, molecule_id, element) VALUES ('A4', 'TR000', 'O');\nINSERT INTO atom (atom_id, molecule_id, element) VALUES ('A5', 'TR000', 'O');\nINSERT INTO atom (atom_id, molecule_id, element) VALUES ('A6', 'TR000', 'O');\nINSERT INTO atom (atom_id, molecule_id, element) VALUES ('A7', 'TR000', 'N');\nINSERT INTO atom (atom_id, molecule_id, element) VALUES ('A8', 'TR000', 'N');\nINSERT INTO atom (atom_id, molecule_id, element) VALUES ('A9', 'TR000', 'N');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 uses SELECT DISTINCT which removes duplicate elements, while Q2 does not. When multiple atoms share the same element (e.g., multiple H atoms), Q1 returns distinct elements ordered by element, whereas Q2 returns the first three occurrences (duplicates if the same element appears multiple times).",
+  "counterexample_dsp": "The atom table contains three H entries, three O entries, and three N entries for molecule_id 'TR000'. Q1 returns distinct elements H, N, O (ordered), while Q2 returns H, H, H (first three rows ordered by element).",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 uses SELECT DISTINCT which removes duplicate elements, while Q2 does not. When multiple atoms share the same element (e.g., multiple H atoms), Q1 returns distinct elements ordered by element, whereas Q2 returns the first three occurrences (duplicates if the same element appears multiple times).\",\n  \"counterexample_dsp\": \"The atom table contains three H entries, three O entries, and three N entries for molecule_id 'TR000'. Q1 returns distinct elements H, N, O (ordered), while Q2 returns H, H, H (first three rows ordered by element).\",\n  \"counterexample\": [\n    \"INSERT INTO molecule (molecule_id, label) VALUES ('TR000', 'Test');\",\n    \"INSERT INTO atom (atom_id, molecule_id, element) VALUES ('A1', 'TR000', 'H');\",\n    \"INSERT INTO atom (atom_id, molecule_id, element) VALUES ('A2', 'TR000', 'H');\",\n    \"INSERT INTO atom (atom_id, molecule_id, element) VALUES ('A3', 'TR000', 'H');\",\n    \"INSERT INTO atom (atom_id, molecule_id, element) VALUES ('A4', 'TR000', 'O');\",\n    \"INSERT INTO atom (atom_id, molecule_id, element) VALUES ('A5', 'TR000', 'O');\",\n    \"INSERT INTO atom (atom_id, molecule_id, element) VALUES ('A6', 'TR000', 'O');\",\n    \"INSERT INTO atom (atom_id, molecule_id, element) VALUES ('A7', 'TR000', 'N');\",\n    \"INSERT INTO atom (atom_id, molecule_id, element) VALUES ('A8', 'TR000', 'N');\",\n    \"INSERT INTO atom (atom_id, molecule_id, element) VALUES ('A9', 'TR000', 'N');\"\n  ]\n}",
+  "reasoning": "\nOkay, let's see. The user wants me to find a counterexample where Q1 and Q2 return different results. Both queries are selecting elements from the atom table where molecule_id is 'TR000', ordering by element, and limiting to 3. But Q1 uses SELECT DISTINCT while Q2 doesn't. Wait, but looking at the queries again:\n\nQ1: SELECT DISTINCT T.element FROM atom AS T WHERE T.molecule_id = 'TR000' ORDER BY T.element LIMIT 3\nQ2: SELECT element FROM atom WHERE molecule_id = 'TR000' ORDER BY element ASC LIMIT 3\n\nSo the difference is that Q1 uses DISTINCT, which removes duplicates, while Q2 doesn't. However, if there are duplicates in the data, Q1 would return unique elements, whereas Q2 might return duplicates. But the ORDER BY and LIMIT 3 could make them different if the first three rows in Q2 have duplicates, but Q1 skips them.\n\nWait, but the DISTINCT in Q1 would first remove duplicates and then order. Let's think of a scenario where the first three rows in Q2 (without DISTINCT) have duplicates, but after DISTINCT, the order changes.\n\nFor example, suppose the atom table has entries like:\n\nelement\n-------\nH\nH\nH\nO\nO\nO\nN\nN\nN\n\nSo without DISTINCT, ordering by element ASC (alphabetical order), the first three would be H, H, H. Then Q2 would return three H's. But Q1, using DISTINCT, would return H, O, N (since DISTINCT makes them unique, ordered by element). Wait, but in alphabetical order, H comes before N and O. So H, O, N? No, O comes before N in alphabetical order. Wait, no, H comes first, then N, then O. Wait, H is H, N is N, O is O. So alphabetical order would be H, N, O. So if the elements are H, H, H, N, N, N, O, O, O, then DISTINCT would return H, N, O. But Q2 would return H, H, H.\n\nWait, but in that case, the two queries would return different results. So the counterexample would be a molecule with multiple atoms of the same element. Let me think of a specific example.\n\nLet's say the atom table has the following rows for molecule_id 'TR000':\n\natom_id | molecule_id | element\n--------|-------------|--------\nA1      | TR000       | H\nA2      | TR000       | H\nA3      | TR000       | H\nA4      | TR000       | O\nA5      | TR000       | O\nA6      | TR000       | O\nA7      | TR000       | N\nA8      | TR000       | N\nA9      | TR000       | N\n\nIn Q1, SELECT DISTINCT element would give H, O, N (since distinct). Ordered by element ASC, which would be H, N, O. Then LIMIT 3 gives all three. So Q1 returns H, N, O.\n\nIn Q2, without DISTINCT, the ORDER BY element ASC would order all rows by element. Since H comes first, then N, then O. So the first three rows are H, H, H. So Q2 returns H, H, H.\n\nSo the results are different. Therefore, this setup would make the two queries return different results.\n\nSo the counterexample is when there are multiple duplicates of the same element, and the first three rows in Q2 are duplicates, but Q1 returns distinct ones.\n\nTherefore, the explanation is that Q1 uses DISTINCT which removes duplicates, while Q2 does not. In a scenario where the same element appears multiple times, Q1 returns unique elements ordered by element, while Q2 returns the first three occurrences (which could be duplicates).\n\nNow, to create the test data, I need to insert into the atom table three H's, three O's, and three N's for molecule_id 'TR000'. Also, need to ensure that the molecule exists. So insert into molecule (molecule_id, label) values ('TR000', 'Test'). Then insert the atoms with their elements.\n\nSo the SQL statements would be:\n\nINSERT INTO molecule (molecule_id, label) VALUES ('TR000', 'Test');\nINSERT INTO atom (atom_id, molecule_id, element) VALUES ('A1', 'TR000', 'H');\nINSERT INTO atom (atom_id, molecule_id, element) VALUES ('A2', 'TR000', 'H');\nINSERT INTO atom (atom_id, molecule_id, element) VALUES ('A3', 'TR000', 'H');\nINSERT INTO atom (atom_id, molecule_id, element) VALUES ('A4', 'TR000', 'O');\nINSERT INTO atom (atom_id, molecule_id, element) VALUES ('A5', 'TR000', 'O');\nINSERT INTO atom (atom_id, molecule_id, element) VALUES ('A6', 'TR000', 'O');\nINSERT INTO atom (atom_id, molecule_id, element) VALUES ('A7', 'TR000', 'N');\nINSERT INTO atom (atom_id, molecule_id, element) VALUES ('A8', 'TR000', 'N');\nINSERT INTO atom (atom_id, molecule_id, element) VALUES ('A9', 'TR000', 'N');\n\nBut wait, the molecule table's molecule_id is a primary key, so inserting 'TR000' once is enough.\n\nThis setup would cause Q1 to return H, N, O (distinct, ordered) and Q2 to return H, H, H (the first three rows ordered by element, which is H's first).\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 514,
+    "total_tokens": 2189,
+    "completion_tokens": 1675,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1247
+    },
+    "generation_seconds": 56.281
+  },
+  "started_at": "2026-10-06T18:30:10.607866+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "H"
+    ],
+    [
+      "N"
+    ],
+    [
+      "O"
+    ]
+  ],
+  "q2_output": [
+    [
+      "H"
+    ],
+    [
+      "H"
+    ],
+    [
+      "H"
+    ]
+  ],
+  "q1_row_count": 3,
+  "q2_row_count": 3,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DISTINCT T.element FROM atom AS T WHERE T.molecule_id = 'TR000' ORDER BY T.element LIMIT 3",
+  "q2_validation_sql": "SELECT element FROM atom WHERE molecule_id = 'TR000' ORDER BY element ASC LIMIT 3"
+}

@@ -1,0 +1,59 @@
+{
+  "dbid": "debit_card_specializing",
+  "index": "857",
+  "source_index": "1507",
+  "schema_ddl": "CREATE TABLE customers\n(\n    CustomerID INTEGER UNIQUE     not null\n        primary key,\n    Segment    TEXT null,\n    Currency   TEXT null\n);\n\nCREATE TABLE gasstations\n(\n    GasStationID INTEGER    UNIQUE   not null\n        primary key,\n    ChainID      INTEGER          null,\n    Country      TEXT null,\n    Segment      TEXT null\n);\n\nCREATE TABLE products\n(\n    ProductID   INTEGER   UNIQUE      not null\n        primary key,\n    Description TEXT null\n);\n\nCREATE TABLE \"transactions_1k\"\n(\n    TransactionID INTEGER\n        primary key autoincrement,\n    Date          DATE,\n    Time          TEXT,\n    CustomerID    INTEGER,\n    CardID        INTEGER,\n    GasStationID  INTEGER,\n    ProductID     INTEGER,\n    Amount        INTEGER,\n    Price         REAL\n);\n\nCREATE TABLE \"yearmonth\"\n(\n    CustomerID  INTEGER not null\n        references customers\n            on update cascade on delete cascade\n        references customers,\n    Date        TEXT    not null,\n    Consumption REAL,\n    primary key (Date, CustomerID)\n);",
+  "q1": "SELECT T3.Description FROM transactions_1k AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID INNER JOIN products AS T3 ON T1.ProductID = T3.ProductID WHERE T2.Country = 'CZE'",
+  "q2": "SELECT DISTINCT T3.Description FROM \"transactions_1k\" AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID INNER JOIN products AS T3 ON T1.ProductID = T3.ProductID WHERE T2.Country = 'CZE'",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT T3.Description FROM transactions_1k AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID INNER JOIN products AS T3 ON T1.ProductID = T3.ProductID WHERE T2.Country = 'CZE'",
+  "q2_prompt_sql": "SELECT DISTINCT T3.Description FROM \"transactions_1k\" AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID INNER JOIN products AS T3 ON T1.ProductID = T3.ProductID WHERE T2.Country = 'CZE'",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO customers (CustomerID, Segment, Currency) VALUES (1, 'Consumer', 'USD'), (2, 'Corporate', 'USD'); INSERT INTO gasstations (GasStationID, ChainID, Country, Segment) VALUES (1, 101, 'CZE', 'Full Service'), (2, 102, 'CZE', 'Full Service'); INSERT INTO products (ProductID, Description) VALUES (101, 'Regular Gasoline'), (102, 'Regular Gasoline'); INSERT INTO transactions_1k (TransactionID, Date, Time, CustomerID, CardID, GasStationID, ProductID, Amount, Price) VALUES (1, '2023-01-01', '10:00:00', 1, 1001, 1, 101, 50, 2.5), (2, '2023-01-01', '11:00:00', 2, 1002, 1, 101, 50, 2.5), (3, '2023-01-01', '12:00:00', 1, 1003, 2, 101, 50, 2.5);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent because Q1 uses the INNER JOIN keyword, which returns records that have matching values in both tables. On the other hand, Q2 uses the DISTINCT keyword, which eliminates duplicate records from the result set. This can lead to different results if there are duplicate records in the 'Description' column of the 'products' table.",
+  "counterexample_dsp": "The test data should include at least one product that is sold at multiple gas stations in the 'CZE' country, and this product should have a duplicate description in the 'products' table. This will cause Q1 to return the product description multiple times, while Q2 will return it only once due to the DISTINCT keyword.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent because Q1 uses the INNER JOIN keyword, which returns records that have matching values in both tables. On the other hand, Q2 uses the DISTINCT keyword, which eliminates duplicate records from the result set. This can lead to different results if there are duplicate records in the 'Description' column of the 'products' table.\",\n  \"counterexample_dsp\": \"The test data should include at least one product that is sold at multiple gas stations in the 'CZE' country, and this product should have a duplicate description in the 'products' table. This will cause Q1 to return the product description multiple times, while Q2 will return it only once due to the DISTINCT keyword.\",\n  \"counterexample\": \"INSERT INTO customers (CustomerID, Segment, Currency) VALUES (1, 'Consumer', 'USD'), (2, 'Corporate', 'USD'); INSERT INTO gasstations (GasStationID, ChainID, Country, Segment) VALUES (1, 101, 'CZE', 'Full Service'), (2, 102, 'CZE', 'Full Service'); INSERT INTO products (ProductID, Description) VALUES (101, 'Regular Gasoline'), (102, 'Regular Gasoline'); INSERT INTO transactions_1k (TransactionID, Date, Time, CustomerID, CardID, GasStationID, ProductID, Amount, Price) VALUES (1, '2023-01-01', '10:00:00', 1, 1001, 1, 101, 50, 2.5), (2, '2023-01-01', '11:00:00', 2, 1002, 1, 101, 50, 2.5), (3, '2023-01-01', '12:00:00', 1, 1003, 2, 101, 50, 2.5);\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 556,
+    "total_tokens": 1015,
+    "completion_tokens": 459,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 8.672
+  },
+  "started_at": "2026-10-06T16:07:11.381690+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "Regular Gasoline"
+    ],
+    [
+      "Regular Gasoline"
+    ],
+    [
+      "Regular Gasoline"
+    ]
+  ],
+  "q2_output": [
+    [
+      "Regular Gasoline"
+    ]
+  ],
+  "q1_row_count": 3,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT T3.Description FROM transactions_1k AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID INNER JOIN products AS T3 ON T1.ProductID = T3.ProductID WHERE T2.Country = 'CZE'",
+  "q2_validation_sql": "SELECT DISTINCT T3.Description FROM \"transactions_1k\" AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID INNER JOIN products AS T3 ON T1.ProductID = T3.ProductID WHERE T2.Country = 'CZE'"
+}

@@ -1,0 +1,60 @@
+{
+  "dbid": "card_games",
+  "index": "243",
+  "source_index": "392",
+  "schema_ddl": "CREATE TABLE \"cards\"\n(\n    id                      INTEGER           not null\n        primary key autoincrement,\n    artist                  TEXT,\n    asciiName               TEXT,\n    availability            TEXT,\n    borderColor             TEXT,\n    cardKingdomFoilId       TEXT,\n    cardKingdomId           TEXT,\n    colorIdentity           TEXT,\n    colorIndicator          TEXT,\n    colors                  TEXT,\n    convertedManaCost       REAL,\n    duelDeck                TEXT,\n    edhrecRank              INTEGER,\n    faceConvertedManaCost   REAL,\n    faceName                TEXT,\n    flavorName              TEXT,\n    flavorText              TEXT,\n    frameEffects            TEXT,\n    frameVersion            TEXT,\n    hand                    TEXT,\n    hasAlternativeDeckLimit INTEGER default 0 not null,\n    hasContentWarning       INTEGER default 0 not null,\n    hasFoil                 INTEGER default 0 not null,\n    hasNonFoil              INTEGER default 0 not null,\n    isAlternative           INTEGER default 0 not null,\n    isFullArt               INTEGER default 0 not null,\n    isOnlineOnly            INTEGER default 0 not null,\n    isOversized             INTEGER default 0 not null,\n    isPromo                 INTEGER default 0 not null,\n    isReprint               INTEGER default 0 not null,\n    isReserved              INTEGER default 0 not null,\n    isStarter               INTEGER default 0 not null,\n    isStorySpotlight        INTEGER default 0 not null,\n    isTextless              INTEGER default 0 not null,\n    isTimeshifted           INTEGER default 0 not null,\n    keywords                TEXT,\n    layout                  TEXT,\n    leadershipSkills        TEXT,\n    life                    TEXT,\n    loyalty                 TEXT,\n    manaCost                TEXT,\n    mcmId                   TEXT,\n    mcmMetaId               TEXT,\n    mtgArenaId              TEXT,\n    mtgjsonV4Id             TEXT,\n    mtgoFoilId              TEXT,\n    mtgoId                  TEXT,\n    multiverseId            TEXT,\n    name                    TEXT,\n    number                  TEXT,\n    originalReleaseDate     TEXT,\n    originalText            TEXT,\n    originalType            TEXT,\n    otherFaceIds            TEXT,\n    power                   TEXT,\n    printings               TEXT,\n    promoTypes              TEXT,\n    purchaseUrls            TEXT,\n    rarity                  TEXT,\n    scryfallId              TEXT,\n    scryfallIllustrationId  TEXT,\n    scryfallOracleId        TEXT,\n    setCode                 TEXT,\n    side                    TEXT,\n    subtypes                TEXT,\n    supertypes              TEXT,\n    tcgplayerProductId      TEXT,\n    text                    TEXT,\n    toughness               TEXT,\n    type                    TEXT,\n    types                   TEXT,\n    uuid                    TEXT              not null\n        unique,\n    variations              TEXT,\n    watermark               TEXT\n);\n\nCREATE TABLE \"foreign_data\"\n(\n    id           INTEGER not null\n        primary key autoincrement,\n    flavorText   TEXT,\n    language     TEXT,\n    multiverseid INTEGER,\n    name         TEXT,\n    text         TEXT,\n    type         TEXT,\n    uuid         TEXT\n        references cards (uuid)\n);\n\nCREATE TABLE \"legalities\"\n(\n    id     INTEGER not null\n        primary key autoincrement,\n    format TEXT,\n    status TEXT,\n    uuid   TEXT\n        references cards (uuid)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE \"sets\"\n(\n    id               INTEGER           not null\n        primary key autoincrement,\n    baseSetSize      INTEGER,\n    block            TEXT,\n    booster          TEXT,\n    code             TEXT              not null\n        unique,\n    isFoilOnly       INTEGER default 0 not null,\n    isForeignOnly    INTEGER default 0 not null,\n    isNonFoilOnly    INTEGER default 0 not null,\n    isOnlineOnly     INTEGER default 0 not null,\n    isPartialPreview INTEGER default 0 not null,\n    keyruneCode      TEXT,\n    mcmId            INTEGER,\n    mcmIdExtras      INTEGER,\n    mcmName          TEXT,\n    mtgoCode         TEXT,\n    name             TEXT,\n    parentCode       TEXT,\n    releaseDate      DATE,\n    tcgplayerGroupId INTEGER,\n    totalSetSize     INTEGER,\n    type             TEXT\n);\n\nCREATE TABLE \"set_translations\"\n(\n    id          INTEGER not null\n        primary key autoincrement,\n    language    TEXT,\n    setCode     TEXT\n        references sets (code)\n            on update cascade on delete cascade,\n    translation TEXT\n);\n\nCREATE TABLE \"rulings\"\n(\n    id   INTEGER not null\n        primary key autoincrement,\n    date DATE,\n    text TEXT,\n    uuid TEXT\n        references cards (uuid)\n            on update cascade on delete cascade\n);",
+  "q1": "SELECT DISTINCT T1.name FROM cards AS T1 INNER JOIN foreign_data AS T2 ON T1.uuid = T2.uuid WHERE T1.originalType = 'Artifact' AND T1.colors = 'B'",
+  "q2": "SELECT T1.name, T3.language FROM cards AS T1 INNER JOIN foreign_data AS T3 ON T1.uuid = T3.uuid WHERE T1.originalType = 'Artifact' AND T1.colors = 'B'",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT DISTINCT T1.name FROM cards AS T1 INNER JOIN foreign_data AS T2 ON T1.uuid = T2.uuid WHERE T1.originalType = 'Artifact' AND T1.colors = 'B'",
+  "q2_prompt_sql": "SELECT T1.name, T3.language FROM cards AS T1 INNER JOIN foreign_data AS T3 ON T1.uuid = T3.uuid WHERE T1.originalType = 'Artifact' AND T1.colors = 'B'",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO cards (uuid, name, originalType, colors) VALUES ('1', 'Test Artifact', 'Artifact', 'B');\nINSERT INTO foreign_data (uuid, name, language) VALUES ('1', 'Test Artifact', 'English');\nINSERT INTO foreign_data (uuid, name, language) VALUES ('1', 'Test Artifact', 'French');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 returns distinct card names from cards matching the filter, while Q2 returns both name and language from the join. The inclusion of the language column and lack of DISTINCT in Q2 make them semantically different.",
+  "counterexample_dsp": "A card named 'Test Artifact' with colors 'B' and originalType 'Artifact' has two foreign_data entries with different languages. Q1 returns one distinct name; Q2 returns two rows with the same name but different languages.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n  \"equiv\": \"N\",\n  \"explanation\": \"Q1 returns distinct card names from cards matching the filter, while Q2 returns both name and language from the join. The inclusion of the language column and lack of DISTINCT in Q2 make them semantically different.\",\n  \"counterexample_dsp\": \"A card named 'Test Artifact' with colors 'B' and originalType 'Artifact' has two foreign_data entries with different languages. Q1 returns one distinct name; Q2 returns two rows with the same name but different languages.\",\n  \"counterexample\": \"INSERT INTO cards (uuid, name, originalType, colors) VALUES ('1', 'Test Artifact', 'Artifact', 'B');\\nINSERT INTO foreign_data (uuid, name, language) VALUES ('1', 'Test Artifact', 'English');\\nINSERT INTO foreign_data (uuid, name, language) VALUES ('1', 'Test Artifact', 'French');\"\n}",
+  "reasoning": "\nOkay, let's see. I need to determine if Q1 and Q2 are semantically equivalent. Let me start by understanding each query.\n\nQ1 selects DISTINCT names from cards joined with foreign_data on uuid, where originalType is 'Artifact' and colors is 'B'. The result is just the name column.\n\nQ2 selects name and language from cards joined with foreign_data (aliased as T3) on uuid, with the same conditions. So Q2 returns two columns: name and language.\n\nThe main difference is that Q1 uses DISTINCT on name, while Q2 doesn't have DISTINCT. Also, Q2 includes the language column. Wait, but the question is about semantic equivalence. If Q1 returns a single column with distinct names, and Q2 returns two columns (name and language), then they can't be equivalent unless the language column is always the same for each name. But in reality, a card could have multiple entries in foreign_data for different languages. So for example, if a card named 'Artifact B' appears in foreign_data with two different languages, Q2 would return two rows with the same name but different languages. Q1 would return one distinct name. So the results would differ in both the number of rows and the columns returned.\n\nWait, but the question is about whether the queries are semantically equivalent. If they return different columns or different numbers of rows, they are not equivalent. So Q1 gives distinct names, Q2 gives name and language. Even if the language is the same across all foreign_data entries for a given card, Q1 would have one row per name, Q2 would have one row per foreign_data entry (but same name each time). However, since Q1 uses DISTINCT, if there are multiple foreign_data entries for the same card, Q1 would return one name, while Q2 would return multiple rows (each with the same name but different language). Therefore, the two queries are not equivalent.\n\nSo the answer should be no. For a counterexample, create a card with name 'Test Artifact' that has two entries in foreign_data with different languages. Then Q1 would return one row, Q2 would return two rows with same name but different languages. That would show they are not equivalent.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 1307,
+    "total_tokens": 1966,
+    "completion_tokens": 659,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 460
+    },
+    "generation_seconds": 23.61
+  },
+  "started_at": "2026-10-06T21:16:40.621905+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "Test Artifact"
+    ]
+  ],
+  "q2_output": [
+    [
+      "Test Artifact",
+      "English"
+    ],
+    [
+      "Test Artifact",
+      "French"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DISTINCT T1.name FROM cards AS T1 INNER JOIN foreign_data AS T2 ON T1.uuid = T2.uuid WHERE T1.originalType = 'Artifact' AND T1.colors = 'B'",
+  "q2_validation_sql": "SELECT T1.name, T3.language FROM cards AS T1 INNER JOIN foreign_data AS T3 ON T1.uuid = T3.uuid WHERE T1.originalType = 'Artifact' AND T1.colors = 'B'"
+}

@@ -1,0 +1,55 @@
+{
+  "dbid": "superhero",
+  "index": "420",
+  "source_index": "791",
+  "schema_ddl": "CREATE TABLE alignment\n(\n    id        INTEGER not null\n            primary key,\n    alignment TEXT default NULL\n);\n\nCREATE TABLE attribute\n(\n    id             INTEGER not null\n            primary key,\n    attribute_name TEXT default NULL\n);\n\nCREATE TABLE colour\n(\n    id     INTEGER not null\n            primary key,\n    colour TEXT default NULL\n);\n\nCREATE TABLE gender\n(\n    id     INTEGER not null\n            primary key,\n    gender TEXT default NULL\n);\n\nCREATE TABLE publisher\n(\n    id             INTEGER not null\n            primary key,\n    publisher_name TEXT default NULL\n);\n\nCREATE TABLE race\n(\n    id   INTEGER not null\n            primary key,\n    race TEXT default NULL\n);\n\nCREATE TABLE superhero\n(\n    id             INTEGER not null\n            primary key,\n    superhero_name TEXT default NULL,\n    full_name      TEXT default NULL,\n    gender_id      INTEGER          default NULL,\n    eye_colour_id  INTEGER          default NULL,\n    hair_colour_id INTEGER          default NULL,\n    skin_colour_id INTEGER          default NULL,\n    race_id        INTEGER          default NULL,\n    publisher_id   INTEGER          default NULL,\n    alignment_id   INTEGER          default NULL,\n    height_cm      INTEGER          default NULL,\n    weight_kg      INTEGER          default NULL,\n    foreign key (alignment_id) references alignment(id),\n    foreign key (eye_colour_id) references colour(id),\n    foreign key (gender_id) references gender(id),\n    foreign key (hair_colour_id) references colour(id),\n    foreign key (publisher_id) references publisher(id),\n    foreign key (race_id) references race(id),\n    foreign key (skin_colour_id) references colour(id)\n);\n\nCREATE TABLE hero_attribute\n(\n    hero_id         INTEGER default NULL,\n    attribute_id    INTEGER default NULL,\n    attribute_value INTEGER default NULL,\n    foreign key (attribute_id) references attribute(id),\n    foreign key (hero_id) references superhero(id)\n);\n\nCREATE TABLE superpower\n(\n    id         INTEGER not null\n            primary key,\n    power_name TEXT default NULL\n);\n\nCREATE TABLE hero_power\n(\n    hero_id  INTEGER default NULL,\n    power_id INTEGER default NULL,\n    foreign key (hero_id) references superhero(id),\n    foreign key (power_id) references superpower(id)\n);",
+  "q1": "SELECT (SELECT weight_kg FROM superhero WHERE full_name LIKE 'Emil Blonsky') - (SELECT weight_kg FROM superhero WHERE full_name LIKE 'Charles Chandler') AS CALCULATE",
+  "q2": "SELECT (SUM(CASE WHEN T.full_name = 'Emil Blonsky' THEN T.weight_kg ELSE 0 END) - SUM(CASE WHEN T.full_name = 'Charles Chandler' THEN T.weight_kg ELSE 0 END)) AS weight_difference FROM superhero AS T",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT (SELECT weight_kg FROM superhero WHERE full_name LIKE 'Emil Blonsky') - (SELECT weight_kg FROM superhero WHERE full_name LIKE 'Charles Chandler') AS CALCULATE",
+  "q2_prompt_sql": "SELECT (SUM(CASE WHEN T.full_name = 'Emil Blonsky' THEN T.weight_kg ELSE 0 END) - SUM(CASE WHEN T.full_name = 'Charles Chandler' THEN T.weight_kg ELSE 0 END)) AS weight_difference FROM superhero AS T",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO superhero (id, full_name, weight_kg) VALUES (1, 'Charles Chandler', 80);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not equivalent because Q1 returns NULL if either subquery finds no matching rows, while Q2 returns 0 for missing rows due to SUM(CASE...). This leads to different results when one or both names are absent.",
+  "counterexample_dsp": "Test data with only 'Charles Chandler' in superhero table (no 'Emil Blonsky'). Q1 returns NULL - weight, Q2 returns 0 - weight.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 and Q2 are not equivalent because Q1 returns NULL if either subquery finds no matching rows, while Q2 returns 0 for missing rows due to SUM(CASE...). This leads to different results when one or both names are absent.\",\n\"counterexample_dsp\": \"Test data with only 'Charles Chandler' in superhero table (no 'Emil Blonsky'). Q1 returns NULL - weight, Q2 returns 0 - weight.\",\n\"counterexample\": \"INSERT INTO superhero (id, full_name, weight_kg) VALUES (1, 'Charles Chandler', 80);\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem step by step. The user wants to know if the two SQL queries Q1 and Q2 are semantically equivalent. If not, they need a counterexample.\n\nFirst, I need to understand what each query does. \n\nLooking at Q1: It's a SELECT statement that subtracts two subqueries. The first subquery gets the weight_kg where full_name is 'Emil Blonsky', and the second gets the weight_kg where full_name is 'Charles Chandler'. The result is the difference between these two weights. However, if either of these subqueries returns more than one row, this would cause an error because you can't subtract two rows. But assuming that each full_name is unique (as per the schema, full_name is a TEXT field, not a primary key, but maybe in practice each is unique), this would work.\n\nNow Q2 uses SUM with CASE statements. For each row in the superhero table, it checks if the full_name is 'Emil Blonsky' and adds their weight_kg, else 0. Then does the same for 'Charles Chandler' and subtracts the two sums. This approach aggregates all rows, so even if there are multiple entries with the same full_name, it would sum them. But if the full_name is unique, then each SUM would just pick one value, similar to Q1.\n\nWait, but the key difference here is that Q1 uses subqueries which might return zero or one rows. If there's no match, the subquery would return NULL, and subtracting NULL would result in NULL. Whereas Q2's SUM would return 0 if there's no match because the CASE WHEN would evaluate to 0 for all rows. So if either Emil Blonsky or Charles Chandler is not present in the superhero table, Q1 would return NULL (since a subquery with no rows returns NULL?), but Q2 would return 0 for the missing one. \n\nWait, let's think about that. In SQL, if a subquery returns no rows, then the result is NULL. So if, say, Emil Blonsky doesn't exist, then the first subquery in Q1 returns NULL. Then, if Charles Chandler exists, the subtraction would be NULL - value, which is NULL. Similarly, if neither exists, it would be NULL - NULL, which is still NULL. \n\nBut in Q2, the SUM of CASE WHEN T.full_name = 'Emil Blonsky' THEN T.weight_kg ELSE 0 END would sum all rows where the full_name is Emil Blonsky. If there are none, then all rows contribute 0, so the SUM is 0. Same for Charles Chandler. So even if there are no matches, Q2 would return 0 - 0 = 0. \n\nSo if either Emil or Charles is missing, Q1 would return NULL, but Q2 would return 0. That's a difference. \n\nAnother scenario: if there are multiple entries for Emil Blonsky. For example, two rows with the same full_name. Then Q1 would fail because the subquery would return multiple rows, leading to an error. But Q2 would sum both entries. However, the schema doesn't enforce uniqueness on full_name, so that's possible. But in that case, Q1 would error, while Q2 would compute the sum. \n\nBut the question is about semantic equivalence. So in cases where the subqueries in Q1 return exactly one row each, then Q1 and Q2 would be the same. But when there are zero or multiple rows, they differ. \n\nTherefore, the queries are not equivalent. \n\nFor a counterexample, let's create a scenario where one of the names is missing. Suppose the superhero table has only Charles Chandler. Then Q1 would return (NULL - weight of Charles) which is NULL. Q2 would compute SUM for Emil (0) minus SUM for Charles (his weight), so 0 - weight, which is a number. Hence, different results. \n\nAnother case: if neither exists, Q1 returns NULL - NULL = NULL, while Q2 returns 0 - 0 = 0. \n\nSo the counterexample would be a database where one or both of the names are missing. \n\nNow, I need to create an INSERT statement that creates such a scenario. Let's say we have only Charles Chandler in the superhero table. So inserting a row with full_name 'Charles Chandler' and some weight. Then Q1 would have the first subquery as NULL (since Emil isn't there), and the second as his weight. The subtraction would be NULL - value, which is NULL. Q2 would have SUM for Emil as 0, SUM for Charles as his weight, so 0 - weight. \n\nSo the results differ. \n\nTherefore, the answer is not equivalent, and the counterexample is when one of the names is missing.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 808,
+    "total_tokens": 1962,
+    "completion_tokens": 1154,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1013
+    },
+    "generation_seconds": 37.672
+  },
+  "started_at": "2026-10-06T20:35:55.665065+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      null
+    ]
+  ],
+  "q2_output": [
+    [
+      -80
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT (SELECT weight_kg FROM superhero WHERE full_name LIKE 'Emil Blonsky') - (SELECT weight_kg FROM superhero WHERE full_name LIKE 'Charles Chandler') AS CALCULATE",
+  "q2_validation_sql": "SELECT (SUM(CASE WHEN T.full_name = 'Emil Blonsky' THEN T.weight_kg ELSE 0 END) - SUM(CASE WHEN T.full_name = 'Charles Chandler' THEN T.weight_kg ELSE 0 END)) AS weight_difference FROM superhero AS T"
+}

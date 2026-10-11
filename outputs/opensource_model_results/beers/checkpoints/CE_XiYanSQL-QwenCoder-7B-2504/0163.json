@@ -1,0 +1,56 @@
+{
+  "dbid": "beers",
+  "index": "163",
+  "source_index": "3259",
+  "schema_ddl": "CREATE TABLE Bar (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Beer (\n    name VARCHAR NOT NULL,\n    brewer VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Drinker (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Frequents (\n    drinker VARCHAR NOT NULL,\n    bar VARCHAR NOT NULL,\n    times_a_week SMALLINT NOT NULL,\n    PRIMARY KEY (drinker, bar),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (bar) REFERENCES Bar(name)\n);\n\nCREATE TABLE Serves (\n    bar VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    price DECIMAL(5,2) NOT NULL,\n    PRIMARY KEY (bar, beer),\n    FOREIGN KEY (bar) REFERENCES Bar(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);\n\nCREATE TABLE Likes (\n    drinker VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    PRIMARY KEY (drinker, beer),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);",
+  "q1": "SELECT DISTINCT bar FROM Serves WHERE (beer = 'Amstel' OR beer = 'Corona') AND price > 2",
+  "q2": "SELECT frequents.drinker FROM frequents, (SELECT bar FROM serves WHERE serves.beer = 'Corona') AS servesCorona, (SELECT drinker FROM likes WHERE likes.beer <> 'Corona') AS likesFilter WHERE frequents.bar = servesCorona.bar AND frequents.drinker = likesFilter.drinker",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "beers",
+  "q1_prompt_sql": "SELECT DISTINCT bar FROM Serves WHERE (beer = 'Amstel' OR beer = 'Corona') AND price > 2",
+  "q2_prompt_sql": "SELECT frequents.drinker FROM frequents, (SELECT bar FROM serves WHERE serves.beer = 'Corona') AS servesCorona, (SELECT drinker FROM likes WHERE likes.beer <> 'Corona') AS likesFilter WHERE frequents.bar = servesCorona.bar AND frequents.drinker = likesFilter.drinker",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO Bar (name, address) VALUES ('The Pub', '123 Main St'); INSERT INTO Beer (name, brewer) VALUES ('Amstel', 'Amstel Brewery'), ('Corona', 'Corona Brewery'), ('Heineken', 'Heineken Brewery'); INSERT INTO Serves (bar, beer, price) VALUES ('The Pub', 'Amstel', 3.00), ('The Pub', 'Corona', 2.50); INSERT INTO Drinker (name, address) VALUES ('John', '456 Elm St'); INSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('John', 'The Pub', 3); INSERT INTO Likes (drinker, beer) VALUES ('John', 'Amstel'), ('John', 'Heineken');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 selects distinct bars that serve either 'Amstel' or 'Corona' at a price greater than 2. Q2, on the other hand, selects drinkers who frequent bars that serve 'Corona' and also like beers other than 'Corona'. The difference lies in the conditions applied to the 'likes' table in Q2, which is not present in Q1.",
+  "counterexample_dsp": "To create a counterexample, we need to have a bar that serves 'Amstel' and 'Corona' at prices greater than 2, and a drinker who frequents this bar and likes beers other than 'Corona'.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 selects distinct bars that serve either 'Amstel' or 'Corona' at a price greater than 2. Q2, on the other hand, selects drinkers who frequent bars that serve 'Corona' and also like beers other than 'Corona'. The difference lies in the conditions applied to the 'likes' table in Q2, which is not present in Q1.\",\n  \"counterexample_dsp\": \"To create a counterexample, we need to have a bar that serves 'Amstel' and 'Corona' at prices greater than 2, and a drinker who frequents this bar and likes beers other than 'Corona'.\",\n  \"counterexample\": \"INSERT INTO Bar (name, address) VALUES ('The Pub', '123 Main St'); INSERT INTO Beer (name, brewer) VALUES ('Amstel', 'Amstel Brewery'), ('Corona', 'Corona Brewery'), ('Heineken', 'Heineken Brewery'); INSERT INTO Serves (bar, beer, price) VALUES ('The Pub', 'Amstel', 3.00), ('The Pub', 'Corona', 2.50); INSERT INTO Drinker (name, address) VALUES ('John', '456 Elm St'); INSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('John', 'The Pub', 3); INSERT INTO Likes (drinker, beer) VALUES ('John', 'Amstel'), ('John', 'Heineken');\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 553,
+    "total_tokens": 880,
+    "completion_tokens": 327,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 5.641
+  },
+  "started_at": "2026-10-06T08:01:20.685898+00:00",
+  "elapsed_seconds": 0.438,
+  "q1_output": [
+    [
+      "The Pub"
+    ]
+  ],
+  "q2_output": [
+    [
+      "John"
+    ],
+    [
+      "John"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DISTINCT bar FROM Serves WHERE (beer = 'Amstel' OR beer = 'Corona') AND price > 2",
+  "q2_validation_sql": "SELECT frequents.drinker FROM frequents, (SELECT bar FROM serves WHERE serves.beer = 'Corona') AS servesCorona, (SELECT drinker FROM likes WHERE likes.beer <> 'Corona') AS likesFilter WHERE frequents.bar = servesCorona.bar AND frequents.drinker = likesFilter.drinker"
+}

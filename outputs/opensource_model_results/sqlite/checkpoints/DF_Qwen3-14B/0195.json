@@ -1,0 +1,58 @@
+{
+  "dbid": "toxicology",
+  "index": "195",
+  "source_index": "286",
+  "schema_ddl": "CREATE TABLE `atom` (\n  `atom_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `element` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `bond` (\n  `bond_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `bond_type` TEXT DEFAULT NULL,\n  PRIMARY KEY (`bond_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `connected` (\n  `atom_id` TEXT NOT NULL,\n  `atom_id2` TEXT NOT NULL,\n  `bond_id` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`,`atom_id2`),\n  FOREIGN KEY (`atom_id`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`atom_id2`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`bond_id`) REFERENCES `bond` (`bond_id`) ON DELETE CASCADE ON UPDATE CASCADE\n);\n\nCREATE TABLE `molecule` (\n  `molecule_id` TEXT NOT NULL,\n  `label` TEXT DEFAULT NULL,\n  PRIMARY KEY (`molecule_id`)\n);",
+  "q1": "SELECT T1.element FROM atom AS T1 INNER JOIN connected AS T2 ON T1.atom_id = T2.atom_id INNER JOIN bond AS T3 ON T2.bond_id = T3.bond_id WHERE T3.bond_id = 'TR001_10_11'",
+  "q2": "SELECT CASE WHEN T1.element = 'cl' THEN 'Chlorine' WHEN T1.element = 'c' THEN 'Carbon' WHEN T1.element = 'h' THEN 'Hydrogen' WHEN T1.element = 'o' THEN 'Oxygen' WHEN T1.element = 's' THEN 'Sulfur' WHEN T1.element = 'n' THEN 'Nitrogen' WHEN T1.element = 'p' THEN 'Phosphorus' WHEN T1.element = 'na' THEN 'Sodium' WHEN T1.element = 'br' THEN 'Bromine' WHEN T1.element = 'f' THEN 'Fluorine' WHEN T1.element = 'i' THEN 'Iodine' WHEN T1.element = 'sn' THEN 'Tin' WHEN T1.element = 'pb' THEN 'Lead' WHEN T1.element = 'te' THEN 'Tellurium' WHEN T1.element = 'ca' THEN 'Calcium' END AS \"Element\" FROM atom AS T1 INNER JOIN connected AS T2 ON T1.atom_id = T2.atom_id OR T1.atom_id = T2.atom_id2 WHERE T2.bond_id = 'TR001_10_11'",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT T1.element FROM atom AS T1 INNER JOIN connected AS T2 ON T1.atom_id = T2.atom_id INNER JOIN bond AS T3 ON T2.bond_id = T3.bond_id WHERE T3.bond_id = 'TR001_10_11'",
+  "q2_prompt_sql": "SELECT CASE WHEN T1.element = 'cl' THEN 'Chlorine' WHEN T1.element = 'c' THEN 'Carbon' WHEN T1.element = 'h' THEN 'Hydrogen' WHEN T1.element = 'o' THEN 'Oxygen' WHEN T1.element = 's' THEN 'Sulfur' WHEN T1.element = 'n' THEN 'Nitrogen' WHEN T1.element = 'p' THEN 'Phosphorus' WHEN T1.element = 'na' THEN 'Sodium' WHEN T1.element = 'br' THEN 'Bromine' WHEN T1.element = 'f' THEN 'Fluorine' WHEN T1.element = 'i' THEN 'Iodine' WHEN T1.element = 'sn' THEN 'Tin' WHEN T1.element = 'pb' THEN 'Lead' WHEN T1.element = 'te' THEN 'Tellurium' WHEN T1.element = 'ca' THEN 'Calcium' END AS \"Element\" FROM atom AS T1 INNER JOIN connected AS T2 ON T1.atom_id = T2.atom_id OR T1.atom_id = T2.atom_id2 WHERE T2.bond_id = 'TR001_10_11'",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO atom (atom_id, element) VALUES ('A1', 'c'), ('A2', 'o');\nINSERT INTO bond (bond_id) VALUES ('TR001_10_11');\nINSERT INTO connected (atom_id, atom_id2, bond_id) VALUES ('A1', 'A2', 'TR001_10_11');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not equivalent. Q1 retrieves element codes for atoms connected via a specific bond using a single-direction join (atom_id), while Q2 retrieves full element names using a bidirectional join (atom_id OR atom_id2). Additionally, Q2 maps elements to names with a CASE statement, which may return NULL for unsupported elements, whereas Q1 returns raw element codes.",
+  "counterexample_dsp": "A bond 'TR001_10_11' connects two atoms: one with element 'c' (Carbon) in atom_id, and another with element 'o' (Oxygen) in atom_id2. Q1 would return 'c', while Q2 would return 'Carbon' and 'Oxygen'.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 and Q2 are not equivalent. Q1 retrieves element codes for atoms connected via a specific bond using a single-direction join (atom_id), while Q2 retrieves full element names using a bidirectional join (atom_id OR atom_id2). Additionally, Q2 maps elements to names with a CASE statement, which may return NULL for unsupported elements, whereas Q1 returns raw element codes.\",\n\"counterexample_dsp\": \"A bond 'TR001_10_11' connects two atoms: one with element 'c' (Carbon) in atom_id, and another with element 'o' (Oxygen) in atom_id2. Q1 would return 'c', while Q2 would return 'Carbon' and 'Oxygen'.\",\n\"counterexample\": \"INSERT INTO atom (atom_id, element) VALUES ('A1', 'c'), ('A2', 'o');\\nINSERT INTO bond (bond_id) VALUES ('TR001_10_11');\\nINSERT INTO connected (atom_id, atom_id2, bond_id) VALUES ('A1', 'A2', 'TR001_10_11');\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem step by step. I need to determine if Q1 and Q2 are semantically equivalent. Let me start by understanding what each query does.\n\nFirst, looking at Q1: It selects the 'element' from the atom table (T1) by joining with connected (T2) on T1.atom_id = T2.atom_id, then joining with bond (T3) on T2.bond_id = T3.bond_id. The WHERE clause filters for T3.bond_id = 'TR001_10_11'. So, this query is getting elements of atoms that are connected via a bond with ID 'TR001_10_11', using the connected table's atom_id.\n\nNow, Q2 is more complex. It uses a CASE statement to map the element abbreviations to their full names. The FROM clause joins atom (T1) with connected (T2) on T1.atom_id = T2.atom_id OR T1.atom_id = T2.atom_id2. The WHERE condition is T2.bond_id = 'TR001_10_11'. So, this query is selecting atoms connected via that bond, but considering both atom_id and atom_id2 in the connected table. Also, it's converting the element codes to their full names.\n\nThe main differences I notice are:\n\n1. Join conditions: Q1 uses T1.atom_id = T2.atom_id, while Q2 uses T1.atom_id = T2.atom_id OR T1.atom_id = T2.atom_id2. This means Q2 might include atoms that are connected in either direction (since connected has both atom_id and atom_id2 as part of the primary key). So Q2 could get more atoms than Q1 if the bond connects two atoms where one is in atom_id and the other in atom_id2.\n\n2. Output: Q1 returns the element code (like 'c', 'cl', etc.), while Q2 returns the full element name (like 'Carbon', 'Chlorine').\n\n3. The CASE statement in Q2 has a fixed list of element codes. If there's an element in the database not covered by the CASE, Q2 would return NULL for that element, whereas Q1 would return the original code.\n\nSo, the queries are not equivalent because of these differences in join conditions and output transformation. Let's think about a counterexample.\n\nSuppose there's a bond 'TR001_10_11' connecting two atoms: atom A with atom_id 'A1' and element 'c', and atom B with atom_id 'A2' and element 'o'. In the connected table, if the bond is stored as (A1, A2, TR001_10_11), then Q1 would join on T1.atom_id = T2.atom_id, so it would get atom A1. Q2 would join on T1.atom_id = T2.atom_id OR T1.atom_id = T2.atom_id2, so it would get both A1 and A2. Therefore, Q1 would return 'c', while Q2 would return 'Carbon' and 'Oxygen'.\n\nAnother scenario: if the connected table has an entry where the bond_id is TR001_10_11 and the atom_id is A1, atom_id2 is A2. Q1 would only get A1's element if it's the atom_id. Q2 would get both A1 and A2's elements. Also, if the element in the atom table is not covered by the CASE (like 'x'), Q2 would return NULL for that element, whereas Q1 would return 'x'.\n\nSo, the counterexample would involve a bond connecting two atoms with different elements, where one is in atom_id and the other in atom_id2. The queries would return different numbers of rows and different values (codes vs names).\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 842,
+    "total_tokens": 1921,
+    "completion_tokens": 1079,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 819
+    },
+    "generation_seconds": 34.469
+  },
+  "started_at": "2026-10-06T20:24:11.014906+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "c"
+    ]
+  ],
+  "q2_output": [
+    [
+      "Carbon"
+    ],
+    [
+      "Oxygen"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT T1.element FROM atom AS T1 INNER JOIN connected AS T2 ON T1.atom_id = T2.atom_id INNER JOIN bond AS T3 ON T2.bond_id = T3.bond_id WHERE T3.bond_id = 'TR001_10_11'",
+  "q2_validation_sql": "SELECT CASE WHEN T1.element = 'cl' THEN 'Chlorine' WHEN T1.element = 'c' THEN 'Carbon' WHEN T1.element = 'h' THEN 'Hydrogen' WHEN T1.element = 'o' THEN 'Oxygen' WHEN T1.element = 's' THEN 'Sulfur' WHEN T1.element = 'n' THEN 'Nitrogen' WHEN T1.element = 'p' THEN 'Phosphorus' WHEN T1.element = 'na' THEN 'Sodium' WHEN T1.element = 'br' THEN 'Bromine' WHEN T1.element = 'f' THEN 'Fluorine' WHEN T1.element = 'i' THEN 'Iodine' WHEN T1.element = 'sn' THEN 'Tin' WHEN T1.element = 'pb' THEN 'Lead' WHEN T1.element = 'te' THEN 'Tellurium' WHEN T1.element = 'ca' THEN 'Calcium' END AS \"Element\" FROM atom AS T1 INNER JOIN connected AS T2 ON T1.atom_id = T2.atom_id OR T1.atom_id = T2.atom_id2 WHERE T2.bond_id = 'TR001_10_11'"
+}

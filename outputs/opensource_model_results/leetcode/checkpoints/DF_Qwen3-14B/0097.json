@@ -1,0 +1,39 @@
+{
+  "dbid": "1075",
+  "index": "97",
+  "source_index": "225",
+  "schema_ddl": "CREATE TABLE EMPLOYEE (\n    EMPLOYEE_ID INT,\n    NAME VARCHAR(255),\n    EXPERIENCE_YEARS INT,\n    PRIMARY KEY (EMPLOYEE_ID),\n    CHECK (EXPERIENCE_YEARS >= 0)\n);\nCREATE TABLE PROJECT (\n    PROJECT_ID INT,\n    EMPLOYEE_ID INT,\n    PRIMARY KEY (PROJECT_ID, EMPLOYEE_ID),\n    FOREIGN KEY (EMPLOYEE_ID) REFERENCES EMPLOYEE(EMPLOYEE_ID)\n);",
+  "q1": "SELECT A.PROJECT_ID, ROUND(AVG(B.EXPERIENCE_YEARS), 2) AS AVERAGE_YEARS FROM PROJECT AS A INNER JOIN EMPLOYEE AS B ON A.EMPLOYEE_ID = B.EMPLOYEE_ID GROUP BY A.PROJECT_ID",
+  "q2": "SELECT PROJECT_ID , ROUND((SUM(EXPERIENCE_YEARS) / COUNT(P.EMPLOYEE_ID)),2) AS AVERAGE_YEARS FROM PROJECT P INNER JOIN EMPLOYEE E ON P.EMPLOYEE_ID = E.EMPLOYEE_ID GROUP BY PROJECT_ID ORDER BY PROJECT_ID",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT A.PROJECT_ID, ROUND(AVG(B.EXPERIENCE_YEARS), 2) AS AVERAGE_YEARS FROM PROJECT AS A INNER JOIN EMPLOYEE AS B ON A.EMPLOYEE_ID = B.EMPLOYEE_ID GROUP BY A.PROJECT_ID",
+  "q2_prompt_sql": "SELECT PROJECT_ID , ROUND((SUM(EXPERIENCE_YEARS) / COUNT(P.EMPLOYEE_ID)),2) AS AVERAGE_YEARS FROM PROJECT P INNER JOIN EMPLOYEE E ON P.EMPLOYEE_ID = E.EMPLOYEE_ID GROUP BY PROJECT_ID ORDER BY PROJECT_ID",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries calculate the average experience years per project using equivalent mathematical operations (AVG vs SUM/COUNT). Since the JOIN and GROUP BY logic are identical, and the ROUND function is applied to the same value, the results will always match under the given schema constraints.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries calculate the average experience years per project using equivalent mathematical operations (AVG vs SUM/COUNT). Since the JOIN and GROUP BY logic are identical, and the ROUND function is applied to the same value, the results will always match under the given schema constraints.\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem step by step. The user wants to know if the two SQL queries Q1 and Q2 are semantically equivalent. If not, they need a counterexample.\n\nFirst, I need to understand what each query does. \n\nLooking at Q1: It selects PROJECT_ID from the PROJECT table joined with EMPLOYEE on EMPLOYEE_ID. Then it calculates the average of EXPERIENCE_YEARS, rounded to two decimal places, grouped by PROJECT_ID. The AVG function here is straightforward—it takes the average of all EXPERIENCE_YEARS values for each project.\n\nNow Q2: It does a similar join but calculates the average by taking SUM(EXPERIENCE_YEARS) divided by COUNT(P.EMPLOYEE_ID), then rounds it. Since AVG is mathematically equivalent to SUM divided by COUNT, I would expect these to be the same. But wait, maybe there's a catch here. Let me think.\n\nWait, the GROUP BY in Q1 is on A.PROJECT_ID, which is the same as PROJECT_ID in Q2. The join conditions are the same in both queries. So the grouping is the same. The only difference is how the average is calculated. Since AVG is SUM/COUNT, they should be equivalent. But maybe there's a scenario where SUM and COUNT behave differently? Like when there are NULL values? But in the schema, EXPERIENCE_YEARS is an INT with a CHECK constraint that it's >=0. So no NULLs there. Also, the COUNT in Q2 is COUNT(P.EMPLOYEE_ID). Since the join is INNER JOIN, all rows in the result have matching EMPLOYEE_ID, so COUNT(P.EMPLOYEE_ID) would be the same as COUNT(E.EMPLOYEE_ID) or COUNT(*). So SUM(EXPERIENCE_YEARS) divided by COUNT(P.EMPLOYEE_ID) should be the same as AVG(EXPERIENCE_YEARS). Therefore, the two queries should be equivalent.\n\nBut wait, the user is asking if they are equivalent. Maybe there's a hidden difference. Let me check again. The ROUND function in both cases is applied to the same value. So, they should produce the same results. \n\nHmm. Unless there's a case where the SUM and COUNT approach gives a different result than AVG. For example, if there are zero rows in a group? But since it's an INNER JOIN, each PROJECT_ID in the result must have at least one employee. Wait, the PROJECT table has a composite primary key (PROJECT_ID, EMPLOYEE_ID), so each PROJECT_ID can have multiple entries with different EMPLOYEE_IDs. But when you do an INNER JOIN, for each PROJECT_ID, there are multiple rows (one per employee assigned to the project). So the GROUP BY would group all those rows by PROJECT_ID. \n\nIn Q1, AVG(B.EXPERIENCE_YEARS) would average all the experience years of the employees in that project. In Q2, SUM(EXPERIENCE_YEARS) divided by COUNT(P.EMPLOYEE_ID) would do the same thing. So mathematically, they should be the same. \n\nBut maybe the ROUND function is applied at different times? Let's see. In Q1, the average is computed first, then rounded. In Q2, the sum is divided by count, then rounded. But since AVG is SUM/COUNT, rounding the same value should give the same result. \n\nSo, I think these two queries are equivalent. Therefore, the answer should be \"Y\" for equivalent. But maybe I'm missing something. Let me think of a test case. Suppose a project has two employees with experience years 1 and 3. The average is (1+3)/2 = 2.0. Both queries would return 2.0. If the sum is 4 and count is 2, same result. What if there's a decimal that rounds differently? Let's say sum is 5 and count is 3. 5/3 is approximately 1.666..., which rounds to 1.67. AVG would also give the same. So no difference there. \n\nAnother edge case: if all employees in a project have the same experience years. Still, same result. \n\nSo, I think they are equivalent. Therefore, the answer is \"Y\".\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 460,
+    "total_tokens": 1419,
+    "completion_tokens": 959,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 889
+    },
+    "generation_seconds": 30.078
+  },
+  "started_at": "2026-10-06T14:45:13.392290+00:00",
+  "elapsed_seconds": 0.0
+}

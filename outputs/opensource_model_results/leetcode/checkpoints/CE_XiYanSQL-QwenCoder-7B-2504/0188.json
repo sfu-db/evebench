@@ -1,0 +1,71 @@
+{
+  "dbid": "614",
+  "index": "188",
+  "source_index": "357",
+  "schema_ddl": "CREATE TABLE FOLLOW (\n    FOLLOWEE VARCHAR(255),\n    FOLLOWER VARCHAR(255),\n    PRIMARY KEY (FOLLOWEE, FOLLOWER),\n    CHECK (FOLLOWEE <> FOLLOWER)\n);",
+  "q1": "SELECT FOLLOWEE AS FOLLOWER, COUNT(FOLLOWEE) AS NUM FROM FOLLOW WHERE FOLLOWEE IN (SELECT FOLLOWER FROM FOLLOW) GROUP BY 1 ORDER BY 1",
+  "q2": "SELECT B.FOLLOWEE AS FOLLOWER, B.FOLLOWER AS NUM FROM (SELECT FOLLOWER, COUNT(FOLLOWEE) AS FOLLOWEE FROM FOLLOW GROUP BY FOLLOWER) AS A INNER JOIN (SELECT FOLLOWEE, COUNT(FOLLOWER) AS FOLLOWER FROM FOLLOW GROUP BY FOLLOWEE) AS B ON A.FOLLOWER = B.FOLLOWEE ORDER BY FOLLOWER ASC",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT FOLLOWEE AS FOLLOWER, COUNT(FOLLOWEE) AS NUM FROM FOLLOW WHERE FOLLOWEE IN (SELECT FOLLOWER FROM FOLLOW) GROUP BY 1 ORDER BY 1",
+  "q2_prompt_sql": "SELECT B.FOLLOWEE AS FOLLOWER, B.FOLLOWER AS NUM FROM (SELECT FOLLOWER, COUNT(FOLLOWEE) AS FOLLOWEE FROM FOLLOW GROUP BY FOLLOWER) AS A INNER JOIN (SELECT FOLLOWEE, COUNT(FOLLOWER) AS FOLLOWER FROM FOLLOW GROUP BY FOLLOWEE) AS B ON A.FOLLOWER = B.FOLLOWEE ORDER BY FOLLOWER ASC",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO FOLLOW (FOLLOWEE, FOLLOWER) VALUES ('user1', 'user2'), ('user1', 'user3'), ('user2', 'user3'), ('user3', 'user1');",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent because they count followers and followees differently. Q1 counts the number of followees for each follower, while Q2 counts the number of followers for each followee.",
+  "counterexample_dsp": "The difference is triggered when there are followers of a followee who are not also followees of the follower. In this case, Q1 will count these followers, but Q2 will not.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent because they count followers and followees differently. Q1 counts the number of followees for each follower, while Q2 counts the number of followers for each followee.\",\n  \"counterexample_dsp\": \"The difference is triggered when there are followers of a followee who are not also followees of the follower. In this case, Q1 will count these followers, but Q2 will not.\",\n  \"counterexample\": \"INSERT INTO FOLLOW (FOLLOWEE, FOLLOWER) VALUES ('user1', 'user2'), ('user1', 'user3'), ('user2', 'user3'), ('user3', 'user1');\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 377,
+    "total_tokens": 528,
+    "completion_tokens": 151,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 2.579
+  },
+  "started_at": "2026-10-06T09:50:30.174133+00:00",
+  "elapsed_seconds": 0.016,
+  "q1_output": [
+    [
+      "user1",
+      2
+    ],
+    [
+      "user2",
+      1
+    ],
+    [
+      "user3",
+      1
+    ]
+  ],
+  "q2_output": [
+    [
+      "user1",
+      2
+    ],
+    [
+      "user2",
+      1
+    ],
+    [
+      "user3",
+      1
+    ]
+  ],
+  "q1_row_count": 3,
+  "q2_row_count": 3,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT FOLLOWEE AS FOLLOWER, COUNT(FOLLOWEE) AS NUM FROM FOLLOW WHERE FOLLOWEE IN (SELECT FOLLOWER FROM FOLLOW) GROUP BY 1 ORDER BY 1",
+  "q2_validation_sql": "SELECT B.FOLLOWEE AS FOLLOWER, B.FOLLOWER AS NUM FROM (SELECT FOLLOWER, COUNT(FOLLOWEE) AS FOLLOWEE FROM FOLLOW GROUP BY FOLLOWER) AS A INNER JOIN (SELECT FOLLOWEE, COUNT(FOLLOWER) AS FOLLOWER FROM FOLLOW GROUP BY FOLLOWEE) AS B ON A.FOLLOWER = B.FOLLOWEE ORDER BY FOLLOWER ASC"
+}

@@ -1,0 +1,73 @@
+{
+  "dbid": "beers",
+  "index": "207",
+  "source_index": "5564",
+  "schema_ddl": "CREATE TABLE Bar (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Beer (\n    name VARCHAR NOT NULL,\n    brewer VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Drinker (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Frequents (\n    drinker VARCHAR NOT NULL,\n    bar VARCHAR NOT NULL,\n    times_a_week SMALLINT NOT NULL,\n    PRIMARY KEY (drinker, bar),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (bar) REFERENCES Bar(name)\n);\n\nCREATE TABLE Serves (\n    bar VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    price DECIMAL(5,2) NOT NULL,\n    PRIMARY KEY (bar, beer),\n    FOREIGN KEY (bar) REFERENCES Bar(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);\n\nCREATE TABLE Likes (\n    drinker VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    PRIMARY KEY (drinker, beer),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);",
+  "q1": "SELECT b.name AS bar, COUNT(DISTINCT f.drinker) AS num_drinker, AVG(s.price) AS avg_price, (SELECT f1.drinker FROM frequents AS f1 WHERE f1.bar = b.name ORDER BY f1.times_a_week DESC, f1.drinker ASC LIMIT 1) AS most_reg_drinker FROM bar AS b LEFT JOIN frequents AS f ON b.name = f.bar LEFT JOIN serves AS s ON b.name = s.bar GROUP BY b.name ORDER BY num_drinker DESC, b.name ASC",
+  "q2": "SELECT b.name AS bar_name, COALESCE(SUM(f.times_a_week), 0) AS total_num_drinker, AVG(s.price) AS avg_price, (SELECT name FROM (SELECT d.name, SUM(f.times_a_week) AS total_times FROM drinker AS d JOIN frequents AS f ON d.name = f.drinker WHERE f.bar = b.name GROUP BY d.name ORDER BY total_times DESC, d.name ASC LIMIT 1) AS max_reg_drinker) AS most_reg_drinker FROM bar AS b LEFT JOIN frequents AS f ON b.name = f.bar LEFT JOIN serves AS s ON b.name = s.bar GROUP BY b.name ORDER BY total_num_drinker DESC, b.name ASC",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "beers",
+  "q1_prompt_sql": "SELECT b.name AS bar, COUNT(DISTINCT f.drinker) AS num_drinker, AVG(s.price) AS avg_price, (SELECT f1.drinker FROM frequents AS f1 WHERE f1.bar = b.name ORDER BY f1.times_a_week DESC, f1.drinker ASC LIMIT 1) AS most_reg_drinker FROM bar AS b LEFT JOIN frequents AS f ON b.name = f.bar LEFT JOIN serves AS s ON b.name = s.bar GROUP BY b.name ORDER BY num_drinker DESC, b.name ASC",
+  "q2_prompt_sql": "SELECT b.name AS bar_name, COALESCE(SUM(f.times_a_week), 0) AS total_num_drinker, AVG(s.price) AS avg_price, (SELECT name FROM (SELECT d.name, SUM(f.times_a_week) AS total_times FROM drinker AS d JOIN frequents AS f ON d.name = f.drinker WHERE f.bar = b.name GROUP BY d.name ORDER BY total_times DESC, d.name ASC LIMIT 1) AS max_reg_drinker) AS most_reg_drinker FROM bar AS b LEFT JOIN frequents AS f ON b.name = f.bar LEFT JOIN serves AS s ON b.name = s.bar GROUP BY b.name ORDER BY total_num_drinker DESC, b.name ASC",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO Bar (name, address) VALUES ('BarA', '123 Main'), ('BarB', '456 Oak');\nINSERT INTO Drinker (name, address) VALUES ('Alice', '789 Elm'), ('Bob', '101 Pine');\nINSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('Alice', 'BarA', 2), ('Bob', 'BarB', 1), ('Alice', 'BarB', 1);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 differ in their calculation of drinker metrics. Q1 uses COUNT(DISTINCT f.drinker) to count unique drinkers, while Q2 uses SUM(f.times_a_week) to sum total visit frequencies. These yield different values when drinkers visit bars with varying frequencies.",
+  "counterexample_dsp": "A bar with one drinker visiting 2 times/week (COUNT=1, SUM=2) vs a bar with two drinkers visiting 1 time/week (COUNT=2, SUM=2). Q1 orders by COUNT, Q2 by SUM, leading to different rankings.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 and Q2 differ in their calculation of drinker metrics. Q1 uses COUNT(DISTINCT f.drinker) to count unique drinkers, while Q2 uses SUM(f.times_a_week) to sum total visit frequencies. These yield different values when drinkers visit bars with varying frequencies.\",\n\"counterexample_dsp\": \"A bar with one drinker visiting 2 times/week (COUNT=1, SUM=2) vs a bar with two drinkers visiting 1 time/week (COUNT=2, SUM=2). Q1 orders by COUNT, Q2 by SUM, leading to different rankings.\",\n\"counterexample\": \"INSERT INTO Bar (name, address) VALUES ('BarA', '123 Main'), ('BarB', '456 Oak');\\nINSERT INTO Drinker (name, address) VALUES ('Alice', '789 Elm'), ('Bob', '101 Pine');\\nINSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('Alice', 'BarA', 2), ('Bob', 'BarB', 1), ('Alice', 'BarB', 1);\"\n}",
+  "reasoning": "\nOkay, let's try to figure out if these two SQL queries are equivalent. First, I need to understand what each query is doing.\n\nStarting with Q1. The main part is selecting from the Bar table, left joining with Frequents and Serves. The columns selected are bar name, count of distinct drinkers, average price, and a subquery for the most regular drinker. The count is COUNT(DISTINCT f.drinker), which counts unique drinkers who frequent the bar. The subquery for most_reg_drinker orders by times_a_week descending and drinker name ascending, then takes the first one. So that's the drinker who frequents the bar the most times per week, and if there's a tie, the one with the lexicographically smallest name.\n\nNow Q2. It's similar in structure but has some differences. The count is COALESCE(SUM(f.times_a_week), 0) as total_num_drinker. Wait, that's summing the times_a_week, not counting distinct drinkers. Also, the subquery for most_reg_drinker is a bit different. It's joining Drinker and Frequents, grouping by drinker, summing times_a_week, ordering by that sum descending and drinker name, then taking the first. So the most_reg_drinker here is based on the total times per week, but the main count is sum of times, not count of drinkers.\n\nSo the key differences are:\n\n1. Q1 uses COUNT(DISTINCT f.drinker) for num_drinker, while Q2 uses SUM(f.times_a_week) as total_num_drinker. These are different metrics. For example, if a drinker frequents the bar multiple times a week, Q1 counts them once, while Q2 adds their times_a_week to the total.\n\n2. The subqueries for most_reg_drinker: Q1's subquery is selecting the drinker with the highest times_a_week (and then name), but Q2's subquery is summing times_a_week per drinker and selecting the one with the highest sum. Wait, but in Q1's subquery, it's using f1.times_a_week from the Frequents table, which is per drinker-bar pair. So for each bar, the subquery in Q1 would take the drinker with the highest times_a_week (i.e., how often they go to that bar). But in Q2's subquery, it's summing the times_a_week for each drinker across all bars? Wait no, the WHERE clause in Q2's subquery is f.bar = b.name, so it's grouping by drinker and summing their times_a_week for that specific bar. So that's the same as Q1's approach. Wait, no. In Q1, the subquery is selecting from Frequents where bar = b.name, ordering by times_a_week (which is per drinker-bar entry) descending. So for each bar, the most frequent drinker is the one with the highest times_a_week value for that bar. In Q2's subquery, it's grouping by drinker and summing their times_a_week for that bar. Wait, but if a drinker frequents the same bar multiple times, but in the Frequents table, each entry is per drinker-bar pair. Wait, the Frequents table has a primary key on (drinker, bar), so each drinker can only have one entry per bar. So times_a_week is the number of times per week they go to that bar. So in Q1's subquery, for a given bar, it's taking the drinker with the highest times_a_week (for that bar). In Q2's subquery, it's grouping by drinker and summing times_a_week, but since each drinker has only one entry per bar, the sum would be the same as the times_a_week. Wait, no. Because for a specific bar, each drinker has exactly one entry in Frequents (since primary key is drinker and bar). So sum(f.times_a_week) over that group would be the same as the individual times_a_week. Therefore, the subqueries for most_reg_drinker in both Q1 and Q2 should be equivalent. But the ordering is same: descending times_a_week, then drinker name. So the most_reg_drinker would be the same in both cases.\n\nBut the main difference is in the num_drinker and total_num_drinker. In Q1, it's COUNT(DISTINCT f.drinker), which counts the number of unique drinkers who frequent the bar. In Q2, it's SUM(f.times_a_week), which is the total number of times all drinkers go to the bar per week. These are different. For example, if a bar has two drinkers: one who goes 3 times a week and another who goes 2 times, Q1's num_drinker would be 2, while Q2's total_num_drinker would be 3 + 2 = 5. So the ordering in the final result would be different based on these two metrics.\n\nTherefore, the queries are not equivalent. The main difference is in the num_drinker vs total_num_drinker. So to create a counterexample, I need a scenario where the count of distinct drinkers is different from the sum of their times_a_week.\n\nLet me think of a small test case. Suppose there's one bar, say \"Bar A\". Two drinkers: Drinker1 and Drinker2.\n\nIn the Frequents table:\n- Drinker1 frequents Bar A with times_a_week = 1.\n- Drinker2 frequents Bar A with times_a_week = 1.\n\nIn this case, Q1's num_drinker would be 2 (COUNT(DISTINCT)), and Q2's total_num_drinker would be 1 + 1 = 2. So the order would be same here. But if the times are different.\n\nAnother example: Bar B has two drinkers. Drinker1 goes 3 times, Drinker2 goes 2 times. Q1's num_drinker is 2, Q2's total is 5. So when ordering by num_drinker vs total_num_drinker, the order would be same here since 2 vs 5. But if there's another bar where the count and sum differ more.\n\nWait, but the problem is that the ORDER BY clauses in Q1 and Q2 are different. Q1 orders by num_drinker (COUNT(DISTINCT)) descending, then bar name. Q2 orders by total_num_drinker (SUM) descending, then bar name. So even if the counts and sums are same, the ordering could be same. However, if the counts and sums are different, the ordering would be different.\n\nBut the main point is that the columns being selected are different. So the output of the two queries would differ in the num_drinker and total_num_drinker columns. Therefore, the queries are not equivalent.\n\nTo create a counterexample, let's have a bar where COUNT(DISTINCT) and SUM are different. Let's take Bar X with two drinkers: DrinkerA with times_a_week 1, and DrinkerB with times_a_week 1. Then COUNT(DISTINCT) is 2, SUM is 2. So same value. But if one drinker has higher times.\n\nWait, if there's a bar with one drinker who goes 2 times a week. Then COUNT(DISTINCT) is 1, SUM is 2. So in this case, Q1's num_drinker is 1, Q2's total_num_drinker is 2. So when ordered, the bar would be first in Q2 (since 2 is higher than others), but in Q1, it's 1. But if there's another bar with two drinkers each going once, then in Q1, that bar would have num_drinker 2, which is higher than the first bar's 1. In Q2, the first bar has total 2, the second has total 2. So the ordering would be different.\n\nSo for the counterexample, create two bars. Bar1 has one drinker with 2 times. Bar2 has two drinkers with 1 time each.\n\nIn Q1, Bar2 would have num_drinker 2, which is higher than Bar1's 1. So Bar2 comes first. In Q2, Bar1 has total_num_drinker 2, same as Bar2's total 2. Then the order would be based on bar name. But in Q2, the ordering is total_num_drinker DESC, then bar name. So if Bar1 and Bar2 have same total_num_drinker, their order would depend on their names. But in Q1, Bar2 would come before Bar1. However, in Q2, if the totals are same, then the order depends on bar name. So the output would differ in the ordering.\n\nBut the problem is that the user might not care about the ordering, but the actual values of the columns. However, the question is about whether the queries are semantically equivalent, which includes the output columns. Since the num_drinker and total_num_drinker columns are different, the queries are not equivalent.\n\nSo the counterexample would be a database with two bars and different counts and sums. Let's create such a case.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 752,
+    "total_tokens": 2944,
+    "completion_tokens": 2192,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1939
+    },
+    "generation_seconds": 70.109
+  },
+  "started_at": "2026-10-06T09:21:40.872223+00:00",
+  "elapsed_seconds": 36.109,
+  "q1_output": [
+    [
+      "BarB",
+      2,
+      null,
+      "Alice"
+    ],
+    [
+      "BarA",
+      1,
+      null,
+      "Alice"
+    ]
+  ],
+  "q2_output": [
+    [
+      "BarA",
+      2,
+      null,
+      "Alice"
+    ],
+    [
+      "BarB",
+      2,
+      null,
+      "Alice"
+    ]
+  ],
+  "q1_row_count": 2,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT b.name AS bar, COUNT(DISTINCT f.drinker) AS num_drinker, AVG(s.price) AS avg_price, (SELECT f1.drinker FROM frequents AS f1 WHERE f1.bar = b.name ORDER BY f1.times_a_week DESC, f1.drinker ASC LIMIT 1) AS most_reg_drinker FROM bar AS b LEFT JOIN frequents AS f ON b.name = f.bar LEFT JOIN serves AS s ON b.name = s.bar GROUP BY b.name ORDER BY num_drinker DESC, b.name ASC",
+  "q2_validation_sql": "SELECT b.name AS bar_name, COALESCE(SUM(f.times_a_week), 0) AS total_num_drinker, AVG(s.price) AS avg_price, (SELECT name FROM (SELECT d.name, SUM(f.times_a_week) AS total_times FROM drinker AS d JOIN frequents AS f ON d.name = f.drinker WHERE f.bar = b.name GROUP BY d.name ORDER BY total_times DESC, d.name ASC LIMIT 1) AS max_reg_drinker) AS most_reg_drinker FROM bar AS b LEFT JOIN frequents AS f ON b.name = f.bar LEFT JOIN serves AS s ON b.name = s.bar GROUP BY b.name ORDER BY total_num_drinker DESC, b.name ASC"
+}

@@ -1,0 +1,57 @@
+{
+  "dbid": "toxicology",
+  "index": "169",
+  "source_index": "238",
+  "schema_ddl": "CREATE TABLE `atom` (\n  `atom_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `element` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `bond` (\n  `bond_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `bond_type` TEXT DEFAULT NULL,\n  PRIMARY KEY (`bond_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `connected` (\n  `atom_id` TEXT NOT NULL,\n  `atom_id2` TEXT NOT NULL,\n  `bond_id` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`,`atom_id2`),\n  FOREIGN KEY (`atom_id`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`atom_id2`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`bond_id`) REFERENCES `bond` (`bond_id`) ON DELETE CASCADE ON UPDATE CASCADE\n);\n\nCREATE TABLE `molecule` (\n  `molecule_id` TEXT NOT NULL,\n  `label` TEXT DEFAULT NULL,\n  PRIMARY KEY (`molecule_id`)\n);",
+  "q1": "SELECT T2.molecule_id, IIF(T2.label = '+', 'YES', 'NO') AS flag_carcinogenic FROM atom AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id WHERE T1.atom_id = 'TR001_10'",
+  "q2": "SELECT T2.label, CASE WHEN T2.label = '+' THEN 'Carcinogenic' ELSE 'Not Carcinogenic' END AS Carcinogenic FROM atom AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id WHERE T1.atom_id = 'TR001_10'",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT T2.molecule_id, IIF(T2.label = '+', 'YES', 'NO') AS flag_carcinogenic FROM atom AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id WHERE T1.atom_id = 'TR001_10'",
+  "q2_prompt_sql": "SELECT T2.label, CASE WHEN T2.label = '+' THEN 'Carcinogenic' ELSE 'Not Carcinogenic' END AS Carcinogenic FROM atom AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id WHERE T1.atom_id = 'TR001_10'",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO molecule (molecule_id, label) VALUES ('M1', 'X');\nINSERT INTO atom (atom_id, molecule_id) VALUES ('TR001_10', 'M1');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 returns molecule_id and a flag (YES/NO) based on molecule.label. Q2 returns molecule.label directly and a descriptive flag (Carcinogenic/Not Carcinogenic). When molecule.label is not '+', Q1 outputs 'NO' while Q2 outputs the actual label value and 'Not Carcinogenic', making the results distinct.",
+  "counterexample_dsp": "A molecule with label 'X' linked to atom 'TR001_10'. Q1 outputs (molecule_id, 'NO'), Q2 outputs (label 'X', 'Not Carcinogenic').",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 returns molecule_id and a flag (YES/NO) based on molecule.label. Q2 returns molecule.label directly and a descriptive flag (Carcinogenic/Not Carcinogenic). When molecule.label is not '+', Q1 outputs 'NO' while Q2 outputs the actual label value and 'Not Carcinogenic', making the results distinct.\",\n  \"counterexample_dsp\": \"A molecule with label 'X' linked to atom 'TR001_10'. Q1 outputs (molecule_id, 'NO'), Q2 outputs (label 'X', 'Not Carcinogenic').\",\n  \"counterexample\": [\n    \"INSERT INTO molecule (molecule_id, label) VALUES ('M1', 'X');\",\n    \"INSERT INTO atom (atom_id, molecule_id) VALUES ('TR001_10', 'M1');\"\n  ]\n}",
+  "reasoning": "\nOkay, let me try to figure out why these two SQL queries aren't equivalent and come up with a counterexample.\n\nFirst, looking at Q1: It selects T2.molecule_id and uses IIF to check if T2.label is '+', returning 'YES' or 'NO'. The join is between atom T1 and molecule T2 on molecule_id where T1.atom_id is 'TR001_10'.\n\nQ2: It selects T2.label and uses a CASE statement to return 'Carcinogenic' or 'Not Carcinogenic' based on T2.label being '+'. Again, same join condition.\n\nWait, the main difference is what columns they are selecting. Q1 is selecting molecule_id and the flag, while Q2 is selecting label and the Carcinogenic flag. Also, the aliases are different. But the key part is that Q1's flag depends on T2.label, same as Q2's Carcinogenic column. However, Q2 is actually selecting T2.label as part of the output, whereas Q1 is not. Wait no, looking again:\n\nWait Q1's SELECT is T2.molecule_id and the IIF on T2.label. Q2's SELECT is T2.label and the CASE on T2.label. So the columns returned are different. But the user says they are not semantically equivalent. Wait, maybe there's a misunderstanding. Let me check again.\n\nWait Q1: output columns are molecule_id and flag_carcinogenic (which is YES/NO based on T2.label). Q2: output columns are T2.label and Carcinogenic (which is 'Carcinogenic' or 'Not Carcinogenic'). So the output columns are different. But the problem says they are not equivalent. But the question is to find a case where they return different results. So the difference in output columns would mean that even if the same rows are returned, the columns differ. But perhaps the problem is that in Q1, the molecule_id is selected, but in Q2, the label is selected. So if the molecule has a label that's not '+', then Q1's flag is NO, and Q2's label is whatever it is. Wait but in Q2, the label is part of the output. So if the label is something else, like 'unknown', then Q1 would output NO and Q2 would output that label and 'Not Carcinogenic'.\n\nBut the problem states that Q1 and Q2 are not semantically equivalent. So perhaps the difference is that Q1 is returning molecule_id and a flag, while Q2 is returning label and a different flag name. But the user wants a case where their results differ. So for example, if there's a molecule where label is '+', then Q1 would return molecule_id and YES, while Q2 would return label '+' and 'Carcinogenic'. But if the molecule's label is not '+', then Q1 returns NO, and Q2 returns label (whatever it is) and 'Not Carcinogenic'. So the results are different in both cases.\n\nBut maybe the user is expecting that in some scenario, the two queries return different rows. Wait, but the queries are structurally different. Let me think again.\n\nWait, the actual difference is that Q1 selects molecule_id and the flag, while Q2 selects label and the Carcinogenic flag. So even if the conditions are the same, the output columns are different. Therefore, they are not equivalent. So the counterexample would be a case where the molecule's label is not '+', so Q1 returns molecule_id and NO, while Q2 returns the label and 'Not Carcinogenic'.\n\nSo for example, if there's a molecule with label 'X', then Q1's output would be molecule_id, NO. Q2's output would be label 'X', 'Not Carcinogenic'. So the two queries return different rows.\n\nBut the problem says that the counterexample should have Q1 and Q2 output different results. So creating a test case where the molecule's label is not '+', and the atom TR001_10 is linked to that molecule.\n\nSo the counterexample would involve inserting into atom and molecule tables. Let's say molecule_id 'M1' has label 'X', and atom 'TR001_10' has molecule_id 'M1'. Then Q1 would return M1, NO. Q2 would return X, Not Carcinogenic. So the results are different.\n\nAlternatively, if the label is '+', then Q1 returns molecule_id and YES, and Q2 returns '+' and Carcinogenic. The columns are different, so the results differ.\n\nSo in any case, the two queries output different columns, so their results will always be different unless the label is '+' and the molecule_id is same as label, which is unlikely. Therefore, the counterexample is straightforward.\n\nSo the explanation is that Q1 returns molecule_id and a YES/NO flag, while Q2 returns the label and a text description. Therefore, when the label is not '+', their outputs differ.\n\nFor the counterexample, create a molecule with label 'X' and an atom with atom_id 'TR001_10' linked to that molecule. Then Q1 returns molecule_id and NO, Q2 returns label 'X' and 'Not Carcinogenic'.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 598,
+    "total_tokens": 1901,
+    "completion_tokens": 1303,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1110
+    },
+    "generation_seconds": 43.625
+  },
+  "started_at": "2026-10-06T18:30:10.619868+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "M1",
+      "NO"
+    ]
+  ],
+  "q2_output": [
+    [
+      "X",
+      "Not Carcinogenic"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT T2.molecule_id, IIF(T2.label = '+', 'YES', 'NO') AS flag_carcinogenic FROM atom AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id WHERE T1.atom_id = 'TR001_10'",
+  "q2_validation_sql": "SELECT T2.label, CASE WHEN T2.label = '+' THEN 'Carcinogenic' ELSE 'Not Carcinogenic' END AS Carcinogenic FROM atom AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id WHERE T1.atom_id = 'TR001_10'"
+}

@@ -1,0 +1,64 @@
+{
+  "dbid": "beers",
+  "index": "133",
+  "source_index": "2356",
+  "schema_ddl": "CREATE TABLE Bar (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Beer (\n    name VARCHAR NOT NULL,\n    brewer VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Drinker (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Frequents (\n    drinker VARCHAR NOT NULL,\n    bar VARCHAR NOT NULL,\n    times_a_week SMALLINT NOT NULL,\n    PRIMARY KEY (drinker, bar),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (bar) REFERENCES Bar(name)\n);\n\nCREATE TABLE Serves (\n    bar VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    price DECIMAL(5,2) NOT NULL,\n    PRIMARY KEY (bar, beer),\n    FOREIGN KEY (bar) REFERENCES Bar(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);\n\nCREATE TABLE Likes (\n    drinker VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    PRIMARY KEY (drinker, beer),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);",
+  "q1": "SELECT beer.name, min_price, bar FROM beer LEFT OUTER JOIN (SELECT beer, MIN(price) AS min_price FROM serves GROUP BY beer) AS t ON beer.name = t.beer LEFT OUTER JOIN serves ON beer.name = serves.beer AND min_price = serves.price",
+  "q2": "WITH MinPrices AS (SELECT beer, MIN(price) AS min_price FROM serves GROUP BY beer) SELECT m.beer, m.min_price AS price, s.bar AS bar FROM MinPrices AS m JOIN serves AS s ON m.beer = s.beer ORDER BY m.beer, s.bar",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "beers",
+  "q1_prompt_sql": "SELECT beer.name, min_price, bar FROM beer LEFT OUTER JOIN (SELECT beer, MIN(price) AS min_price FROM serves GROUP BY beer) AS t ON beer.name = t.beer LEFT OUTER JOIN serves ON beer.name = serves.beer AND min_price = serves.price",
+  "q2_prompt_sql": "WITH MinPrices AS (SELECT beer, MIN(price) AS min_price FROM serves GROUP BY beer) SELECT m.beer, m.min_price AS price, s.bar AS bar FROM MinPrices AS m JOIN serves AS s ON m.beer = s.beer ORDER BY m.beer, s.bar",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO Beer (name, brewer) VALUES ('Bud', 'Coors');\nINSERT INTO Bar (name, address) VALUES ('BarA', '123 Main'), ('BarB', '456 Oak');\nINSERT INTO Serves (bar, beer, price) VALUES ('BarA', 'Bud', 2.00), ('BarB', 'Bud', 3.00);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 filters serves to only those with the min_price via JOIN condition, while Q2 includes all serves of the beer but uses the min_price as the price in output regardless of actual serve price. This leads to different results when a beer is served at multiple bars with varying prices.",
+  "counterexample_dsp": "A beer served at two bars with different prices. Q1 returns only the bar with min price, Q2 returns both bars but with min price for both.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 filters serves to only those with the min_price via JOIN condition, while Q2 includes all serves of the beer but uses the min_price as the price in output regardless of actual serve price. This leads to different results when a beer is served at multiple bars with varying prices.\",\n\"counterexample_dsp\": \"A beer served at two bars with different prices. Q1 returns only the bar with min price, Q2 returns both bars but with min price for both.\",\n\"counterexample\": \"INSERT INTO Beer (name, brewer) VALUES ('Bud', 'Coors');\\nINSERT INTO Bar (name, address) VALUES ('BarA', '123 Main'), ('BarB', '456 Oak');\\nINSERT INTO Serves (bar, beer, price) VALUES ('BarA', 'Bud', 2.00), ('BarB', 'Bud', 3.00);\"\n}",
+  "reasoning": "\nOkay, let's see. I need to figure out if Q1 and Q2 are semantically equivalent. Let me start by understanding each query.\n\nFirst, looking at Q1. It's a SELECT statement that joins the Beer table with a subquery that finds the minimum price per beer. Then, it does a LEFT OUTER JOIN with the Serves table where the beer name matches and the price equals the min_price. The result is beer name, min_price, and bar.\n\nQ2 uses a Common Table Expression (CTE) called MinPrices, which is the same as the subquery in Q1. Then, it joins MinPrices with Serves on beer and selects the beer, min_price as price, and the bar from Serves. It also orders by beer and bar.\n\nSo both queries aim to find, for each beer, the minimum price and the bars where that minimum price is offered. But there might be differences in how they handle the joins and the output.\n\nWait, Q1 uses LEFT OUTER JOINs. The first join is between Beer and the MinPrices subquery. Then, another LEFT JOIN with Serves. But the second join condition includes min_price = serves.price. So for each beer, it's joining with the Serves table where the price is exactly the min_price. But since the MinPrices subquery groups by beer, the min_price is per beer. So the second join would find all serves that have that min price.\n\nIn Q2, the MinPrices CTE is joined with Serves on beer, and since the CTE has the min_price, the join would be on beer, but the price in Serves is not part of the join condition. Wait, no, Q2's join is between MinPrices (m) and Serves (s) on m.beer = s.beer. But the price is from m.min_price. But in Q2, the SELECT clause is m.beer, m.min_price AS price, s.bar. So for each beer in MinPrices, it's joining with all serves of that beer. But that would include all prices, not just the min. Wait, that can't be right. Wait, no. Wait, the CTE MinPrices has the min_price per beer. But the join is on m.beer = s.beer. So for each beer, the query would get all bars that serve that beer, but the price is the min_price? No, the price in the SELECT is m.min_price, which is the same for all rows in the join. Wait, but if you join MinPrices with Serves on beer, then for each row in Serves (for that beer), you get the min_price. But that would not filter to only the rows where serves.price is min_price. That would include all serves of that beer, but the price would be the min_price (from the CTE) regardless of the actual price in Serves. That doesn't make sense. Wait, maybe I'm misunderstanding.\n\nWait, in Q2, the CTE MinPrices has beer and min_price. Then, the join is between MinPrices (m) and Serves (s) on m.beer = s.beer. So for each beer in MinPrices, you get all serves of that beer. But the min_price is a single value per beer. So for example, if a beer is served in three bars with prices 2, 3, and 4, the MinPrices would have min_price 2. Then, joining with Serves would give three rows for that beer, each with min_price 2 and the respective bar. But that's incorrect because the actual price in Serves is 2, 3, 4. But the query is selecting m.min_price as price. So the price in the result is always the min_price, not the actual price. So that's different from Q1, which joins on min_price = serves.price. So Q1 would only include the serves that have the min_price, whereas Q2 includes all serves for the beer, but the price is the min_price, not the actual price.\n\nWait, that's a big difference. Let me check again.\n\nIn Q1:\n\nThe first join is Beer with the subquery t, which gives beer and min_price. Then, a LEFT JOIN with Serves on beer.name = serves.beer AND min_price = serves.price. So this would match only the serves that have the min_price. So for each beer, you get the bars where the beer is served at the minimum price.\n\nIn Q2:\n\nThe CTE MinPrices has beer and min_price. Then, join with Serves on beer. So for each serve of the beer, you get the min_price (from the CTE) and the bar. So the price in the output is the min_price, but the actual serve's price could be higher. But the query is selecting m.min_price as price, not s.price. So in Q2, the price is always the min_price, but the bar is from the serves. But the serves could have higher prices, but the price in the output is the min. That's not correct. Wait, but maybe I'm missing something. Because the CTE MinPrices is per beer, and when you join with Serves on beer, you have for each serve of that beer, the min_price. But the actual price in serves is not considered. So the output would have the same min_price for all serves of that beer, but the actual price might be different. That seems like a mistake.\n\nWait, that's a problem. So Q2's output would have the min_price, but the serves could have higher prices. So for example, if a beer is served in bar A at $2 (min) and bar B at $3, Q2 would return two rows: (beer, 2, A) and (beer, 2, B). But that's incorrect because in reality, bar B serves it at $3, but the price is reported as the min. So the query is not correct. But Q1 would have only (beer, 2, A), because the join condition is min_price = serves.price.\n\nSo the main difference is that Q1 filters the serves to those with the min_price, whereas Q2 does not. Instead, Q2 includes all serves for the beer, but uses the min_price as the price in the output. That's a significant difference.\n\nTherefore, the two queries are not equivalent. For example, if a beer is served at multiple bars with different prices, Q1 would list only the bars where the price is the minimum, while Q2 would list all bars but with the same min_price for each.\n\nTo create a counterexample, let's create a scenario where a beer has multiple serves with varying prices. For instance, Beer 'Bud' is served in Bar 'A' at $2 (min) and Bar 'B' at $3. Q1 would return (Bud, 2, A), while Q2 would return (Bud, 2, A) and (Bud, 2, B). Thus, Q2 has an extra row with the same price but different bar, which is incorrect.\n\nSo the counterexample would involve a beer with two serves: one at min price and another at higher. The test data would include these entries.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 608,
+    "total_tokens": 2340,
+    "completion_tokens": 1732,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1522
+    },
+    "generation_seconds": 54.938
+  },
+  "started_at": "2026-10-06T09:16:51.900192+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "Bud",
+      2,
+      "BarA"
+    ]
+  ],
+  "q2_output": [
+    [
+      "Bud",
+      2,
+      "BarA"
+    ],
+    [
+      "Bud",
+      2,
+      "BarB"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT beer.name, min_price, bar FROM beer LEFT OUTER JOIN (SELECT beer, MIN(price) AS min_price FROM serves GROUP BY beer) AS t ON beer.name = t.beer LEFT OUTER JOIN serves ON beer.name = serves.beer AND min_price = serves.price",
+  "q2_validation_sql": "WITH MinPrices AS (SELECT beer, MIN(price) AS min_price FROM serves GROUP BY beer) SELECT m.beer, m.min_price AS price, s.bar AS bar FROM MinPrices AS m JOIN serves AS s ON m.beer = s.beer ORDER BY m.beer, s.bar"
+}

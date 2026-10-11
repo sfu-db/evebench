@@ -1,0 +1,53 @@
+{
+  "dbid": "182",
+  "index": "380",
+  "source_index": "173",
+  "schema_ddl": "CREATE TABLE PERSON (\n    ID INT,\n    EMAIL VARCHAR(255),\n    PRIMARY KEY (ID)\n);",
+  "q1": "SELECT EMAIL AS EMAIL FROM PERSON GROUP BY EMAIL HAVING COUNT(EMAIL) >1",
+  "q2": "SELECT EMAIL FROM PERSON GROUP BY EMAIL HAVING COUNT(*) >= 2",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT EMAIL AS EMAIL FROM PERSON GROUP BY EMAIL HAVING COUNT(EMAIL) >1",
+  "q2_prompt_sql": "SELECT EMAIL FROM PERSON GROUP BY EMAIL HAVING COUNT(*) >= 2",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO PERSON (ID, EMAIL) VALUES (1, 'test@example.com'), (2, 'test@example.com'), (3, 'unique@example.com');",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent because Q1 groups by EMAIL and filters for emails that appear more than once, while Q2 groups by EMAIL and filters for emails that appear at least twice. The difference lies in the COUNT condition: Q1 uses COUNT(EMAIL) > 1, and Q2 uses COUNT(*) >= 2. In Q1, COUNT(EMAIL) > 1 will never be true because COUNT(EMAIL) will always return 1 for each group (since each group is a unique email), while COUNT(*) >= 2 will be true for groups with at least two occurrences of the same email.",
+  "counterexample_dsp": "The test data should have at least one email that appears twice to trigger the difference between Q1 and Q2. Q1 will not return any results because COUNT(EMAIL) > 1 is never true, while Q2 will return the email that appears twice.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent because Q1 groups by EMAIL and filters for emails that appear more than once, while Q2 groups by EMAIL and filters for emails that appear at least twice. The difference lies in the COUNT condition: Q1 uses COUNT(EMAIL) > 1, and Q2 uses COUNT(*) >= 2. In Q1, COUNT(EMAIL) > 1 will never be true because COUNT(EMAIL) will always return 1 for each group (since each group is a unique email), while COUNT(*) >= 2 will be true for groups with at least two occurrences of the same email.\",\n  \"counterexample_dsp\": \"The test data should have at least one email that appears twice to trigger the difference between Q1 and Q2. Q1 will not return any results because COUNT(EMAIL) > 1 is never true, while Q2 will return the email that appears twice.\",\n  \"counterexample\": \"INSERT INTO PERSON (ID, EMAIL) VALUES (1, 'test@example.com'), (2, 'test@example.com'), (3, 'unique@example.com');\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 275,
+    "total_tokens": 514,
+    "completion_tokens": 239,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 3.937
+  },
+  "started_at": "2026-10-06T09:51:16.998621+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "test@example.com"
+    ]
+  ],
+  "q2_output": [
+    [
+      "test@example.com"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT EMAIL AS EMAIL FROM PERSON GROUP BY EMAIL HAVING COUNT(EMAIL) >1",
+  "q2_validation_sql": "SELECT EMAIL FROM PERSON GROUP BY EMAIL HAVING COUNT(*) >= 2"
+}

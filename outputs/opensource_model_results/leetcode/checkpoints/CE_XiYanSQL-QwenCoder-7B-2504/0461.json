@@ -1,0 +1,53 @@
+{
+  "dbid": "1149",
+  "index": "461",
+  "source_index": "6",
+  "schema_ddl": "CREATE TABLE VIEWS (\n    ARTICLE_ID INT,\n    AUTHOR_ID INT,\n    VIEWER_ID INT,\n    VIEW_DATE DATE\n);",
+  "q1": "SELECT DISTINCT VIEWER_ID AS ID FROM VIEWS GROUP BY VIEW_DATE, VIEWER_ID HAVING COUNT(DISTINCT ARTICLE_ID) > 1 ORDER BY ID",
+  "q2": "SELECT DISTINCT VIEWER_ID AS ID FROM ( SELECT VIEWER_ID , VIEW_DATE , COUNT(DISTINCT ARTICLE_ID) AS COUNT FROM VIEWS GROUP BY VIEWER_ID , VIEW_DATE HAVING COUNT(DISTINCT ARTICLE_ID) > 1 ) A ORDER BY VIEWER_ID ASC",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT DISTINCT VIEWER_ID AS ID FROM VIEWS GROUP BY VIEW_DATE, VIEWER_ID HAVING COUNT(DISTINCT ARTICLE_ID) > 1 ORDER BY ID",
+  "q2_prompt_sql": "SELECT DISTINCT VIEWER_ID AS ID FROM ( SELECT VIEWER_ID , VIEW_DATE , COUNT(DISTINCT ARTICLE_ID) AS COUNT FROM VIEWS GROUP BY VIEWER_ID , VIEW_DATE HAVING COUNT(DISTINCT ARTICLE_ID) > 1 ) A ORDER BY VIEWER_ID ASC",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO VIEWS (ARTICLE_ID, AUTHOR_ID, VIEWER_ID, VIEW_DATE) VALUES (1, 101, 201, '2023-01-01'); INSERT INTO VIEWS (ARTICLE_ID, AUTHOR_ID, VIEWER_ID, VIEW_DATE) VALUES (2, 102, 201, '2023-01-01'); INSERT INTO VIEWS (ARTICLE_ID, AUTHOR_ID, VIEWER_ID, VIEW_DATE) VALUES (3, 103, 201, '2023-01-02');",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 groups by VIEW_DATE and VIEWER_ID, while Q2 groups by VIEWER_ID and VIEW_DATE. This difference in grouping affects the results when there are multiple view dates for the same viewer_id.",
+  "counterexample_dsp": "The test data should have multiple view dates for the same viewer_id, and the count of distinct article_ids should be greater than 1 for at least one of the view dates.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 groups by VIEW_DATE and VIEWER_ID, while Q2 groups by VIEWER_ID and VIEW_DATE. This difference in grouping affects the results when there are multiple view dates for the same viewer_id.\",\n  \"counterexample_dsp\": \"The test data should have multiple view dates for the same viewer_id, and the count of distinct article_ids should be greater than 1 for at least one of the view dates.\",\n  \"counterexample\": \"INSERT INTO VIEWS (ARTICLE_ID, AUTHOR_ID, VIEWER_ID, VIEW_DATE) VALUES (1, 101, 201, '2023-01-01'); INSERT INTO VIEWS (ARTICLE_ID, AUTHOR_ID, VIEWER_ID, VIEW_DATE) VALUES (2, 102, 201, '2023-01-01'); INSERT INTO VIEWS (ARTICLE_ID, AUTHOR_ID, VIEWER_ID, VIEW_DATE) VALUES (3, 103, 201, '2023-01-02');\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 338,
+    "total_tokens": 575,
+    "completion_tokens": 237,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 3.812
+  },
+  "started_at": "2026-10-06T09:51:36.115571+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      201
+    ]
+  ],
+  "q2_output": [
+    [
+      201
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DISTINCT VIEWER_ID AS ID FROM VIEWS GROUP BY VIEW_DATE, VIEWER_ID HAVING COUNT(DISTINCT ARTICLE_ID) > 1 ORDER BY ID",
+  "q2_validation_sql": "SELECT DISTINCT VIEWER_ID AS ID FROM ( SELECT VIEWER_ID , VIEW_DATE , COUNT(DISTINCT ARTICLE_ID) AS COUNT FROM VIEWS GROUP BY VIEWER_ID , VIEW_DATE HAVING COUNT(DISTINCT ARTICLE_ID) > 1 ) A ORDER BY VIEWER_ID ASC"
+}

@@ -1,0 +1,54 @@
+{
+  "dbid": "debit_card_specializing",
+  "index": "878",
+  "source_index": "1534",
+  "schema_ddl": "CREATE TABLE customers\n(\n    CustomerID INTEGER UNIQUE     not null\n        primary key,\n    Segment    TEXT null,\n    Currency   TEXT null\n);\n\nCREATE TABLE gasstations\n(\n    GasStationID INTEGER    UNIQUE   not null\n        primary key,\n    ChainID      INTEGER          null,\n    Country      TEXT null,\n    Segment      TEXT null\n);\n\nCREATE TABLE products\n(\n    ProductID   INTEGER   UNIQUE      not null\n        primary key,\n    Description TEXT null\n);\n\nCREATE TABLE \"transactions_1k\"\n(\n    TransactionID INTEGER\n        primary key autoincrement,\n    Date          DATE,\n    Time          TEXT,\n    CustomerID    INTEGER,\n    CardID        INTEGER,\n    GasStationID  INTEGER,\n    ProductID     INTEGER,\n    Amount        INTEGER,\n    Price         REAL\n);\n\nCREATE TABLE \"yearmonth\"\n(\n    CustomerID  INTEGER not null\n        references customers\n            on update cascade on delete cascade\n        references customers,\n    Date        TEXT    not null,\n    Consumption REAL,\n    primary key (Date, CustomerID)\n);",
+  "q1": "SELECT T2.Consumption FROM transactions_1k AS T1 INNER JOIN yearmonth AS T2 ON T1.CustomerID = T2.CustomerID WHERE T1.Price / T1.Amount > 29.00 AND T1.ProductID = 5 AND T2.Date = '201208'",
+  "q2": "SELECT T3.CustomerID, T3.Consumption FROM transactions_1k AS T1 INNER JOIN products AS T2 ON T1.ProductID = T2.ProductID INNER JOIN yearmonth AS T3 ON T1.CustomerID = T3.CustomerID WHERE T2.ProductID = 5 AND T1.Price / T1.Amount > 29.00 AND T3.Date LIKE '201208%'",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT T2.Consumption FROM transactions_1k AS T1 INNER JOIN yearmonth AS T2 ON T1.CustomerID = T2.CustomerID WHERE T1.Price / T1.Amount > 29.00 AND T1.ProductID = 5 AND T2.Date = '201208'",
+  "q2_prompt_sql": "SELECT T3.CustomerID, T3.Consumption FROM transactions_1k AS T1 INNER JOIN products AS T2 ON T1.ProductID = T2.ProductID INNER JOIN yearmonth AS T3 ON T1.CustomerID = T3.CustomerID WHERE T2.ProductID = 5 AND T1.Price / T1.Amount > 29.00 AND T3.Date LIKE '201208%'",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO products (ProductID) VALUES (5); INSERT INTO customers (CustomerID, Segment, Currency) VALUES (1, 'Consumer', 'USD'); INSERT INTO transactions_1k (TransactionID, Date, Time, CustomerID, CardID, GasStationID, ProductID, Amount, Price) VALUES (1, '2012-07-01', '10:00:00', 1, 1, 1, 5, 10, 300); INSERT INTO yearmonth (CustomerID, Date, Consumption) VALUES (1, '201208', 100);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent because Q1 filters transactions based on the product ID and the price to amount ratio, while Q2 additionally filters products based on the product ID and the price to amount ratio. This means that Q2 can return customers who have purchased the product in other months, as long as the price to amount ratio is met in August 2012.",
+  "counterexample_dsp": "To create a counterexample, we need to have a customer who has purchased the product in a month other than August 2012, but the price to amount ratio is met in August 2012.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent because Q1 filters transactions based on the product ID and the price to amount ratio, while Q2 additionally filters products based on the product ID and the price to amount ratio. This means that Q2 can return customers who have purchased the product in other months, as long as the price to amount ratio is met in August 2012.\",\n  \"counterexample_dsp\": \"To create a counterexample, we need to have a customer who has purchased the product in a month other than August 2012, but the price to amount ratio is met in August 2012.\",\n  \"counterexample\": \"INSERT INTO products (ProductID) VALUES (5); INSERT INTO customers (CustomerID, Segment, Currency) VALUES (1, 'Consumer', 'USD'); INSERT INTO transactions_1k (TransactionID, Date, Time, CustomerID, CardID, GasStationID, ProductID, Amount, Price) VALUES (1, '2012-07-01', '10:00:00', 1, 1, 1, 5, 10, 300); INSERT INTO yearmonth (CustomerID, Date, Consumption) VALUES (1, '201208', 100);\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 593,
+    "total_tokens": 881,
+    "completion_tokens": 288,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 5.063
+  },
+  "started_at": "2026-10-06T16:07:11.402256+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      100.0
+    ]
+  ],
+  "q2_output": [
+    [
+      1,
+      100.0
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT T2.Consumption FROM transactions_1k AS T1 INNER JOIN yearmonth AS T2 ON T1.CustomerID = T2.CustomerID WHERE T1.Price / T1.Amount > 29.00 AND T1.ProductID = 5 AND T2.Date = '201208'",
+  "q2_validation_sql": "SELECT T3.CustomerID, T3.Consumption FROM transactions_1k AS T1 INNER JOIN products AS T2 ON T1.ProductID = T2.ProductID INNER JOIN yearmonth AS T3 ON T1.CustomerID = T3.CustomerID WHERE T2.ProductID = 5 AND T1.Price / T1.Amount > 29.00 AND T3.Date LIKE '201208%'"
+}

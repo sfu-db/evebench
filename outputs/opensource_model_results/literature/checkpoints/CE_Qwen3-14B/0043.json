@@ -1,0 +1,61 @@
+{
+  "dbid": "32",
+  "index": "43",
+  "source_index": "50",
+  "schema_ddl": "CREATE TABLE COURSE (COURSE_ID INT, TITLE INT, DEPT_NAME INT, CREDITS INT);\nCREATE TABLE DEPARTMENT (DEPT_NAME INT, BUILDING INT, BUDGET INT);\nCREATE TABLE INSTRUCTOR (ID INT, NAME INT, SALARY INT, DEPT_NAME INT);\nCREATE TABLE TEACHES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, SEMESTER INT, INSTRUCTOR INT);\nCREATE TABLE SECTION (COURSE_ID INT, SEC_ID INT, YEAR INT, BUILDING INT, ROOM_NUMBER INT, TIME_SLOT_ID INT);\nCREATE TABLE TAKES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, GRADE INT);\nCREATE TABLE STUDENT (ID INT, NAME INT, DEPT_NAME INT, TOT_CRED INT);",
+  "q1": "SELECT C.DEPT_NAME, SUM(C.CREDITS) FROM COURSE AS C INNER JOIN DEPARTMENT AS D ON (C.DEPT_NAME = D.DEPT_NAME) GROUP BY C.DEPT_NAME HAVING SUM(C.CREDITS) > 10 AND COUNT(C.CREDITS) > 5",
+  "q2": "SELECT C.DEPT_NAME, SUM(C.CREDITS) FROM COURSE AS C INNER JOIN DEPARTMENT AS D ON (C.DEPT_NAME = D.DEPT_NAME) GROUP BY C.DEPT_NAME HAVING SUM(C.CREDITS) > 10 AND COUNT(C.CREDITS) > 8",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "literature",
+  "q1_prompt_sql": "SELECT C.DEPT_NAME, SUM(C.CREDITS) FROM COURSE AS C INNER JOIN DEPARTMENT AS D ON (C.DEPT_NAME = D.DEPT_NAME) GROUP BY C.DEPT_NAME HAVING SUM(C.CREDITS) > 10 AND COUNT(C.CREDITS) > 5",
+  "q2_prompt_sql": "SELECT C.DEPT_NAME, SUM(C.CREDITS) FROM COURSE AS C INNER JOIN DEPARTMENT AS D ON (C.DEPT_NAME = D.DEPT_NAME) GROUP BY C.DEPT_NAME HAVING SUM(C.CREDITS) > 10 AND COUNT(C.CREDITS) > 8",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO DEPARTMENT (DEPT_NAME, BUILDING, BUDGET) VALUES (1, 100, 100000), (2, 200, 200000);\nINSERT INTO COURSE (COURSE_ID, TITLE, DEPT_NAME, CREDITS) VALUES\n(1, 101, 1, 2), (2, 102, 1, 2), (3, 103, 1, 2), (4, 104, 1, 2), (5, 105, 1, 2), (6, 106, 1, 2), (7, 107, 1, 2),\n(8, 201, 2, 2), (9, 202, 2, 2), (10, 203, 2, 2), (11, 204, 2, 2), (12, 205, 2, 2), (13, 206, 2, 2), (14, 207, 2, 2), (15, 208, 2, 2), (16, 209, 2, 2), (17, 210, 2, 2);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 differ in their HAVING clause conditions. Q1 requires COUNT(C.CREDITS) > 5, while Q2 requires COUNT(C.CREDITS) > 8. A department with 7 courses (sum of credits >10) would be included in Q1 but excluded from Q2.",
+  "counterexample_dsp": "A department (e.g., 'CS') with 7 courses (total credits 14) meets Q1's condition but not Q2's. Another department (e.g., 'BIO') with 9 courses (total credits 18) meets both conditions.",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 and Q2 differ in their HAVING clause conditions. Q1 requires COUNT(C.CREDITS) > 5, while Q2 requires COUNT(C.CREDITS) > 8. A department with 7 courses (sum of credits >10) would be included in Q1 but excluded from Q2.\",\n  \"counterexample_dsp\": \"A department (e.g., 'CS') with 7 courses (total credits 14) meets Q1's condition but not Q2's. Another department (e.g., 'BIO') with 9 courses (total credits 18) meets both conditions.\",\n  \"counterexample\": \"INSERT INTO DEPARTMENT (DEPT_NAME, BUILDING, BUDGET) VALUES (1, 100, 100000), (2, 200, 200000);\\nINSERT INTO COURSE (COURSE_ID, TITLE, DEPT_NAME, CREDITS) VALUES\\n(1, 101, 1, 2), (2, 102, 1, 2), (3, 103, 1, 2), (4, 104, 1, 2), (5, 105, 1, 2), (6, 106, 1, 2), (7, 107, 1, 2),\\n(8, 201, 2, 2), (9, 202, 2, 2), (10, 203, 2, 2), (11, 204, 2, 2), (12, 205, 2, 2), (13, 206, 2, 2), (14, 207, 2, 2), (15, 208, 2, 2), (16, 209, 2, 2), (17, 210, 2, 2);\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem. The user wants a counterexample where Q1 and Q2 return different results. First, I need to understand the difference between the two queries.\n\nLooking at Q1 and Q2, the main difference is in the HAVING clause. Q1 has COUNT(C.CREDITS) > 5, while Q2 has COUNT(C.CREDITS) > 8. Both are grouping by DEPT_NAME and checking the sum of credits and the count of courses in each department.\n\nSo, the queries will differ when a department has between 6 to 8 courses. For example, if a department has 7 courses, Q1 would include it (since 7>5) but Q2 would exclude it (7 is not >8). Therefore, the counterexample should have a department where the count of courses is 6 or 7, and the sum of credits is over 10.\n\nNow, I need to create a test database that meets this. Let's say Department A has 7 courses with a total credit sum of 15. Then Q1 would include it, but Q2 would not. Another department with 9 courses would be in both, but the key is to have one that's in Q1's range but not Q2's.\n\nI should insert data into COURSE and DEPARTMENT tables. The DEPARTMENT table needs entries for the departments. The COURSE table will have entries with DEPT_NAME and CREDITS. Let's make sure that the sum of credits for the department in question is over 10. For example, seven courses each with 2 credits would sum to 14. That meets the sum condition for both, but the count is 7, which is more than 5 (so Q1 includes) but not more than 8 (so Q2 excludes).\n\nAnother department could have 9 courses with sum over 10, which would be in both. But the key is to have at least one department that meets the Q1 condition but not Q2. So the counterexample should have such a department.\n\nNow, I need to write the INSERT statements. Let's create two departments: 'CS' and 'BIO'. For 'CS', insert 7 courses with 2 credits each. Sum is 14, count is 7. For 'BIO', insert 9 courses with 2 credits each. Sum is 18, count is 9.\n\nIn this case, Q1 would return both 'CS' and 'BIO' (since 7>5 and 9>5). But Q2 would return only 'BIO' because 9>8, while 'CS' has 7 which is not >8. Therefore, the results differ.\n\nNow, I need to make sure that the DEPARTMENT table has entries for these departments. The COURSE table entries should have the DEPT_NAME as integers. Wait, the schema defines DEPT_NAME as INT in the tables. But in the CREATE statements, the DEPARTMENT table's DEPT_NAME is an INT. So, perhaps using numbers like 1 for 'CS' and 2 for 'BIO' as DEPT_NAME values. But the actual values don't matter as long as they are consistent.\n\nSo, the INSERTs would be:\n\nINSERT INTO DEPARTMENT (DEPT_NAME, BUILDING, BUDGET) VALUES (1, 100, 100000);\nINSERT INTO DEPARTMENT (DEPT_NAME, BUILDING, BUDGET) VALUES (2, 200, 200000);\n\nThen, for COURSE:\n\nFor DEPT_NAME 1 (CS), insert 7 rows with CREDITS=2 each.\nFor DEPT_NAME 2 (BIO), insert 9 rows with CREDITS=2 each.\n\nThat should make the counts 7 and 9, respectively. Then, Q1 would include both, Q2 would include only the second. So the counterexample works.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 494,
+    "total_tokens": 1795,
+    "completion_tokens": 1301,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 833
+    },
+    "generation_seconds": 43.094
+  },
+  "started_at": "2026-10-06T07:21:33.970794+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      1,
+      14
+    ],
+    [
+      2,
+      20
+    ]
+  ],
+  "q2_output": [
+    [
+      2,
+      20
+    ]
+  ],
+  "q1_row_count": 2,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT C.DEPT_NAME, SUM(C.CREDITS) FROM COURSE AS C INNER JOIN DEPARTMENT AS D ON (C.DEPT_NAME = D.DEPT_NAME) GROUP BY C.DEPT_NAME HAVING SUM(C.CREDITS) > 10 AND COUNT(C.CREDITS) > 5",
+  "q2_validation_sql": "SELECT C.DEPT_NAME, SUM(C.CREDITS) FROM COURSE AS C INNER JOIN DEPARTMENT AS D ON (C.DEPT_NAME = D.DEPT_NAME) GROUP BY C.DEPT_NAME HAVING SUM(C.CREDITS) > 10 AND COUNT(C.CREDITS) > 8"
+}

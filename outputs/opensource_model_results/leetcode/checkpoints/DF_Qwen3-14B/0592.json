@@ -1,0 +1,39 @@
+{
+  "dbid": "1083",
+  "index": "592",
+  "source_index": "635",
+  "schema_ddl": "CREATE TABLE PRODUCT (\n    PRODUCT_ID INT,\n    PRODUCT_NAME VARCHAR(255),\n    UNIT_PRICE INT,\n    PRIMARY KEY (PRODUCT_ID),\n    CHECK (UNIT_PRICE > 0),\n    CHECK (PRODUCT_NAME IN ('S8', 'IPHONE'))\n);\n\nCREATE TABLE SALES (\n    PRODUCT_ID INT,\n    SELLER_ID INT,\n    BUYER_ID INT,\n    SALE_DATE DATE,\n    QUANTITY INT,\n    PRICE INT,\n    FOREIGN KEY (PRODUCT_ID) REFERENCES PRODUCT(PRODUCT_ID),\n    CHECK (QUANTITY > 0),\n    CHECK (PRICE > 0)\n);",
+  "q1": "SELECT DISTINCT SALES.BUYER_ID AS BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'S8' AND SALES.BUYER_ID NOT IN ( SELECT SALES.BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'IPHONE')",
+  "q2": "WITH A AS (SELECT BUYER_ID FROM SALES JOIN PRODUCT USING (PRODUCT_ID) WHERE PRODUCT_NAME='S8') SELECT DISTINCT BUYER_ID FROM A WHERE BUYER_ID NOT IN (SELECT BUYER_ID FROM SALES JOIN PRODUCT USING (PRODUCT_ID) WHERE PRODUCT_NAME='IPHONE' ) ORDER BY BUYER_ID",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT DISTINCT SALES.BUYER_ID AS BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'S8' AND SALES.BUYER_ID NOT IN ( SELECT SALES.BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'IPHONE')",
+  "q2_prompt_sql": "WITH A AS (SELECT BUYER_ID FROM SALES JOIN PRODUCT USING (PRODUCT_ID) WHERE PRODUCT_NAME='S8') SELECT DISTINCT BUYER_ID FROM A WHERE BUYER_ID NOT IN (SELECT BUYER_ID FROM SALES JOIN PRODUCT USING (PRODUCT_ID) WHERE PRODUCT_NAME='IPHONE' ) ORDER BY BUYER_ID",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries aim to find distinct buyers of 'S8' who did not purchase 'IPHONE'. Q1 uses a direct subquery in the WHERE clause, while Q2 uses a CTE. However, the logic and structure are equivalent, with the same joins, conditions, and DISTINCT handling.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries aim to find distinct buyers of 'S8' who did not purchase 'IPHONE'. Q1 uses a direct subquery in the WHERE clause, while Q2 uses a CTE. However, the logic and structure are equivalent, with the same joins, conditions, and DISTINCT handling.\"\n}",
+  "reasoning": "\nOkay, let's see. I need to determine if Q1 and Q2 are semantically equivalent. Let's start by understanding what each query does.\n\nFirst, looking at Q1. It selects distinct BUYER_ID from SALES joined with PRODUCT where PRODUCT_NAME is 'S8'. Then it excludes any BUYER_ID that is in the subquery which selects BUYER_ID from the same join where PRODUCT_NAME is 'IPHONE'. So, Q1 is finding buyers who bought 'S8' but not 'IPHONE'.\n\nNow Q2 uses a CTE (A) to get all BUYER_IDs from SALES joined with PRODUCT where PRODUCT_NAME is 'S8'. Then it selects distinct BUYER_ID from A where they are not in the subquery that gets BUYER_IDs for 'IPHONE'. The ORDER BY is probably just for display and doesn't affect the result set.\n\nAt first glance, they seem similar. Both are selecting buyers of 'S8' not in 'IPHONE' buyers. But wait, maybe there's a difference in the joins or the way the subqueries are structured.\n\nWait, in Q1, the subquery in the NOT IN clause uses the same join between SALES and PRODUCT. In Q2, the CTE A is a join between SALES and PRODUCT on PRODUCT_ID, and the subquery in the NOT IN also uses the same join. So the structure seems the same. But maybe there's a difference in the way the tables are joined or the conditions applied.\n\nWait, in Q1, the main query is joining SALES and PRODUCT on PRODUCT_ID, and the subquery is also joining SALES and PRODUCT on PRODUCT_ID. Similarly, Q2's CTE A is joining SALES and PRODUCT using PRODUCT_ID (via JOIN ... USING). The subquery in Q2's WHERE clause is also using the same join. So the joins are equivalent.\n\nAnother thing to check: Q1 uses SALES.BUYER_ID in the main query, and the subquery also uses SALES.BUYER_ID. In Q2, the CTE A selects BUYER_ID from SALES, so when the main query selects from A, it's the same as SALES.BUYER_ID. So the columns selected are the same.\n\nWait, but in Q1, the main query's SELECT is SALES.BUYER_ID AS BUYER_ID. The subquery in the NOT IN is SALES.BUYER_ID. In Q2, the CTE A selects BUYER_ID from SALES, which would be the same as SALES.BUYER_ID. So the columns are the same.\n\nBut maybe there's a difference in the way the joins are handled. For example, if there are multiple entries for a buyer in SALES for 'S8', but Q1 uses DISTINCT, and Q2 also uses DISTINCT. So both would return unique buyer IDs.\n\nWait, Q1 has SELECT DISTINCT SALES.BUYER_ID, and Q2 has SELECT DISTINCT BUYER_ID from A. Since A is a CTE that's already selecting BUYER_ID from SALES, but without DISTINCT. However, in Q2's main query, it's using SELECT DISTINCT again. So Q2's result is distinct, same as Q1.\n\nSo both queries are trying to get the distinct list of buyers who bought 'S8' but not 'IPHONE'. The only difference I can see is the use of CTE in Q2. But since the CTE is just selecting the same data as the main query of Q1, and the rest is the same, they should be equivalent.\n\nWait, but maybe there's a case where the subquery in Q1 could have duplicates, but the NOT IN is using the subquery's results. However, since the subquery in Q1 is not using DISTINCT, but the NOT IN is checking for presence. However, in Q2, the subquery in the NOT IN is also not using DISTINCT. But in both cases, the NOT IN would check for existence, regardless of duplicates. Because NOT IN (values) would exclude any buyer that appears in the list, even if there are duplicates. So even if the subquery returns duplicates, the NOT IN would still work as intended.\n\nWait, but in Q1, the main query is using SELECT DISTINCT, but the subquery in NOT IN is not. However, in Q2, the main query is using SELECT DISTINCT, and the subquery in NOT IN is also not using DISTINCT. So the logic is the same. Because in both cases, the main query's result is distinct, and the subquery's results are not, but NOT IN would still work as intended.\n\nTherefore, the two queries should be semantically equivalent. Unless there's some edge case I'm missing. Let me think of a counterexample.\n\nSuppose there's a buyer who bought 'S8' and also bought 'IPHONE' in multiple entries. But in both cases, the NOT IN would exclude them regardless. So even if the subquery returns multiple entries for the same buyer, the NOT IN would still exclude them. So the result should be the same.\n\nAnother thing: the schema says that PRODUCT_NAME is either 'S8' or 'IPHONE'. So there's no other product names. That's important. So all the joins are based on those product names.\n\nWait, but what if a buyer bought 'S8' but also bought 'IPHONE' in different sales entries. Then the NOT IN would exclude them. So both queries would exclude them. So same result.\n\nHmm. So I can't think of a scenario where they would differ. Therefore, they are equivalent. So the answer is Y.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 522,
+    "total_tokens": 1770,
+    "completion_tokens": 1248,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1171
+    },
+    "generation_seconds": 39.672
+  },
+  "started_at": "2026-10-06T15:21:55.292645+00:00",
+  "elapsed_seconds": 0.0
+}

@@ -1,0 +1,56 @@
+{
+  "dbid": "beers",
+  "index": "6",
+  "source_index": "50",
+  "schema_ddl": "CREATE TABLE Bar (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Beer (\n    name VARCHAR NOT NULL,\n    brewer VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Drinker (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Frequents (\n    drinker VARCHAR NOT NULL,\n    bar VARCHAR NOT NULL,\n    times_a_week SMALLINT NOT NULL,\n    PRIMARY KEY (drinker, bar),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (bar) REFERENCES Bar(name)\n);\n\nCREATE TABLE Serves (\n    bar VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    price DECIMAL(5,2) NOT NULL,\n    PRIMARY KEY (bar, beer),\n    FOREIGN KEY (bar) REFERENCES Bar(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);\n\nCREATE TABLE Likes (\n    drinker VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    PRIMARY KEY (drinker, beer),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);",
+  "q1": "SELECT DISTINCT bar FROM Serves WHERE (beer = 'Amstel' OR beer = 'Corona') AND price > 2",
+  "q2": "SELECT bar FROM serves WHERE beer = 'Amstel' OR beer = 'Corona' AND price > 2",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "beers",
+  "q1_prompt_sql": "SELECT DISTINCT bar FROM Serves WHERE (beer = 'Amstel' OR beer = 'Corona') AND price > 2",
+  "q2_prompt_sql": "SELECT bar FROM serves WHERE beer = 'Amstel' OR beer = 'Corona' AND price > 2",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO Bar (name, address) VALUES ('The Pub', '123 Main St'); INSERT INTO Beer (name, brewer) VALUES ('Amstel', 'Amstel Brewery'), ('Corona', 'Corona Brewery'); INSERT INTO Serves (bar, beer, price) VALUES ('The Pub', 'Amstel', 1.5), ('The Pub', 'Corona', 2.5);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent due to the difference in operator precedence. Q1 checks for bars that serve either 'Amstel' or 'Corona' at a price greater than 2, while Q2 checks for bars that serve 'Amstel' or 'Corona' at any price and then filters those results to only include those with a price greater than 2.",
+  "counterexample_dsp": "The test data should include a bar that serves 'Amstel' at a price of 1.5 and 'Corona' at a price of 2.5. Q1 should return this bar, while Q2 should not.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent due to the difference in operator precedence. Q1 checks for bars that serve either 'Amstel' or 'Corona' at a price greater than 2, while Q2 checks for bars that serve 'Amstel' or 'Corona' at any price and then filters those results to only include those with a price greater than 2.\",\n  \"counterexample_dsp\": \"The test data should include a bar that serves 'Amstel' at a price of 1.5 and 'Corona' at a price of 2.5. Q1 should return this bar, while Q2 should not.\",\n  \"counterexample\": \"INSERT INTO Bar (name, address) VALUES ('The Pub', '123 Main St'); INSERT INTO Beer (name, brewer) VALUES ('Amstel', 'Amstel Brewery'), ('Corona', 'Corona Brewery'); INSERT INTO Serves (bar, beer, price) VALUES ('The Pub', 'Amstel', 1.5), ('The Pub', 'Corona', 2.5);\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 509,
+    "total_tokens": 753,
+    "completion_tokens": 244,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 4.609
+  },
+  "started_at": "2026-10-06T08:00:35.891673+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "The Pub"
+    ]
+  ],
+  "q2_output": [
+    [
+      "The Pub"
+    ],
+    [
+      "The Pub"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DISTINCT bar FROM Serves WHERE (beer = 'Amstel' OR beer = 'Corona') AND price > 2",
+  "q2_validation_sql": "SELECT bar FROM serves WHERE beer = 'Amstel' OR beer = 'Corona' AND price > 2"
+}

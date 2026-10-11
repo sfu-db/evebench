@@ -1,0 +1,50 @@
+{
+  "dbid": "beers",
+  "index": "189",
+  "source_index": "4188",
+  "schema_ddl": "CREATE TABLE Bar (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Beer (\n    name VARCHAR NOT NULL,\n    brewer VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Drinker (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Frequents (\n    drinker VARCHAR NOT NULL,\n    bar VARCHAR NOT NULL,\n    times_a_week SMALLINT NOT NULL,\n    PRIMARY KEY (drinker, bar),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (bar) REFERENCES Bar(name)\n);\n\nCREATE TABLE Serves (\n    bar VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    price DECIMAL(5,2) NOT NULL,\n    PRIMARY KEY (bar, beer),\n    FOREIGN KEY (bar) REFERENCES Bar(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);\n\nCREATE TABLE Likes (\n    drinker VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    PRIMARY KEY (drinker, beer),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);",
+  "q1": "SELECT f1.drinker, f2.drinker FROM (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f1, (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f2 WHERE f1.drinker < f2.drinker AND f1.st = f2.st",
+  "q2": "SELECT DISTINCT drinker AS drinkerA, drinkerB FROM frequents JOIN (SELECT drinker AS drinkerB, times_a_week FROM frequents) AS frequentsB ON frequents.times_a_week < frequentsB.times_a_week",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "beers",
+  "q1_prompt_sql": "SELECT f1.drinker, f2.drinker FROM (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f1, (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f2 WHERE f1.drinker < f2.drinker AND f1.st = f2.st",
+  "q2_prompt_sql": "SELECT DISTINCT drinker AS drinkerA, drinkerB FROM frequents JOIN (SELECT drinker AS drinkerB, times_a_week FROM frequents) AS frequentsB ON frequents.times_a_week < frequentsB.times_a_week",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO Drinker (name, address) VALUES ('DrinkerA', 'AddressA'), ('DrinkerB', 'AddressB'); INSERT INTO Bar (name, address) VALUES ('Bar1', 'Address1'); INSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('DrinkerA', 'Bar1', 3), ('DrinkerB', 'Bar1', 2);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent because Q1 compares the total times a week each drinker frequents any bar, while Q2 checks if there are any two drinkers where one frequents a bar more times a week than the other.",
+  "counterexample_dsp": "The test data should have at least two drinkers, each frequenting the same bar, but with different frequencies. The condition that triggers the difference is when the frequency of one drinker is greater than the other for the same bar.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent because Q1 compares the total times a week each drinker frequents any bar, while Q2 checks if there are any two drinkers where one frequents a bar more times a week than the other.\",\n  \"counterexample_dsp\": \"The test data should have at least two drinkers, each frequenting the same bar, but with different frequencies. The condition that triggers the difference is when the frequency of one drinker is greater than the other for the same bar.\",\n  \"counterexample\": \"INSERT INTO Drinker (name, address) VALUES ('DrinkerA', 'AddressA'), ('DrinkerB', 'AddressB'); INSERT INTO Bar (name, address) VALUES ('Bar1', 'Address1'); INSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('DrinkerA', 'Bar1', 3), ('DrinkerB', 'Bar1', 2);\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 587,
+    "total_tokens": 792,
+    "completion_tokens": 205,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 3.5
+  },
+  "started_at": "2026-10-06T08:01:31.669281+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [],
+  "q2_output": [
+    [
+      "DrinkerB",
+      "DrinkerA"
+    ]
+  ],
+  "q1_row_count": 0,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT f1.drinker, f2.drinker FROM (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f1, (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f2 WHERE f1.drinker < f2.drinker AND f1.st = f2.st",
+  "q2_validation_sql": "SELECT DISTINCT drinker AS drinkerA, drinkerB FROM frequents JOIN (SELECT drinker AS drinkerB, times_a_week FROM frequents) AS frequentsB ON frequents.times_a_week < frequentsB.times_a_week"
+}

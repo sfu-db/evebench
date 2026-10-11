@@ -1,0 +1,39 @@
+{
+  "dbid": "175",
+  "index": "293",
+  "source_index": "92",
+  "schema_ddl": "CREATE TABLE PERSON (\n    PERSONID INT,\n    FIRSTNAME VARCHAR(255),\n    LASTNAME VARCHAR(255),\n    PRIMARY KEY (PERSONID)\n);\n\nCREATE TABLE ADDRESS (\n    ADDRESSID INT,\n    PERSONID INT,\n    CITY VARCHAR(255),\n    STATE VARCHAR(255),\n    PRIMARY KEY (ADDRESSID, PERSONID),\n    FOREIGN KEY (PERSONID) REFERENCES PERSON(PERSONID)\n);",
+  "q1": "SELECT FIRSTNAME, LASTNAME, CITY, STATE FROM PERSON AS P LEFT OUTER JOIN ADDRESS AS A ON P.PERSONID = A.PERSONID",
+  "q2": "SELECT FIRSTNAME, LASTNAME, CITY, STATE FROM (PERSON LEFT JOIN ADDRESS ON PERSON.PERSONID = ADDRESS.PERSONID)",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT FIRSTNAME, LASTNAME, CITY, STATE FROM PERSON AS P LEFT OUTER JOIN ADDRESS AS A ON P.PERSONID = A.PERSONID",
+  "q2_prompt_sql": "SELECT FIRSTNAME, LASTNAME, CITY, STATE FROM (PERSON LEFT JOIN ADDRESS ON PERSON.PERSONID = ADDRESS.PERSONID)",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are semantically equivalent. Both queries perform a LEFT OUTER JOIN between PERSON and ADDRESS on PERSONID, selecting FIRSTNAME, LASTNAME, CITY, and STATE. The parentheses in Q2 do not change the join behavior, as LEFT JOIN has the same precedence as JOIN in this context and the subquery in Q2 is not materialized in a way that affects the join outcome.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n  \"equiv\": \"Y\",\n  \"explanation\": \"Q1 and Q2 are semantically equivalent. Both queries perform a LEFT OUTER JOIN between PERSON and ADDRESS on PERSONID, selecting FIRSTNAME, LASTNAME, CITY, and STATE. The parentheses in Q2 do not change the join behavior, as LEFT JOIN has the same precedence as JOIN in this context and the subquery in Q2 is not materialized in a way that affects the join outcome.\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 402,
+    "total_tokens": 503,
+    "completion_tokens": 101,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 3.375
+  },
+  "started_at": "2026-10-06T15:40:02.640510+00:00",
+  "elapsed_seconds": 0.0
+}

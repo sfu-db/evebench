@@ -1,0 +1,55 @@
+{
+  "dbid": "thrombosis_prediction",
+  "index": "651",
+  "source_index": "1153",
+  "schema_ddl": "CREATE TABLE Examination\n(\n    ID                 INTEGER          null,\n    `Examination Date` DATE         null,\n    `aCL IgG`          REAL        null,\n    `aCL IgM`          REAL        null,\n    ANA                INTEGER          null,\n    `ANA Pattern`      TEXT null,\n    `aCL IgA`          INTEGER          null,\n    Diagnosis          TEXT null,\n    KCT                TEXT null,\n    RVVT              TEXT null,\n    LAC                TEXT null,\n    Symptoms           TEXT null,\n    Thrombosis         INTEGER          null,\n    foreign key (ID) references Patient (ID)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE Patient\n(\n    ID           INTEGER default 0 not null\n        primary key,\n    SEX          TEXT  null,\n    Birthday     DATE          null,\n    Description  DATE          null,\n    `First Date` DATE          null,\n    Admission    TEXT  null,\n    Diagnosis    TEXT  null\n);\n\nCREATE TABLE Laboratory\n(\n    ID        INTEGER  default 0            not null,\n    Date      DATE default '0000-00-00' not null,\n    GOT       INTEGER                       null,\n    GPT       INTEGER                        null,\n    LDH       INTEGER                        null,\n    ALP       INTEGER                        null,\n    TP        REAL             null,\n    ALB       REAL             null,\n    UA        REAL             null,\n    UN        INTEGER                       null,\n    CRE       REAL             null,\n    `T-BIL`   REAL             null,\n    `T-CHO`   INTEGER                       null,\n    TG        INTEGER                       null,\n    CPK       INTEGER                       null,\n    GLU       INTEGER                       null,\n    WBC       REAL             null,\n    RBC       REAL             null,\n    HGB       REAL             null,\n    HCT       REAL             null,\n    PLT       INTEGER                       null,\n    PT        REAL             null,\n    APTT      INTEGER                       null,\n    FG        REAL             null,\n    PIC       INTEGER                       null,\n    TAT       INTEGER                       null,\n    TAT2      INTEGER                       null,\n    `U-PRO`   TEXT              null,\n    IGG       INTEGER                       null,\n    IGA       INTEGER                       null,\n    IGM       INTEGER                       null,\n    CRP       TEXT              null,\n    RA        TEXT              null,\n    RF        TEXT              null,\n    C3        INTEGER                       null,\n    C4        INTEGER                       null,\n    RNP       TEXT              null,\n    SM        TEXT              null,\n    SC170     TEXT              null,\n    SSA       TEXT              null,\n    SSB       TEXT              null,\n    CENTROMEA TEXT              null,\n    DNA       TEXT              null,\n    `DNA-II`  INTEGER                       null,\n    primary key (ID, Date),\n        foreign key (ID) references Patient (ID)\n            on update cascade on delete cascade\n);",
+  "q1": "SELECT SUM(CASE WHEN Admission = '+' THEN 1 ELSE 0 END) / SUM(CASE WHEN Admission = '-' THEN 1 ELSE 0 END) FROM Patient WHERE Diagnosis = 'SLE'",
+  "q2": "SELECT CAST(SUM(CASE WHEN Admission = '+' THEN 1 ELSE 0 END) AS REAL) / SUM(CASE WHEN Admission = '-' THEN 1 ELSE 0 END) FROM Patient WHERE Diagnosis = 'SLE'",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT SUM(CASE WHEN Admission = '+' THEN 1 ELSE 0 END) / SUM(CASE WHEN Admission = '-' THEN 1 ELSE 0 END) FROM Patient WHERE Diagnosis = 'SLE'",
+  "q2_prompt_sql": "SELECT CAST(SUM(CASE WHEN Admission = '+' THEN 1 ELSE 0 END) AS REAL) / SUM(CASE WHEN Admission = '-' THEN 1 ELSE 0 END) FROM Patient WHERE Diagnosis = 'SLE'",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO Patient (ID, Admission, Diagnosis) VALUES (1, '+', 'SLE');\nINSERT INTO Patient (ID, Admission, Diagnosis) VALUES (2, '-', 'SLE');\nINSERT INTO Patient (ID, Admission, Diagnosis) VALUES (3, '-', 'SLE');\nINSERT INTO Patient (ID, Admission, Diagnosis) VALUES (4, '-', 'SLE');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 performs integer division, truncating decimal results, while Q2 uses REAL division. When the numerator is not a multiple of the denominator, this leads to different outputs.",
+  "counterexample_dsp": "Create 1 patient with Admission '+' and 3 patients with Admission '-', all diagnosed with 'SLE'. Q1 returns 0 (1/3 integer division), Q2 returns 0.333... (REAL division).",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 performs integer division, truncating decimal results, while Q2 uses REAL division. When the numerator is not a multiple of the denominator, this leads to different outputs.\",\n  \"counterexample_dsp\": \"Create 1 patient with Admission '+' and 3 patients with Admission '-', all diagnosed with 'SLE'. Q1 returns 0 (1/3 integer division), Q2 returns 0.333... (REAL division).\",\n  \"counterexample\": [\n    \"INSERT INTO Patient (ID, Admission, Diagnosis) VALUES (1, '+', 'SLE');\",\n    \"INSERT INTO Patient (ID, Admission, Diagnosis) VALUES (2, '-', 'SLE');\",\n    \"INSERT INTO Patient (ID, Admission, Diagnosis) VALUES (3, '-', 'SLE');\",\n    \"INSERT INTO Patient (ID, Admission, Diagnosis) VALUES (4, '-', 'SLE');\"\n  ]\n}",
+  "reasoning": "\nOkay, let's tackle this problem. So, the user wants a counterexample where Q1 and Q2 return different results. Let me first understand the difference between the two queries.\n\nLooking at Q1 and Q2, the main difference is in how the division is handled. Q1 uses integer division because both sums are integers. Q2 casts the numerator to REAL, which should result in floating-point division. So if the division isn't exact, Q1 would truncate the result, while Q2 would give a decimal.\n\nFor example, if SUM(+) is 1 and SUM(-) is 3, Q1 would do 1/3 as integer division, which is 0, while Q2 would do 0.333... So the results differ here.\n\nNow, I need to create a test case where this happens. The Patient table has the Admission field and Diagnosis. So I need to insert patients with Diagnosis 'SLE', some with Admission '+' and others '-'.\n\nLet me think of a scenario where the sum of '+' is 1 and sum of '-' is 3. Then Q1 would return 0 (since 1/3 integer division is 0), and Q2 would return 0.333... So they differ.\n\nSo, the test data should have 1 '+' and 3 '-' entries under Diagnosis 'SLE'. Let me make sure the other fields are filled in a way that doesn't violate the schema. For example, the Patient table requires ID, which is primary key. So I'll create 4 patients with IDs 1-4, all with Diagnosis 'SLE'. Three of them have Admission '-', and one has '+'.\n\nWait, but the Patient table's Diagnosis is a field. So each patient's Diagnosis is set to 'SLE'. Then, the Admission is '+' or '-'.\n\nSo, inserting four patients:\n\nPatient 1: Admission '+', Diagnosis 'SLE'\n\nPatients 2,3,4: Admission '-', Diagnosis 'SLE'\n\nThen, Q1 would compute 1/3 as integer division, which is 0. Q2 would compute 1.0 /3 = 0.333..., so different results.\n\nThat should work. Now, need to make sure that the other tables (Examination and Laboratory) don't have constraints that require data. Since the queries only reference Patient, maybe the other tables can be left empty. But the schema has foreign keys from Examination and Laboratory to Patient. However, the problem says the counterexample doesn't need to violate constraints, but the queries only use Patient. So maybe inserting into Patient is sufficient, and other tables can be left as is.\n\nBut the schema requires that Examination and Laboratory have foreign keys to Patient. However, the problem says the counterexample should not violate constraints. So if we don't insert any data into Examination or Laboratory, that's okay because the foreign key constraints are only for existing entries. Since the queries don't reference those tables, their absence is acceptable.\n\nTherefore, the counterexample only needs to insert into Patient. Let me write the INSERT statements for four patients with the specified conditions.\n\nSo the explanation would be that Q1 uses integer division, which truncates, while Q2 uses real division. The counterexample has 1 '+' and 3 '-', leading to different results.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 889,
+    "total_tokens": 1771,
+    "completion_tokens": 882,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 682
+    },
+    "generation_seconds": 30.485
+  },
+  "started_at": "2026-10-06T17:39:17.320052+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      0
+    ]
+  ],
+  "q2_output": [
+    [
+      0.3333333333333333
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT SUM(CASE WHEN Admission = '+' THEN 1 ELSE 0 END) / SUM(CASE WHEN Admission = '-' THEN 1 ELSE 0 END) FROM Patient WHERE Diagnosis = 'SLE'",
+  "q2_validation_sql": "SELECT CAST(SUM(CASE WHEN Admission = '+' THEN 1 ELSE 0 END) AS REAL) / SUM(CASE WHEN Admission = '-' THEN 1 ELSE 0 END) FROM Patient WHERE Diagnosis = 'SLE'"
+}

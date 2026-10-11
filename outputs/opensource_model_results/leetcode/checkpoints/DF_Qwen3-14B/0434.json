@@ -1,0 +1,39 @@
+{
+  "dbid": "610",
+  "index": "434",
+  "source_index": "51",
+  "schema_ddl": "CREATE TABLE TRIANGLE (\n    X INT,\n    Y INT,\n    Z INT,\n    PRIMARY KEY (X, Y, Z),\n    CHECK (X > 0),\n    CHECK (Y > 0),\n    CHECK (Z > 0)\n);",
+  "q1": "SELECT X, Y, Z, IF(X+Y>Z AND X+Z>Y AND Y+Z>X, 'YES', 'NO') AS TRIANGLE FROM TRIANGLE",
+  "q2": "SELECT X,Y,Z, IF(X+Y>Z AND Z+Y>X AND Z+X>Y, 'YES','NO') AS TRIANGLE FROM TRIANGLE",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT X, Y, Z, IF(X+Y>Z AND X+Z>Y AND Y+Z>X, 'YES', 'NO') AS TRIANGLE FROM TRIANGLE",
+  "q2_prompt_sql": "SELECT X,Y,Z, IF(X+Y>Z AND Z+Y>X AND Z+X>Y, 'YES','NO') AS TRIANGLE FROM TRIANGLE",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries check the same triangle validity conditions (X+Y>Z, X+Z>Y, Y+Z>X) using commutative addition, just in different order. The logical AND operation is commutative, so the order of conditions does not affect the result.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries check the same triangle validity conditions (X+Y>Z, X+Z>Y, Y+Z>X) using commutative addition, just in different order. The logical AND operation is commutative, so the order of conditions does not affect the result.\"\n}",
+  "reasoning": "\nOkay, let's see. I need to determine if Q1 and Q2 are semantically equivalent. Both queries are selecting X, Y, Z from the TRIANGLE table and checking if they can form a triangle. The condition for a triangle is that the sum of any two sides must be greater than the third. \n\nLooking at Q1's condition: X+Y>Z AND X+Z>Y AND Y+Z>X. And Q2's condition is X+Y>Z AND Z+Y>X AND Z+X>Y. Wait, let me check each part. \n\nIn Q1, the three conditions are:\n1. X + Y > Z\n2. X + Z > Y\n3. Y + Z > X\n\nIn Q2, the conditions are:\n1. X + Y > Z\n2. Z + Y > X (which is same as Y + Z > X, same as condition 3 in Q1)\n3. Z + X > Y (which is same as X + Z > Y, same as condition 2 in Q1)\n\nSo the order of the conditions in the AND clauses is different, but logically, all three conditions are the same. Because addition is commutative. So X+Z is the same as Z+X, and Y+Z is same as Z+Y. Therefore, the three conditions in both queries are the same, just ordered differently. \n\nSo the IF statements in both Q1 and Q2 are checking the same three inequalities, just in a different order. Since logical AND is commutative, the order doesn't affect the result. Therefore, the two queries should be equivalent.\n\nWait, but maybe there's a typo? Let me check again. Q1's third condition is Y+Z>X. Q2's second condition is Z+Y>X, which is same as Y+Z>X. And Q2's third condition is Z+X>Y, which is same as X+Z>Y. So all three conditions in both queries are the same. Therefore, the two queries are equivalent. \n\nSo the answer should be that they are equivalent. There's no difference in the logic because the conditions are the same, just ordered differently. Therefore, no counterexample is needed.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 377,
+    "total_tokens": 916,
+    "completion_tokens": 539,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 466
+    },
+    "generation_seconds": 17.531
+  },
+  "started_at": "2026-10-06T15:10:15.588040+00:00",
+  "elapsed_seconds": 0.0
+}

@@ -1,0 +1,39 @@
+{
+  "dbid": "1050",
+  "index": "257",
+  "source_index": "123",
+  "schema_ddl": "CREATE TABLE ACTORDIRECTOR (\n    TIMESTAMP INT,\n    ACTOR_ID INT,\n    DIRECTOR_ID INT,\n    PRIMARY KEY (TIMESTAMP)\n);",
+  "q1": "SELECT ACTOR_ID,DIRECTOR_ID FROM ACTORDIRECTOR GROUP BY ACTOR_ID,DIRECTOR_ID HAVING COUNT(*)>=3",
+  "q2": "SELECT DISTINCT ACTOR_ID, DIRECTOR_ID FROM ACTORDIRECTOR AD GROUP BY 1,2 HAVING COUNT(*) >=3",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT ACTOR_ID,DIRECTOR_ID FROM ACTORDIRECTOR GROUP BY ACTOR_ID,DIRECTOR_ID HAVING COUNT(*)>=3",
+  "q2_prompt_sql": "SELECT DISTINCT ACTOR_ID, DIRECTOR_ID FROM ACTORDIRECTOR AD GROUP BY 1,2 HAVING COUNT(*) >=3",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are semantically equivalent. Both queries select distinct pairs of ACTOR_ID and DIRECTOR_ID from the ACTORDIRECTOR table, grouping by these two columns and filtering groups that have a count of at least 3 rows. The use of GROUP BY with column names in Q1 and GROUP BY 1,2 in Q2 (which refers to the first two columns of the SELECT list) are equivalent in this context. The DISTINCT keyword in Q2 is redundant since GROUP BY already produces distinct groups.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Q1 and Q2 are semantically equivalent. Both queries select distinct pairs of ACTOR_ID and DIRECTOR_ID from the ACTORDIRECTOR table, grouping by these two columns and filtering groups that have a count of at least 3 rows. The use of GROUP BY with column names in Q1 and GROUP BY 1,2 in Q2 (which refers to the first two columns of the SELECT list) are equivalent in this context. The DISTINCT keyword in Q2 is redundant since GROUP BY already produces distinct groups.\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 342,
+    "total_tokens": 466,
+    "completion_tokens": 124,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 3.937
+  },
+  "started_at": "2026-10-06T15:40:02.604499+00:00",
+  "elapsed_seconds": 0.0
+}

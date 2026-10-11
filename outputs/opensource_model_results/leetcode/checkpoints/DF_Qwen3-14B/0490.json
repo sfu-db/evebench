@@ -1,0 +1,39 @@
+{
+  "dbid": "1084",
+  "index": "490",
+  "source_index": "174",
+  "schema_ddl": "CREATE TABLE PRODUCT (\n    PRODUCT_ID INT,\n    PRODUCT_NAME VARCHAR(255),\n    UNIT_PRICE INT,\n    PRIMARY KEY (PRODUCT_ID),\n    CHECK (UNIT_PRICE > 0)\n);\n\nCREATE TABLE SALES (\n    PRODUCT_ID INT,\n    SELLER_ID INT,\n    BUYER_ID INT,\n    SALE_DATE DATE,\n    QUANTITY INT,\n    PRICE INT,\n    FOREIGN KEY (PRODUCT_ID) REFERENCES PRODUCT(PRODUCT_ID),\n    CHECK (QUANTITY > 0),\n    CHECK (PRICE > 0)\n);",
+  "q1": "SELECT P.PRODUCT_ID, P.PRODUCT_NAME FROM PRODUCT P INNER JOIN ( SELECT PRODUCT_ID FROM SALES GROUP BY PRODUCT_ID HAVING MIN(SALE_DATE) >= '2019-01-01' AND MAX(SALE_DATE) <= '2019-03-31' ) S ON (P.PRODUCT_ID = S.PRODUCT_ID)",
+  "q2": "SELECT A.PRODUCT_ID, P.PRODUCT_NAME FROM (SELECT PRODUCT_ID, MAX(SALE_DATE) , MIN(SALE_DATE) FROM SALES GROUP BY PRODUCT_ID HAVING MIN(SALE_DATE) >= '2019-01-01' AND MAX(SALE_DATE) <= '2019-03-31')A JOIN PRODUCT P ON A.PRODUCT_ID=P.PRODUCT_ID",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT P.PRODUCT_ID, P.PRODUCT_NAME FROM PRODUCT P INNER JOIN ( SELECT PRODUCT_ID FROM SALES GROUP BY PRODUCT_ID HAVING MIN(SALE_DATE) >= '2019-01-01' AND MAX(SALE_DATE) <= '2019-03-31' ) S ON (P.PRODUCT_ID = S.PRODUCT_ID)",
+  "q2_prompt_sql": "SELECT A.PRODUCT_ID, P.PRODUCT_NAME FROM (SELECT PRODUCT_ID, MAX(SALE_DATE) , MIN(SALE_DATE) FROM SALES GROUP BY PRODUCT_ID HAVING MIN(SALE_DATE) >= '2019-01-01' AND MAX(SALE_DATE) <= '2019-03-31')A JOIN PRODUCT P ON A.PRODUCT_ID=P.PRODUCT_ID",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries aim to retrieve products whose sales occurred exclusively between '2019-01-01' and '2019-03-31'. Q1 and Q2 use identical HAVING conditions to filter products, and the additional columns in Q2's subquery (MAX and MIN dates) do not affect the join or result set since they are not used in the join condition or output. The final output of both queries is the same set of product IDs and names.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries aim to retrieve products whose sales occurred exclusively between '2019-01-01' and '2019-03-31'. Q1 and Q2 use identical HAVING conditions to filter products, and the additional columns in Q2's subquery (MAX and MIN dates) do not affect the join or result set since they are not used in the join condition or output. The final output of both queries is the same set of product IDs and names.\"\n}",
+  "reasoning": "\nOkay, let's see. I need to determine if Q1 and Q2 are semantically equivalent. Let's start by understanding what each query does.\n\nFirst, looking at Q1: It selects product IDs and names from the PRODUCT table by joining with a subquery. The subquery groups SALES by PRODUCT_ID and checks that the minimum sale date is >= '2019-01-01' and the maximum sale date is <= '2019-03-31'. So this subquery is filtering products that have all their sales within that date range. Then, Q1 joins this result with the PRODUCT table to get the product names.\n\nNow Q2: It selects from a subquery A, which is similar to the subquery in Q1 but also includes MAX(SALE_DATE) and MIN(SALE_DATE) in the SELECT clause. Then it joins with PRODUCT. The HAVING clause is the same as Q1's. The difference here is that Q2's subquery includes those aggregate columns, but since it's in the SELECT, does that affect anything?\n\nWait, but in SQL, when you have a GROUP BY, the SELECT can only include the grouped columns and aggregate functions. So in Q2, the subquery A is selecting PRODUCT_ID, MAX(SALE_DATE), MIN(SALE_DATE) grouped by PRODUCT_ID. The HAVING condition is the same as Q1's. But the main difference is that Q1's subquery only selects PRODUCT_ID, while Q2's subquery selects more columns. However, since both are using the same HAVING clause, the set of PRODUCT_IDs selected should be the same. But does the presence of those extra columns in Q2's subquery affect the join?\n\nWait, no. The subquery in Q1 is just a list of PRODUCT_IDs that meet the criteria. The subquery in Q2 is also selecting those same PRODUCT_IDs, but with additional columns. However, when you do the JOIN in Q2, the subquery A is joined on PRODUCT_ID with PRODUCT. So the actual result of the subquery in Q2 is a list of PRODUCT_IDs (since the other columns are just the min and max dates, but they are not used in the join). So the join condition is still on PRODUCT_ID, which is the same as Q1. Therefore, the result of the join should be the same products.\n\nWait, but maybe there's a case where the subquery in Q2 returns more rows? No, because the GROUP BY is on PRODUCT_ID. Each group will have one row, regardless of the number of columns selected. So the number of rows in the subquery for Q1 and Q2 should be the same. Therefore, the JOIN with PRODUCT would produce the same results.\n\nBut wait, maybe there's a difference in how the HAVING clause is evaluated? Let me check. Both have the same HAVING clause: MIN(SALE_DATE) >= '2019-01-01' AND MAX(SALE_DATE) <= '2019-03-31'. So the filtering is the same. Therefore, the set of PRODUCT_IDs in both subqueries should be identical. Then, joining with PRODUCT would result in the same rows.\n\nBut why does Q2 include the MAX and MIN in the SELECT? Maybe it's a red herring. Since the subquery in Q2 is not using those columns in the join, they don't affect the result. Therefore, Q1 and Q2 should be equivalent.\n\nWait, but maybe in some SQL implementations, if the subquery in Q2 has more columns, it might affect the join? No, because the join is only on PRODUCT_ID. The other columns are part of the subquery's output but not used in the join. So the join condition is the same as Q1's. Therefore, the results should be the same.\n\nBut maybe there's a case where the subquery in Q2 returns different rows? Let me think. Suppose a product has sales dates that meet the HAVING condition. Both queries would include it. So the answer would be equivalent.\n\nWait, but maybe the problem is that in Q2, the subquery A is selecting MAX and MIN, which are not in the GROUP BY. But in SQL, when you have a GROUP BY, you can select the aggregate functions. So that's valid. Therefore, both subqueries are valid.\n\nTherefore, Q1 and Q2 are equivalent. So the answer would be Y.\n\nBut wait, maybe there's a case where the subquery in Q2 has a different result? Let me think of a test case. Suppose a product has sales in January and March. The min is 2019-01-01 and max is 2019-03-31. Both queries would include it. Another product has a sale in April. Then, it would be excluded. So the same.\n\nAlternatively, maybe there's a product with sales in both the range and outside. But the HAVING clause requires that all sales are within the range. So if a product has a sale in April, then MAX(SALE_DATE) would be April, which is outside the range. So the HAVING clause would exclude it.\n\nSo in all cases, the subqueries would return the same PRODUCT_IDs. Therefore, the JOINs would produce the same results. Therefore, Q1 and Q2 are equivalent. So the answer is Y.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 528,
+    "total_tokens": 1779,
+    "completion_tokens": 1251,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1132
+    },
+    "generation_seconds": 39.438
+  },
+  "started_at": "2026-10-06T15:13:20.977768+00:00",
+  "elapsed_seconds": 0.0
+}

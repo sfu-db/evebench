@@ -1,0 +1,55 @@
+{
+  "dbid": "550",
+  "index": "471",
+  "source_index": "125",
+  "schema_ddl": "CREATE TABLE ACTIVITY (\n    PLAYER_ID INT,\n    EVENT_DATE DATE,\n    DEVICE_ID INT,\n    GAMES_PLAYED INT,\n    PRIMARY KEY (PLAYER_ID, EVENT_DATE),\n    CHECK (GAMES_PLAYED >= 0)\n);",
+  "q1": "SELECT ROUND((SUM(CASE WHEN (TEMP.MIN_DATE + 1) = A.EVENT_DATE THEN 1 ELSE 0 END) / COUNT(DISTINCT TEMP.PLAYER_ID)), 2) AS FRACTION FROM (SELECT PLAYER_ID, MIN(EVENT_DATE) AS MIN_DATE FROM ACTIVITY GROUP BY PLAYER_ID) AS TEMP JOIN ACTIVITY AS A ON TEMP.PLAYER_ID = A.PLAYER_ID",
+  "q2": "SELECT DISTINCT ROUND(COUNT(DISTINCT A.PLAYER_ID)/COUNT(DISTINCT B.PLAYER_ID),2) AS FRACTION FROM ( SELECT DISTINCT A.PLAYER_ID, MIN(A.EVENT_DATE) AS EVENT_DATE FROM ACTIVITY A GROUP BY A.PLAYER_ID ) B LEFT JOIN ( SELECT DISTINCT A.PLAYER_ID, A.EVENT_DATE FROM ACTIVITY A ) A ON B.PLAYER_ID = A.PLAYER_ID AND A.EVENT_DATE = B.EVENT_DATE + 1",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT ROUND((SUM(CASE WHEN (TEMP.MIN_DATE + 1) = A.EVENT_DATE THEN 1 ELSE 0 END) / COUNT(DISTINCT TEMP.PLAYER_ID)), 2) AS FRACTION FROM (SELECT PLAYER_ID, MIN(EVENT_DATE) AS MIN_DATE FROM ACTIVITY GROUP BY PLAYER_ID) AS TEMP JOIN ACTIVITY AS A ON TEMP.PLAYER_ID = A.PLAYER_ID",
+  "q2_prompt_sql": "SELECT DISTINCT ROUND(COUNT(DISTINCT A.PLAYER_ID)/COUNT(DISTINCT B.PLAYER_ID),2) AS FRACTION FROM ( SELECT DISTINCT A.PLAYER_ID, MIN(A.EVENT_DATE) AS EVENT_DATE FROM ACTIVITY A GROUP BY A.PLAYER_ID ) B LEFT JOIN ( SELECT DISTINCT A.PLAYER_ID, A.EVENT_DATE FROM ACTIVITY A ) A ON B.PLAYER_ID = A.PLAYER_ID AND A.EVENT_DATE = B.EVENT_DATE + 1",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO ACTIVITY (PLAYER_ID, EVENT_DATE, DEVICE_ID, GAMES_PLAYED) VALUES (1, '2023-01-01', 100, 5); INSERT INTO ACTIVITY (PLAYER_ID, EVENT_DATE, DEVICE_ID, GAMES_PLAYED) VALUES (1, '2023-01-02', 101, 3); INSERT INTO ACTIVITY (PLAYER_ID, EVENT_DATE, DEVICE_ID, GAMES_PLAYED) VALUES (2, '2023-01-01', 200, 2);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent. Q1 computes the fraction of events where a player's event date is exactly one day after their first event date, across all events for all players. Q2 uses a LEFT JOIN that may not correctly count events where the condition holds due to the structure of the join and the use of COUNT(DISTINCT).",
+  "counterexample_dsp": "A test case with two players where one player has their first event on day 1 and an event on day 2 (should count), and another player has their first event on day 1 but no event on day 2 (should not count). Q1 should return 0.5, while Q2 may return 1.0 due to the LEFT JOIN behavior.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n  \"equiv\": \"N\",\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent. Q1 computes the fraction of events where a player's event date is exactly one day after their first event date, across all events for all players. Q2 uses a LEFT JOIN that may not correctly count events where the condition holds due to the structure of the join and the use of COUNT(DISTINCT).\",\n  \"counterexample_dsp\": \"A test case with two players where one player has their first event on day 1 and an event on day 2 (should count), and another player has their first event on day 1 but no event on day 2 (should not count). Q1 should return 0.5, while Q2 may return 1.0 due to the LEFT JOIN behavior.\",\n  \"counterexample\": \"INSERT INTO ACTIVITY (PLAYER_ID, EVENT_DATE, DEVICE_ID, GAMES_PLAYED) VALUES (1, '2023-01-01', 100, 5); INSERT INTO ACTIVITY (PLAYER_ID, EVENT_DATE, DEVICE_ID, GAMES_PLAYED) VALUES (1, '2023-01-02', 101, 3); INSERT INTO ACTIVITY (PLAYER_ID, EVENT_DATE, DEVICE_ID, GAMES_PLAYED) VALUES (2, '2023-01-01', 200, 2);\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 484,
+    "total_tokens": 798,
+    "completion_tokens": 314,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 10.188
+  },
+  "started_at": "2026-10-06T15:49:13.036284+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "0.50"
+    ]
+  ],
+  "q2_output": [
+    [
+      "0.50"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT ROUND((SUM(CASE WHEN (TEMP.MIN_DATE + 1) = A.EVENT_DATE THEN 1 ELSE 0 END) / COUNT(DISTINCT TEMP.PLAYER_ID)), 2) AS FRACTION FROM (SELECT PLAYER_ID, MIN(EVENT_DATE) AS MIN_DATE FROM ACTIVITY GROUP BY PLAYER_ID) AS TEMP JOIN ACTIVITY AS A ON TEMP.PLAYER_ID = A.PLAYER_ID",
+  "q2_validation_sql": "SELECT DISTINCT ROUND(COUNT(DISTINCT A.PLAYER_ID)/COUNT(DISTINCT B.PLAYER_ID),2) AS FRACTION FROM ( SELECT DISTINCT A.PLAYER_ID, MIN(A.EVENT_DATE) AS EVENT_DATE FROM ACTIVITY A GROUP BY A.PLAYER_ID ) B LEFT JOIN ( SELECT DISTINCT A.PLAYER_ID, A.EVENT_DATE FROM ACTIVITY A ) A ON B.PLAYER_ID = A.PLAYER_ID AND A.EVENT_DATE = B.EVENT_DATE + 1"
+}

@@ -1,0 +1,39 @@
+{
+  "dbid": "183",
+  "index": "243",
+  "source_index": "209",
+  "schema_ddl": "CREATE TABLE CUSTOMERS (\n    ID INT,\n    NAME VARCHAR(255),\n    PRIMARY KEY (ID)\n);\n\nCREATE TABLE ORDERS (\n    ID INT,\n    CUSTOMERID VARCHAR(255),\n    PRIMARY KEY (ID),\n    FOREIGN KEY (CUSTOMERID) REFERENCES CUSTOMERS(ID)\n);",
+  "q1": "SELECT NAME AS CUSTOMERS FROM CUSTOMERS WHERE ID NOT IN (SELECT CUSTOMERID FROM ORDERS)",
+  "q2": "SELECT NAME AS CUSTOMERS FROM CUSTOMERS C WHERE ID NOT IN (SELECT CUSTOMERID FROM ORDERS) ORDER BY 1",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT NAME AS CUSTOMERS FROM CUSTOMERS WHERE ID NOT IN (SELECT CUSTOMERID FROM ORDERS)",
+  "q2_prompt_sql": "SELECT NAME AS CUSTOMERS FROM CUSTOMERS C WHERE ID NOT IN (SELECT CUSTOMERID FROM ORDERS) ORDER BY 1",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are semantically equivalent. The only difference is that Q2 adds an ORDER BY 1 clause, which orders the result by the first column (NAME). However, if the question is about whether the output sets are the same, then yes they are equivalent. If the question is about ordering, then they differ, but the problem statement asks for semantic equivalence in terms of output data, not ordering.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n  \"equiv\": \"Y\",\n  \"explanation\": \"Q1 and Q2 are semantically equivalent. The only difference is that Q2 adds an ORDER BY 1 clause, which orders the result by the first column (NAME). However, if the question is about whether the output sets are the same, then yes they are equivalent. If the question is about ordering, then they differ, but the problem statement asks for semantic equivalence in terms of output data, not ordering.\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 365,
+    "total_tokens": 470,
+    "completion_tokens": 105,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 3.296
+  },
+  "started_at": "2026-10-06T15:40:02.590125+00:00",
+  "elapsed_seconds": 0.0
+}

@@ -1,0 +1,58 @@
+{
+  "dbid": "toxicology",
+  "index": "148",
+  "source_index": "208",
+  "schema_ddl": "CREATE TABLE `atom` (\n  `atom_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `element` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `bond` (\n  `bond_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `bond_type` TEXT DEFAULT NULL,\n  PRIMARY KEY (`bond_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `connected` (\n  `atom_id` TEXT NOT NULL,\n  `atom_id2` TEXT NOT NULL,\n  `bond_id` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`,`atom_id2`),\n  FOREIGN KEY (`atom_id`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`atom_id2`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`bond_id`) REFERENCES `bond` (`bond_id`) ON DELETE CASCADE ON UPDATE CASCADE\n);\n\nCREATE TABLE `molecule` (\n  `molecule_id` TEXT NOT NULL,\n  `label` TEXT DEFAULT NULL,\n  PRIMARY KEY (`molecule_id`)\n);",
+  "q1": "SELECT DISTINCT T1.element FROM atom AS T1 INNER JOIN bond AS T2 ON T1.molecule_id = T2.molecule_id INNER JOIN connected AS T3 ON T1.atom_id = T3.atom_id WHERE T2.bond_type = '='",
+  "q2": "SELECT DISTINCT atom.element FROM atom INNER JOIN connected ON atom.atom_id = connected.atom_id INNER JOIN bond ON connected.bond_id = bond.bond_id WHERE bond.bond_type = 'double'",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT DISTINCT T1.element FROM atom AS T1 INNER JOIN bond AS T2 ON T1.molecule_id = T2.molecule_id INNER JOIN connected AS T3 ON T1.atom_id = T3.atom_id WHERE T2.bond_type = '='",
+  "q2_prompt_sql": "SELECT DISTINCT atom.element FROM atom INNER JOIN connected ON atom.atom_id = connected.atom_id INNER JOIN bond ON connected.bond_id = bond.bond_id WHERE bond.bond_type = 'double'",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO molecule (molecule_id) VALUES ('M1');\nINSERT INTO atom (atom_id, molecule_id, element) VALUES ('A1','M1','H'), ('A2','M1','O'), ('A3','M1','C');\nINSERT INTO bond (bond_id, molecule_id, bond_type) VALUES ('B1','M1','='), ('B2','M1','double');\nINSERT INTO connected (atom_id, atom_id2, bond_id) VALUES ('A1','A2','B1'), ('A2','A3','B2');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 filters on bond_type = '=' while Q2 filters on bond_type = 'double'. These are distinct conditions leading to different results.",
+  "counterexample_dsp": "A molecule with two bonds: one of type '=' connecting H and O atoms, and one of type 'double' connecting O and C atoms. Q1 returns H/O, Q2 returns O/C.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 filters on bond_type = '=' while Q2 filters on bond_type = 'double'. These are distinct conditions leading to different results.\",\n\"counterexample_dsp\": \"A molecule with two bonds: one of type '=' connecting H and O atoms, and one of type 'double' connecting O and C atoms. Q1 returns H/O, Q2 returns O/C.\",\n\"counterexample\": \"INSERT INTO molecule (molecule_id) VALUES ('M1');\\nINSERT INTO atom (atom_id, molecule_id, element) VALUES ('A1','M1','H'), ('A2','M1','O'), ('A3','M1','C');\\nINSERT INTO bond (bond_id, molecule_id, bond_type) VALUES ('B1','M1','='), ('B2','M1','double');\\nINSERT INTO connected (atom_id, atom_id2, bond_id) VALUES ('A1','A2','B1'), ('A2','A3','B2');\"\n}",
+  "reasoning": "\nOkay, let's start by analyzing the two queries.\n\nFirst, Q1: It selects distinct elements from atom, joining with bond on molecule_id and connected on T1.atom_id = T3.atom_id. The condition is T2.bond_type = '='. So, it's looking for atoms that are part of bonds of type '=' in the same molecule, through the connected table.\n\nQ2: Selects distinct element from atom, joins connected on atom.atom_id = connected.atom_id, then joins bond on connected.bond_id = bond.bond_id, with bond_type = 'double'. So this is atoms connected via bonds that are of type 'double'.\n\nWait, the bond_type conditions are different. Q1 uses '=' and Q2 uses 'double'. That's a key difference. But maybe the user made a typo? Let me check the original queries again.\n\nLooking back: Q1's WHERE is T2.bond_type = '='. Q2's WHERE is bond.bond_type = 'double'. So the bond types are different. So the two queries are filtering on different bond types. Therefore, unless the bond_type values are the same in both cases, which they aren't here, the results would differ.\n\nWait, but maybe I'm misunderstanding the connected table. The connected table has a bond_id. So, for Q1, the join is on bond via T1.molecule_id = T2.molecule_id. But connected's bond_id is linked to bond's bond_id. So in Q1, the bond_type is from bond table where bond_type equals '='. In Q2, bond_type is 'double'. So the bond types are different. So these two queries are selecting different sets of bonds, hence different elements.\n\nTherefore, the queries are not equivalent. The difference comes from the bond_type values in the WHERE clauses. So if there are atoms connected via '=' bonds and others via 'double' bonds, the results would differ.\n\nNow, to create a counterexample. Let's create a molecule with two atoms connected by a single bond of type '=' and another bond of type 'double'. Then, the first query would return the element of the atom connected via '=', while the second would return the element for the 'double' bond.\n\nWait, but the connected table links two atoms with a bond. So perhaps in the connected table, each entry has a bond_id. So for each bond, there's an entry in connected for the two atoms involved.\n\nSo let's create a molecule, say molecule_id 'M1'. Two atoms: A1 and A2. Create two bonds: one with bond_id 'B1' type '=', and another with bond_id 'B2' type 'double'. Then in the connected table, for bond B1, connect A1 and A2. For bond B2, connect A1 and A2 again (or another pair, but maybe same atoms for simplicity). Then Q1 would get the element of A1 (assuming element is same for both) when joined with bond type '=', and Q2 would get the same element when joined with bond type 'double'. But if the elements are the same, then both queries would return same result. Hmm, but that's not helpful.\n\nWait, but the question is to find a case where they differ. So perhaps create a scenario where one atom is part of a '=' bond and another is part of a 'double' bond. Let's have two atoms in the same molecule. Let's say atom A1 has element 'H', and atom A2 has element 'O'. Then, create a bond B1 (type '=') between A1 and A2. Also create a bond B2 (type 'double') between A1 and another atom A3 (element 'O').\n\nThen Q1 would return H and O (since A1 and A2 are connected via '='). Q2 would return O (from A3 connected via 'double'). So the results would differ. But need to make sure the joins are correct.\n\nAlternatively, maybe a simpler case. Let's create two separate bonds. For example, one bond with type '=' connecting atoms A1 and A2 (element 'H'), and another bond with type 'double' connecting A1 and A3 (element 'O'). Then Q1 would return 'H' (from A1 and A2 via '='), and Q2 would return 'O' (from A1 and A3 via 'double'). So the distinct elements would be different. Hence, the queries would return different results.\n\nSo the counterexample would involve having atoms connected via both bond types, leading to different elements being selected.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 612,
+    "total_tokens": 1786,
+    "completion_tokens": 1174,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 949
+    },
+    "generation_seconds": 37.891
+  },
+  "started_at": "2026-10-06T21:11:58.112983+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "H"
+    ],
+    [
+      "O"
+    ]
+  ],
+  "q2_output": [
+    [
+      "O"
+    ]
+  ],
+  "q1_row_count": 2,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DISTINCT T1.element FROM atom AS T1 INNER JOIN bond AS T2 ON T1.molecule_id = T2.molecule_id INNER JOIN connected AS T3 ON T1.atom_id = T3.atom_id WHERE T2.bond_type = '='",
+  "q2_validation_sql": "SELECT DISTINCT atom.element FROM atom INNER JOIN connected ON atom.atom_id = connected.atom_id INNER JOIN bond ON connected.bond_id = bond.bond_id WHERE bond.bond_type = 'double'"
+}

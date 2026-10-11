@@ -1,0 +1,39 @@
+{
+  "dbid": "1141",
+  "index": "19",
+  "source_index": "78",
+  "schema_ddl": "CREATE TABLE ACTIVITY (\n    USER_ID INT,\n    SESSION_ID INT,\n    ACTIVITY_DATE DATE,\n    ACTIVITY_TYPE ENUM('OPEN_SESSION', 'END_SESSION', 'SCROLL_DOWN', 'SEND_MESSAGE'),\n    CHECK (ACTIVITY_TYPE IN ('OPEN_SESSION', 'END_SESSION', 'SCROLL_DOWN', 'SEND_MESSAGE'))\n);",
+  "q1": "SELECT ACTIVITY_DATE AS DAY, COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY WHERE ACTIVITY_DATE BETWEEN '2019-06-28' AND '2019-07-27' GROUP BY ACTIVITY_DATE",
+  "q2": "SELECT ACTIVITY_DATE AS DAY ,COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY GROUP BY ACTIVITY_DATE HAVING ACTIVITY_DATE BETWEEN SUBDATE('2019-07-27' ,INTERVAL 29 DAY) AND '2019-07-27'",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT ACTIVITY_DATE AS DAY, COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY WHERE ACTIVITY_DATE BETWEEN '2019-06-28' AND '2019-07-27' GROUP BY ACTIVITY_DATE",
+  "q2_prompt_sql": "SELECT ACTIVITY_DATE AS DAY ,COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY GROUP BY ACTIVITY_DATE HAVING ACTIVITY_DATE BETWEEN SUBDATE('2019-07-27' ,INTERVAL 29 DAY) AND '2019-07-27'",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are semantically equivalent. Both count distinct users per activity date for the same date range ('2019-06-28' to '2019-07-27'). The difference in the placement of the date filter (WHERE vs. HAVING) does not affect the outcome since ACTIVITY_DATE is included in the GROUP BY clause.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n  \"equiv\": \"N\",\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent. Q1 filters rows before grouping by using the BETWEEN clause in the WHERE clause, which restricts the date range before any aggregation. Q2 uses the HAVING clause to filter the grouped results by the same date range, but HAVING applies after grouping, which could lead to different behavior if there are grouping keys outside the date range. However, since ACTIVITY_DATE is part of the GROUP BY, HAVING should behave similarly to WHERE in this specific case. The real difference lies in the date calculation: Q1 uses a literal date range from '2019-06-28' to '2019-07-27', while Q2 uses a dynamic date calculation (SUBDATE('2019-07-27', INTERVAL 29 DAY) = '2019-06-28'). Despite the same date range, the key issue is that Q2 could potentially include dates outside the intended range if the date arithmetic changes or the literal is different. However, in this specific case, they are equivalent. Wait — I made a mistake. Actually, both queries are equivalent in terms of the date range. Let me correct the analysis.\",\n  \"explanation\": \"Q1 and Q2 are semantically equivalent. Both queries count the distinct number of users per activity date for the same date range: from '2019-06-28' to '2019-07-27'. Q1 uses a WHERE clause to filter before grouping, while Q2 uses a HAVING clause to filter after grouping. However, since ACTIVITY_DATE is part of the GROUP BY, both approaches yield the same result for this specific scenario. The date range in Q2 is computed as SUBDATE('2019-07-27', INTERVAL 29 DAY), which evaluates to '2019-06-28', matching the literal in Q1.\",\n  \"equiv\": \"Y\",\n  \"explanation\": \"Q1 and Q2 are semantically equivalent. Both count distinct users per activity date for the same date range ('2019-06-28' to '2019-07-27'). The difference in the placement of the date filter (WHERE vs. HAVING) does not affect the outcome since ACTIVITY_DATE is included in the GROUP BY clause.\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 444,
+    "total_tokens": 971,
+    "completion_tokens": 527,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 15.859
+  },
+  "started_at": "2026-10-06T15:26:37.153951+00:00",
+  "elapsed_seconds": 0.0
+}

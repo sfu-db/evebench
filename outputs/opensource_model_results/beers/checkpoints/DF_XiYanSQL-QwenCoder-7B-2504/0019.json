@@ -1,0 +1,55 @@
+{
+  "dbid": "beers",
+  "index": "19",
+  "source_index": "156",
+  "schema_ddl": "CREATE TABLE Bar (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Beer (\n    name VARCHAR NOT NULL,\n    brewer VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Drinker (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Frequents (\n    drinker VARCHAR NOT NULL,\n    bar VARCHAR NOT NULL,\n    times_a_week SMALLINT NOT NULL,\n    PRIMARY KEY (drinker, bar),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (bar) REFERENCES Bar(name)\n);\n\nCREATE TABLE Serves (\n    bar VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    price DECIMAL(5,2) NOT NULL,\n    PRIMARY KEY (bar, beer),\n    FOREIGN KEY (bar) REFERENCES Bar(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);\n\nCREATE TABLE Likes (\n    drinker VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    PRIMARY KEY (drinker, beer),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);",
+  "q1": "SELECT f1.drinker, f2.drinker FROM (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f1, (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f2 WHERE f1.drinker < f2.drinker AND f1.st = f2.st",
+  "q2": "SELECT t1.drinker, t2.drinker FROM frequents AS t1 JOIN frequents AS t2 ON t1.times_a_week = t2.times_a_week WHERE t1.drinker < t2.drinker",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "beers",
+  "q1_prompt_sql": "SELECT f1.drinker, f2.drinker FROM (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f1, (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f2 WHERE f1.drinker < f2.drinker AND f1.st = f2.st",
+  "q2_prompt_sql": "SELECT t1.drinker, t2.drinker FROM frequents AS t1 JOIN frequents AS t2 ON t1.times_a_week = t2.times_a_week WHERE t1.drinker < t2.drinker",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO Drinker (name, address) VALUES ('Drinker1', 'Address1'), ('Drinker2', 'Address2'); INSERT INTO Bar (name, address) VALUES ('Bar1', 'Address1'); INSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('Drinker1', 'Bar1', 3), ('Drinker2', 'Bar1', 3);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not equivalent because Q1 groups the 'frequents' table by 'drinker' and calculates the sum of 'times_a_week' for each drinker, then compares the sums of two different drinkers. Q2, on the other hand, directly compares the 'times_a_week' values of two rows from the 'frequents' table without grouping or summing.",
+  "counterexample_dsp": "The difference is triggered when there are two rows in the 'frequents' table with the same 'times_a_week' value but different 'drinker' values.",
+  "equiv": "N",
+  "raw_response": "{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 and Q2 are not equivalent because Q1 groups the 'frequents' table by 'drinker' and calculates the sum of 'times_a_week' for each drinker, then compares the sums of two different drinkers. Q2, on the other hand, directly compares the 'times_a_week' values of two rows from the 'frequents' table without grouping or summing.\",\n\"counterexample_dsp\": \"The difference is triggered when there are two rows in the 'frequents' table with the same 'times_a_week' value but different 'drinker' values.\",\n\"counterexample\": \"INSERT INTO Drinker (name, address) VALUES ('Drinker1', 'Address1'), ('Drinker2', 'Address2'); INSERT INTO Bar (name, address) VALUES ('Bar1', 'Address1'); INSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('Drinker1', 'Bar1', 3), ('Drinker2', 'Bar1', 3);\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 642,
+    "total_tokens": 869,
+    "completion_tokens": 227,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 4.047
+  },
+  "started_at": "2026-10-06T09:04:46.545727+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "Drinker1",
+      "Drinker2"
+    ]
+  ],
+  "q2_output": [
+    [
+      "Drinker1",
+      "Drinker2"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT f1.drinker, f2.drinker FROM (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f1, (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f2 WHERE f1.drinker < f2.drinker AND f1.st = f2.st",
+  "q2_validation_sql": "SELECT t1.drinker, t2.drinker FROM frequents AS t1 JOIN frequents AS t2 ON t1.times_a_week = t2.times_a_week WHERE t1.drinker < t2.drinker"
+}

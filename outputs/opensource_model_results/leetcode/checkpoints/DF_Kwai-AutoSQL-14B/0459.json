@@ -1,0 +1,39 @@
+{
+  "dbid": "550",
+  "index": "459",
+  "source_index": "374",
+  "schema_ddl": "CREATE TABLE ACTIVITY (\n    PLAYER_ID INT,\n    EVENT_DATE DATE,\n    DEVICE_ID INT,\n    GAMES_PLAYED INT,\n    PRIMARY KEY (PLAYER_ID, EVENT_DATE),\n    CHECK (GAMES_PLAYED >= 0)\n);",
+  "q1": "SELECT ROUND((SUM(CASE WHEN (TEMP.MIN_DATE + 1) = A.EVENT_DATE THEN 1 ELSE 0 END) / COUNT(DISTINCT TEMP.PLAYER_ID)), 2) AS FRACTION FROM (SELECT PLAYER_ID, MIN(EVENT_DATE) AS MIN_DATE FROM ACTIVITY GROUP BY PLAYER_ID) AS TEMP JOIN ACTIVITY AS A ON TEMP.PLAYER_ID = A.PLAYER_ID",
+  "q2": "SELECT ROUND(COUNT(PLAYER_ID) / (SELECT COUNT(DISTINCT PLAYER_ID) FROM ACTIVITY),2) AS FRACTION FROM ACTIVITY WHERE (PLAYER_ID, DATE_SUB(EVENT_DATE, INTERVAL 1 DAY)) IN (SELECT PLAYER_ID, MIN(EVENT_DATE) AS MIN_DATE FROM ACTIVITY GROUP BY PLAYER_ID)",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT ROUND((SUM(CASE WHEN (TEMP.MIN_DATE + 1) = A.EVENT_DATE THEN 1 ELSE 0 END) / COUNT(DISTINCT TEMP.PLAYER_ID)), 2) AS FRACTION FROM (SELECT PLAYER_ID, MIN(EVENT_DATE) AS MIN_DATE FROM ACTIVITY GROUP BY PLAYER_ID) AS TEMP JOIN ACTIVITY AS A ON TEMP.PLAYER_ID = A.PLAYER_ID",
+  "q2_prompt_sql": "SELECT ROUND(COUNT(PLAYER_ID) / (SELECT COUNT(DISTINCT PLAYER_ID) FROM ACTIVITY),2) AS FRACTION FROM ACTIVITY WHERE (PLAYER_ID, DATE_SUB(EVENT_DATE, INTERVAL 1 DAY)) IN (SELECT PLAYER_ID, MIN(EVENT_DATE) AS MIN_DATE FROM ACTIVITY GROUP BY PLAYER_ID)",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries compute the same fraction: the count of events occurring exactly one day after a player's first event, divided by the total number of distinct players. Q1 uses a subquery join with conditional aggregation, while Q2 uses an IN clause with a correlated subquery, but both yield identical results.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n  \"equiv\": \"Y\",\n  \"explanation\": \"Both queries compute the same fraction: the count of events occurring exactly one day after a player's first event, divided by the total number of distinct players. Q1 uses a subquery join with conditional aggregation, while Q2 uses an IN clause with a correlated subquery, but both yield identical results.\"\n}",
+  "reasoning": "\nOkay, let's try to figure out if Q1 and Q2 are equivalent. First, I need to understand what each query is doing.\n\nStarting with Q1. The query has a subquery called TEMP which groups ACTIVITY by PLAYER_ID and takes the minimum EVENT_DATE for each player. Then, it joins this TEMP with the ACTIVITY table on PLAYER_ID. The main part is a SUM of CASE WHEN (TEMP.MIN_DATE + 1) equals A.EVENT_DATE. So for each row in ACTIVITY, it checks if the event date is exactly one day after the player's earliest event date. Then it divides that sum by the count of distinct player IDs and rounds to two decimal places. The denominator is COUNT(DISTINCT TEMP.PLAYER_ID), which is the number of distinct players. So the fraction is the count of events that are one day after the player's first event divided by the number of players.\n\nNow Q2. It selects from ACTIVITY where (PLAYER_ID, DATE_SUB(EVENT_DATE, INTERVAL 1 DAY)) is in the subquery that selects PLAYER_ID and MIN(EVENT_DATE) per player. The subquery gives for each player their minimum event date. Then DATE_SUB(EVENT_DATE, 1 day) would be the day before the event date. So the condition is that the day before the event date equals the player's minimum event date. That would mean that EVENT_DATE is the day after the minimum date. Then they count the PLAYER_IDs and divide by the total distinct players from ACTIVITY. So same as Q1, the numerator is the count of events that are one day after the player's first event, and denominator is total distinct players.\n\nWait, but Q2's denominator is a scalar subquery: (SELECT COUNT(DISTINCT PLAYER_ID) FROM ACTIVITY). That's the same as COUNT(DISTINCT TEMP.PLAYER_ID) in Q1, since TEMP is grouped by PLAYER_ID, so COUNT(DISTINCT TEMP.PLAYER_ID) is same as COUNT(DISTINCT PLAYER_ID) from ACTIVITY. So both queries compute the same numerator and denominator. So they should be equivalent. But wait, maybe not. Let me check again.\n\nIn Q1, the SUM counts each row in the joined table where the condition is met. The join is between TEMP (which has one row per player) and ACTIVITY. So each row in ACTIVITY is matched with the player's MIN_DATE. So for each event row, check if event_date is min_date + 1. Then sum all those 1s. So the numerator is the count of events where event_date is the day after the player's first event. Then divide by the count of distinct players.\n\nIn Q2, the WHERE clause is (PLAYER_ID, DATE_SUB(EVENT_DATE, 1 day)) IN (subquery). The subquery gives pairs of PLAYER_ID and MIN(EVENT_DATE). So for each event row, the date_sub(EVENT_DATE, 1 day) must equal the player's min event date. That is, event_date must be min_date + 1. So the numerator is the count of such event rows. Then divide by total distinct players.\n\nSo both queries count the same numerator (number of events that are exactly one day after the player's first event) divided by the same denominator (number of distinct players). So they should be equivalent. But wait, what about the denominator in Q2? The denominator is the count of distinct players in the entire ACTIVITY table, which is same as COUNT(DISTINCT TEMP.PLAYER_ID) in Q1, since TEMP has one row per player. So yes, same denominator.\n\nBut maybe there's a difference in how the count is done. Let me think of a test case. Suppose there's a player with multiple events. For example, player 1 has events on 2020-01-01 (min date) and 2020-01-02. Then the event on 2020-01-02 would be counted once in Q1 (sum 1) and once in Q2 (count 1). So that's same.\n\nAnother case: player 1 has min date 2020-01-01 and events on 2020-01-02 and 2020-01-03. Then the first event after min is 2020-01-02, so that's one event counted. The second event (2020-01-03) would not be counted. So both queries would count 1 for this player. So same result.\n\nWait, but in Q1, the join is between TEMP (one row per player) and ACTIVITY. So for each player, all their events are joined. Then the CASE WHEN checks for each event row. So the numerator is the total count across all players of events that are one day after their min date. In Q2, the count is the same. So yes, same numerator.\n\nTherefore, they should be equivalent. But maybe I'm missing something. Let me check the syntax again.\n\nIn Q1, the SUM(CASE WHEN (TEMP.MIN_DATE + 1) = A.EVENT_DATE THEN 1 ELSE 0 END) counts the number of events that are one day after the player's min date. The denominator is COUNT(DISTINCT TEMP.PLAYER_ID), which is the number of players.\n\nIn Q2, the numerator is COUNT(PLAYER_ID) where the event meets the condition. The denominator is (SELECT COUNT(DISTINCT PLAYER_ID) FROM ACTIVITY), which is same as the denominator in Q1. So same result.\n\nSo the answer should be equivalent. So equiv is Y.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 453,
+    "total_tokens": 1718,
+    "completion_tokens": 1265,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1185
+    },
+    "generation_seconds": 40.25
+  },
+  "started_at": "2026-10-06T15:48:02.272088+00:00",
+  "elapsed_seconds": 0.0
+}

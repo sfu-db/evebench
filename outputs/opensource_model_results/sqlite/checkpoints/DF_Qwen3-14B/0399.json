@@ -1,0 +1,55 @@
+{
+  "dbid": "superhero",
+  "index": "399",
+  "source_index": "739",
+  "schema_ddl": "CREATE TABLE alignment\n(\n    id        INTEGER not null\n            primary key,\n    alignment TEXT default NULL\n);\n\nCREATE TABLE attribute\n(\n    id             INTEGER not null\n            primary key,\n    attribute_name TEXT default NULL\n);\n\nCREATE TABLE colour\n(\n    id     INTEGER not null\n            primary key,\n    colour TEXT default NULL\n);\n\nCREATE TABLE gender\n(\n    id     INTEGER not null\n            primary key,\n    gender TEXT default NULL\n);\n\nCREATE TABLE publisher\n(\n    id             INTEGER not null\n            primary key,\n    publisher_name TEXT default NULL\n);\n\nCREATE TABLE race\n(\n    id   INTEGER not null\n            primary key,\n    race TEXT default NULL\n);\n\nCREATE TABLE superhero\n(\n    id             INTEGER not null\n            primary key,\n    superhero_name TEXT default NULL,\n    full_name      TEXT default NULL,\n    gender_id      INTEGER          default NULL,\n    eye_colour_id  INTEGER          default NULL,\n    hair_colour_id INTEGER          default NULL,\n    skin_colour_id INTEGER          default NULL,\n    race_id        INTEGER          default NULL,\n    publisher_id   INTEGER          default NULL,\n    alignment_id   INTEGER          default NULL,\n    height_cm      INTEGER          default NULL,\n    weight_kg      INTEGER          default NULL,\n    foreign key (alignment_id) references alignment(id),\n    foreign key (eye_colour_id) references colour(id),\n    foreign key (gender_id) references gender(id),\n    foreign key (hair_colour_id) references colour(id),\n    foreign key (publisher_id) references publisher(id),\n    foreign key (race_id) references race(id),\n    foreign key (skin_colour_id) references colour(id)\n);\n\nCREATE TABLE hero_attribute\n(\n    hero_id         INTEGER default NULL,\n    attribute_id    INTEGER default NULL,\n    attribute_value INTEGER default NULL,\n    foreign key (attribute_id) references attribute(id),\n    foreign key (hero_id) references superhero(id)\n);\n\nCREATE TABLE superpower\n(\n    id         INTEGER not null\n            primary key,\n    power_name TEXT default NULL\n);\n\nCREATE TABLE hero_power\n(\n    hero_id  INTEGER default NULL,\n    power_id INTEGER default NULL,\n    foreign key (hero_id) references superhero(id),\n    foreign key (power_id) references superpower(id)\n);",
+  "q1": "SELECT COUNT(T1.hero_id) FROM hero_attribute AS T1 INNER JOIN attribute AS T2 ON T1.attribute_id = T2.id WHERE T2.attribute_name = 'Durability' AND T1.attribute_value < 50",
+  "q2": "SELECT COUNT(DISTINCT hero_id) FROM hero_attribute INNER JOIN attribute ON hero_attribute.attribute_id = attribute.id WHERE attribute.attribute_name = 'Durability' AND hero_attribute.attribute_value < 50",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT COUNT(T1.hero_id) FROM hero_attribute AS T1 INNER JOIN attribute AS T2 ON T1.attribute_id = T2.id WHERE T2.attribute_name = 'Durability' AND T1.attribute_value < 50",
+  "q2_prompt_sql": "SELECT COUNT(DISTINCT hero_id) FROM hero_attribute INNER JOIN attribute ON hero_attribute.attribute_id = attribute.id WHERE attribute.attribute_name = 'Durability' AND hero_attribute.attribute_value < 50",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO attribute (id, attribute_name) VALUES (1, 'Durability');\nINSERT INTO superhero (id, superhero_name) VALUES (1, 'Test Hero');\nINSERT INTO hero_attribute (hero_id, attribute_id, attribute_value) VALUES (1, 1, 40), (1, 1, 30);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 counts all rows matching conditions (including duplicates), while Q2 counts distinct hero_ids. They differ when heroes have multiple Durability attributes <50.",
+  "counterexample_dsp": "A hero with two Durability attributes <50. Q1 counts 2 rows, Q2 counts 1 unique hero.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 counts all rows matching conditions (including duplicates), while Q2 counts distinct hero_ids. They differ when heroes have multiple Durability attributes <50.\",\n\"counterexample_dsp\": \"A hero with two Durability attributes <50. Q1 counts 2 rows, Q2 counts 1 unique hero.\",\n\"counterexample\": \"INSERT INTO attribute (id, attribute_name) VALUES (1, 'Durability');\\nINSERT INTO superhero (id, superhero_name) VALUES (1, 'Test Hero');\\nINSERT INTO hero_attribute (hero_id, attribute_id, attribute_value) VALUES (1, 1, 40), (1, 1, 30);\"\n}",
+  "reasoning": "\nOkay, let's take a look at these two SQL queries. The user wants to know if they're semantically equivalent. \n\nFirst, I need to understand what each query does. \n\nQ1 is selecting the count of T1.hero_id from hero_attribute as T1 joined with attribute as T2 on T1.attribute_id = T2.id. The WHERE clause filters where T2.attribute_name is 'Durability' and T1.attribute_value is less than 50. So this counts the number of rows in the join that meet those conditions. But since it's COUNT(T1.hero_id), if there are multiple rows with the same hero_id, they'll all be counted, leading to a higher number.\n\nQ2 is similar but uses COUNT(DISTINCT hero_id). This means it counts unique hero_ids that meet the conditions. So even if a hero has multiple entries in hero_attribute for Durability with values under 50, they'll only be counted once.\n\nSo the main difference is whether duplicates in hero_id are counted. If a hero has multiple Durability attributes with values under 50, Q1 would count each occurrence, while Q2 would count them once. Therefore, they are not equivalent.\n\nTo create a counterexample, I need a scenario where a hero has multiple entries in hero_attribute for 'Durability' with values under 50. Let's say hero_id 1 has two entries with attribute_value 40 and 30. Q1 would count 2, Q2 would count 1. \n\nI need to set up the attribute table with 'Durability' and the hero_attribute entries. Also, ensure the superhero table has the hero_id 1. The other tables can be empty since they're not involved in the queries. The constraints must be followed, like foreign keys. So inserting into attribute, superhero, and hero_attribute with correct references.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 800,
+    "total_tokens": 1348,
+    "completion_tokens": 548,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 387
+    },
+    "generation_seconds": 19.016
+  },
+  "started_at": "2026-10-06T20:35:09.394212+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      2
+    ]
+  ],
+  "q2_output": [
+    [
+      1
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT COUNT(T1.hero_id) FROM hero_attribute AS T1 INNER JOIN attribute AS T2 ON T1.attribute_id = T2.id WHERE T2.attribute_name = 'Durability' AND T1.attribute_value < 50",
+  "q2_validation_sql": "SELECT COUNT(DISTINCT hero_id) FROM hero_attribute INNER JOIN attribute ON hero_attribute.attribute_id = attribute.id WHERE attribute.attribute_name = 'Durability' AND hero_attribute.attribute_value < 50"
+}

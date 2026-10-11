@@ -1,0 +1,69 @@
+{
+  "dbid": "1141",
+  "index": "415",
+  "source_index": "264",
+  "schema_ddl": "CREATE TABLE ACTIVITY (\n    USER_ID INT,\n    SESSION_ID INT,\n    ACTIVITY_DATE DATE,\n    ACTIVITY_TYPE ENUM('OPEN_SESSION', 'END_SESSION', 'SCROLL_DOWN', 'SEND_MESSAGE'),\n    CHECK (ACTIVITY_TYPE IN ('OPEN_SESSION', 'END_SESSION', 'SCROLL_DOWN', 'SEND_MESSAGE'))\n);",
+  "q1": "SELECT ACTIVITY_DATE AS DAY, COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY WHERE ACTIVITY_DATE BETWEEN '2019-06-28' AND '2019-07-27' GROUP BY ACTIVITY_DATE",
+  "q2": "SELECT COUNT(DISTINCT USER_ID) AS ACTIVE_USERS, ACTIVITY_DATE AS DAY FROM ACTIVITY WHERE ACTIVITY_DATE > '2019-06-27' AND ACTIVITY_DATE < '2019-07-27' GROUP BY ACTIVITY_DATE",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT ACTIVITY_DATE AS DAY, COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY WHERE ACTIVITY_DATE BETWEEN '2019-06-28' AND '2019-07-27' GROUP BY ACTIVITY_DATE",
+  "q2_prompt_sql": "SELECT COUNT(DISTINCT USER_ID) AS ACTIVE_USERS, ACTIVITY_DATE AS DAY FROM ACTIVITY WHERE ACTIVITY_DATE > '2019-06-27' AND ACTIVITY_DATE < '2019-07-27' GROUP BY ACTIVITY_DATE",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO ACTIVITY (USER_ID, SESSION_ID, ACTIVITY_DATE, ACTIVITY_TYPE) VALUES (1, 100, '2019-07-27', 'OPEN_SESSION'), (2, 200, '2019-07-26', 'OPEN_SESSION'), (3, 300, '2019-06-28', 'OPEN_SESSION');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 includes the end date (2019-07-27) in its range using BETWEEN, while Q2 excludes it with < '2019-07-27'. This causes Q1 to count activities on 2019-07-27, which Q2 ignores.",
+  "counterexample_dsp": "Test data includes a user active on 2019-07-27 (included in Q1 but excluded in Q2) and users active on 2019-06-28 and 2019-07-26 (included in both queries). This creates a discrepancy in the results for 2019-07-27.",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 includes the end date (2019-07-27) in its range using BETWEEN, while Q2 excludes it with < '2019-07-27'. This causes Q1 to count activities on 2019-07-27, which Q2 ignores.\",\n  \"counterexample_dsp\": \"Test data includes a user active on 2019-07-27 (included in Q1 but excluded in Q2) and users active on 2019-06-28 and 2019-07-26 (included in both queries). This creates a discrepancy in the results for 2019-07-27.\",\n  \"counterexample\": \"INSERT INTO ACTIVITY (USER_ID, SESSION_ID, ACTIVITY_DATE, ACTIVITY_TYPE) VALUES (1, 100, '2019-07-27', 'OPEN_SESSION'), (2, 200, '2019-07-26', 'OPEN_SESSION'), (3, 300, '2019-06-28', 'OPEN_SESSION');\"\n}",
+  "reasoning": "\nOkay, let's see. I need to find a counterexample where Q1 and Q2 return different results. First, I should understand what each query is doing.\n\nQ1 selects activity_date as DAY and counts distinct user_id where the activity_date is between '2019-06-28' and '2019-07-27', inclusive. Because BETWEEN is inclusive in SQL. So that includes both dates.\n\nQ2 has a condition where activity_date is greater than '2019-06-27' and less than '2019-07-27'. So that's exclusive. So Q2 is looking for dates strictly after June 27 and strictly before July 27. Wait, but the original dates in Q1 are from June 28 to July 27. So Q2's date range is June 28 to July 26, because it's > June 27 and < July 27. So the difference is that Q1 includes July 27, while Q2 does not. Also, Q1 includes June 28, which Q2 also includes because June 28 is greater than June 27. So the main difference is that Q1 includes July 27, but Q2 does not. So if there are any records on July 27, Q1 would count them, but Q2 would not. That's the key.\n\nSo to create a counterexample, I need to have data on July 27. Let's say there's a user who has an activity on July 27. Then Q1 would include that day, but Q2 would not. Also, maybe check if there's a date on July 27 in Q1's range. Let me think of a test case.\n\nLet's create a user with activity on July 27. For example, insert a record with ACTIVITY_DATE = '2019-07-27'. Then, in Q1, that day will be part of the result, but in Q2, since the condition is < '2019-07-27', that date is excluded. So Q1 would have that day in the group, and Q2 would not. Therefore, the count for that day would be present in Q1 but not in Q2.\n\nAdditionally, maybe check if there are other dates. But the main difference is the inclusion of July 27 in Q1 and not in Q2. So the counterexample should have at least one entry on July 27. Let me create that.\n\nFor example, insert a user with USER_ID 1, SESSION_ID 100, ACTIVITY_DATE '2019-07-27', and any activity type. Then, Q1 would have a row for July 27 with that user, while Q2 would not include that date. So the results would differ.\n\nAnother point: the grouping. Q1 groups by ACTIVITY_DATE, and Q2 also groups by ACTIVITY_DATE. So the structure is similar, but the date ranges are different. So the presence of data on July 27 is the key.\n\nSo the explanation would be that Q1 includes the end date (July 27) in its range, while Q2 does not. Therefore, any activity on July 27 would be counted in Q1 but not in Q2.\n\nNow, the counterexample. Let's create a table with some data. Let's say:\n\n- One user with activity on July 27.\n- Another user with activity on July 26 (so included in both queries).\n- Another user on June 28 (included in both).\nBut the difference is that the July 27 entry is in Q1 but not in Q2.\n\nSo the test data would have entries on July 27. Let me write the insert statements.\n\nFor example:\n\nINSERT INTO ACTIVITY (USER_ID, SESSION_ID, ACTIVITY_DATE, ACTIVITY_TYPE) VALUES\n(1, 100, '2019-07-27', 'OPEN_SESSION'),\n(2, 200, '2019-07-26', 'OPEN_SESSION'),\n(3, 300, '2019-06-28', 'OPEN_SESSION');\n\nThen, Q1 would have three days: June 28, July 26, July 27. Q2 would have June 28 and July 26. So Q1's result would have three rows, Q2 two. Also, the count for July 27 would be 1 in Q1, and not present in Q2. So the results are different.\n\nThat should work. Let me check the conditions again. Q1's WHERE is between '2019-06-28' and '2019-07-27', which includes both dates. Q2's WHERE is activity_date > '2019-06-27' (so June 28 and onwards) and < '2019-07-27' (so up to July 26). Therefore, July 27 is excluded in Q2. So the data on July 27 would be in Q1 but not in Q2. Hence, the counterexample.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 382,
+    "total_tokens": 1786,
+    "completion_tokens": 1404,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1135
+    },
+    "generation_seconds": 48.641
+  },
+  "started_at": "2026-10-06T11:35:24.632235+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "2019-06-28",
+      1
+    ],
+    [
+      "2019-07-26",
+      1
+    ],
+    [
+      "2019-07-27",
+      1
+    ]
+  ],
+  "q2_output": [
+    [
+      1,
+      "2019-06-28"
+    ],
+    [
+      1,
+      "2019-07-26"
+    ]
+  ],
+  "q1_row_count": 3,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT ACTIVITY_DATE AS DAY, COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY WHERE ACTIVITY_DATE BETWEEN '2019-06-28' AND '2019-07-27' GROUP BY ACTIVITY_DATE",
+  "q2_validation_sql": "SELECT COUNT(DISTINCT USER_ID) AS ACTIVE_USERS, ACTIVITY_DATE AS DAY FROM ACTIVITY WHERE ACTIVITY_DATE > '2019-06-27' AND ACTIVITY_DATE < '2019-07-27' GROUP BY ACTIVITY_DATE"
+}

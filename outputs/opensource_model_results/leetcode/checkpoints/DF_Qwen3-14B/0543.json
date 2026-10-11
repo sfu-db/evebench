@@ -1,0 +1,39 @@
+{
+  "dbid": "619",
+  "index": "543",
+  "source_index": "387",
+  "schema_ddl": "CREATE TABLE MYNUMBERS (\n    NUM INT\n);",
+  "q1": "SELECT MAX(NUM) AS NUM FROM (SELECT NUM FROM MYNUMBERS GROUP BY NUM HAVING COUNT(NUM) = 1) AS T",
+  "q2": "SELECT MAX(NUM) AS NUM FROM (SELECT NUM FROM MYNUMBERS GROUP BY NUM HAVING(COUNT(NUM) = 1) ORDER BY NUM DESC LIMIT 1) T",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT MAX(NUM) AS NUM FROM (SELECT NUM FROM MYNUMBERS GROUP BY NUM HAVING COUNT(NUM) = 1) AS T",
+  "q2_prompt_sql": "SELECT MAX(NUM) AS NUM FROM (SELECT NUM FROM MYNUMBERS GROUP BY NUM HAVING(COUNT(NUM) = 1) ORDER BY NUM DESC LIMIT 1) T",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries aim to find the maximum unique number in MYNUMBERS. Q1 uses MAX on all unique numbers, while Q2 uses ORDER BY DESC and LIMIT 1 to directly select the maximum. Both approaches yield the same result.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries aim to find the maximum unique number in MYNUMBERS. Q1 uses MAX on all unique numbers, while Q2 uses ORDER BY DESC and LIMIT 1 to directly select the maximum. Both approaches yield the same result.\"\n}",
+  "reasoning": "\nOkay, let's see. I need to figure out if Q1 and Q2 are semantically equivalent. Let me start by understanding what each query does.\n\nFirst, the schema is a table called MYNUMBERS with a single column NUM of type INT. The two queries are selecting the maximum number from different subqueries.\n\nQ1: It selects the MAX(NUM) from a subquery that groups MYNUMBERS by NUM and has a HAVING clause where COUNT(NUM) = 1. So this subquery is getting all the unique numbers (since each group has only one occurrence), and then Q1 takes the maximum of those unique numbers.\n\nQ2: The subquery here is similar, grouping by NUM with HAVING COUNT(NUM) = 1. But then it adds an ORDER BY NUM DESC and LIMIT 1. So this subquery is getting the unique numbers and ordering them in descending order, then taking the top one, which would be the maximum. Then Q2 selects MAX(NUM) from that result. Wait, but if the subquery already returns a single row (the maximum), then taking MAX(NUM) again would just return that same value. But maybe there's a difference here?\n\nWait, but in Q1, the subquery returns all unique numbers, and then MAX is applied. In Q2, the subquery returns only the maximum unique number (because of ORDER BY DESC and LIMIT 1), so then MAX is applied on a single row. So in both cases, the result would be the same. But wait, maybe there's a case where the subquery in Q2 could have more than one row? No, because HAVING COUNT(NUM)=1 ensures that each group has exactly one occurrence, so each NUM in the subquery is unique. Then ordering by NUM DESC and taking LIMIT 1 would give the maximum. Then Q2's outer MAX is redundant, but it's still the same value. So both queries should return the same result.\n\nBut wait, maybe there's a case where the subquery in Q2 could have multiple rows? No, because the HAVING clause ensures that each group has exactly one occurrence. So the subquery for Q2 would have multiple rows (each unique NUM), but then ordering by NUM DESC and taking LIMIT 1 would give the maximum. Then the outer MAX is applied to that single row. So Q2 is effectively getting the maximum unique number.\n\nBut Q1 is taking the maximum of all unique numbers. So both queries should return the same result. Therefore, they are equivalent. But maybe there's an edge case where the subquery in Q2 returns no rows? Let's think. Suppose there are no unique numbers. For example, if all numbers are duplicates. Then both queries would return NULL. If there are some unique numbers, then both would return the maximum of them.\n\nWait, but in Q2, if the subquery returns multiple rows (like multiple unique numbers), then the ORDER BY DESC LIMIT 1 would get the maximum. Then the outer MAX is applied on that single value, which is the same as the value itself. So Q2's outer MAX is redundant but doesn't change the result. Therefore, Q1 and Q2 should be equivalent.\n\nHmm, but maybe I'm missing something. Let me test with an example. Suppose the MYNUMBERS table has values [1, 2, 3, 3, 4]. The unique numbers are 1, 2, 4. Q1 would take MAX(1,2,4) = 4. Q2's subquery would get the same unique numbers, order them as 4, 2, 1, then take the first one (4), and then MAX(4) is 4. So same result.\n\nAnother example: if the table has [5, 5, 5]. Then both queries would return NULL because there are no unique numbers.\n\nAnother case: if the table has [10, 20, 20]. The unique numbers are 10. Q1 returns 10, Q2 returns 10.\n\nWait, but what if the subquery in Q2 has multiple rows? Like if the unique numbers are 5, 10, 15. Then Q2's subquery would order them as 15, 10, 5, take the first (15), then MAX(15) is 15. Q1 would take MAX(5,10,15) which is 15. Same result.\n\nSo in all cases, the two queries should return the same result. Therefore, they are equivalent. So the answer would be \"Y\".\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 331,
+    "total_tokens": 1360,
+    "completion_tokens": 1029,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 965
+    },
+    "generation_seconds": 32.453
+  },
+  "started_at": "2026-10-06T15:16:36.072105+00:00",
+  "elapsed_seconds": 0.0
+}

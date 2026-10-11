@@ -1,0 +1,59 @@
+{
+  "dbid": "175",
+  "index": "478",
+  "source_index": "103",
+  "schema_ddl": "CREATE TABLE PERSON (\n    PERSONID INT,\n    FIRSTNAME VARCHAR(255),\n    LASTNAME VARCHAR(255),\n    PRIMARY KEY (PERSONID)\n);\n\nCREATE TABLE ADDRESS (\n    ADDRESSID INT,\n    PERSONID INT,\n    CITY VARCHAR(255),\n    STATE VARCHAR(255),\n    PRIMARY KEY (ADDRESSID, PERSONID),\n    FOREIGN KEY (PERSONID) REFERENCES PERSON(PERSONID)\n);",
+  "q1": "SELECT FIRSTNAME, LASTNAME, CITY, STATE FROM PERSON AS P LEFT OUTER JOIN ADDRESS AS A ON P.PERSONID = A.PERSONID",
+  "q2": "SELECT P.LASTNAME, P.FIRSTNAME, IF(EXISTS(SELECT PERSONID FROM ADDRESS WHERE PERSONID = P.PERSONID), (SELECT CITY FROM ADDRESS WHERE PERSONID = P.PERSONID) ,NULL) AS CITY, IF(EXISTS(SELECT PERSONID FROM ADDRESS WHERE PERSONID = P.PERSONID), (SELECT STATE FROM ADDRESS WHERE PERSONID = P.PERSONID) ,NULL) AS STATE FROM PERSON AS P",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT FIRSTNAME, LASTNAME, CITY, STATE FROM PERSON AS P LEFT OUTER JOIN ADDRESS AS A ON P.PERSONID = A.PERSONID",
+  "q2_prompt_sql": "SELECT P.LASTNAME, P.FIRSTNAME, IF(EXISTS(SELECT PERSONID FROM ADDRESS WHERE PERSONID = P.PERSONID), (SELECT CITY FROM ADDRESS WHERE PERSONID = P.PERSONID) ,NULL) AS CITY, IF(EXISTS(SELECT PERSONID FROM ADDRESS WHERE PERSONID = P.PERSONID), (SELECT STATE FROM ADDRESS WHERE PERSONID = P.PERSONID) ,NULL) AS STATE FROM PERSON AS P",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO PERSON (PERSONID, FIRSTNAME, LASTNAME) VALUES (1, 'John', 'Doe');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 uses a LEFT OUTER JOIN to combine the PERSON and ADDRESS tables, which means it will return all records from the PERSON table and the matched records from the ADDRESS table. If there is no match, the result is NULL on the side of the ADDRESS table. Q2 uses a subquery with EXISTS to check if an address exists for a person and then selects the city and state from the ADDRESS table if it does. The difference lies in how NULL values are handled for city and state in the results.",
+  "counterexample_dsp": "A person with no address record in the ADDRESS table will have NULL values for city and state in Q1, but NULL values for city and state in Q2 will be replaced with NULL (as the subquery returns NULL).",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 uses a LEFT OUTER JOIN to combine the PERSON and ADDRESS tables, which means it will return all records from the PERSON table and the matched records from the ADDRESS table. If there is no match, the result is NULL on the side of the ADDRESS table. Q2 uses a subquery with EXISTS to check if an address exists for a person and then selects the city and state from the ADDRESS table if it does. The difference lies in how NULL values are handled for city and state in the results.\",\n  \"counterexample_dsp\": \"A person with no address record in the ADDRESS table will have NULL values for city and state in Q1, but NULL values for city and state in Q2 will be replaced with NULL (as the subquery returns NULL).\",\n  \"counterexample\": \"INSERT INTO PERSON (PERSONID, FIRSTNAME, LASTNAME) VALUES (1, 'John', 'Doe');\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 429,
+    "total_tokens": 625,
+    "completion_tokens": 196,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 3.297
+  },
+  "started_at": "2026-10-06T09:51:41.393484+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "John",
+      "Doe",
+      null,
+      null
+    ]
+  ],
+  "q2_output": [
+    [
+      "Doe",
+      "John",
+      null,
+      null
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT FIRSTNAME, LASTNAME, CITY, STATE FROM PERSON AS P LEFT OUTER JOIN ADDRESS AS A ON P.PERSONID = A.PERSONID",
+  "q2_validation_sql": "SELECT P.LASTNAME, P.FIRSTNAME, IF(EXISTS(SELECT PERSONID FROM ADDRESS WHERE PERSONID = P.PERSONID), (SELECT CITY FROM ADDRESS WHERE PERSONID = P.PERSONID) ,NULL) AS CITY, IF(EXISTS(SELECT PERSONID FROM ADDRESS WHERE PERSONID = P.PERSONID), (SELECT STATE FROM ADDRESS WHERE PERSONID = P.PERSONID) ,NULL) AS STATE FROM PERSON AS P"
+}

@@ -1,0 +1,39 @@
+{
+  "dbid": "619",
+  "index": "309",
+  "source_index": "279",
+  "schema_ddl": "CREATE TABLE MYNUMBERS (\n    NUM INT\n);",
+  "q1": "SELECT MAX(NUM) AS NUM FROM (SELECT NUM FROM MYNUMBERS GROUP BY NUM HAVING COUNT(NUM) = 1) AS T",
+  "q2": "SELECT MAX(NUM) AS NUM FROM ( SELECT NUM FROM MYNUMBERS GROUP BY NUM HAVING COUNT(NUM) = 1 ORDER BY NUM DESC) AS MAX_T",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT MAX(NUM) AS NUM FROM (SELECT NUM FROM MYNUMBERS GROUP BY NUM HAVING COUNT(NUM) = 1) AS T",
+  "q2_prompt_sql": "SELECT MAX(NUM) AS NUM FROM ( SELECT NUM FROM MYNUMBERS GROUP BY NUM HAVING COUNT(NUM) = 1 ORDER BY NUM DESC) AS MAX_T",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries find the maximum unique number in MYNUMBERS. The ORDER BY in Q2's subquery does not affect the MAX aggregation, as MAX operates on the entire result set regardless of order.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries find the maximum unique number in MYNUMBERS. The ORDER BY in Q2's subquery does not affect the MAX aggregation, as MAX operates on the entire result set regardless of order.\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem step by step. So, the user wants to know if Q1 and Q2 are semantically equivalent. Let me first understand what each query does.\n\nStarting with Q1: It selects the maximum NUM from a subquery. The subquery groups MYNUMBERS by NUM and filters groups where the count of NUM is 1. That means it's finding all unique numbers (since each group has exactly one occurrence) and then taking the maximum of those. So Q1's goal is to find the largest unique number in the table.\n\nNow Q2: It's similar but the subquery has an ORDER BY NUM DESC. Wait, but the outer query is still using MAX(NUM). So the subquery here groups by NUM, filters for count=1, then orders the results in descending order. But then the outer query takes the MAX of that. But wait, if the subquery is ordered, does that affect the MAX function? Or is the ORDER BY in the subquery just a red herring?\n\nWait, in SQL, the ORDER BY in a subquery that's not in a LIMIT or TOP clause doesn't affect the result of the outer query unless you're using something like LIMIT 1. Because the outer query is using MAX, which is an aggregate function. The ORDER BY in the subquery would just sort the rows, but the MAX function would still take the maximum value regardless of the order. So, for example, if the subquery returns [5,3,2], ordering them as [5,3,2] or [2,3,5] doesn't change the MAX, which is 5. Therefore, the ORDER BY in Q2's subquery shouldn't affect the result of the outer MAX. So Q1 and Q2 should be equivalent.\n\nWait, but maybe there's a case where the ORDER BY affects the result? Let me think. Suppose the subquery returns multiple rows, but the outer query is using MAX. The ORDER BY in the subquery would not influence the MAX function. Because MAX is computed over all rows in the subquery's result. So regardless of the order, the MAX is the same. Therefore, Q1 and Q2 should be equivalent. So the answer would be Y.\n\nBut wait, maybe there's a misunderstanding here. Let me test with an example. Suppose the table has numbers 1, 2, 3, 4, 5. All unique. Then both queries would return 5. Now, if there are duplicates. Suppose the table has 5, 5, 3, 2. Then the subquery in both cases would return 3, 2. So MAX is 3. The ORDER BY in Q2's subquery would sort them as 3, 2, but MAX is still 3. So same result.\n\nAnother example: if the subquery returns multiple rows, but the outer query's MAX is the same. So I can't think of a case where they differ. Therefore, the queries are equivalent. So the answer is Y.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 328,
+    "total_tokens": 1018,
+    "completion_tokens": 690,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 633
+    },
+    "generation_seconds": 22.203
+  },
+  "started_at": "2026-10-06T15:02:25.994871+00:00",
+  "elapsed_seconds": 0.0
+}

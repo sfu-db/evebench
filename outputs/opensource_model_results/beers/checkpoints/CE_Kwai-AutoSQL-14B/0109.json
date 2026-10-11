@@ -1,0 +1,64 @@
+{
+  "dbid": "beers",
+  "index": "109",
+  "source_index": "1795",
+  "schema_ddl": "CREATE TABLE Bar (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Beer (\n    name VARCHAR NOT NULL,\n    brewer VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Drinker (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Frequents (\n    drinker VARCHAR NOT NULL,\n    bar VARCHAR NOT NULL,\n    times_a_week SMALLINT NOT NULL,\n    PRIMARY KEY (drinker, bar),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (bar) REFERENCES Bar(name)\n);\n\nCREATE TABLE Serves (\n    bar VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    price DECIMAL(5,2) NOT NULL,\n    PRIMARY KEY (bar, beer),\n    FOREIGN KEY (bar) REFERENCES Bar(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);\n\nCREATE TABLE Likes (\n    drinker VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    PRIMARY KEY (drinker, beer),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);",
+  "q1": "SELECT beer.name, min_price, bar FROM beer LEFT OUTER JOIN (SELECT beer, MIN(price) AS min_price FROM serves GROUP BY beer) AS t ON beer.name = t.beer LEFT OUTER JOIN serves ON beer.name = serves.beer AND min_price = serves.price",
+  "q2": "SELECT beer, MIN(price), MIN(bar) FROM Serves GROUP BY beer",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "beers",
+  "q1_prompt_sql": "SELECT beer.name, min_price, bar FROM beer LEFT OUTER JOIN (SELECT beer, MIN(price) AS min_price FROM serves GROUP BY beer) AS t ON beer.name = t.beer LEFT OUTER JOIN serves ON beer.name = serves.beer AND min_price = serves.price",
+  "q2_prompt_sql": "SELECT beer, MIN(price), MIN(bar) FROM Serves GROUP BY beer",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO Beer (name, brewer) VALUES ('IPA', 'BrewerA');\nINSERT INTO Bar (name, address) VALUES ('Bar1', '123 Main St'), ('Bar2', '456 Oak St');\nINSERT INTO Serves (bar, beer, price) VALUES ('Bar1', 'IPA', 3.00), ('Bar2', 'IPA', 3.00);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 returns multiple rows per beer when multiple bars have the same minimum price, while Q2 returns one row per beer with MIN(bar) (alphabetically first).",
+  "counterexample_dsp": "A beer served at two different bars with the same minimum price. Q1 returns both bars, Q2 returns only the lex smallest bar name.",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 returns multiple rows per beer when multiple bars have the same minimum price, while Q2 returns one row per beer with MIN(bar) (alphabetically first).\",\n  \"counterexample_dsp\": \"A beer served at two different bars with the same minimum price. Q1 returns both bars, Q2 returns only the lex smallest bar name.\",\n  \"counterexample\": [\n    \"INSERT INTO Beer (name, brewer) VALUES ('IPA', 'BrewerA');\",\n    \"INSERT INTO Bar (name, address) VALUES ('Bar1', '123 Main St'), ('Bar2', '456 Oak St');\",\n    \"INSERT INTO Serves (bar, beer, price) VALUES ('Bar1', 'IPA', 3.00), ('Bar2', 'IPA', 3.00);\"\n  ]\n}",
+  "reasoning": "\nOkay, let's tackle this problem. I need to find a counterexample where Q1 and Q2 return different results. Let me first understand both queries.\n\nQ1 does a LEFT OUTER JOIN on two tables. The first part is joining Beer with a subquery that finds the minimum price per beer from Serves, grouped by beer. Then it joins that result with Serves again on beer.name = serves.beer and min_price = serves.price. So this should give for each beer the name, the minimum price, and the bar where that minimum price occurs. But since it's a LEFT JOIN, even if there's no matching serve (unlikely since the subquery already groups by beer), it would still return the beer.\n\nQ2 is grouping Serves by beer and selecting beer, MIN(price), MIN(bar). So for each beer, it gives the minimum price and the minimum bar name (alphabetically or based on SQL's MIN function).\n\nThe difference might come when there are multiple bars serving the same beer at the minimum price. Q1 would pick one of them (since it's joining on min_price = serves.price), but Q2 would take the MIN(bar) which is the first in alphabetical order. Alternatively, if there's a case where Q1 returns a different bar than Q2's MIN(bar), that would be a discrepancy.\n\nWait, let's think of a scenario. Suppose beer 'Bud' is served at bar 'BarA' for $2 and at bar 'BarB' for $2. Then Q1's join would get one of them (depending on how the join order is handled), but Q2 would take MIN(bar) which is 'BarA' if sorted lex order. But if Q1 returns 'BarB', then they differ. However, in Q1, the join on min_price = serves.price would return both rows if they have the same min price, but since the first join is with the subquery (which gives one row per beer with min_price), then joining with serves on beer and min_price would get all serves that have that min_price. But then the outer query would have multiple rows if multiple bars have the same min price. But Q1 selects beer.name, min_price, bar from that join. So for each beer, Q1 would return one row per bar where that beer has the min price. Wait, but the first join is Beer LEFT JOIN with the subquery (which gives one row per beer with min_price), then LEFT JOIN with serves again. So if there are two serves with same min price, the result would have two rows for the same beer. But Q2 groups by beer, so returns one row per beer.\n\nSo maybe the difference is that Q1 could have multiple rows for a beer if multiple bars have the same min price, while Q2 returns one row. But the question says that the queries return different results. However, the user says they are not semantically equivalent. Let me check the exact output columns.\n\nQ1's output columns are beer.name (from Beer table), min_price (from the subquery), bar (from serves table). Q2's output is beer (from Serves), MIN(price), MIN(bar). So for each beer, Q2 gives one row with the min price and the min bar (alphabetically, I assume). Q1, if there are multiple bars with the same min price, would return multiple rows for that beer. But if there's only one bar with the min price, then Q1 would return one row, same as Q2.\n\nSo to create a counterexample, I need a scenario where for a particular beer, there are two bars serving it at the same minimum price. Then Q1 would return two rows (one for each bar), while Q2 returns one row with the min bar (the lex smallest). Alternatively, if the first join in Q1 picks a different bar than Q2's MIN(bar), that would be a difference.\n\nWait, let me think again. Let's take an example:\n\nBeer: 'BeerX' is served at BarA for $3, BarB for $3.\n\nQ1: The subquery gives beer 'BeerX', min_price 3. Then joining with serves where beer.name = serves.beer and min_price = serves.price would give two rows: (BeerX, 3, BarA) and (BeerX, 3, BarB). So Q1 would have two rows for BeerX.\n\nQ2: GROUP BY beer, so BeerX, MIN(price)=3, MIN(bar)=BarA (assuming BarA comes before BarB in alphabetical order). So Q2 returns one row: BeerX, 3, BarA.\n\nThus, if the question's Q1 returns two rows and Q2 returns one row, then they are different. But the original question says that Q1 and Q2 output different results. So in this case, yes, the results are different. But the problem says to provide a counterexample where they differ. However, the user might have intended that Q1 returns the bar where the minimum price occurs, and Q2 returns the minimum bar name (which may not be the same bar as the one where the min price is achieved, but that's unlikely). Wait, no. Q2's MIN(bar) would be the lex smallest bar name for that beer. So if the minimum price occurs at a bar that is not the lex smallest, then Q2's MIN(bar) would be different.\n\nWait, no. Q2 groups by beer, so for each beer, it takes MIN(price) and MIN(bar). The MIN(bar) is the minimum bar name among all bars that serve that beer. So if the beer is served at BarB (price 3) and BarA (price 3), then MIN(bar) would be BarA, which is the same bar as where the min price occurs. Wait, no. The MIN(price) would be 3, and the MIN(bar) would be the lex smallest bar name. So if BarA and BarB both serve BeerX at $3, then Q2's MIN(bar) is BarA, which is the same as one of the bars in Q1's result. But Q1 would return two rows (BarA and BarB). So in this case, Q1's output has two rows for BeerX, while Q2's output has one row. So the number of rows differs, which is a difference.\n\nBut the original problem's Q1 and Q2 might have different output columns. Let me check the actual SQL.\n\nQ1 selects beer.name, min_price, bar from the joins. So beer.name is from Beer table, min_price from the subquery, bar from serves.\n\nQ2 selects beer, MIN(price), MIN(bar) from Serves GROUP BY beer. So beer is from Serves.beer, which is the same as Beer.name.\n\nSo for the same beer, Q1 could have multiple rows (if multiple bars have the same min price), while Q2 has one row. So if the test data has a beer with multiple bars serving it at the same minimum price, then Q1 would return multiple rows for that beer, while Q2 returns one. That's a difference.\n\nAlternatively, maybe there's a case where Q1 returns a different bar than Q2's MIN(bar). For example, if the minimum price occurs at BarC, and there's another bar BarD with a higher price. Then Q1 would return BarC, and Q2's MIN(bar) would be BarC (since it's the only bar serving that beer). But if there's another bar serving the same beer at the same min price, then Q2's MIN(bar) would pick the lex smallest, but Q1 would list both. So in that case, the difference is in the number of rows.\n\nBut the problem says that the queries are not semantically equivalent. The user says they are not equivalent. So the counterexample needs to show that.\n\nSo to create a test case where Q1 and Q2 differ, I can have a beer that has two bars serving it at the same minimum price. Then Q1 returns two rows, Q2 returns one.\n\nLet me create such a scenario. For example:\n\nBeer: 'IPA' is served at Bar1 for $3 and Bar2 for $3.\n\nThen Q1 would return two rows: (IPA, 3, Bar1) and (IPA, 3, Bar2). Q2 would return (IPA, 3, MIN(Bar1, Bar2)), which is Bar1 if ordered lex.\n\nSo the results are different in terms of the number of rows and the bar name in Q2's case.\n\nAlternatively, if I have a beer with one bar at min price, then both Q1 and Q2 would return one row with the same bar. But when there are multiple bars, Q1 returns multiple rows, Q2 returns one.\n\nSo the counterexample would be a beer with two bars serving at same min price.\n\nSo the test database needs:\n\n- Beer table with at least one beer (e.g., 'IPA').\n- Bar table with at least two bars (e.g., 'Bar1', 'Bar2').\n- Serves table with entries for 'IPA' at both bars with the same price.\n\nSo the INSERT statements would be:\n\nINSERT INTO Beer (name, brewer) VALUES ('IPA', 'Brewer1');\nINSERT INTO Bar (name, address) VALUES ('Bar1', 'Addr1'), ('Bar2', 'Addr2');\nINSERT INTO Serves (bar, beer, price) VALUES ('Bar1', 'IPA', 3), ('Bar2', 'IPA', 3);\n\nThis setup should cause Q1 to return two rows for IPA, and Q2 to return one row with bar 'Bar1' (assuming MIN of 'Bar1' and 'Bar2' is 'Bar1').\n\nSo the explanation is that Q1 returns multiple rows when multiple bars have the same minimum price for a beer, while Q2 returns one row with the minimum bar name (alphabetically).\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 507,
+    "total_tokens": 2776,
+    "completion_tokens": 2269,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 2081
+    },
+    "generation_seconds": 74.922
+  },
+  "started_at": "2026-10-06T08:46:49.261327+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "IPA",
+      3,
+      "Bar1"
+    ],
+    [
+      "IPA",
+      3,
+      "Bar2"
+    ]
+  ],
+  "q2_output": [
+    [
+      "IPA",
+      3,
+      "Bar1"
+    ]
+  ],
+  "q1_row_count": 2,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT beer.name, min_price, bar FROM beer LEFT OUTER JOIN (SELECT beer, MIN(price) AS min_price FROM serves GROUP BY beer) AS t ON beer.name = t.beer LEFT OUTER JOIN serves ON beer.name = serves.beer AND min_price = serves.price",
+  "q2_validation_sql": "SELECT beer, MIN(price), MIN(bar) FROM Serves GROUP BY beer"
+}

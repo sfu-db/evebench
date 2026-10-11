@@ -1,0 +1,59 @@
+{
+  "dbid": "26",
+  "index": "28",
+  "source_index": "34",
+  "schema_ddl": "CREATE TABLE X (A INT, K INT);\nCREATE TABLE Y (A INT, K INT);",
+  "q1": "SELECT X.A AS A FROM X AS X, Y AS Y WHERE X.K = Y.K",
+  "q2": "SELECT X1.A AS X1A FROM (SELECT X.A AS A, X.K AS K FROM X AS X) AS X1, Y AS Y WHERE X1.K = Y.K",
+  "dialect": "sqlite",
+  "ground_truth": "EQ",
+  "source": "literature",
+  "q1_prompt_sql": "SELECT X.A AS A FROM X AS X, Y AS Y WHERE X.K = Y.K",
+  "q2_prompt_sql": "SELECT X1.A AS X1A FROM (SELECT X.A AS A, X.K AS K FROM X AS X) AS X1, Y AS Y WHERE X1.K = Y.K",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO X (A, K) VALUES (1, 1), (2, 2); INSERT INTO Y (A, K) VALUES (3, 1), (4, 2);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent because Q1 does not alias the subquery, while Q2 aliases the subquery as X1. This difference affects the scope and accessibility of the columns within the WHERE clause.",
+  "counterexample_dsp": "The difference is triggered when the column A in the subquery is used in the WHERE clause of Q2, but not in Q1. In the counterexample, the values of A in the subquery and the main query are different, leading to different results.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent because Q1 does not alias the subquery, while Q2 aliases the subquery as X1. This difference affects the scope and accessibility of the columns within the WHERE clause.\",\n  \"counterexample_dsp\": \"The difference is triggered when the column A in the subquery is used in the WHERE clause of Q2, but not in Q1. In the counterexample, the values of A in the subquery and the main query are different, leading to different results.\",\n  \"counterexample\": \"INSERT INTO X (A, K) VALUES (1, 1), (2, 2); INSERT INTO Y (A, K) VALUES (3, 1), (4, 2);\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 299,
+    "total_tokens": 464,
+    "completion_tokens": 165,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 2.859
+  },
+  "started_at": "2026-10-06T07:05:03.572172+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      1
+    ],
+    [
+      2
+    ]
+  ],
+  "q2_output": [
+    [
+      1
+    ],
+    [
+      2
+    ]
+  ],
+  "q1_row_count": 2,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT X.A AS A FROM X AS X, Y AS Y WHERE X.K = Y.K",
+  "q2_validation_sql": "SELECT X1.A AS X1A FROM (SELECT X.A AS A, X.K AS K FROM X AS X) AS X1, Y AS Y WHERE X1.K = Y.K"
+}

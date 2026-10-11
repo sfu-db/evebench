@@ -1,0 +1,61 @@
+{
+  "dbid": "1113",
+  "index": "135",
+  "source_index": "30",
+  "schema_ddl": "CREATE TABLE ACTIONS (\n    USER_ID INT,\n    POST_ID INT,\n    ACTION_DATE DATE,\n    ACTION ENUM('VIEW', 'LIKE', 'REACTION', 'COMMENT', 'REPORT', 'SHARE'),\n    EXTRA VARCHAR(255),\n    CHECK (ACTION_DATE <= '2019-07-05'),\n    CHECK (ACTION IN ('VIEW', 'LIKE', 'REACTION', 'COMMENT', 'REPORT', 'SHARE'))\n);",
+  "q1": "SELECT EXTRA AS REPORT_REASON, COUNT(DISTINCT POST_ID) AS REPORT_COUNT FROM ACTIONS WHERE ACTION = 'REPORT' AND ACTION_DATE = '2019-07-04' GROUP BY EXTRA",
+  "q2": "SELECT EXTRA AS REPORT_REASON, COUNT(DISTINCT POST_ID) AS REPORT_COUNT FROM ACTIONS WHERE ACTION_DATE = '2019-07-04' AND ACTION = 'REPORT' GROUP BY EXTRA HAVING EXTRA IS NOT NULL",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT EXTRA AS REPORT_REASON, COUNT(DISTINCT POST_ID) AS REPORT_COUNT FROM ACTIONS WHERE ACTION = 'REPORT' AND ACTION_DATE = '2019-07-04' GROUP BY EXTRA",
+  "q2_prompt_sql": "SELECT EXTRA AS REPORT_REASON, COUNT(DISTINCT POST_ID) AS REPORT_COUNT FROM ACTIONS WHERE ACTION_DATE = '2019-07-04' AND ACTION = 'REPORT' GROUP BY EXTRA HAVING EXTRA IS NOT NULL",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO ACTIONS (USER_ID, POST_ID, ACTION_DATE, ACTION, EXTRA) VALUES (1, 101, '2019-07-04', 'REPORT', NULL);\nINSERT INTO ACTIONS (USER_ID, POST_ID, ACTION_DATE, ACTION, EXTRA) VALUES (2, 102, '2019-07-04', 'REPORT', 'Spam');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not equivalent because Q2 includes an explicit HAVING clause that filters out groups where EXTRA is NULL, while Q1 does not. This means Q1 would include NULL values in the REPORT_REASON grouping, whereas Q2 would exclude them.",
+  "counterexample_dsp": "A test database with two REPORT actions on 2019-07-04: one with EXTRA=NULL and another with EXTRA='Spam'. Q1 would show both groups (including NULL), while Q2 would omit the NULL group.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 and Q2 are not equivalent because Q2 includes an explicit HAVING clause that filters out groups where EXTRA is NULL, while Q1 does not. This means Q1 would include NULL values in the REPORT_REASON grouping, whereas Q2 would exclude them.\",\n\"counterexample_dsp\": \"A test database with two REPORT actions on 2019-07-04: one with EXTRA=NULL and another with EXTRA='Spam'. Q1 would show both groups (including NULL), while Q2 would omit the NULL group.\",\n\"counterexample\": \"INSERT INTO ACTIONS (USER_ID, POST_ID, ACTION_DATE, ACTION, EXTRA) VALUES (1, 101, '2019-07-04', 'REPORT', NULL);\\nINSERT INTO ACTIONS (USER_ID, POST_ID, ACTION_DATE, ACTION, EXTRA) VALUES (2, 102, '2019-07-04', 'REPORT', 'Spam');\"\n}",
+  "reasoning": "\nOkay, let's see. I need to figure out if Q1 and Q2 are semantically equivalent. Let me start by understanding what each query does.\n\nFirst, looking at Q1: It selects the EXTRA column as REPORT_REASON and counts the distinct POST_IDs where the ACTION is 'REPORT' and the ACTION_DATE is '2019-07-04'. Then it groups by EXTRA. So it's grouping all the reports on that date by their EXTRA value and counting unique posts for each group.\n\nNow Q2 is similar but has the conditions in a different order. The WHERE clause has ACTION_DATE first and then ACTION. Also, there's a HAVING clause that checks EXTRA IS NOT NULL. Wait, the HAVING clause here is filtering groups where EXTRA is not null. But in Q1, there's no HAVING clause. So the main difference is that Q2 excludes groups where EXTRA is NULL, whereas Q1 might include them if there are any.\n\nBut wait, in the original Q1, the WHERE clause includes ACTION = 'REPORT', so the EXTRA column is part of the table. However, if there are rows where ACTION is 'REPORT' but EXTRA is NULL, then Q1 would include those in the grouping. But Q2's HAVING clause filters out any groups where EXTRA is NULL. So Q2 would not include those groups.\n\nBut wait, in the WHERE clause of Q1, the ACTION is 'REPORT', so the EXTRA could be NULL. However, in the schema, the EXTRA is a VARCHAR(255), which can be NULL unless there's a constraint. Looking at the schema, the CREATE TABLE statement doesn't have a NOT NULL constraint on EXTRA. So EXTRA can be NULL.\n\nSo Q1 groups by EXTRA, including any groups where EXTRA is NULL. But Q2, because of the HAVING EXTRA IS NOT NULL, would exclude those groups. Therefore, if there are any rows where ACTION is 'REPORT', ACTION_DATE is '2019-07-04', and EXTRA is NULL, then Q1 would have a group with REPORT_REASON as NULL and the count of those POST_IDs, whereas Q2 would not include that group.\n\nSo the two queries are not equivalent. The difference is in the handling of NULL values in the EXTRA column. Q1 includes groups where EXTRA is NULL, while Q2 excludes them.\n\nTo create a counterexample, I need a test database where there's at least one row with ACTION 'REPORT', ACTION_DATE '2019-07-04', and EXTRA NULL, and some other rows with non-NULL EXTRA. Then Q1 would have an extra group for the NULL EXTRA, while Q2 would not.\n\nLet me think about the test data. Suppose there are two entries: one with EXTRA NULL and another with EXTRA 'Spam'. Then Q1 would have two groups: one with REPORT_REASON NULL and count 1, and another with 'Spam' and count 1. Q2 would only have the 'Spam' group, since the HAVING clause filters out the NULL.\n\nSo the counterexample would involve inserting such data. Also, need to make sure that the ACTION_DATE is '2019-07-04' and the ACTION is 'REPORT' for those entries. Also, check that the ACTION_DATE doesn't violate the CHECK constraint (ACTION_DATE <= '2019-07-05'), which it doesn't here.\n\nSo the counterexample would be inserting two rows: one with EXTRA NULL and another with 'Spam', both with ACTION 'REPORT' and the correct date. Then Q1 and Q2 would produce different results.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 440,
+    "total_tokens": 1423,
+    "completion_tokens": 983,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 760
+    },
+    "generation_seconds": 31.36
+  },
+  "started_at": "2026-10-06T14:46:37.507623+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      null,
+      1
+    ],
+    [
+      "Spam",
+      1
+    ]
+  ],
+  "q2_output": [
+    [
+      "Spam",
+      1
+    ]
+  ],
+  "q1_row_count": 2,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT EXTRA AS REPORT_REASON, COUNT(DISTINCT POST_ID) AS REPORT_COUNT FROM ACTIONS WHERE ACTION = 'REPORT' AND ACTION_DATE = '2019-07-04' GROUP BY EXTRA",
+  "q2_validation_sql": "SELECT EXTRA AS REPORT_REASON, COUNT(DISTINCT POST_ID) AS REPORT_COUNT FROM ACTIONS WHERE ACTION_DATE = '2019-07-04' AND ACTION = 'REPORT' GROUP BY EXTRA HAVING EXTRA IS NOT NULL"
+}

@@ -1,0 +1,61 @@
+{
+  "dbid": "1141",
+  "index": "128",
+  "source_index": "21",
+  "schema_ddl": "CREATE TABLE ACTIVITY (\n    USER_ID INT,\n    SESSION_ID INT,\n    ACTIVITY_DATE DATE,\n    ACTIVITY_TYPE ENUM('OPEN_SESSION', 'END_SESSION', 'SCROLL_DOWN', 'SEND_MESSAGE'),\n    CHECK (ACTIVITY_TYPE IN ('OPEN_SESSION', 'END_SESSION', 'SCROLL_DOWN', 'SEND_MESSAGE'))\n);",
+  "q1": "SELECT ACTIVITY_DATE AS DAY, COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY WHERE ACTIVITY_DATE BETWEEN '2019-06-28' AND '2019-07-27' GROUP BY ACTIVITY_DATE",
+  "q2": "SELECT ACTIVITY_DATE AS DAY, COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY WHERE ACTIVITY_DATE > DATE_ADD('2019-07-27', INTERVAL -30 DAY) GROUP BY 1",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT ACTIVITY_DATE AS DAY, COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY WHERE ACTIVITY_DATE BETWEEN '2019-06-28' AND '2019-07-27' GROUP BY ACTIVITY_DATE",
+  "q2_prompt_sql": "SELECT ACTIVITY_DATE AS DAY, COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY WHERE ACTIVITY_DATE > DATE_ADD('2019-07-27', INTERVAL -30 DAY) GROUP BY 1",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO ACTIVITY (USER_ID, SESSION_ID, ACTIVITY_DATE, ACTIVITY_TYPE) VALUES (1, 1, '2019-06-28', 'OPEN_SESSION');\nINSERT INTO ACTIVITY (USER_ID, SESSION_ID, ACTIVITY_DATE, ACTIVITY_TYPE) VALUES (1, 2, '2019-07-28', 'OPEN_SESSION');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 filters dates between '2019-06-28' and '2019-07-27' inclusive. Q2 filters dates greater than '2019-06-27', which includes all dates from '2019-06-28' onward (no upper limit). If data contains dates beyond '2019-07-27', Q2 will include those while Q1 will not, making them inequivalent.",
+  "counterexample_dsp": "A test database with activity on '2019-07-28'. Q1 excludes this date, but Q2 includes it, leading to different results.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n  \"equiv\": \"N\",\n  \"explanation\": \"Q1 filters dates between '2019-06-28' and '2019-07-27' inclusive. Q2 filters dates greater than '2019-06-27', which includes all dates from '2019-06-28' onward (no upper limit). If data contains dates beyond '2019-07-27', Q2 will include those while Q1 will not, making them inequivalent.\",\n  \"counterexample_dsp\": \"A test database with activity on '2019-07-28'. Q1 excludes this date, but Q2 includes it, leading to different results.\",\n  \"counterexample\": \"INSERT INTO ACTIVITY (USER_ID, SESSION_ID, ACTIVITY_DATE, ACTIVITY_TYPE) VALUES (1, 1, '2019-06-28', 'OPEN_SESSION');\\nINSERT INTO ACTIVITY (USER_ID, SESSION_ID, ACTIVITY_DATE, ACTIVITY_TYPE) VALUES (1, 2, '2019-07-28', 'OPEN_SESSION');\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem step by step. First, I need to understand what each query is doing.\n\nStarting with Q1: It selects the ACTIVITY_DATE as DAY and counts distinct USER_IDs for each date where the activity date is between '2019-06-28' and '2019-07-27'. Then it groups by ACTIVITY_DATE. So this query is giving the number of unique users active each day from June 28th to July 27th, inclusive.\n\nNow Q2: It selects the same columns but the date condition is different. It uses DATE_ADD('2019-07-27', INTERVAL -30 DAY) which would subtract 30 days from July 27th. Let me calculate that date. July 27 minus 30 days is June 27, 2019. So the condition is ACTIVITY_DATE > '2019-06-27'. That means it's including all dates from June 28th up to July 27th, right? Because dates greater than June 27 would start on June 28. Wait, but the BETWEEN in Q1 includes both ends. But the > in Q2 would include all dates after June 27, which would be June 28 to July 27. So actually, the date range for Q2 is the same as Q1's range. Wait, Q1's range is from June 28 to July 27 inclusive. Q2's condition is ACTIVITY_DATE > June 27, so that's June 28 to July 27, but does it include July 27? Let me think. If the date is stored as a DATE type, then '2019-07-27' is greater than June 27, so yes. So the date range for both queries is the same. Wait, but the BETWEEN in Q1 includes both dates. So Q1's date range is from June 28 to July 27 inclusive. Q2's condition is ACTIVITY_DATE > '2019-06-27', which is equivalent to ACTIVITY_DATE >= '2019-06-28', so the dates would be from June 28 up to the maximum date in the table. But since the upper bound in Q1 is July 27, and Q2 doesn't have an upper bound, unless the data only has dates up to July 27. Wait, but the problem says to check if they are equivalent. So if the data has dates beyond July 27, then Q2 would include those, but Q1 wouldn't. However, the original Q1's upper limit is July 27. So in that case, the two queries would have different date ranges if there are dates beyond July 27. But the user's question is about the queries as written. Wait, looking back at the original queries:\n\nQ1 has WHERE ACTIVITY_DATE BETWEEN '2019-06-28' AND '2019-07-27'\n\nQ2 has WHERE ACTIVITY_DATE > DATE_ADD('2019-07-27', INTERVAL -30 DAY)\n\nCalculating DATE_ADD('2019-07-27', INTERVAL -30 DAY) gives 2019-06-27. So the condition is ACTIVITY_DATE > '2019-06-27', which means dates starting from June 28, 2019, up to any date. However, Q1 explicitly stops at July 27. So if the data has dates beyond July 27, Q2 would include them, while Q1 wouldn't. Therefore, the two queries are not equivalent. But the problem says to check if they are semantically equivalent. So the difference is that Q1 has an explicit upper bound (July 27) while Q2 does not. So if there are dates after July 27 in the ACTIVITY table, Q2 would include those dates, leading to different results.\n\nBut wait, the original problem's date in Q2 is DATE_ADD('2019-07-27', INTERVAL -30 DAY), which is June 27, 2019. So the WHERE condition in Q2 is ACTIVITY_DATE > '2019-06-27', which is June 28 to whatever. However, the original Q1's upper bound is July 27. So if the data has dates beyond July 27, Q2 will include them, but Q1 will not. Therefore, the two queries are not equivalent. However, if the data only contains dates up to July 27, then they would be equivalent. But since the question is about whether they are semantically equivalent in general, the answer is no.\n\nSo to create a counterexample, I need a scenario where there's a date beyond July 27. For example, a date of July 28. Then Q2 would include that date's activity, but Q1 would not. Let's create such a test case.\n\nLet's say there's a user with activity on July 28. Then Q2 would count that user on July 28, but Q1 would not include that date. So the count for July 28 would appear in Q2 but not in Q1. Alternatively, maybe another date between June 28 and July 27, but that's covered by both. The key is that Q2's date range is from June 28 onwards, while Q1's is up to July 27.\n\nWait, but the original Q1's date range is between June 28 and July 27 inclusive. Q2's date range is greater than June 27, so from June 28 onwards. So if the data has dates beyond July 27, Q2 would include those dates, but Q1 would not. So the difference would be that Q2 includes those extra dates. Therefore, the two queries are not equivalent.\n\nSo the answer is no. Now, for the counterexample, I need to create a test database where there is an activity on July 28. Let me create a small example with that date. Then Q2 would include it, while Q1 would not.\n\nLet me write the counterexample. Insert a row with ACTIVITY_DATE = '2019-07-28'. Then, when running Q1, that date is not included because the upper bound is July 27. But in Q2, since the date is greater than June 27, it's included. So the count for July 28 would be present in Q2's result but not in Q1's.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 428,
+    "total_tokens": 2145,
+    "completion_tokens": 1717,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1455
+    },
+    "generation_seconds": 55.062
+  },
+  "started_at": "2026-10-06T15:33:06.687871+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "2019-06-28",
+      1
+    ]
+  ],
+  "q2_output": [
+    [
+      "2019-06-28",
+      1
+    ],
+    [
+      "2019-07-28",
+      1
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT ACTIVITY_DATE AS DAY, COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY WHERE ACTIVITY_DATE BETWEEN '2019-06-28' AND '2019-07-27' GROUP BY ACTIVITY_DATE",
+  "q2_validation_sql": "SELECT ACTIVITY_DATE AS DAY, COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY WHERE ACTIVITY_DATE > DATE_ADD('2019-07-27', INTERVAL -30 DAY) GROUP BY 1"
+}

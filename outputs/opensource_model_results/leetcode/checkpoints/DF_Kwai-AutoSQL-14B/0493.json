@@ -1,0 +1,67 @@
+{
+  "dbid": "175",
+  "index": "493",
+  "source_index": "8",
+  "schema_ddl": "CREATE TABLE PERSON (\n    PERSONID INT,\n    FIRSTNAME VARCHAR(255),\n    LASTNAME VARCHAR(255),\n    PRIMARY KEY (PERSONID)\n);\n\nCREATE TABLE ADDRESS (\n    ADDRESSID INT,\n    PERSONID INT,\n    CITY VARCHAR(255),\n    STATE VARCHAR(255),\n    PRIMARY KEY (ADDRESSID, PERSONID),\n    FOREIGN KEY (PERSONID) REFERENCES PERSON(PERSONID)\n);",
+  "q1": "SELECT FIRSTNAME, LASTNAME, CITY, STATE FROM PERSON AS P LEFT OUTER JOIN ADDRESS AS A ON P.PERSONID = A.PERSONID",
+  "q2": "SELECT FIRSTNAME, LASTNAME, CITY, STATE FROM PERSON LEFT JOIN ADDRESS ON PERSON.PERSONID = ADDRESS.PERSONID WHERE PERSON.PERSONID > 0",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT FIRSTNAME, LASTNAME, CITY, STATE FROM PERSON AS P LEFT OUTER JOIN ADDRESS AS A ON P.PERSONID = A.PERSONID",
+  "q2_prompt_sql": "SELECT FIRSTNAME, LASTNAME, CITY, STATE FROM PERSON LEFT JOIN ADDRESS ON PERSON.PERSONID = ADDRESS.PERSONID WHERE PERSON.PERSONID > 0",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO PERSON (PERSONID, FIRSTNAME, LASTNAME) VALUES (0, 'Alice', 'Smith');\nINSERT INTO PERSON (PERSONID, FIRSTNAME, LASTNAME) VALUES (1, 'Bob', 'Johnson');\nINSERT INTO ADDRESS (ADDRESSID, PERSONID, CITY, STATE) VALUES (1, 1, 'New York', 'NY');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent. Q1 performs a LEFT OUTER JOIN between PERSON and ADDRESS on PERSONID, returning all rows from PERSON and matching rows from ADDRESS (or NULLs if no match). Q2 adds a WHERE condition (PERSON.PERSONID > 0), which filters out any rows from PERSON where PERSONID <= 0. This can cause Q2 to return fewer rows than Q1 if there are persons with PERSONID <= 0.",
+  "counterexample_dsp": "A test database with a person having PERSONID = 0 and no address, and another person with PERSONID = 1 and an address. Q1 will return both persons, while Q2 will return only the person with PERSONID = 1.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n  \"equiv\": \"N\",\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent. Q1 performs a LEFT OUTER JOIN between PERSON and ADDRESS on PERSONID, returning all rows from PERSON and matching rows from ADDRESS (or NULLs if no match). Q2 adds a WHERE condition (PERSON.PERSONID > 0), which filters out any rows from PERSON where PERSONID <= 0. This can cause Q2 to return fewer rows than Q1 if there are persons with PERSONID <= 0.\",\n  \"counterexample_dsp\": \"A test database with a person having PERSONID = 0 and no address, and another person with PERSONID = 1 and an address. Q1 will return both persons, while Q2 will return only the person with PERSONID = 1.\",\n  \"counterexample\": \"INSERT INTO PERSON (PERSONID, FIRSTNAME, LASTNAME) VALUES (0, 'Alice', 'Smith');\\nINSERT INTO PERSON (PERSONID, FIRSTNAME, LASTNAME) VALUES (1, 'Bob', 'Johnson');\\nINSERT INTO ADDRESS (ADDRESSID, PERSONID, CITY, STATE) VALUES (1, 1, 'New York', 'NY');\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 409,
+    "total_tokens": 669,
+    "completion_tokens": 260,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 8.282
+  },
+  "started_at": "2026-10-06T15:50:11.303396+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "Alice",
+      "Smith",
+      null,
+      null
+    ],
+    [
+      "Bob",
+      "Johnson",
+      "New York",
+      "NY"
+    ]
+  ],
+  "q2_output": [
+    [
+      "Bob",
+      "Johnson",
+      "New York",
+      "NY"
+    ]
+  ],
+  "q1_row_count": 2,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT FIRSTNAME, LASTNAME, CITY, STATE FROM PERSON AS P LEFT OUTER JOIN ADDRESS AS A ON P.PERSONID = A.PERSONID",
+  "q2_validation_sql": "SELECT FIRSTNAME, LASTNAME, CITY, STATE FROM PERSON LEFT JOIN ADDRESS ON PERSON.PERSONID = ADDRESS.PERSONID WHERE PERSON.PERSONID > 0"
+}

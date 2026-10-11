@@ -1,0 +1,53 @@
+{
+  "dbid": "debit_card_specializing",
+  "index": "842",
+  "source_index": "1485",
+  "schema_ddl": "CREATE TABLE customers\n(\n    CustomerID INTEGER UNIQUE     not null\n        primary key,\n    Segment    TEXT null,\n    Currency   TEXT null\n);\n\nCREATE TABLE gasstations\n(\n    GasStationID INTEGER    UNIQUE   not null\n        primary key,\n    ChainID      INTEGER          null,\n    Country      TEXT null,\n    Segment      TEXT null\n);\n\nCREATE TABLE products\n(\n    ProductID   INTEGER   UNIQUE      not null\n        primary key,\n    Description TEXT null\n);\n\nCREATE TABLE \"transactions_1k\"\n(\n    TransactionID INTEGER\n        primary key autoincrement,\n    Date          DATE,\n    Time          TEXT,\n    CustomerID    INTEGER,\n    CardID        INTEGER,\n    GasStationID  INTEGER,\n    ProductID     INTEGER,\n    Amount        INTEGER,\n    Price         REAL\n);\n\nCREATE TABLE \"yearmonth\"\n(\n    CustomerID  INTEGER not null\n        references customers\n            on update cascade on delete cascade\n        references customers,\n    Date        TEXT    not null,\n    Consumption REAL,\n    primary key (Date, CustomerID)\n);",
+  "q1": "SELECT SUM(IIF(Country = 'CZE', 1, 0)) - SUM(IIF(Country = 'SVK', 1, 0)) FROM gasstations WHERE Segment = 'Discount'",
+  "q2": "SELECT (SELECT COUNT(GasStationID) FROM gasstations WHERE Country = 'Czech Republic' AND Segment = 'discount') - (SELECT COUNT(GasStationID) FROM gasstations WHERE Country = 'Slovakia' AND Segment = 'discount') AS More_Discount_Gas_Stations",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT SUM(IIF(Country = 'CZE', 1, 0)) - SUM(IIF(Country = 'SVK', 1, 0)) FROM gasstations WHERE Segment = 'Discount'",
+  "q2_prompt_sql": "SELECT (SELECT COUNT(GasStationID) FROM gasstations WHERE Country = 'Czech Republic' AND Segment = 'discount') - (SELECT COUNT(GasStationID) FROM gasstations WHERE Country = 'Slovakia' AND Segment = 'discount') AS More_Discount_Gas_Stations",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO gasstations (GasStationID, Country, Segment) VALUES (1, 'CZE', 'Discount'), (2, 'CZE', 'Discount'), (3, 'SVK', 'Discount');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent because Q1 uses the IIF function to count the number of gas stations in the 'Discount' segment for 'CZE' and 'SVK' countries, and then subtracts the count of 'SVK' from 'CZE'. Q2, on the other hand, uses subqueries to count the number of gas stations in the 'Discount' segment for 'Czech Republic' and 'Slovakia' countries, and then subtracts the count of 'Slovakia' from 'Czech Republic'. The difference lies in the country names used in the conditions, which are not the same in both queries.",
+  "counterexample_dsp": "The test data should have gas stations in 'CZE' and 'SVK' countries in the 'Discount' segment. The count of gas stations in 'CZE' should be greater than the count of gas stations in 'SVK' to trigger a difference in the results of Q1 and Q2.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent because Q1 uses the IIF function to count the number of gas stations in the 'Discount' segment for 'CZE' and 'SVK' countries, and then subtracts the count of 'SVK' from 'CZE'. Q2, on the other hand, uses subqueries to count the number of gas stations in the 'Discount' segment for 'Czech Republic' and 'Slovakia' countries, and then subtracts the count of 'Slovakia' from 'Czech Republic'. The difference lies in the country names used in the conditions, which are not the same in both queries.\",\n  \"counterexample_dsp\": \"The test data should have gas stations in 'CZE' and 'SVK' countries in the 'Discount' segment. The count of gas stations in 'CZE' should be greater than the count of gas stations in 'SVK' to trigger a difference in the results of Q1 and Q2.\",\n  \"counterexample\": \"INSERT INTO gasstations (GasStationID, Country, Segment) VALUES (1, 'CZE', 'Discount'), (2, 'CZE', 'Discount'), (3, 'SVK', 'Discount');\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 541,
+    "total_tokens": 808,
+    "completion_tokens": 267,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 5.109
+  },
+  "started_at": "2026-10-06T16:07:11.366697+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      1
+    ]
+  ],
+  "q2_output": [
+    [
+      0
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT SUM(IIF(Country = 'CZE', 1, 0)) - SUM(IIF(Country = 'SVK', 1, 0)) FROM gasstations WHERE Segment = 'Discount'",
+  "q2_validation_sql": "SELECT (SELECT COUNT(GasStationID) FROM gasstations WHERE Country = 'Czech Republic' AND Segment = 'discount') - (SELECT COUNT(GasStationID) FROM gasstations WHERE Country = 'Slovakia' AND Segment = 'discount') AS More_Discount_Gas_Stations"
+}

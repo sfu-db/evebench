@@ -1,0 +1,55 @@
+{
+  "dbid": "2",
+  "index": "4",
+  "source_index": "3",
+  "schema_ddl": "CREATE TABLE ITP (\n    ITEMNO INT,\n    NP INT\n);\nCREATE TABLE ITM (\n    ITEMNO INT,\n    TYPE INT,\n    PRIMARY KEY (ITEMNO)\n);",
+  "q1": "SELECT ITM.ITEMNO, ITEMPRICE.NP FROM (SELECT DISTINCT ITP.ITEMNO AS ITN, ITP.NP AS NP FROM ITP AS ITP) AS ITEMPRICE, ITM AS ITM WHERE ITEMPRICE.ITN = ITM.ITEMNO",
+  "q2": "SELECT DISTINCT ITM.ITEMNO, ITP.NP FROM ITP AS ITP, ITM AS ITM WHERE ITP.ITEMNO = ITM.ITEMNO",
+  "dialect": "sqlite",
+  "ground_truth": "EQ",
+  "source": "literature",
+  "q1_prompt_sql": "SELECT ITM.ITEMNO, ITEMPRICE.NP FROM (SELECT DISTINCT ITP.ITEMNO AS ITN, ITP.NP AS NP FROM ITP AS ITP) AS ITEMPRICE, ITM AS ITM WHERE ITEMPRICE.ITN = ITM.ITEMNO",
+  "q2_prompt_sql": "SELECT DISTINCT ITM.ITEMNO, ITP.NP FROM ITP AS ITP, ITM AS ITM WHERE ITP.ITEMNO = ITM.ITEMNO",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO ITP (ITEMNO, NP) VALUES (1, 10), (1, 10), (2, 20); INSERT INTO ITM (ITEMNO, TYPE) VALUES (1, 1);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 first removes duplicates from the ITP table by selecting distinct ITEMNO and NP, and then joins this with the ITM table. Q2 directly joins the ITP and ITM tables without removing duplicates from the ITP table.",
+  "counterexample_dsp": "A test case where the ITP table contains duplicate ITEMNO values, and the ITM table has a record for one of these ITEMNO values.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 first removes duplicates from the ITP table by selecting distinct ITEMNO and NP, and then joins this with the ITM table. Q2 directly joins the ITP and ITM tables without removing duplicates from the ITP table.\",\n  \"counterexample_dsp\": \"A test case where the ITP table contains duplicate ITEMNO values, and the ITM table has a record for one of these ITEMNO values.\",\n  \"counterexample\": \"INSERT INTO ITP (ITEMNO, NP) VALUES (1, 10), (1, 10), (2, 20); INSERT INTO ITM (ITEMNO, TYPE) VALUES (1, 1);\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 351,
+    "total_tokens": 502,
+    "completion_tokens": 151,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 2.672
+  },
+  "started_at": "2026-10-06T07:05:01.050760+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      1,
+      10
+    ]
+  ],
+  "q2_output": [
+    [
+      1,
+      10
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT ITM.ITEMNO, ITEMPRICE.NP FROM (SELECT DISTINCT ITP.ITEMNO AS ITN, ITP.NP AS NP FROM ITP AS ITP) AS ITEMPRICE, ITM AS ITM WHERE ITEMPRICE.ITN = ITM.ITEMNO",
+  "q2_validation_sql": "SELECT DISTINCT ITM.ITEMNO, ITP.NP FROM ITP AS ITP, ITM AS ITM WHERE ITP.ITEMNO = ITM.ITEMNO"
+}

@@ -1,0 +1,69 @@
+{
+  "dbid": "thrombosis_prediction",
+  "index": "697",
+  "source_index": "1226",
+  "schema_ddl": "CREATE TABLE Examination\n(\n    ID                 INTEGER          null,\n    `Examination Date` DATE         null,\n    `aCL IgG`          REAL        null,\n    `aCL IgM`          REAL        null,\n    ANA                INTEGER          null,\n    `ANA Pattern`      TEXT null,\n    `aCL IgA`          INTEGER          null,\n    Diagnosis          TEXT null,\n    KCT                TEXT null,\n    RVVT              TEXT null,\n    LAC                TEXT null,\n    Symptoms           TEXT null,\n    Thrombosis         INTEGER          null,\n    foreign key (ID) references Patient (ID)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE Patient\n(\n    ID           INTEGER default 0 not null\n        primary key,\n    SEX          TEXT  null,\n    Birthday     DATE          null,\n    Description  DATE          null,\n    `First Date` DATE          null,\n    Admission    TEXT  null,\n    Diagnosis    TEXT  null\n);\n\nCREATE TABLE Laboratory\n(\n    ID        INTEGER  default 0            not null,\n    Date      DATE default '0000-00-00' not null,\n    GOT       INTEGER                       null,\n    GPT       INTEGER                        null,\n    LDH       INTEGER                        null,\n    ALP       INTEGER                        null,\n    TP        REAL             null,\n    ALB       REAL             null,\n    UA        REAL             null,\n    UN        INTEGER                       null,\n    CRE       REAL             null,\n    `T-BIL`   REAL             null,\n    `T-CHO`   INTEGER                       null,\n    TG        INTEGER                       null,\n    CPK       INTEGER                       null,\n    GLU       INTEGER                       null,\n    WBC       REAL             null,\n    RBC       REAL             null,\n    HGB       REAL             null,\n    HCT       REAL             null,\n    PLT       INTEGER                       null,\n    PT        REAL             null,\n    APTT      INTEGER                       null,\n    FG        REAL             null,\n    PIC       INTEGER                       null,\n    TAT       INTEGER                       null,\n    TAT2      INTEGER                       null,\n    `U-PRO`   TEXT              null,\n    IGG       INTEGER                       null,\n    IGA       INTEGER                       null,\n    IGM       INTEGER                       null,\n    CRP       TEXT              null,\n    RA        TEXT              null,\n    RF        TEXT              null,\n    C3        INTEGER                       null,\n    C4        INTEGER                       null,\n    RNP       TEXT              null,\n    SM        TEXT              null,\n    SC170     TEXT              null,\n    SSA       TEXT              null,\n    SSB       TEXT              null,\n    CENTROMEA TEXT              null,\n    DNA       TEXT              null,\n    `DNA-II`  INTEGER                       null,\n    primary key (ID, Date),\n        foreign key (ID) references Patient (ID)\n            on update cascade on delete cascade\n);",
+  "q1": "SELECT DISTINCT CASE WHEN T1.SEX = 'F' THEN T1.ID END, CASE WHEN T1.SEX = 'M' THEN T1.ID END FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T2.\"T-BIL\" >= 2.0",
+  "q2": "SELECT Patient.SEX, COUNT(*) FROM Patient INNER JOIN Laboratory ON Patient.ID = Laboratory.ID WHERE Laboratory.\"T-BIL\" >= 2.0 GROUP BY Patient.SEX",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT DISTINCT CASE WHEN T1.SEX = 'F' THEN T1.ID END, CASE WHEN T1.SEX = 'M' THEN T1.ID END FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T2.\"T-BIL\" >= 2.0",
+  "q2_prompt_sql": "SELECT Patient.SEX, COUNT(*) FROM Patient INNER JOIN Laboratory ON Patient.ID = Laboratory.ID WHERE Laboratory.\"T-BIL\" >= 2.0 GROUP BY Patient.SEX",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO Patient (ID, SEX) VALUES (1, 'F'), (2, 'F'), (3, 'M');\nINSERT INTO Laboratory (ID, `T-BIL`) VALUES (1, 2.5), (2, 2.5), (3, 2.5);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 returns distinct rows with patient IDs in either the female or male column based on SEX, while Q2 returns aggregated counts per sex. They produce structurally different results.",
+  "counterexample_dsp": "Two female patients (ID 1, 2) and one male patient (ID 3) all with T-BIL >= 2.0. Q1 produces 3 rows with IDs split by sex columns; Q2 produces 2 rows with counts 2 and 1.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 returns distinct rows with patient IDs in either the female or male column based on SEX, while Q2 returns aggregated counts per sex. They produce structurally different results.\",\n\"counterexample_dsp\": \"Two female patients (ID 1, 2) and one male patient (ID 3) all with T-BIL >= 2.0. Q1 produces 3 rows with IDs split by sex columns; Q2 produces 2 rows with counts 2 and 1.\",\n\"counterexample\": \"INSERT INTO Patient (ID, SEX) VALUES (1, 'F'), (2, 'F'), (3, 'M');\\nINSERT INTO Laboratory (ID, `T-BIL`) VALUES (1, 2.5), (2, 2.5), (3, 2.5);\"\n}",
+  "reasoning": "\nOkay, let's start by understanding what each query does.\n\nQ1: It selects distinct values from two CASE expressions. The first CASE returns T1.ID if SEX is 'F', else null. The second CASE returns T1.ID if SEX is 'M', else null. They join Patient with Laboratory on ID where T-BIL >= 2.0. The DISTINCT means each row has one of the two columns filled with the ID, or both if a patient somehow has both sexes, which is impossible. Wait, no, each patient has one sex. So each row in the result would have either the F ID or the M ID, but not both. So for each patient meeting the T-BIL condition, there are two rows? Wait, no. Because each patient row in the join would produce one row. Let me think: For each patient in Patient joined with Laboratory (one lab entry per patient?), the CASE statements would generate one of the two columns. Since the CASE is per row, for each patient, if they are female, the first column has their ID, the second is null. If male, vice versa. Then, the DISTINCT would collapse duplicates. But since each patient is unique in the join (assuming one lab entry per patient), the result would have rows with either F ID or M ID, but each patient once. Wait, but the CASE is per row. So for each row in the join (each patient with a lab entry), you get a row with one of the two columns. So if a patient has a lab entry where T-BIL >= 2.0, they will contribute one row with either the F or M column filled. But since each patient has one sex, only one of the two CASEs will be true. So the result of Q1 is a set of distinct IDs (each appearing once) for patients meeting the condition, but split into two columns depending on their sex. However, since it's DISTINCT, if two patients have the same sex, their IDs would be the same in that column, so they'd be deduplicated. Wait, no. For example, if two female patients have the same ID (unlikely, since ID is a key), but more likely, each patient has a unique ID. So the DISTINCT would make sure that each ID appears once in either the F column or the M column. But the actual output would be rows with one column filled and the other empty. But the question is about the output of the queries. The output columns are the two CASE expressions. So Q1 returns pairs where one is the ID (for the sex that matches) and the other is NULL, but since it's DISTINCT, each ID appears once in the result. However, the structure of the output is different from Q2.\n\nQ2: It groups by Patient.SEX and counts the number of patients per sex where T-BIL >= 2.0. So the output is two rows (assuming both sexes exist in the data), each with a sex value and the count of patients in that sex category meeting the lab condition.\n\nSo Q1 and Q2 are fundamentally different in their output structure. Q1 returns individual rows with each patient's ID in one column (depending on their sex), while Q2 returns aggregated counts grouped by sex. Therefore, they are not semantically equivalent. For example, if there are two female patients meeting the condition, Q1 would have two rows (each with the same sex column 'F' and their respective IDs), but Q2 would have one row with SEX 'F' and COUNT 2. The two queries are answering different questions: Q1 lists individual patient IDs per sex, Q2 aggregates counts per sex.\n\nTo confirm, let's think of a counterexample. Suppose we have two female patients (P1, P2) and one male patient (P3), all with T-BIL >= 2.0. Then Q1 would return three rows: (P1, NULL), (P2, NULL), (NULL, P3). Q2 would return two rows: ('F', 2), ('M', 1). The outputs are clearly different. Thus, the queries are not equivalent.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 960,
+    "total_tokens": 2005,
+    "completion_tokens": 1045,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 857
+    },
+    "generation_seconds": 34.656
+  },
+  "started_at": "2026-10-06T21:33:49.976342+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      1,
+      null
+    ],
+    [
+      2,
+      null
+    ],
+    [
+      null,
+      3
+    ]
+  ],
+  "q2_output": [
+    [
+      "F",
+      2
+    ],
+    [
+      "M",
+      1
+    ]
+  ],
+  "q1_row_count": 3,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DISTINCT CASE WHEN T1.SEX = 'F' THEN T1.ID END, CASE WHEN T1.SEX = 'M' THEN T1.ID END FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T2.\"T-BIL\" >= 2.0",
+  "q2_validation_sql": "SELECT Patient.SEX, COUNT(*) FROM Patient INNER JOIN Laboratory ON Patient.ID = Laboratory.ID WHERE Laboratory.\"T-BIL\" >= 2.0 GROUP BY Patient.SEX"
+}

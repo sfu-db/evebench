@@ -1,0 +1,61 @@
+{
+  "dbid": "603",
+  "index": "492",
+  "source_index": "253",
+  "schema_ddl": "CREATE TABLE CINEMA (\n    SEAT_ID INT,\n    FREE BOOLEAN\n);",
+  "q1": "SELECT O1.SEAT_ID FROM CINEMA O1 WHERE O1.FREE = 1 AND ((SELECT FREE FROM CINEMA O2 WHERE O2.SEAT_ID = O1.SEAT_ID - 1) = 1 OR (SELECT FREE FROM CINEMA O2 WHERE O2.SEAT_ID = O1.SEAT_ID + 1) = 1)",
+  "q2": "SELECT DISTINCT A.SEAT_ID FROM CINEMA A, CINEMA B WHERE ((A.SEAT_ID=B.SEAT_ID+1)OR(A.SEAT_ID=B.SEAT_ID-1)) AND (A.FREE=1) AND (B.FREE=1)",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT O1.SEAT_ID FROM CINEMA O1 WHERE O1.FREE = 1 AND ((SELECT FREE FROM CINEMA O2 WHERE O2.SEAT_ID = O1.SEAT_ID - 1) = 1 OR (SELECT FREE FROM CINEMA O2 WHERE O2.SEAT_ID = O1.SEAT_ID + 1) = 1)",
+  "q2_prompt_sql": "SELECT DISTINCT A.SEAT_ID FROM CINEMA A, CINEMA B WHERE ((A.SEAT_ID=B.SEAT_ID+1)OR(A.SEAT_ID=B.SEAT_ID-1)) AND (A.FREE=1) AND (B.FREE=1)",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO CINEMA (SEAT_ID, FREE) VALUES (1, 1);\nINSERT INTO CINEMA (SEAT_ID, FREE) VALUES (2, 1);\nINSERT INTO CINEMA (SEAT_ID, FREE) VALUES (3, 0);\nINSERT INTO CINEMA (SEAT_ID, FREE) VALUES (4, 1);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent. Q1 returns SEAT_IDs from CINEMA where the seat is free AND at least one adjacent seat (either +1 or -1) is also free. Q2 returns distinct SEAT_IDs where both the seat and one of its adjacent seats are free. The difference arises in how duplicates and the logic around adjacency are handled.",
+  "counterexample_dsp": "Consider a scenario where seat 3 is free, and seat 4 is also free. Q1 would return seat 3 (because seat 4 is free), but Q2 would return both seat 3 and seat 4. However, if seat 2 and seat 3 are both free, then Q1 returns seat 2 (because seat 3 is free) and Q2 returns both seat 2 and seat 3. The distinction is that Q1 returns only the seat that is free with a free neighbor, while Q2 returns both seats in an adjacent pair that are free.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n  \"equiv\": \"N\",\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent. Q1 returns SEAT_IDs from CINEMA where the seat is free AND at least one adjacent seat (either +1 or -1) is also free. Q2 returns distinct SEAT_IDs where both the seat and one of its adjacent seats are free. The difference arises in how duplicates and the logic around adjacency are handled.\",\n  \"counterexample_dsp\": \"Consider a scenario where seat 3 is free, and seat 4 is also free. Q1 would return seat 3 (because seat 4 is free), but Q2 would return both seat 3 and seat 4. However, if seat 2 and seat 3 are both free, then Q1 returns seat 2 (because seat 3 is free) and Q2 returns both seat 2 and seat 3. The distinction is that Q1 returns only the seat that is free with a free neighbor, while Q2 returns both seats in an adjacent pair that are free.\",\n  \"counterexample\": \"INSERT INTO CINEMA (SEAT_ID, FREE) VALUES (1, 1);\\nINSERT INTO CINEMA (SEAT_ID, FREE) VALUES (2, 1);\\nINSERT INTO CINEMA (SEAT_ID, FREE) VALUES (3, 0);\\nINSERT INTO CINEMA (SEAT_ID, FREE) VALUES (4, 1);\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 407,
+    "total_tokens": 722,
+    "completion_tokens": 315,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 10.078
+  },
+  "started_at": "2026-10-06T15:50:11.302396+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      1
+    ],
+    [
+      2
+    ]
+  ],
+  "q2_output": [
+    [
+      2
+    ],
+    [
+      1
+    ]
+  ],
+  "q1_row_count": 2,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT O1.SEAT_ID FROM CINEMA O1 WHERE O1.FREE = 1 AND ((SELECT FREE FROM CINEMA O2 WHERE O2.SEAT_ID = O1.SEAT_ID - 1) = 1 OR (SELECT FREE FROM CINEMA O2 WHERE O2.SEAT_ID = O1.SEAT_ID + 1) = 1)",
+  "q2_validation_sql": "SELECT DISTINCT A.SEAT_ID FROM CINEMA A, CINEMA B WHERE ((A.SEAT_ID=B.SEAT_ID+1)OR(A.SEAT_ID=B.SEAT_ID-1)) AND (A.FREE=1) AND (B.FREE=1)"
+}

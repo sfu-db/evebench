@@ -1,0 +1,53 @@
+{
+  "dbid": "debit_card_specializing",
+  "index": "868",
+  "source_index": "1522",
+  "schema_ddl": "CREATE TABLE customers\n(\n    CustomerID INTEGER UNIQUE     not null\n        primary key,\n    Segment    TEXT null,\n    Currency   TEXT null\n);\n\nCREATE TABLE gasstations\n(\n    GasStationID INTEGER    UNIQUE   not null\n        primary key,\n    ChainID      INTEGER          null,\n    Country      TEXT null,\n    Segment      TEXT null\n);\n\nCREATE TABLE products\n(\n    ProductID   INTEGER   UNIQUE      not null\n        primary key,\n    Description TEXT null\n);\n\nCREATE TABLE \"transactions_1k\"\n(\n    TransactionID INTEGER\n        primary key autoincrement,\n    Date          DATE,\n    Time          TEXT,\n    CustomerID    INTEGER,\n    CardID        INTEGER,\n    GasStationID  INTEGER,\n    ProductID     INTEGER,\n    Amount        INTEGER,\n    Price         REAL\n);\n\nCREATE TABLE \"yearmonth\"\n(\n    CustomerID  INTEGER not null\n        references customers\n            on update cascade on delete cascade\n        references customers,\n    Date        TEXT    not null,\n    Consumption REAL,\n    primary key (Date, CustomerID)\n);",
+  "q1": "SELECT COUNT(T1.TransactionID) FROM transactions_1k AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID WHERE T1.Date = '2012-08-26' AND T1.Time BETWEEN '08:00:00' AND '09:00:00' AND T2.Country = 'CZE'",
+  "q2": "SELECT COUNT(TransactionID) FROM transactions_1k AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID WHERE T1.Date = '2012-08-26' AND T1.Time BETWEEN '08:00' AND '09:00' AND T2.Country = 'CZE'",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT COUNT(T1.TransactionID) FROM transactions_1k AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID WHERE T1.Date = '2012-08-26' AND T1.Time BETWEEN '08:00:00' AND '09:00:00' AND T2.Country = 'CZE'",
+  "q2_prompt_sql": "SELECT COUNT(TransactionID) FROM transactions_1k AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID WHERE T1.Date = '2012-08-26' AND T1.Time BETWEEN '08:00' AND '09:00' AND T2.Country = 'CZE'",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO transactions_1k (TransactionID, Date, Time, GasStationID) VALUES (1, '2012-08-26', '08:05:00', 1); INSERT INTO transactions_1k (TransactionID, Date, Time, GasStationID) VALUES (2, '2012-08-26', '08:55:00', 1);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent because the time condition in Q2 is less specific than in Q1. Q1 uses '08:00:00' and '09:00:00' for the time range, while Q2 uses '08:00' and '09:00', which could potentially match transactions with times like '08:05:00' that are not included in Q1's range.",
+  "counterexample_dsp": "The test data should include transactions with times '08:05:00' and '08:55:00' to demonstrate the difference between Q1 and Q2. The first transaction should match Q1 but not Q2, while the second transaction should match Q2 but not Q1.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent because the time condition in Q2 is less specific than in Q1. Q1 uses '08:00:00' and '09:00:00' for the time range, while Q2 uses '08:00' and '09:00', which could potentially match transactions with times like '08:05:00' that are not included in Q1's range.\",\n  \"counterexample_dsp\": \"The test data should include transactions with times '08:05:00' and '08:55:00' to demonstrate the difference between Q1 and Q2. The first transaction should match Q1 but not Q2, while the second transaction should match Q2 but not Q1.\",\n  \"counterexample\": \"INSERT INTO transactions_1k (TransactionID, Date, Time, GasStationID) VALUES (1, '2012-08-26', '08:05:00', 1); INSERT INTO transactions_1k (TransactionID, Date, Time, GasStationID) VALUES (2, '2012-08-26', '08:55:00', 1);\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 605,
+    "total_tokens": 889,
+    "completion_tokens": 284,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 5.422
+  },
+  "started_at": "2026-10-06T16:07:11.392995+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      0
+    ]
+  ],
+  "q2_output": [
+    [
+      0
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT COUNT(T1.TransactionID) FROM transactions_1k AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID WHERE T1.Date = '2012-08-26' AND T1.Time BETWEEN '08:00:00' AND '09:00:00' AND T2.Country = 'CZE'",
+  "q2_validation_sql": "SELECT COUNT(TransactionID) FROM transactions_1k AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID WHERE T1.Date = '2012-08-26' AND T1.Time BETWEEN '08:00' AND '09:00' AND T2.Country = 'CZE'"
+}

@@ -1,0 +1,53 @@
+{
+  "dbid": "182",
+  "index": "562",
+  "source_index": "150",
+  "schema_ddl": "CREATE TABLE PERSON (\n    ID INT,\n    EMAIL VARCHAR(255),\n    PRIMARY KEY (ID)\n);",
+  "q1": "SELECT EMAIL AS EMAIL FROM PERSON GROUP BY EMAIL HAVING COUNT(EMAIL) >1",
+  "q2": "SELECT EMAIL FROM (SELECT DISTINCT EMAIL, COUNT(*) AS CNT FROM PERSON GROUP BY EMAIL) AS E WHERE CNT>1",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT EMAIL AS EMAIL FROM PERSON GROUP BY EMAIL HAVING COUNT(EMAIL) >1",
+  "q2_prompt_sql": "SELECT EMAIL FROM (SELECT DISTINCT EMAIL, COUNT(*) AS CNT FROM PERSON GROUP BY EMAIL) AS E WHERE CNT>1",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO PERSON (ID, EMAIL) VALUES (1, 'user1@example.com'), (2, 'user2@example.com'), (3, 'user1@example.com');",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 groups by EMAIL and checks if the count of EMAIL is greater than 1, which is incorrect as GROUP BY EMAIL will always result in a count of 1 for each unique email. Q2 first uses DISTINCT to ensure each email is counted only once and then checks if the count is greater than 1, which is the intended logic.",
+  "counterexample_dsp": "The test data should have at least two distinct emails, where one email appears more than once in the PERSON table. Q1 will incorrectly return all emails as it groups by EMAIL and the count is always 1. Q2 will correctly return only the email that appears more than once.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 groups by EMAIL and checks if the count of EMAIL is greater than 1, which is incorrect as GROUP BY EMAIL will always result in a count of 1 for each unique email. Q2 first uses DISTINCT to ensure each email is counted only once and then checks if the count is greater than 1, which is the intended logic.\",\n  \"counterexample_dsp\": \"The test data should have at least two distinct emails, where one email appears more than once in the PERSON table. Q1 will incorrectly return all emails as it groups by EMAIL and the count is always 1. Q2 will correctly return only the email that appears more than once.\",\n  \"counterexample\": \"INSERT INTO PERSON (ID, EMAIL) VALUES (1, 'user1@example.com'), (2, 'user2@example.com'), (3, 'user1@example.com');\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 287,
+    "total_tokens": 474,
+    "completion_tokens": 187,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 3.141
+  },
+  "started_at": "2026-10-06T09:55:37.166816+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "user1@example.com"
+    ]
+  ],
+  "q2_output": [
+    [
+      "user1@example.com"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT EMAIL AS EMAIL FROM PERSON GROUP BY EMAIL HAVING COUNT(EMAIL) >1",
+  "q2_validation_sql": "SELECT EMAIL FROM (SELECT DISTINCT EMAIL, COUNT(*) AS CNT FROM PERSON GROUP BY EMAIL) AS E WHERE CNT>1"
+}

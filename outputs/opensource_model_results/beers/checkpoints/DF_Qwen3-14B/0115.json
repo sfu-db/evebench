@@ -1,0 +1,52 @@
+{
+  "dbid": "beers",
+  "index": "115",
+  "source_index": "1944",
+  "schema_ddl": "CREATE TABLE Bar (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Beer (\n    name VARCHAR NOT NULL,\n    brewer VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Drinker (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Frequents (\n    drinker VARCHAR NOT NULL,\n    bar VARCHAR NOT NULL,\n    times_a_week SMALLINT NOT NULL,\n    PRIMARY KEY (drinker, bar),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (bar) REFERENCES Bar(name)\n);\n\nCREATE TABLE Serves (\n    bar VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    price DECIMAL(5,2) NOT NULL,\n    PRIMARY KEY (bar, beer),\n    FOREIGN KEY (bar) REFERENCES Bar(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);\n\nCREATE TABLE Likes (\n    drinker VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    PRIMARY KEY (drinker, beer),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);",
+  "q1": "SELECT f1.drinker, f2.drinker FROM (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f1, (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f2 WHERE f1.drinker < f2.drinker AND f1.st = f2.st",
+  "q2": "SELECT DISTINCT f1.drinker, f2.drinker FROM frequents AS f1, frequents AS f2 WHERE f1.drinker <> f2.drinker GROUP BY f1.drinker, f2.drinker HAVING SUM(f1.times_a_week) = SUM(f2.times_a_week)",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "beers",
+  "q1_prompt_sql": "SELECT f1.drinker, f2.drinker FROM (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f1, (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f2 WHERE f1.drinker < f2.drinker AND f1.st = f2.st",
+  "q2_prompt_sql": "SELECT DISTINCT f1.drinker, f2.drinker FROM frequents AS f1, frequents AS f2 WHERE f1.drinker <> f2.drinker GROUP BY f1.drinker, f2.drinker HAVING SUM(f1.times_a_week) = SUM(f2.times_a_week)",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO Drinker (name, address) VALUES ('Alice', 'Addr1'), ('Bob', 'Addr2');\nINSERT INTO Bar (name, address) VALUES ('Bar1', 'BAddr1'), ('Bar2', 'BAddr2'), ('Bar3', 'BAddr3');\nINSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('Alice', 'Bar1', 3), ('Alice', 'Bar2', 2), ('Bob', 'Bar3', 5);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not equivalent. Q1 ensures pairs are ordered (f1.drinker < f2.drinker) and returns only one pair per matching sum, while Q2 returns both (A,B) and (B,A) if they meet the sum condition. This difference in ordering and duplication leads to different results.",
+  "counterexample_dsp": "Two drinkers (Alice and Bob) with identical total frequents. Q1 returns (Alice,Bob) once, Q2 returns both (Alice,Bob) and (Bob,Alice).",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 and Q2 are not equivalent. Q1 ensures pairs are ordered (f1.drinker < f2.drinker) and returns only one pair per matching sum, while Q2 returns both (A,B) and (B,A) if they meet the sum condition. This difference in ordering and duplication leads to different results.\",\n\"counterexample_dsp\": \"Two drinkers (Alice and Bob) with identical total frequents. Q1 returns (Alice,Bob) once, Q2 returns both (Alice,Bob) and (Bob,Alice).\",\n\"counterexample\": \"INSERT INTO Drinker (name, address) VALUES ('Alice', 'Addr1'), ('Bob', 'Addr2');\\nINSERT INTO Bar (name, address) VALUES ('Bar1', 'BAddr1'), ('Bar2', 'BAddr2'), ('Bar3', 'BAddr3');\\nINSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('Alice', 'Bar1', 3), ('Alice', 'Bar2', 2), ('Bob', 'Bar3', 5);\"\n}",
+  "reasoning": "\nOkay, let's try to figure out whether Q1 and Q2 are semantically equivalent. \n\nFirst, I need to understand what each query is doing. Let's start with Q1. \n\nQ1 uses two subqueries, f1 and f2, both of which are aggregating the sum of times_a_week for each drinker from the frequents table. Then, it's joining these two subqueries on the condition that f1.drinker is less than f2.drinker and their sums are equal. The result is pairs of drinkers where their total times_a_week are the same, and the first drinker's name is lexicographically less than the second. \n\nNow, Q2 is selecting distinct pairs of drinkers from the frequents table where their drinker names are different. It groups by the pairs and uses HAVING to check if the sum of times_a_week for f1 equals that of f2. The DISTINCT is there to avoid duplicates, but since the GROUP BY is on both drinkers, it should already ensure unique pairs. \n\nSo, the main difference seems to be in how they handle the pairing. Q1 ensures that each pair is only listed once with f1.drinker < f2.drinker, avoiding duplicates like (A,B) and (B,A). Q2, on the other hand, might produce both (A,B) and (B,A) if they meet the condition, but the DISTINCT clause would remove duplicates. Wait, no. Because Q2's GROUP BY is on f1.drinker and f2.drinker, so each pair (A,B) and (B,A) would be separate groups. But the HAVING condition checks the sum of f1's times against f2's. So if A and B have the same sum, then both (A,B) and (B,A) would be in the result. However, Q1 only includes pairs where f1.drinker < f2.drinker, so only one of them. \n\nTherefore, Q1 and Q2 would return different results if there are two drinkers with the same total times_a_week. For example, if there are two drinkers A and B with the same sum, Q1 would return (A,B) once, while Q2 would return both (A,B) and (B,A) if they are distinct. Wait, but Q2 uses DISTINCT. Wait, no: the SELECT is DISTINCT f1.drinker, f2.drinker. But when you group by f1.drinker and f2.drinker, the GROUP BY ensures that each pair is unique. But if the same pair is generated in different ways, but with the same values, DISTINCT would collapse them. However, in Q2, the grouping is on the same pair, so each (A,B) and (B,A) would be separate groups. \n\nBut in Q2, the HAVING clause is SUM(f1.times_a_week) = SUM(f2.times_a_week). For each pair (A,B), the sum of f1 (which is A's total) equals sum of f2 (B's total). So if A and B have same total, then both (A,B) and (B,A) would be included in Q2's result. However, Q1 would only include (A,B) once if A < B. \n\nSo, in that case, Q1 and Q2 would not be equivalent. For example, if there are two drinkers with same total, Q2 would return both (A,B) and (B,A), whereas Q1 would return only (A,B) once. \n\nBut wait, in Q2, the DISTINCT is applied. Wait, the query is SELECT DISTINCT f1.drinker, f2.drinker. So if there are two rows with same (A,B) and (B,A), they are both kept. But if the same pair is generated in different ways, but the DISTINCT would collapse them. However, in the case of (A,B) and (B,A), they are distinct pairs. So Q2 would return both. \n\nSo, if there are two drinkers with same total, Q1 would return one pair (A,B) where A < B, and Q2 would return both (A,B) and (B,A). Therefore, they are not equivalent. \n\nNow, the next step is to create a counterexample. Let's create a small database where two drinkers have the same total times_a_week. For example, let's say we have two drinkers, Alice and Bob, each frequenting bars with total times of 5. \n\nLet's set up the Frequents table with entries for Alice and Bob. Suppose Alice goes to Bar1 3 times and Bar2 2 times (total 5), and Bob goes to Bar3 5 times (total 5). \n\nIn Q1, the subqueries f1 and f2 would each have Alice and Bob with sum 5. The join condition f1.drinker < f2.drinker would produce (Alice, Bob) once. \n\nIn Q2, when joining the Frequents table as f1 and f2, for each pair (Alice, Bob) and (Bob, Alice), the HAVING condition would be true. So Q2 would return both (Alice, Bob) and (Bob, Alice). \n\nTherefore, the output of Q1 and Q2 would differ here. \n\nNow, I need to make sure that this setup doesn't violate any constraints. The schema requires that in Frequents, the primary key is (drinker, bar). So each drinker-bar combination must be unique. \n\nSo, inserting into Frequents:\n\nINSERT INTO Frequents (drinker, bar, times_a_week) VALUES \n('Alice', 'Bar1', 3),\n('Alice', 'Bar2', 2),\n('Bob', 'Bar3', 5);\n\nThis should be valid. \n\nNow, in Q1, the subqueries sum Alice's times as 5 and Bob's as 5. The join would have Alice < Bob, so (Alice, Bob) is output. \n\nIn Q2, when grouping by (Alice, Bob), the sum of f1 (Alice's total) is 5, sum of f2 (Bob's total) is 5. So the HAVING condition is met. Similarly, grouping by (Bob, Alice), the sum of f1 (Bob's total) is 5, sum of f2 (Alice's total) is 5. So both pairs are included. \n\nThus, Q1 and Q2 are not equivalent. Therefore, the answer should be N with the counterexample.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 639,
+    "total_tokens": 2265,
+    "completion_tokens": 1626,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1379
+    },
+    "generation_seconds": 51.75
+  },
+  "started_at": "2026-10-06T09:16:03.021465+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "Alice",
+      "Bob"
+    ]
+  ],
+  "q2_output": [],
+  "q1_row_count": 1,
+  "q2_row_count": 0,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT f1.drinker, f2.drinker FROM (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f1, (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f2 WHERE f1.drinker < f2.drinker AND f1.st = f2.st",
+  "q2_validation_sql": "SELECT DISTINCT f1.drinker, f2.drinker FROM frequents AS f1, frequents AS f2 WHERE f1.drinker <> f2.drinker GROUP BY f1.drinker, f2.drinker HAVING SUM(f1.times_a_week) = SUM(f2.times_a_week)"
+}

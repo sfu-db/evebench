@@ -1,0 +1,70 @@
+{
+  "dbid": "toxicology",
+  "index": "178",
+  "source_index": "254",
+  "schema_ddl": "CREATE TABLE `atom` (\n  `atom_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `element` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `bond` (\n  `bond_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `bond_type` TEXT DEFAULT NULL,\n  PRIMARY KEY (`bond_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `connected` (\n  `atom_id` TEXT NOT NULL,\n  `atom_id2` TEXT NOT NULL,\n  `bond_id` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`,`atom_id2`),\n  FOREIGN KEY (`atom_id`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`atom_id2`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`bond_id`) REFERENCES `bond` (`bond_id`) ON DELETE CASCADE ON UPDATE CASCADE\n);\n\nCREATE TABLE `molecule` (\n  `molecule_id` TEXT NOT NULL,\n  `label` TEXT DEFAULT NULL,\n  PRIMARY KEY (`molecule_id`)\n);",
+  "q1": "SELECT DISTINCT T3.element FROM bond AS T1 INNER JOIN connected AS T2 ON T1.bond_id = T2.bond_id INNER JOIN atom AS T3 ON T2.atom_id = T3.atom_id WHERE T1.bond_type = '#'",
+  "q2": "SELECT T1.element FROM atom AS T1 INNER JOIN connected AS T2 ON T1.atom_id = T2.atom_id INNER JOIN bond AS T3 ON T2.bond_id = T3.bond_id WHERE T3.bond_type = '#'",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT DISTINCT T3.element FROM bond AS T1 INNER JOIN connected AS T2 ON T1.bond_id = T2.bond_id INNER JOIN atom AS T3 ON T2.atom_id = T3.atom_id WHERE T1.bond_type = '#'",
+  "q2_prompt_sql": "SELECT T1.element FROM atom AS T1 INNER JOIN connected AS T2 ON T1.atom_id = T2.atom_id INNER JOIN bond AS T3 ON T2.bond_id = T3.bond_id WHERE T3.bond_type = '#'",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO atom (atom_id, element) VALUES ('A', 'X'), ('B', 'Y'), ('C', 'Z');\nINSERT INTO bond (bond_id, bond_type) VALUES ('bond1', '#'), ('bond2', '#');\nINSERT INTO connected (atom_id, atom_id2, bond_id) VALUES ('A', 'B', 'bond1'), ('B', 'A', 'bond1'), ('A', 'C', 'bond2'), ('C', 'A', 'bond2');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not equivalent because Q1 uses SELECT DISTINCT to eliminate duplicate elements, while Q2 does not. This leads to differences when an atom is involved in multiple bonds of type '#'.",
+  "counterexample_dsp": "An atom (e.g., 'A') connected via two distinct bonds of type '#'. Q1 returns the element once, while Q2 returns it twice.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n  \"equiv\": \"N\",\n  \"explanation\": \"Q1 and Q2 are not equivalent because Q1 uses SELECT DISTINCT to eliminate duplicate elements, while Q2 does not. This leads to differences when an atom is involved in multiple bonds of type '#'.\",\n  \"counterexample_dsp\": \"An atom (e.g., 'A') connected via two distinct bonds of type '#'. Q1 returns the element once, while Q2 returns it twice.\",\n  \"counterexample\": \"INSERT INTO atom (atom_id, element) VALUES ('A', 'X'), ('B', 'Y'), ('C', 'Z');\\nINSERT INTO bond (bond_id, bond_type) VALUES ('bond1', '#'), ('bond2', '#');\\nINSERT INTO connected (atom_id, atom_id2, bond_id) VALUES ('A', 'B', 'bond1'), ('B', 'A', 'bond1'), ('A', 'C', 'bond2'), ('C', 'A', 'bond2');\"\n}",
+  "reasoning": "\nOkay, let's try to figure out if Q1 and Q2 are equivalent. \n\nFirst, I need to understand what each query is doing. \n\nLooking at Q1: It selects distinct elements from the atom table (T3) through joins. The joins are bond (T1) connected to connected (T2) on bond_id, and then connected (T2) to atom (T3) on atom_id. The WHERE condition is T1.bond_type = '#'. So this query is finding all atoms that are part of bonds of type '#', right? Because the connected table links atoms to bonds, and then we get the element from the atom table.\n\nNow Q2: It selects elements from atom (T1) by joining with connected (T2) on atom_id, then joining with bond (T3) on bond_id. The WHERE condition is T3.bond_type = '#'. So this is also trying to get atoms involved in bonds of type '#', but maybe the direction of the joins is different?\n\nWait, in Q1, the connected table is joined with bond first (T1 and T2), then connected to atom (T3). In Q2, the atom is joined with connected first (T1 and T2), then connected to bond (T3). \n\nBut the connected table has two atom IDs: atom_id and atom_id2. So when you join on T2.atom_id = T3.atom_id in Q1, you're getting one side of the bond. In Q2, the join is on T1.atom_id = T2.atom_id, which is the same as T2's atom_id. Then the bond is joined via T2.bond_id = T3.bond_id. \n\nWait, but in Q1, the connected table is joined to the atom table via T2.atom_id = T3.atom_id. So that would get the atom_id from connected (which is one end of the bond) and then the element from that atom. But in Q2, the atom table is joined with connected via T1.atom_id = T2.atom_id, so that's the same as Q1's T2.atom_id. Then joining with bond via T2.bond_id = T3.bond_id. So both queries are looking at bonds of type '#', and then getting the atoms connected via that bond. \n\nBut the difference might be that Q1 uses T3.element (from atom) and Q2 uses T1.element (from atom). Wait, in Q1, the atom is T3, and in Q2, the atom is T1. But in Q2, the atom is joined via T1.atom_id = T2.atom_id, so T1 is the same as T3 in Q1. So maybe the difference is in the DISTINCT keyword. Q1 uses SELECT DISTINCT, while Q2 does not. But in Q2, if there are multiple entries for the same atom in the connected table for a bond of type '#', then Q2 could return duplicates. But Q1 would have DISTINCT, so maybe they are different in that aspect. Wait, but the connected table's primary key is (atom_id, atom_id2), so for a given bond, each atom is connected once. But perhaps when a bond is between two atoms, each atom is connected once. So for each bond, two atoms are connected. So when you join, each bond would have two entries in the connected table (atom1 to atom2 and atom2 to atom1?), but the primary key is (atom_id, atom_id2), so maybe it's stored once. Hmm, but the connected table's primary key is (atom_id, atom_id2), which implies that each pair is unique. So for a bond between atom A and atom B, there's a row with (A, B) and another with (B, A)? Or is it stored once? The schema doesn't specify, but the primary key is (atom_id, atom_id2), so each pair is unique. So if a bond connects atom A and B, the connected table would have entries (A,B) and (B,A) if they are both present, but maybe the table is designed to have each pair once. However, the problem is that the connected table's bond_id is a foreign key to bond. So for a bond, there's a single bond_id, and the connected table would have entries for both atoms connected by that bond. So for a bond between A and B, the connected table would have two entries: (A,B) and (B,A), both with the same bond_id. \n\nSo, in Q1, when you join bond (T1) with connected (T2) on bond_id, then join connected (T2) with atom (T3) on T2.atom_id = T3.atom_id. So for each bond of type '#', we get both atoms connected to it. Then, the DISTINCT in Q1 ensures that even if the same atom is connected via multiple bonds (or same bond?), it's only listed once. \n\nIn Q2, the query is joining atom (T1) with connected (T2) on T1.atom_id = T2.atom_id, then connected (T2) with bond (T3) on T2.bond_id = T3.bond_id. So for each bond of type '#', it's getting the atom_id from connected (T2) which is T1.atom_id. Then, selecting T1.element. But here, since each bond has two atoms, the connected table would have two entries for that bond. So Q2 would return both atoms, but without DISTINCT. So if a bond has two atoms, Q2 would return both, but if there are duplicates (like same atom in different bonds?), but without DISTINCT, Q2 might have duplicates. However, Q1 uses DISTINCT, so if the same atom is connected via multiple bonds of type '#', Q1 would have it once, and Q2 would have it once per bond. Wait, but in Q1, the DISTINCT is applied to T3.element. So if two different bonds of type '#' connect the same atom, Q1 would return that element once, while Q2 would return it twice. \n\nWait, but in Q1, the joins are bond (T1) with connected (T2) on bond_id, then connected (T2) with atom (T3) on T2.atom_id. So for each bond of type '#', the connected table has two entries (atom1 and atom2), and each would be joined with their respective atoms. So Q1 would get the elements of both atoms for each such bond. But since it's SELECT DISTINCT, if the same element is found in multiple bonds, it would be listed once. \n\nIn Q2, the query is joining atom (T1) with connected (T2) on T1's atom_id, then connected (T2) with bond (T3) on bond_id. So for each bond of type '#', the connected table has two entries (atom1 and atom2), so T1 would be atom1 and atom2. Then, Q2 would return their elements. But since there's no DISTINCT, if the same atom is connected via multiple bonds of type '#', it would appear multiple times. \n\nSo the key difference is that Q1 uses DISTINCT, while Q2 does not. Therefore, in cases where an atom is part of multiple bonds of type '#', Q1 would return that element once, while Q2 would return it once per bond. \n\nSo to create a counterexample, we need a scenario where an atom is part of two different bonds of type '#', leading Q1 to return the element once and Q2 to return it twice. \n\nLet's design a test database. Suppose we have two bonds, bond1 and bond2, both of type '#'. Bond1 connects atomA and atomB. Bond2 connects atomA and atomC. So atomA is part of both bonds. \n\nIn Q1: The DISTINCT would return atomA's element once. But in Q2, since each bond is processed, atomA would be listed twice (once for bond1 and once for bond2). So the results would differ. \n\nBut wait, in Q1, the query is:\n\nSELECT DISTINCT T3.element FROM bond AS T1 INNER JOIN connected AS T2 ON T1.bond_id = T2.bond_id INNER JOIN atom AS T3 ON T2.atom_id = T3.atom_id WHERE T1.bond_type = '#'\n\nSo for each bond of type '#', we get the atoms connected via that bond. For bond1, atoms A and B. For bond2, atoms A and C. So T3.element would be A's element, B's, A's, C's. With DISTINCT, it would be A, B, C. \n\nIn Q2:\n\nSELECT T1.element FROM atom AS T1 INNER JOIN connected AS T2 ON T1.atom_id = T2.atom_id INNER JOIN bond AS T3 ON T2.bond_id = T3.bond_id WHERE T3.bond_type = '#'\n\nFor each connected entry where the bond is '#', we get the atom's element. For bond1, connected has entries (A, B) and (B, A). So T1 would be A and B. For bond2, connected has (A, C) and (C, A). So T1 would be A and C. So Q2 would return A, B, A, C. Without DISTINCT, the result is A, B, A, C. So Q1's result is {A, B, C}, Q2's is [A, B, A, C]. Therefore, they are not equivalent. \n\nThus, the counterexample would involve an atom (A) connected via two different bonds of type '#', leading to duplicates in Q2 but not in Q1. \n\nNow, to create the test data:\n\n- Insert molecule (maybe not needed if molecule_id is not used in the queries, but the schema allows it. However, the queries don't use molecule_id, so maybe we can ignore that for the test data. But the schema requires molecule_id to be a foreign key, but the tables can have NULL values. So maybe we can insert with NULL.\n\nBut for the test data, let's create:\n\n- Insert into atom: atomA (atom_id 'A', element 'X'), atomB ('B', 'Y'), atomC ('C', 'Z').\n\n- Insert into bond: bond1 ('bond1', NULL, '#'), bond2 ('bond2', NULL, '#').\n\n- Insert into connected: for bond1, (A, B, 'bond1'), (B, A, 'bond1'). For bond2, (A, C, 'bond2'), (C, A, 'bond2').\n\nThen, Q1 would return X, Y, Z (distinct). Q2 would return X, Y, X, Z. So the results are different. Hence, the queries are not equivalent.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 625,
+    "total_tokens": 3144,
+    "completion_tokens": 2519,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 2301
+    },
+    "generation_seconds": 79.344
+  },
+  "started_at": "2026-10-06T20:24:10.242098+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "X"
+    ],
+    [
+      "Y"
+    ],
+    [
+      "Z"
+    ]
+  ],
+  "q2_output": [
+    [
+      "X"
+    ],
+    [
+      "Y"
+    ],
+    [
+      "X"
+    ],
+    [
+      "Z"
+    ]
+  ],
+  "q1_row_count": 3,
+  "q2_row_count": 4,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DISTINCT T3.element FROM bond AS T1 INNER JOIN connected AS T2 ON T1.bond_id = T2.bond_id INNER JOIN atom AS T3 ON T2.atom_id = T3.atom_id WHERE T1.bond_type = '#'",
+  "q2_validation_sql": "SELECT T1.element FROM atom AS T1 INNER JOIN connected AS T2 ON T1.atom_id = T2.atom_id INNER JOIN bond AS T3 ON T2.bond_id = T3.bond_id WHERE T3.bond_type = '#'"
+}

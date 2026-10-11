@@ -1,0 +1,58 @@
+{
+  "dbid": "superhero",
+  "index": "426",
+  "source_index": "809",
+  "schema_ddl": "CREATE TABLE alignment\n(\n    id        INTEGER not null\n            primary key,\n    alignment TEXT default NULL\n);\n\nCREATE TABLE attribute\n(\n    id             INTEGER not null\n            primary key,\n    attribute_name TEXT default NULL\n);\n\nCREATE TABLE colour\n(\n    id     INTEGER not null\n            primary key,\n    colour TEXT default NULL\n);\n\nCREATE TABLE gender\n(\n    id     INTEGER not null\n            primary key,\n    gender TEXT default NULL\n);\n\nCREATE TABLE publisher\n(\n    id             INTEGER not null\n            primary key,\n    publisher_name TEXT default NULL\n);\n\nCREATE TABLE race\n(\n    id   INTEGER not null\n            primary key,\n    race TEXT default NULL\n);\n\nCREATE TABLE superhero\n(\n    id             INTEGER not null\n            primary key,\n    superhero_name TEXT default NULL,\n    full_name      TEXT default NULL,\n    gender_id      INTEGER          default NULL,\n    eye_colour_id  INTEGER          default NULL,\n    hair_colour_id INTEGER          default NULL,\n    skin_colour_id INTEGER          default NULL,\n    race_id        INTEGER          default NULL,\n    publisher_id   INTEGER          default NULL,\n    alignment_id   INTEGER          default NULL,\n    height_cm      INTEGER          default NULL,\n    weight_kg      INTEGER          default NULL,\n    foreign key (alignment_id) references alignment(id),\n    foreign key (eye_colour_id) references colour(id),\n    foreign key (gender_id) references gender(id),\n    foreign key (hair_colour_id) references colour(id),\n    foreign key (publisher_id) references publisher(id),\n    foreign key (race_id) references race(id),\n    foreign key (skin_colour_id) references colour(id)\n);\n\nCREATE TABLE hero_attribute\n(\n    hero_id         INTEGER default NULL,\n    attribute_id    INTEGER default NULL,\n    attribute_value INTEGER default NULL,\n    foreign key (attribute_id) references attribute(id),\n    foreign key (hero_id) references superhero(id)\n);\n\nCREATE TABLE superpower\n(\n    id         INTEGER not null\n            primary key,\n    power_name TEXT default NULL\n);\n\nCREATE TABLE hero_power\n(\n    hero_id  INTEGER default NULL,\n    power_id INTEGER default NULL,\n    foreign key (hero_id) references superhero(id),\n    foreign key (power_id) references superpower(id)\n);",
+  "q1": "SELECT DISTINCT T2.race FROM superhero AS T1 INNER JOIN race AS T2 ON T1.race_id = T2.id WHERE T1.weight_kg = 108 AND T1.height_cm = 188",
+  "q2": "SELECT T2.race FROM superhero AS T1 INNER JOIN race AS T2 ON T1.race_id = T2.id WHERE T1.weight_kg = 108 AND T1.height_cm = 188",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT DISTINCT T2.race FROM superhero AS T1 INNER JOIN race AS T2 ON T1.race_id = T2.id WHERE T1.weight_kg = 108 AND T1.height_cm = 188",
+  "q2_prompt_sql": "SELECT T2.race FROM superhero AS T1 INNER JOIN race AS T2 ON T1.race_id = T2.id WHERE T1.weight_kg = 108 AND T1.height_cm = 188",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO race (id, race) VALUES (1, 'Human');\nINSERT INTO superhero (id, superhero_name, full_name, race_id, weight_kg, height_cm) VALUES (1, 'Hero1', 'Full1', 1, 108, 188);\nINSERT INTO superhero (id, superhero_name, full_name, race_id, weight_kg, height_cm) VALUES (2, 'Hero2', 'Full2', 1, 108, 188);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 uses DISTINCT, so duplicate race values are removed. Q2 returns all matching rows. If two superheroes share the same weight, height, and race, Q1 returns one row while Q2 returns two rows.",
+  "counterexample_dsp": "Two superheroes with weight_kg=108, height_cm=188, and same race_id. Q1 returns one distinct race, Q2 returns two identical race entries.",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 uses DISTINCT, so duplicate race values are removed. Q2 returns all matching rows. If two superheroes share the same weight, height, and race, Q1 returns one row while Q2 returns two rows.\",\n  \"counterexample_dsp\": \"Two superheroes with weight_kg=108, height_cm=188, and same race_id. Q1 returns one distinct race, Q2 returns two identical race entries.\",\n  \"counterexample\": [\n    \"INSERT INTO race (id, race) VALUES (1, 'Human');\",\n    \"INSERT INTO superhero (id, superhero_name, full_name, race_id, weight_kg, height_cm) VALUES (1, 'Hero1', 'Full1', 1, 108, 188);\",\n    \"INSERT INTO superhero (id, superhero_name, full_name, race_id, weight_kg, height_cm) VALUES (2, 'Hero2', 'Full2', 1, 108, 188);\"\n  ]\n}",
+  "reasoning": "\nOkay, let's tackle this problem. I need to find a counterexample where Q1 and Q2 return different results. Let me first understand the difference between the two queries.\n\nQ1 uses SELECT DISTINCT T2.race, while Q2 uses SELECT T2.race. The only difference is the DISTINCT keyword. So, if there are duplicate race values in the result of Q2, Q1 would remove them, making the outputs different. Therefore, the counterexample should involve a scenario where the join produces multiple rows with the same race value for the given conditions (weight_kg=108 and height_cm=188).\n\nLooking at the schema, the superhero table has a race_id that references race.id. The race table has race as the name. The join is on T1.race_id = T2.id. So, if there are multiple superheroes with the same weight and height but different race_ids that point to the same race name, or if the same superhero has multiple entries (but the primary key is id, so duplicates shouldn't exist unless there's a mistake). Wait, superhero's id is the primary key, so each superhero is unique. But if a superhero has a race_id that's linked to the same race, but that's not possible since race_id is a foreign key to race.id. Wait, no, each superhero has one race_id, so joining superhero to race would give one row per superhero. Unless there's a case where a superhero is linked to the same race multiple times? No, the foreign key is a single value. So how can there be duplicates?\n\nWait, maybe the superhero table has multiple rows with the same weight and height but different race_ids. Wait, but each superhero is unique by their id. So if there are two different superheroes that both have weight_kg=108 and height_cm=188, and both have the same race (race_id pointing to the same race name), then Q2 would return that race twice, and Q1 would return it once. That would be the case.\n\nSo the counterexample needs two superheroes with the same weight and height but same race. Then Q2 would have two rows, Q1 one. Alternatively, two superheroes with same weight and height but different races. Then Q1 and Q2 would have same result (distinct in Q1, but Q2 would have two different races). Wait, no, if two different races, then Q1 would return both, same as Q2. Wait, no. If two superheroes have same weight and height but different races, then Q2 would return two rows (each with their own race), and Q1 would return two distinct races. So same result. But if two superheroes have same weight and height and same race, then Q2 returns two rows of the same race, and Q1 returns one. That's the case where they differ.\n\nSo the counterexample would be two superheroes with weight 108, height 188, same race_id. Then Q1 returns one distinct race, Q2 returns two rows of the same race.\n\nSo I need to insert two superheroes with same weight, height, and same race_id. Then Q1 will return one row, Q2 two rows.\n\nLet me structure the test data. Let's create a race entry, say 'Human'. Then insert two superheroes with race_id pointing to that race's id, weight 108, height 188.\n\nSo the steps are:\n\n1. Insert into race (id, race) = (1, 'Human').\n2. Insert into superhero two rows: one with id=1, weight_kg=108, height_cm=188, race_id=1; another with id=2, same weight, height, race_id=1.\n\nThen, when running Q1, the DISTINCT would return 'Human' once. Q2 would return 'Human' twice. So the results differ.\n\nThat's the counterexample. Now, I need to write the SQL inserts for that. Also, need to make sure that other columns are filled with dummy data, but the schema allows NULLs except for the primary keys. So I can set other columns to default or NULL as needed.\n\nFor example, superhero_name could be 'Hero1' and 'Hero2', full_name could be 'Full1' and 'Full2', gender_id, eye_colour_id, etc., can be NULL or set to some existing values. But since the other tables (gender, colour, etc.) might not have entries, but the foreign keys allow NULL, so maybe setting them to NULL is acceptable.\n\nWait, the foreign key constraints have default NULL. So inserting NULLs is okay. So for the superhero insert, I can set the other columns to NULL except for race_id, weight_kg, height_cm, and superhero_name and full_name.\n\nSo the INSERT statements would be:\n\nINSERT INTO race (id, race) VALUES (1, 'Human');\n\nINSERT INTO superhero (id, superhero_name, full_name, race_id, weight_kg, height_cm) VALUES (1, 'Hero1', 'Full1', 1, 108, 188);\nINSERT INTO superhero (id, superhero_name, full_name, race_id, weight_kg, height_cm) VALUES (2, 'Hero2', 'Full2', 1, 108, 188);\n\nThis should create two superheroes with same weight and height, same race. Then Q1 returns one row, Q2 returns two rows.\n\nSo the explanation is that Q1 uses DISTINCT, so duplicates are removed, while Q2 does not. The counterexample has two superheroes with same attributes and race, leading to different output counts.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 752,
+    "total_tokens": 2163,
+    "completion_tokens": 1411,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1183
+    },
+    "generation_seconds": 47.11
+  },
+  "started_at": "2026-10-06T18:58:39.220353+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "Human"
+    ]
+  ],
+  "q2_output": [
+    [
+      "Human"
+    ],
+    [
+      "Human"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DISTINCT T2.race FROM superhero AS T1 INNER JOIN race AS T2 ON T1.race_id = T2.id WHERE T1.weight_kg = 108 AND T1.height_cm = 188",
+  "q2_validation_sql": "SELECT T2.race FROM superhero AS T1 INNER JOIN race AS T2 ON T1.race_id = T2.id WHERE T1.weight_kg = 108 AND T1.height_cm = 188"
+}

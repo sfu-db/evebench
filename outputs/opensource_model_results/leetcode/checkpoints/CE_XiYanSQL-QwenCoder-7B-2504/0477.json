@@ -1,0 +1,53 @@
+{
+  "dbid": "607",
+  "index": "477",
+  "source_index": "12",
+  "schema_ddl": "CREATE TABLE SALESPERSON (\n    SALES_ID INT,\n    NAME VARCHAR(255),\n    SALARY INT,\n    COMMISSION_RATE INT,\n    HIRE_DATE VARCHAR(255)\n);\n\nCREATE TABLE COMPANY (\n    COM_ID INT,\n    NAME VARCHAR(255),\n    CITY VARCHAR(255)\n);\n\nCREATE TABLE ORDERS (\n    ORDER_ID INT,\n    COM_ID INT,\n    SALES_ID INT,\n    ORDER_DATE VARCHAR(255),\n    AMOUNT INT\n);",
+  "q1": "SELECT NAME FROM SALESPERSON AS S WHERE 0 = ( SELECT COUNT(*) FROM ORDERS AS O JOIN COMPANY AS C ON O.COM_ID = C.COM_ID WHERE O.SALES_ID = S.SALES_ID AND C.NAME = 'RED' )",
+  "q2": "SELECT NAME FROM SALESPERSON WHERE NAME NOT IN (SELECT DISTINCT NAME FROM SALESPERSON WHERE SALES_ID IN (SELECT SALES_ID FROM ORDERS WHERE COM_ID IN (SELECT COM_ID FROM COMPANY WHERE NAME='RED')))",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT NAME FROM SALESPERSON AS S WHERE 0 = ( SELECT COUNT(*) FROM ORDERS AS O JOIN COMPANY AS C ON O.COM_ID = C.COM_ID WHERE O.SALES_ID = S.SALES_ID AND C.NAME = 'RED' )",
+  "q2_prompt_sql": "SELECT NAME FROM SALESPERSON WHERE NAME NOT IN (SELECT DISTINCT NAME FROM SALESPERSON WHERE SALES_ID IN (SELECT SALES_ID FROM ORDERS WHERE COM_ID IN (SELECT COM_ID FROM COMPANY WHERE NAME='RED')))",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO COMPANY (COM_ID, NAME, CITY) VALUES (1, 'RED', 'New York'); INSERT INTO COMPANY (COM_ID, NAME, CITY) VALUES (2, 'BLUE', 'Los Angeles'); INSERT INTO SALESPERSON (SALES_ID, NAME, SALARY, COMMISSION_RATE, HIRE_DATE) VALUES (1, 'Alice', 50000, 10, '2010-01-01'); INSERT INTO SALESPERSON (SALES_ID, NAME, SALARY, COMMISSION_RATE, HIRE_DATE) VALUES (2, 'Bob', 60000, 15, '2012-05-15'); INSERT INTO ORDERS (ORDER_ID, COM_ID, SALES_ID, ORDER_DATE, AMOUNT) VALUES (1, 1, 1, '2021-06-01', 1000); INSERT INTO ORDERS (ORDER_ID, COM_ID, SALES_ID, ORDER_DATE, AMOUNT) VALUES (2, 2, 2, '2021-07-15', 2000);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent because Q1 checks for salespersons who have no orders from the 'RED' company, while Q2 checks for salespersons who have never sold to the 'RED' company. The difference lies in the handling of salespersons who have orders from other companies but no orders from the 'RED' company.",
+  "counterexample_dsp": "The test data should include salespersons who have orders from other companies but no orders from the 'RED' company. Q1 should return these salespersons, while Q2 should not.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent because Q1 checks for salespersons who have no orders from the 'RED' company, while Q2 checks for salespersons who have never sold to the 'RED' company. The difference lies in the handling of salespersons who have orders from other companies but no orders from the 'RED' company.\",\n  \"counterexample_dsp\": \"The test data should include salespersons who have orders from other companies but no orders from the 'RED' company. Q1 should return these salespersons, while Q2 should not.\",\n  \"counterexample\": \"INSERT INTO COMPANY (COM_ID, NAME, CITY) VALUES (1, 'RED', 'New York'); INSERT INTO COMPANY (COM_ID, NAME, CITY) VALUES (2, 'BLUE', 'Los Angeles'); INSERT INTO SALESPERSON (SALES_ID, NAME, SALARY, COMMISSION_RATE, HIRE_DATE) VALUES (1, 'Alice', 50000, 10, '2010-01-01'); INSERT INTO SALESPERSON (SALES_ID, NAME, SALARY, COMMISSION_RATE, HIRE_DATE) VALUES (2, 'Bob', 60000, 15, '2012-05-15'); INSERT INTO ORDERS (ORDER_ID, COM_ID, SALES_ID, ORDER_DATE, AMOUNT) VALUES (1, 1, 1, '2021-06-01', 1000); INSERT INTO ORDERS (ORDER_ID, COM_ID, SALES_ID, ORDER_DATE, AMOUNT) VALUES (2, 2, 2, '2021-07-15', 2000);\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 425,
+    "total_tokens": 807,
+    "completion_tokens": 382,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 6.437
+  },
+  "started_at": "2026-10-06T09:51:39.004753+00:00",
+  "elapsed_seconds": 2.375,
+  "q1_output": [
+    [
+      "Bob"
+    ]
+  ],
+  "q2_output": [
+    [
+      "Bob"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT NAME FROM SALESPERSON AS S WHERE 0 = ( SELECT COUNT(*) FROM ORDERS AS O JOIN COMPANY AS C ON O.COM_ID = C.COM_ID WHERE O.SALES_ID = S.SALES_ID AND C.NAME = 'RED' )",
+  "q2_validation_sql": "SELECT NAME FROM SALESPERSON WHERE NAME NOT IN (SELECT DISTINCT NAME FROM SALESPERSON WHERE SALES_ID IN (SELECT SALES_ID FROM ORDERS WHERE COM_ID IN (SELECT COM_ID FROM COMPANY WHERE NAME='RED')))"
+}

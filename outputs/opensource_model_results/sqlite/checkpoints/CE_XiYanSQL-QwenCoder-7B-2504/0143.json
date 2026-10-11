@@ -1,0 +1,53 @@
+{
+  "dbid": "toxicology",
+  "index": "143",
+  "source_index": "198",
+  "schema_ddl": "CREATE TABLE `atom` (\n  `atom_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `element` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `bond` (\n  `bond_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `bond_type` TEXT DEFAULT NULL,\n  PRIMARY KEY (`bond_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `connected` (\n  `atom_id` TEXT NOT NULL,\n  `atom_id2` TEXT NOT NULL,\n  `bond_id` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`,`atom_id2`),\n  FOREIGN KEY (`atom_id`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`atom_id2`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`bond_id`) REFERENCES `bond` (`bond_id`) ON DELETE CASCADE ON UPDATE CASCADE\n);\n\nCREATE TABLE `molecule` (\n  `molecule_id` TEXT NOT NULL,\n  `label` TEXT DEFAULT NULL,\n  PRIMARY KEY (`molecule_id`)\n);",
+  "q1": "SELECT AVG(oxygen_count) FROM (SELECT T1.molecule_id, COUNT(T1.element) AS oxygen_count FROM atom AS T1 INNER JOIN bond AS T2 ON T1.molecule_id = T2.molecule_id WHERE T2.bond_type = '-' AND T1.element = 'o' GROUP BY T1.molecule_id) AS oxygen_counts",
+  "q2": "SELECT AVG(CASE WHEN T1.element = 'o' THEN 1 ELSE 0 END) FROM atom AS T1 INNER JOIN connected AS T2 ON T1.atom_id = T2.atom_id INNER JOIN bond AS T3 ON T2.bond_id = T3.bond_id WHERE T3.bond_type = '-'",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT AVG(oxygen_count) FROM (SELECT T1.molecule_id, COUNT(T1.element) AS oxygen_count FROM atom AS T1 INNER JOIN bond AS T2 ON T1.molecule_id = T2.molecule_id WHERE T2.bond_type = '-' AND T1.element = 'o' GROUP BY T1.molecule_id) AS oxygen_counts",
+  "q2_prompt_sql": "SELECT AVG(CASE WHEN T1.element = 'o' THEN 1 ELSE 0 END) FROM atom AS T1 INNER JOIN connected AS T2 ON T1.atom_id = T2.atom_id INNER JOIN bond AS T3 ON T2.bond_id = T3.bond_id WHERE T3.bond_type = '-'",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO molecule (molecule_id) VALUES ('m1'); INSERT INTO atom (atom_id, molecule_id, element) VALUES ('a1', 'm1', 'o'), ('a2', 'm1', 'h'); INSERT INTO bond (bond_id, molecule_id, bond_type) VALUES ('b1', 'm1', '-');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 calculates the average number of oxygen atoms per molecule where there is a bond of type '-' between an oxygen atom and another atom. Q2 calculates the average proportion of atoms that are oxygen in molecules where there is a bond of type '-' between an oxygen atom and another atom.",
+  "counterexample_dsp": "A molecule with 2 atoms, where one is oxygen and the other is hydrogen, and there is a bond of type '-' between them. Q1 will count the oxygen atom as 1 in the oxygen_count for this molecule, while Q2 will count the oxygen atom as 1 out of 2 total atoms in the molecule.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 calculates the average number of oxygen atoms per molecule where there is a bond of type '-' between an oxygen atom and another atom. Q2 calculates the average proportion of atoms that are oxygen in molecules where there is a bond of type '-' between an oxygen atom and another atom.\",\n  \"counterexample_dsp\": \"A molecule with 2 atoms, where one is oxygen and the other is hydrogen, and there is a bond of type '-' between them. Q1 will count the oxygen atom as 1 in the oxygen_count for this molecule, while Q2 will count the oxygen atom as 1 out of 2 total atoms in the molecule.\",\n  \"counterexample\": \"INSERT INTO molecule (molecule_id) VALUES ('m1'); INSERT INTO atom (atom_id, molecule_id, element) VALUES ('a1', 'm1', 'o'), ('a2', 'm1', 'h'); INSERT INTO bond (bond_id, molecule_id, bond_type) VALUES ('b1', 'm1', '-');\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 627,
+    "total_tokens": 846,
+    "completion_tokens": 219,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 3.937
+  },
+  "started_at": "2026-10-06T15:59:17.710533+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      1.0
+    ]
+  ],
+  "q2_output": [
+    [
+      null
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT AVG(oxygen_count) FROM (SELECT T1.molecule_id, COUNT(T1.element) AS oxygen_count FROM atom AS T1 INNER JOIN bond AS T2 ON T1.molecule_id = T2.molecule_id WHERE T2.bond_type = '-' AND T1.element = 'o' GROUP BY T1.molecule_id) AS oxygen_counts",
+  "q2_validation_sql": "SELECT AVG(CASE WHEN T1.element = 'o' THEN 1 ELSE 0 END) FROM atom AS T1 INNER JOIN connected AS T2 ON T1.atom_id = T2.atom_id INNER JOIN bond AS T3 ON T2.bond_id = T3.bond_id WHERE T3.bond_type = '-'"
+}

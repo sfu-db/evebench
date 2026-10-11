@@ -1,0 +1,51 @@
+{
+  "dbid": "1149",
+  "index": "212",
+  "source_index": "13",
+  "schema_ddl": "CREATE TABLE VIEWS (\n    ARTICLE_ID INT,\n    AUTHOR_ID INT,\n    VIEWER_ID INT,\n    VIEW_DATE DATE\n);",
+  "q1": "SELECT DISTINCT VIEWER_ID AS ID FROM VIEWS GROUP BY VIEW_DATE, VIEWER_ID HAVING COUNT(DISTINCT ARTICLE_ID) > 1 ORDER BY ID",
+  "q2": "SELECT DISTINCT VIEWER_ID AS ID FROM (SELECT DISTINCT * FROM VIEWS) A GROUP BY VIEW_DATE, VIEWER_ID HAVING COUNT(ARTICLE_ID) >1 ORDER BY ID",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT DISTINCT VIEWER_ID AS ID FROM VIEWS GROUP BY VIEW_DATE, VIEWER_ID HAVING COUNT(DISTINCT ARTICLE_ID) > 1 ORDER BY ID",
+  "q2_prompt_sql": "SELECT DISTINCT VIEWER_ID AS ID FROM (SELECT DISTINCT * FROM VIEWS) A GROUP BY VIEW_DATE, VIEWER_ID HAVING COUNT(ARTICLE_ID) >1 ORDER BY ID",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO VIEWS (ARTICLE_ID, AUTHOR_ID, VIEWER_ID, VIEW_DATE) VALUES (1, 100, 1, '2023-10-01');\nINSERT INTO VIEWS (ARTICLE_ID, AUTHOR_ID, VIEWER_ID, VIEW_DATE) VALUES (1, 200, 1, '2023-10-01');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 counts distinct ARTICLE_ID per group, while Q2 counts rows after removing duplicates (all columns must match for a row to be considered duplicate). When a viewer has multiple rows with the same ARTICLE_ID but different AUTHOR_ID on the same date, Q1 counts 1 distinct article (fails HAVING >1), but Q2 counts 2 rows (passes HAVING >1).",
+  "counterexample_dsp": "A viewer (1) viewed the same article (1) on the same date ('2023-10-01') with different authors (100, 200). Q1 counts 1 distinct article (fails), Q2 counts 2 rows (passes).",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 counts distinct ARTICLE_ID per group, while Q2 counts rows after removing duplicates (all columns must match for a row to be considered duplicate). When a viewer has multiple rows with the same ARTICLE_ID but different AUTHOR_ID on the same date, Q1 counts 1 distinct article (fails HAVING >1), but Q2 counts 2 rows (passes HAVING >1).\",\n  \"counterexample_dsp\": \"A viewer (1) viewed the same article (1) on the same date ('2023-10-01') with different authors (100, 200). Q1 counts 1 distinct article (fails), Q2 counts 2 rows (passes).\",\n  \"counterexample\": [\n    \"INSERT INTO VIEWS (ARTICLE_ID, AUTHOR_ID, VIEWER_ID, VIEW_DATE) VALUES (1, 100, 1, '2023-10-01');\",\n    \"INSERT INTO VIEWS (ARTICLE_ID, AUTHOR_ID, VIEWER_ID, VIEW_DATE) VALUES (1, 200, 1, '2023-10-01');\"\n  ]\n}",
+  "reasoning": "\nOkay, let's see. I need to find a counterexample where Q1 and Q2 produce different results. Let me first understand what each query does.\n\nQ1 groups by VIEW_DATE and VIEWER_ID, then uses HAVING COUNT(DISTINCT ARTICLE_ID) > 1. So for each viewer on each date, they check if they viewed more than one distinct article. The DISTINCT on the outer query might not matter since GROUP BY already gives unique combinations.\n\nQ2 does a SELECT DISTINCT * from VIEWS first, which removes duplicate rows from VIEWS. Then groups by VIEW_DATE and VIEWER_ID, and HAVING COUNT(ARTICLE_ID) > 1. Wait, the inner DISTINCT removes duplicates, so each row in the subquery A is unique. Then when grouping, COUNT(ARTICLE_ID) counts the number of rows per group. So in Q2, the count is on the number of distinct rows (since the subquery already has distinct rows) grouped by date and viewer.\n\nSo the difference is in how the COUNT is done. Q1 counts distinct article IDs per group, while Q2 counts the number of rows (each row being unique) in the group. So if a viewer has two entries on the same date but same article_id, then Q1 would count that as one (distinct article), so not satisfy HAVING >1. But Q2 would have one row (after DISTINCT) so COUNT would be 1, which also doesn't satisfy. Wait, maybe not. Wait, let's think of a scenario where Q1 and Q2 differ.\n\nSuppose a viewer has two different article_ids on the same date. Then Q1 would count 2 distinct articles, so pass. Q2, after DISTINCT on the entire rows, would have two rows (if the rows are different). Then grouping by date and viewer, count(article_id) would be 2, so pass. So same result here.\n\nBut if there are duplicate rows in VIEWS (same viewer, same date, same article_id), then Q1 would still count distinct article_ids. For example, if a viewer viewed the same article twice on the same date. Then Q1's COUNT(DISTINCT ARTICLE_ID) would be 1. Q2 would first remove duplicates (so one row), then count would be 1. So same result.\n\nWait, maybe a case where the same viewer on the same date has two different articles, but one of them is duplicated. Let me think. Suppose the VIEWS table has:\n\n(1, A, V1, D1)\n(1, A, V1, D1)\n(2, B, V1, D1)\n\nSo for Q1, grouping by D1, V1. COUNT(DISTINCT ARTICLE_ID) is 2 (articles 1 and 2). So it would pass.\n\nFor Q2, the inner DISTINCT removes the two duplicates of (1, A, V1, D1), so the subquery A has two rows: (1, A, V1, D1) and (2, B, V1, D1). Then grouping by date and viewer, count(article_id) is 2. So same result.\n\nHmm. Maybe another scenario. What if a viewer has the same article on the same date, but different author_ids? Let's say:\n\n(1, 100, V1, D1)\n(1, 200, V1, D1)\n\nSo same article_id but different author_ids. Then Q1 would count distinct article_ids as 1 (only article 1). So HAVING not met. Q2's inner DISTINCT would have two rows (since all columns are different). Then grouping by date and viewer, count(article_id) is 2. So HAVING passes. So in this case, Q1 would not include V1 but Q2 would.\n\nYes! That's a case where they differ. Because Q1 counts distinct article_ids, while Q2 counts the number of rows after removing duplicates (which in this case, the two rows are different because author_id differs, so they are not duplicates in the DISTINCT of the subquery). So for Q2, after DISTINCT, there are two rows, so COUNT(article_id) is 2. So Q2 would include the viewer, but Q1 would have COUNT(DISTINCT ARTICLE_ID) as 1, so not include.\n\nSo the counterexample would be a viewer (V1) on date D1 with two entries for the same article_id but different author_ids. Then Q2 would count those as two distinct rows (since all columns are different), leading to count 2, but Q1 would count distinct article_id as 1.\n\nLet me structure the test data. Insert two rows into VIEWS with same ARTICLE_ID, same VIEWER_ID, same VIEW_DATE, but different AUTHOR_ID. Then Q1's HAVING would be 1 (not >1), so not selected. Q2's subquery would have two distinct rows, so COUNT(ARTICLE_ID) is 2, which is >1, so selected. So the results differ.\n\nSo the explanation is that Q1 counts distinct article_ids per group, while Q2 counts the number of distinct rows (after removing duplicates) per group, leading to different counts when there are multiple rows with same article_id but different author_ids.\n\nNow, I need to write the SQL inserts for this scenario. Let's use specific values.\n\nFor example:\n\nINSERT INTO VIEWS (ARTICLE_ID, AUTHOR_ID, VIEWER_ID, VIEW_DATE) VALUES (1, 100, 1, '2023-10-01');\nINSERT INTO VIEWS (ARTICLE_ID, AUTHOR_ID, VIEWER_ID, VIEW_DATE) VALUES (1, 200, 1, '2023-10-01');\n\nIn this case, Q1 groups by VIEW_DATE and VIEWER_ID (so date 2023-10-01, viewer 1). COUNT(DISTINCT ARTICLE_ID) is 1 (only article 1). So HAVING not met. Q2's inner query selects distinct rows, which are both rows (different author_ids). Then group by date and viewer, count(article_id) is 2. So HAVING met. So Q2 returns viewer 1, Q1 does not. Hence different results.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 298,
+    "total_tokens": 1883,
+    "completion_tokens": 1585,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1325
+    },
+    "generation_seconds": 59.484
+  },
+  "started_at": "2026-10-06T13:06:37.687629+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [],
+  "q2_output": [
+    [
+      1
+    ]
+  ],
+  "q1_row_count": 0,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DISTINCT VIEWER_ID AS ID FROM VIEWS GROUP BY VIEW_DATE, VIEWER_ID HAVING COUNT(DISTINCT ARTICLE_ID) > 1 ORDER BY ID",
+  "q2_validation_sql": "SELECT DISTINCT VIEWER_ID AS ID FROM (SELECT DISTINCT * FROM VIEWS) A GROUP BY VIEW_DATE, VIEWER_ID HAVING COUNT(ARTICLE_ID) >1 ORDER BY ID"
+}

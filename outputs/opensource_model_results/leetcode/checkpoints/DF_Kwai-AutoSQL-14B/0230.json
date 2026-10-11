@@ -1,0 +1,54 @@
+{
+  "dbid": "1148",
+  "index": "230",
+  "source_index": "180",
+  "schema_ddl": "CREATE TABLE VIEWS (\n    ARTICLE_ID INT,\n    AUTHOR_ID INT,\n    VIEWER_ID INT,\n    VIEW_DATE DATE\n);",
+  "q1": "SELECT DISTINCT AUTHOR_ID AS ID FROM VIEWS WHERE AUTHOR_ID = VIEWER_ID ORDER BY ID",
+  "q2": "SELECT DISTINCT A.AUTHOR_ID AS ID FROM VIEWS A, VIEWS B WHERE A.AUTHOR_ID = B.VIEWER_ID AND A.ARTICLE_ID = B.ARTICLE_ID ORDER BY A.AUTHOR_ID ASC",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT DISTINCT AUTHOR_ID AS ID FROM VIEWS WHERE AUTHOR_ID = VIEWER_ID ORDER BY ID",
+  "q2_prompt_sql": "SELECT DISTINCT A.AUTHOR_ID AS ID FROM VIEWS A, VIEWS B WHERE A.AUTHOR_ID = B.VIEWER_ID AND A.ARTICLE_ID = B.ARTICLE_ID ORDER BY A.AUTHOR_ID ASC",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO VIEWS (ARTICLE_ID, AUTHOR_ID, VIEWER_ID, VIEW_DATE) VALUES (101, 1, 2, '2023-01-01');\nINSERT INTO VIEWS (ARTICLE_ID, AUTHOR_ID, VIEWER_ID, VIEW_DATE) VALUES (101, 2, 1, '2023-01-02');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 finds distinct AUTHOR_ID where AUTHOR_ID equals VIEWER_ID in a single row. Q2 finds distinct AUTHOR_ID from a self-join where A.AUTHOR_ID matches B.VIEWER_ID and same ARTICLE_ID. Q2 can return IDs even if no single row satisfies AUTHOR_ID = VIEWER_ID, but another row in the same article has that relationship.",
+  "counterexample_dsp": "Two rows in VIEWS: one where AUTHOR_ID=1 and VIEWER_ID=2 on ARTICLE_ID=101, another where AUTHOR_ID=2 and VIEWER_ID=1 on ARTICLE_ID=101. Q1 returns nothing, Q2 returns 1.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n  \"equiv\": \"N\",\n  \"explanation\": \"Q1 finds distinct AUTHOR_ID where AUTHOR_ID equals VIEWER_ID in a single row. Q2 finds distinct AUTHOR_ID from a self-join where A.AUTHOR_ID matches B.VIEWER_ID and same ARTICLE_ID. Q2 can return IDs even if no single row satisfies AUTHOR_ID = VIEWER_ID, but another row in the same article has that relationship.\",\n  \"counterexample_dsp\": \"Two rows in VIEWS: one where AUTHOR_ID=1 and VIEWER_ID=2 on ARTICLE_ID=101, another where AUTHOR_ID=2 and VIEWER_ID=1 on ARTICLE_ID=101. Q1 returns nothing, Q2 returns 1.\",\n  \"counterexample\": [\n    \"INSERT INTO VIEWS (ARTICLE_ID, AUTHOR_ID, VIEWER_ID, VIEW_DATE) VALUES (101, 1, 2, '2023-01-01');\",\n    \"INSERT INTO VIEWS (ARTICLE_ID, AUTHOR_ID, VIEWER_ID, VIEW_DATE) VALUES (101, 2, 1, '2023-01-02');\"\n  ]\n}",
+  "reasoning": "\nOkay, let me try to figure out if these two SQL queries are equivalent. \n\nFirst, I need to understand what each query does. \n\nStarting with Q1: It selects distinct AUTHOR_ID from the VIEWS table where AUTHOR_ID equals VIEWER_ID, ordering by ID. So this is finding all distinct users who are both the author and the viewer of a view. Essentially, it's giving me a list of users who have viewed their own articles.\n\nNow Q2: It's a bit more complex. It's doing a self-join on the VIEWS table (aliased as A and B). The conditions are A.AUTHOR_ID = B.VIEWER_ID and A.ARTICLE_ID = B.ARTICLE_ID. Then it selects distinct A.AUTHOR_ID as ID, ordered by AUTHOR_ID. \n\nHmm, so Q2 is joining the VIEWS table with itself on the same article ID and where the author of one row is the viewer of another. Let me think about that. For each row A in VIEWS, it's looking for a row B in VIEWS that shares the same ARTICLE_ID and where B.VIEWER_ID equals A.AUTHOR_ID. \n\nWait, so Q2 is essentially saying that for each row A, there exists a row B in the same article where B's viewer is A's author. But what does that mean? It could be that the same person is both the author of an article and the viewer of that same article. Or maybe someone else viewed the article that was authored by A's author. \n\nWait, but in Q1, the condition is that AUTHOR_ID = VIEWER_ID. So that's a single row where the author is the viewer. But Q2's condition is that there exists another row B in VIEWS (same article) where B's viewer is A's author. \n\nWait, but if we take A and B from the same table, then A.ARTICLE_ID = B.ARTICLE_ID means they are the same article. So for each row A, there's a row B (could be the same row?) where B.VIEWER_ID = A.AUTHOR_ID. \n\nBut if I think about this, Q2 could be equivalent to Q1 if B is the same as A. Because if A.AUTHOR_ID = B.VIEWER_ID and A.ARTICLE_ID = B.ARTICLE_ID, then if B is A, that would mean A.AUTHOR_ID = A.VIEWER_ID. Which is exactly the condition of Q1. However, Q2 could also have cases where B is a different row. \n\nBut since we're selecting distinct AUTHOR_ID from A, maybe Q2 is equivalent to Q1. Wait, but maybe not. Let me think of an example.\n\nSuppose there's a row in VIEWS where AUTHOR_ID = 1, VIEWER_ID = 1 (so that's in Q1). Then in Q2, A could be that same row, and B could be that same row. So that would satisfy A.AUTHOR_ID = B.VIEWER_ID (1 = 1) and same article. So that row would be included in Q2. So Q2 would include that row. \n\nBut what if there's a case where the same AUTHOR_ID exists in multiple rows where the author is not the viewer, but there's another row where the viewer is that author? Let me think of a counterexample.\n\nLet's say there's an article 101 with AUTHOR_ID = 1, VIEWER_ID = 2 (so not in Q1). Then another row for article 101 with AUTHOR_ID = 2, VIEWER_ID = 1. \n\nIn Q1, the condition is AUTHOR_ID = VIEWER_ID, so neither of these rows would be selected. \n\nIn Q2, for the first row (A.AUTHOR_ID=1, A.ARTICLE_ID=101), we look for a row B where B.VIEWER_ID = 1 and B.ARTICLE_ID = 101. The second row (B) has VIEWER_ID = 1 and ARTICLE_ID = 101. So A.AUTHOR_ID = 1 equals B.VIEWER_ID = 1, and same article. So this would satisfy the condition. Therefore, Q2 would return AUTHOR_ID = 1. \n\nBut in Q1, that row isn't selected because AUTHOR_ID (1) isn't equal to VIEWER_ID (2) in row A. So in this case, Q2 would return 1, but Q1 wouldn't. That would make them not equivalent. \n\nSo that's a counterexample. Let me check again. \n\nIn Q2, the query is selecting distinct A.AUTHOR_ID where there exists a row B in VIEWS such that A.ARTICLE_ID = B.ARTICLE_ID and A.AUTHOR_ID = B.VIEWER_ID. So for any A, if there's a B (could be same or different row) that meets those two conditions, then A.AUTHOR_ID is included. \n\nSo for the example I just thought of: \n\nRow A: (ARTICLE_ID=101, AUTHOR_ID=1, VIEWER_ID=2)\nRow B: (ARTICLE_ID=101, AUTHOR_ID=2, VIEWER_ID=1)\n\nThen, when A is the first row, B is the second row. So A.AUTHOR_ID (1) equals B.VIEWER_ID (1), and same article. So Q2 would return 1 as ID. But Q1 would not return 1 because in row A, AUTHOR_ID is 1 and VIEWER_ID is 2. \n\nSo in this case, Q1 returns nothing (assuming no other rows), but Q2 returns 1. Therefore, they are not equivalent. \n\nAnother example: suppose there's a row where AUTHOR_ID = 1, VIEWER_ID = 1. Then Q1 returns 1. Q2 would also return 1 because A and B can be the same row. So they agree here. \n\nBut the case where there's a pair of rows where the author of one is the viewer of another (same article) but not equal themselves would cause Q2 to return that author, while Q1 would not. Hence, the queries are not equivalent. \n\nSo the answer is that they are not equivalent, and the counterexample is when there are two rows for the same article where the author of one is the viewer of the other, but not the same person.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 348,
+    "total_tokens": 1961,
+    "completion_tokens": 1613,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1355
+    },
+    "generation_seconds": 50.578
+  },
+  "started_at": "2026-10-06T15:38:09.888974+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [],
+  "q2_output": [
+    [
+      1
+    ],
+    [
+      2
+    ]
+  ],
+  "q1_row_count": 0,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DISTINCT AUTHOR_ID AS ID FROM VIEWS WHERE AUTHOR_ID = VIEWER_ID ORDER BY ID",
+  "q2_validation_sql": "SELECT DISTINCT A.AUTHOR_ID AS ID FROM VIEWS A, VIEWS B WHERE A.AUTHOR_ID = B.VIEWER_ID AND A.ARTICLE_ID = B.ARTICLE_ID ORDER BY A.AUTHOR_ID ASC"
+}

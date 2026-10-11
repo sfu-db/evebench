@@ -1,0 +1,55 @@
+{
+  "dbid": "student_club",
+  "index": "820",
+  "source_index": "1443",
+  "schema_ddl": "CREATE TABLE event\n(\n    event_id   TEXT\n        constraint event_pk\n            primary key,\n    event_name TEXT,\n    event_date TEXT,\n    type       TEXT,\n    notes      TEXT,\n    location   TEXT,\n    status     TEXT\n);\n\nCREATE TABLE major\n(\n    major_id   TEXT\n        constraint major_pk\n            primary key,\n    major_name TEXT,\n    department TEXT,\n    college    TEXT\n);\n\nCREATE TABLE zip_code\n(\n    zip_code    INTEGER\n        constraint zip_code_pk\n            primary key,\n    type        TEXT,\n    city        TEXT,\n    county      TEXT,\n    state       TEXT,\n    short_state TEXT\n);\n\nCREATE TABLE \"attendance\"\n(\n    link_to_event  TEXT,\n    link_to_member TEXT,\n    primary key (link_to_event, link_to_member),\n    foreign key (link_to_event) references event(event_id),\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"budget\"\n(\n    budget_id     TEXT\n            primary key,\n    category      TEXT,\n    spent         REAL,\n    remaining     REAL,\n    amount        INTEGER,\n    event_status  TEXT,\n    link_to_event TEXT,\n    foreign key (link_to_event) references event(event_id)\n);\n\nCREATE TABLE \"expense\"\n(\n    expense_id          TEXT\n            primary key,\n    expense_description TEXT,\n    expense_date        TEXT,\n    cost                REAL,\n    approved            TEXT,\n    link_to_member      TEXT,\n    link_to_budget      TEXT,\n    foreign key (link_to_budget) references budget(budget_id),\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"income\"\n(\n    income_id      TEXT\n        constraint income_pk\n            primary key,\n    date_received  TEXT,\n    amount         INTEGER,\n    source         TEXT,\n    notes          TEXT,\n    link_to_member TEXT,\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"member\"\n(\n    member_id     TEXT\n        constraint member_pk\n            primary key,\n    first_name    TEXT,\n    last_name     TEXT,\n    email         TEXT,\n    position      TEXT,\n    t_shirt_size  TEXT,\n    phone         TEXT,\n    zip           INTEGER,\n    link_to_major TEXT,\n    foreign key (link_to_major) references major(major_id),\n    foreign key (zip) references zip_code(zip_code)\n);",
+  "q1": "SELECT CAST(SUM(CASE WHEN remaining < 0 THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(budget_id) FROM budget",
+  "q2": "SELECT CAST(SUM(CASE WHEN remaining < 0 THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(link_to_event) FROM budget",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT CAST(SUM(CASE WHEN remaining < 0 THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(budget_id) FROM budget",
+  "q2_prompt_sql": "SELECT CAST(SUM(CASE WHEN remaining < 0 THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(link_to_event) FROM budget",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO event (event_id) VALUES ('E1');\nINSERT INTO budget (budget_id, remaining, link_to_event) VALUES ('B1', -100, NULL), ('B2', -200, 'E1');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not equivalent because they use different COUNT denominators. COUNT(budget_id) counts all rows (since budget_id is PK and never NULL), while COUNT(link_to_event) excludes rows where link_to_event is NULL. If any budget rows have NULL link_to_event, the division results will differ.",
+  "counterexample_dsp": "A budget table with 2 rows: one with NULL link_to_event and one with valid event_id. Both have remaining < 0. Q1 denominator = 2, Q2 denominator = 1, producing different percentages.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 and Q2 are not equivalent because they use different COUNT denominators. COUNT(budget_id) counts all rows (since budget_id is PK and never NULL), while COUNT(link_to_event) excludes rows where link_to_event is NULL. If any budget rows have NULL link_to_event, the division results will differ.\",\n\"counterexample_dsp\": \"A budget table with 2 rows: one with NULL link_to_event and one with valid event_id. Both have remaining < 0. Q1 denominator = 2, Q2 denominator = 1, producing different percentages.\",\n\"counterexample\": \"INSERT INTO event (event_id) VALUES ('E1');\\nINSERT INTO budget (budget_id, remaining, link_to_event) VALUES ('B1', -100, NULL), ('B2', -200, 'E1');\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem step by step. The user wants to know if the two SQL queries Q1 and Q2 are semantically equivalent. If not, I need to provide a counterexample.\n\nFirst, I need to understand what each query does. Both queries calculate a percentage by taking the sum of rows where 'remaining' is negative, multiplying by 100, and dividing by a count. The difference is in the denominator: Q1 uses COUNT(budget_id) and Q2 uses COUNT(link_to_event).\n\nLooking at the budget table schema: budget_id is the primary key, so COUNT(budget_id) counts all rows in the budget table. However, link_to_event is a foreign key to event(event_id). Now, what if link_to_event is NULL in some rows? Since COUNT(link_to_event) will ignore NULLs, whereas COUNT(budget_id) counts all rows because budget_id is a primary key (and thus not NULL). \n\nSo, if there are any rows in the budget table where link_to_event is NULL, then COUNT(link_to_event) would be less than COUNT(budget_id). That would make the denominators different, leading to different results. Therefore, the two queries are not equivalent in such cases.\n\nTo create a counterexample, I need a budget table with at least one row where link_to_event is NULL. Let's say there are two rows: one with link_to_event NULL and another with a valid event_id. Then, the count in Q1 would be 2, while Q2's count would be 1. Suppose both have remaining < 0. Then Q1 would be (2 * 100) / 2 = 100%, and Q2 would be (2 * 100) / 1 = 200%, which are different.\n\nI need to make sure that the rest of the database constraints are satisfied. The link_to_event in budget references event(event_id), but if it's NULL, that's allowed unless there's a NOT NULL constraint. Looking at the schema definition for budget, link_to_event is not marked as NOT NULL, so NULLs are allowed. Therefore, inserting a NULL into link_to_event is valid.\n\nSo the counterexample would involve inserting two budget rows: one with link_to_event NULL and another with a valid event_id. Then, both remaining values are negative. The sum would be 2, but counts differ.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 815,
+    "total_tokens": 1510,
+    "completion_tokens": 695,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 502
+    },
+    "generation_seconds": 22.719
+  },
+  "started_at": "2026-10-06T21:38:56.543696+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      100.0
+    ]
+  ],
+  "q2_output": [
+    [
+      200.0
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT CAST(SUM(CASE WHEN remaining < 0 THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(budget_id) FROM budget",
+  "q2_validation_sql": "SELECT CAST(SUM(CASE WHEN remaining < 0 THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(link_to_event) FROM budget"
+}

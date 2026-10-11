@@ -1,0 +1,55 @@
+{
+  "dbid": "thrombosis_prediction",
+  "index": "662",
+  "source_index": "1173",
+  "schema_ddl": "CREATE TABLE Examination\n(\n    ID                 INTEGER          null,\n    `Examination Date` DATE         null,\n    `aCL IgG`          REAL        null,\n    `aCL IgM`          REAL        null,\n    ANA                INTEGER          null,\n    `ANA Pattern`      TEXT null,\n    `aCL IgA`          INTEGER          null,\n    Diagnosis          TEXT null,\n    KCT                TEXT null,\n    RVVT              TEXT null,\n    LAC                TEXT null,\n    Symptoms           TEXT null,\n    Thrombosis         INTEGER          null,\n    foreign key (ID) references Patient (ID)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE Patient\n(\n    ID           INTEGER default 0 not null\n        primary key,\n    SEX          TEXT  null,\n    Birthday     DATE          null,\n    Description  DATE          null,\n    `First Date` DATE          null,\n    Admission    TEXT  null,\n    Diagnosis    TEXT  null\n);\n\nCREATE TABLE Laboratory\n(\n    ID        INTEGER  default 0            not null,\n    Date      DATE default '0000-00-00' not null,\n    GOT       INTEGER                       null,\n    GPT       INTEGER                        null,\n    LDH       INTEGER                        null,\n    ALP       INTEGER                        null,\n    TP        REAL             null,\n    ALB       REAL             null,\n    UA        REAL             null,\n    UN        INTEGER                       null,\n    CRE       REAL             null,\n    `T-BIL`   REAL             null,\n    `T-CHO`   INTEGER                       null,\n    TG        INTEGER                       null,\n    CPK       INTEGER                       null,\n    GLU       INTEGER                       null,\n    WBC       REAL             null,\n    RBC       REAL             null,\n    HGB       REAL             null,\n    HCT       REAL             null,\n    PLT       INTEGER                       null,\n    PT        REAL             null,\n    APTT      INTEGER                       null,\n    FG        REAL             null,\n    PIC       INTEGER                       null,\n    TAT       INTEGER                       null,\n    TAT2      INTEGER                       null,\n    `U-PRO`   TEXT              null,\n    IGG       INTEGER                       null,\n    IGA       INTEGER                       null,\n    IGM       INTEGER                       null,\n    CRP       TEXT              null,\n    RA        TEXT              null,\n    RF        TEXT              null,\n    C3        INTEGER                       null,\n    C4        INTEGER                       null,\n    RNP       TEXT              null,\n    SM        TEXT              null,\n    SC170     TEXT              null,\n    SSA       TEXT              null,\n    SSB       TEXT              null,\n    CENTROMEA TEXT              null,\n    DNA       TEXT              null,\n    `DNA-II`  INTEGER                       null,\n    primary key (ID, Date),\n        foreign key (ID) references Patient (ID)\n            on update cascade on delete cascade\n);",
+  "q1": "SELECT COUNT(DISTINCT T1.ID) FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T2.\"T-BIL\" >= 2.0 AND T1.SEX = 'M'",
+  "q2": "SELECT COUNT(DISTINCT T1.ID) FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T1.SEX = 'M' AND T2.\"T-BIL\" > 2.0",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT COUNT(DISTINCT T1.ID) FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T2.\"T-BIL\" >= 2.0 AND T1.SEX = 'M'",
+  "q2_prompt_sql": "SELECT COUNT(DISTINCT T1.ID) FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T1.SEX = 'M' AND T2.\"T-BIL\" > 2.0",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO Patient (ID, SEX) VALUES (1, 'M'), (2, 'M'), (3, 'F');\nINSERT INTO Laboratory (ID, Date, `T-BIL`) VALUES (1, '2023-01-01', 2.0), (2, '2023-01-01', 2.5), (3, '2023-01-01', 1.5);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 differ in the T-BIL condition: Q1 uses >= 2.0 while Q2 uses > 2.0. This leads to different counts when patients have exactly 2.0 T-BIL values.",
+  "counterexample_dsp": "A male patient with T-BIL=2.0 (counted by Q1 but not Q2) and another male with T-BIL=2.5 (counted by both). Female patients are excluded by SEX='M' condition.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 and Q2 differ in the T-BIL condition: Q1 uses >= 2.0 while Q2 uses > 2.0. This leads to different counts when patients have exactly 2.0 T-BIL values.\",\n\"counterexample_dsp\": \"A male patient with T-BIL=2.0 (counted by Q1 but not Q2) and another male with T-BIL=2.5 (counted by both). Female patients are excluded by SEX='M' condition.\",\n\"counterexample\": \"INSERT INTO Patient (ID, SEX) VALUES (1, 'M'), (2, 'M'), (3, 'F');\\nINSERT INTO Laboratory (ID, Date, `T-BIL`) VALUES (1, '2023-01-01', 2.0), (2, '2023-01-01', 2.5), (3, '2023-01-01', 1.5);\"\n}",
+  "reasoning": "\nOkay, let's see. I need to determine if the two SQL queries Q1 and Q2 are semantically equivalent. Let me start by understanding what each query does.\n\nLooking at Q1: It selects the count of distinct T1.ID from Patient (T1) joined with Laboratory (T2) on T1.ID = T2.ID. The WHERE clause has two conditions: T2.\"T-BIL\" >= 2.0 and T1.SEX = 'M'. So it's counting male patients who have at least one laboratory record where T-BIL is 2.0 or higher.\n\nNow Q2 is similar but the condition on T2.\"T-BIL\" is > 2.0 instead of >=. The rest of the structure is the same. So the main difference is the comparison operator for the T-BIL value.\n\nThe question is whether these two queries are equivalent. Well, the difference between >= and > is that Q1 includes values exactly equal to 2.0, while Q2 excludes them. So if there's a patient with T-BIL exactly 2.0, Q1 would count them but Q2 wouldn't. Therefore, unless all T-BIL values are either above 2.0 or below, the counts would differ.\n\nSo they are not equivalent. To create a counterexample, I need a test database where there's at least one male patient with T-BIL exactly 2.0 and maybe others with higher or lower values. Let's think of a simple case.\n\nLet's create two patients: one male with T-BIL = 2.0 and another male with T-BIL = 2.5. Then Q1 would count both, but Q2 would count only the second one. Also, maybe include a female patient to ensure they aren't counted. \n\nBut need to make sure the schema constraints are followed. The Laboratory table has a composite primary key (ID, Date), so each ID can have multiple entries with different dates. So inserting two entries for the same ID with different dates is allowed.\n\nSo for the counterexample:\n\n- Patient 1: ID=1, SEX='M'\n- Patient 2: ID=2, SEX='M'\n- Patient 3: ID=3, SEX='F'\n\nLaboratory entries:\n\n- For ID=1, Date='2023-01-01', T-BIL=2.0\n- For ID=2, Date='2023-01-01', T-BIL=2.5\n- For ID=3, Date='2023-01-01', T-BIL=1.5 (but since SEX is F, it's not counted anyway)\n\nThen Q1 would count IDs 1 and 2 (since 2.0 >=2.0 and 2.5 >=2.0), so count is 2. Q2 would count only ID 2 (since 2.5 >2.0), so count is 1. Hence, different results.\n\nThis setup meets the schema constraints. The Patient table has IDs 1,2,3 with correct SEX. The Laboratory entries have valid dates and IDs. The primary key for Laboratory is (ID, Date), so each entry here is unique.\n\nSo the counterexample would involve inserting these records. The explanation would be that the difference in the comparison operators causes the count to differ when there are exact matches at 2.0.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 959,
+    "total_tokens": 1911,
+    "completion_tokens": 952,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 720
+    },
+    "generation_seconds": 31.469
+  },
+  "started_at": "2026-10-06T20:51:15.780967+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      2
+    ]
+  ],
+  "q2_output": [
+    [
+      1
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT COUNT(DISTINCT T1.ID) FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T2.\"T-BIL\" >= 2.0 AND T1.SEX = 'M'",
+  "q2_validation_sql": "SELECT COUNT(DISTINCT T1.ID) FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T1.SEX = 'M' AND T2.\"T-BIL\" > 2.0"
+}

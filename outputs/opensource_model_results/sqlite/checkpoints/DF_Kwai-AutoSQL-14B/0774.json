@@ -1,0 +1,58 @@
+{
+  "dbid": "student_club",
+  "index": "774",
+  "source_index": "1336",
+  "schema_ddl": "CREATE TABLE event\n(\n    event_id   TEXT\n        constraint event_pk\n            primary key,\n    event_name TEXT,\n    event_date TEXT,\n    type       TEXT,\n    notes      TEXT,\n    location   TEXT,\n    status     TEXT\n);\n\nCREATE TABLE major\n(\n    major_id   TEXT\n        constraint major_pk\n            primary key,\n    major_name TEXT,\n    department TEXT,\n    college    TEXT\n);\n\nCREATE TABLE zip_code\n(\n    zip_code    INTEGER\n        constraint zip_code_pk\n            primary key,\n    type        TEXT,\n    city        TEXT,\n    county      TEXT,\n    state       TEXT,\n    short_state TEXT\n);\n\nCREATE TABLE \"attendance\"\n(\n    link_to_event  TEXT,\n    link_to_member TEXT,\n    primary key (link_to_event, link_to_member),\n    foreign key (link_to_event) references event(event_id),\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"budget\"\n(\n    budget_id     TEXT\n            primary key,\n    category      TEXT,\n    spent         REAL,\n    remaining     REAL,\n    amount        INTEGER,\n    event_status  TEXT,\n    link_to_event TEXT,\n    foreign key (link_to_event) references event(event_id)\n);\n\nCREATE TABLE \"expense\"\n(\n    expense_id          TEXT\n            primary key,\n    expense_description TEXT,\n    expense_date        TEXT,\n    cost                REAL,\n    approved            TEXT,\n    link_to_member      TEXT,\n    link_to_budget      TEXT,\n    foreign key (link_to_budget) references budget(budget_id),\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"income\"\n(\n    income_id      TEXT\n        constraint income_pk\n            primary key,\n    date_received  TEXT,\n    amount         INTEGER,\n    source         TEXT,\n    notes          TEXT,\n    link_to_member TEXT,\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"member\"\n(\n    member_id     TEXT\n        constraint member_pk\n            primary key,\n    first_name    TEXT,\n    last_name     TEXT,\n    email         TEXT,\n    position      TEXT,\n    t_shirt_size  TEXT,\n    phone         TEXT,\n    zip           INTEGER,\n    link_to_major TEXT,\n    foreign key (link_to_major) references major(major_id),\n    foreign key (zip) references zip_code(zip_code)\n);",
+  "q1": "SELECT T2.spent FROM event AS T1 INNER JOIN budget AS T2 ON T1.event_id = T2.link_to_event WHERE T1.event_name = 'September Meeting' AND T2.category = 'Advertisement' AND SUBSTR(T1.event_date, 6, 2) = '09'",
+  "q2": "SELECT T1.spent FROM budget AS T1 INNER JOIN event AS T2 ON T1.link_to_event = T2.event_id WHERE T2.event_name = 'September Meeting' AND T1.category = 'Advertisement'",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT T2.spent FROM event AS T1 INNER JOIN budget AS T2 ON T1.event_id = T2.link_to_event WHERE T1.event_name = 'September Meeting' AND T2.category = 'Advertisement' AND SUBSTR(T1.event_date, 6, 2) = '09'",
+  "q2_prompt_sql": "SELECT T1.spent FROM budget AS T1 INNER JOIN event AS T2 ON T1.link_to_event = T2.event_id WHERE T2.event_name = 'September Meeting' AND T1.category = 'Advertisement'",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO event (event_id, event_name, event_date) VALUES ('E1', 'September Meeting', '2023-09-15');\nINSERT INTO event (event_id, event_name, event_date) VALUES ('E2', 'September Meeting', '2023-10-10');\nINSERT INTO budget (budget_id, category, spent, link_to_event) VALUES ('B1', 'Advertisement', 500.0, 'E1');\nINSERT INTO budget (budget_id, category, spent, link_to_event) VALUES ('B2', 'Advertisement', 600.0, 'E2');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 includes a month filter (SUBSTR(event_date, 6, 2) = '09') ensuring only September events are selected, while Q2 lacks this filter. This makes them inequivalent when multiple 'September Meeting' events exist across different months.",
+  "counterexample_dsp": "Two events named 'September Meeting': one with event_date '2023-09-15' (filtered by Q1) and another with event_date '2023-10-10' (not filtered by Q1). Both have budget records with category 'Advertisement'. Q1 returns only the September event's spent value; Q2 returns both.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 includes a month filter (SUBSTR(event_date, 6, 2) = '09') ensuring only September events are selected, while Q2 lacks this filter. This makes them inequivalent when multiple 'September Meeting' events exist across different months.\",\n\"counterexample_dsp\": \"Two events named 'September Meeting': one with event_date '2023-09-15' (filtered by Q1) and another with event_date '2023-10-10' (not filtered by Q1). Both have budget records with category 'Advertisement'. Q1 returns only the September event's spent value; Q2 returns both.\",\n\"counterexample\": \"INSERT INTO event (event_id, event_name, event_date) VALUES ('E1', 'September Meeting', '2023-09-15');\\nINSERT INTO event (event_id, event_name, event_date) VALUES ('E2', 'September Meeting', '2023-10-10');\\nINSERT INTO budget (budget_id, category, spent, link_to_event) VALUES ('B1', 'Advertisement', 500.0, 'E1');\\nINSERT INTO budget (budget_id, category, spent, link_to_event) VALUES ('B2', 'Advertisement', 600.0, 'E2');\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem step by step. I need to determine if Q1 and Q2 are semantically equivalent. First, I'll look at both queries and their structure.\n\nStarting with Q1: It selects T2.spent from event AS T1 joined with budget AS T2 on T1.event_id = T2.link_to_event. The WHERE clause has three conditions: T1.event_name = 'September Meeting', T2.category = 'Advertisement', and SUBSTR(T1.event_date, 6, 2) = '09'. The SUBSTR part is taking the 6th character onwards, two characters, which in a date like 'YYYY-MM-DD' would be the month. So this is filtering for September events.\n\nQ2: It selects T1.spent from budget AS T1 joined with event AS T2 on T1.link_to_event = T2.event_id. The WHERE conditions are T2.event_name = 'September Meeting' and T1.category = 'Advertisement'. No mention of the month here.\n\nSo the main differences are the aliases (T1 and T2 swapped in the select and join) and the presence of the SUBSTR condition in Q1. Also, Q1 uses T2.spent (which is budget.spent) while Q2 uses T1.spent (budget.spent again since T1 is budget). Wait, no: in Q2, the budget table is T1, so T1.spent is correct. In Q1, T2 is budget, so T2.spent is correct. So the column selection is the same. The join condition is also the same, just aliases swapped.\n\nThe key difference is the SUBSTR(T1.event_date, 6, 2) = '09' in Q1. That's filtering for events where the month is September (assuming the date is stored as 'YYYY-MM-DD'). Q2 does not have this filter. Therefore, Q1 could return fewer rows than Q2 if there are events named 'September Meeting' in other months. But wait, the event name is 'September Meeting'—maybe that's a hint that the event is in September, but the date might not be. However, the query uses the event_date's month part to confirm it's September. Q2 doesn't check the month, so it could include any event named 'September Meeting' regardless of the actual date.\n\nSo, if there's an event named 'September Meeting' that's not in September (maybe in October, for example), Q1 would exclude it, but Q2 would include it. That would make the queries not equivalent.\n\nTo create a counterexample, I need two events: one named 'September Meeting' with event_date in September (like '2023-09-15') and another named 'September Meeting' with event_date in October (like '2023-10-10'). Both have a budget entry under 'Advertisement'. Then, Q1 would return the September one, Q2 would return both. Thus, their results differ.\n\nNow, checking the schema constraints. The event_date is TEXT, so the SUBSTR works. The budget table has category and link_to_event. So inserting these events and budgets should be okay.\n\nI need to make sure that the event_name is 'September Meeting' for both events. Then, the budget entries for each event with category 'Advertisement'. Then, the Q1 will pick only the one with month 09, Q2 both.\n\nYes, that should work. So the equivalence is 'N', and the counterexample is two events with same name but different months.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 852,
+    "total_tokens": 1908,
+    "completion_tokens": 1056,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 751
+    },
+    "generation_seconds": 35.172
+  },
+  "started_at": "2026-10-06T21:37:07.972146+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      500.0
+    ]
+  ],
+  "q2_output": [
+    [
+      500.0
+    ],
+    [
+      600.0
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT T2.spent FROM event AS T1 INNER JOIN budget AS T2 ON T1.event_id = T2.link_to_event WHERE T1.event_name = 'September Meeting' AND T2.category = 'Advertisement' AND SUBSTR(T1.event_date, 6, 2) = '09'",
+  "q2_validation_sql": "SELECT T1.spent FROM budget AS T1 INNER JOIN event AS T2 ON T1.link_to_event = T2.event_id WHERE T2.event_name = 'September Meeting' AND T1.category = 'Advertisement'"
+}

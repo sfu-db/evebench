@@ -1,0 +1,55 @@
+{
+  "dbid": "1083",
+  "index": "411",
+  "source_index": "70",
+  "schema_ddl": "CREATE TABLE PRODUCT (\n    PRODUCT_ID INT,\n    PRODUCT_NAME VARCHAR(255),\n    UNIT_PRICE INT,\n    PRIMARY KEY (PRODUCT_ID),\n    CHECK (UNIT_PRICE > 0),\n    CHECK (PRODUCT_NAME IN ('S8', 'IPHONE'))\n);\n\nCREATE TABLE SALES (\n    PRODUCT_ID INT,\n    SELLER_ID INT,\n    BUYER_ID INT,\n    SALE_DATE DATE,\n    QUANTITY INT,\n    PRICE INT,\n    FOREIGN KEY (PRODUCT_ID) REFERENCES PRODUCT(PRODUCT_ID),\n    CHECK (QUANTITY > 0),\n    CHECK (PRICE > 0)\n);",
+  "q1": "SELECT DISTINCT SALES.BUYER_ID AS BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'S8' AND SALES.BUYER_ID NOT IN ( SELECT SALES.BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'IPHONE')",
+  "q2": "SELECT DISTINCT(BUYER_ID) FROM SALES S LEFT JOIN PRODUCT P ON S.PRODUCT_ID = P.PRODUCT_ID WHERE P.PRODUCT_NAME = 'S8' AND BUYER_ID NOT IN (SELECT BUYER_ID FROM SALES S LEFT JOIN PRODUCT P ON S.PRODUCT_ID = P.PRODUCT_ID WHERE P.PRODUCT_NAME = 'IPHONE')",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT DISTINCT SALES.BUYER_ID AS BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'S8' AND SALES.BUYER_ID NOT IN ( SELECT SALES.BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'IPHONE')",
+  "q2_prompt_sql": "SELECT DISTINCT(BUYER_ID) FROM SALES S LEFT JOIN PRODUCT P ON S.PRODUCT_ID = P.PRODUCT_ID WHERE P.PRODUCT_NAME = 'S8' AND BUYER_ID NOT IN (SELECT BUYER_ID FROM SALES S LEFT JOIN PRODUCT P ON S.PRODUCT_ID = P.PRODUCT_ID WHERE P.PRODUCT_NAME = 'IPHONE')",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO PRODUCT (PRODUCT_ID, PRODUCT_NAME, UNIT_PRICE) VALUES (1, 'S8', 1000), (2, 'IPHONE', 2000);\nINSERT INTO SALES (PRODUCT_ID, SELLER_ID, BUYER_ID, SALE_DATE, QUANTITY, PRICE) VALUES (1, 101, 201, '2023-01-01', 1, 1000), (1, 102, 202, '2023-01-02', 1, 1000), (2, 101, 201, '2023-01-03', 1, 2000);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent. Q1 uses INNER JOINs in both the main query and subquery, which means only rows where a match exists in both SALES and PRODUCT are included. Q2 uses LEFT JOINs, which means all rows from SALES are included even if there is no matching product. This difference can lead to different results when some SALES records do not have a corresponding PRODUCT entry (though the schema implies that SALES.PRODUCT_ID should reference PRODUCT.PRODUCT_ID, there is no NOT NULL constraint on PRODUCT_ID in SALES, so it's possible in theory).",
+  "counterexample_dsp": "A scenario where a sale for 'S8' exists but the corresponding product entry is missing (though this is unlikely given the schema, we simulate it for the sake of the counterexample). Alternatively, a sale for 'S8' exists but no product exists for 'IPHONE'.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n  \"equiv\": \"N\",\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent. Q1 uses INNER JOINs in both the main query and subquery, which means only rows where a match exists in both SALES and PRODUCT are included. Q2 uses LEFT JOINs, which means all rows from SALES are included even if there is no matching product. This difference can lead to different results when some SALES records do not have a corresponding PRODUCT entry (though the schema implies that SALES.PRODUCT_ID should reference PRODUCT.PRODUCT_ID, there is no NOT NULL constraint on PRODUCT_ID in SALES, so it's possible in theory).\",\n  \"counterexample_dsp\": \"A scenario where a sale for 'S8' exists but the corresponding product entry is missing (though this is unlikely given the schema, we simulate it for the sake of the counterexample). Alternatively, a sale for 'S8' exists but no product exists for 'IPHONE'.\",\n  \"counterexample\": \"INSERT INTO PRODUCT (PRODUCT_ID, PRODUCT_NAME, UNIT_PRICE) VALUES (1, 'S8', 1000), (2, 'IPHONE', 2000);\\nINSERT INTO SALES (PRODUCT_ID, SELLER_ID, BUYER_ID, SALE_DATE, QUANTITY, PRICE) VALUES (1, 101, 201, '2023-01-01', 1, 1000), (1, 102, 202, '2023-01-02', 1, 1000), (2, 101, 201, '2023-01-03', 1, 2000);\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 529,
+    "total_tokens": 916,
+    "completion_tokens": 387,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 12.625
+  },
+  "started_at": "2026-10-06T15:45:07.633841+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      202
+    ]
+  ],
+  "q2_output": [
+    [
+      202
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DISTINCT SALES.BUYER_ID AS BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'S8' AND SALES.BUYER_ID NOT IN ( SELECT SALES.BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'IPHONE')",
+  "q2_validation_sql": "SELECT DISTINCT(BUYER_ID) FROM SALES S LEFT JOIN PRODUCT P ON S.PRODUCT_ID = P.PRODUCT_ID WHERE P.PRODUCT_NAME = 'S8' AND BUYER_ID NOT IN (SELECT BUYER_ID FROM SALES S LEFT JOIN PRODUCT P ON S.PRODUCT_ID = P.PRODUCT_ID WHERE P.PRODUCT_NAME = 'IPHONE')"
+}

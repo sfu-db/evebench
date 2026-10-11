@@ -1,0 +1,39 @@
+{
+  "dbid": "student_club",
+  "index": "783",
+  "source_index": "1358",
+  "schema_ddl": "CREATE TABLE event\n(\n    event_id   TEXT\n        constraint event_pk\n            primary key,\n    event_name TEXT,\n    event_date TEXT,\n    type       TEXT,\n    notes      TEXT,\n    location   TEXT,\n    status     TEXT\n);\n\nCREATE TABLE major\n(\n    major_id   TEXT\n        constraint major_pk\n            primary key,\n    major_name TEXT,\n    department TEXT,\n    college    TEXT\n);\n\nCREATE TABLE zip_code\n(\n    zip_code    INTEGER\n        constraint zip_code_pk\n            primary key,\n    type        TEXT,\n    city        TEXT,\n    county      TEXT,\n    state       TEXT,\n    short_state TEXT\n);\n\nCREATE TABLE \"attendance\"\n(\n    link_to_event  TEXT,\n    link_to_member TEXT,\n    primary key (link_to_event, link_to_member),\n    foreign key (link_to_event) references event(event_id),\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"budget\"\n(\n    budget_id     TEXT\n            primary key,\n    category      TEXT,\n    spent         REAL,\n    remaining     REAL,\n    amount        INTEGER,\n    event_status  TEXT,\n    link_to_event TEXT,\n    foreign key (link_to_event) references event(event_id)\n);\n\nCREATE TABLE \"expense\"\n(\n    expense_id          TEXT\n            primary key,\n    expense_description TEXT,\n    expense_date        TEXT,\n    cost                REAL,\n    approved            TEXT,\n    link_to_member      TEXT,\n    link_to_budget      TEXT,\n    foreign key (link_to_budget) references budget(budget_id),\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"income\"\n(\n    income_id      TEXT\n        constraint income_pk\n            primary key,\n    date_received  TEXT,\n    amount         INTEGER,\n    source         TEXT,\n    notes          TEXT,\n    link_to_member TEXT,\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"member\"\n(\n    member_id     TEXT\n        constraint member_pk\n            primary key,\n    first_name    TEXT,\n    last_name     TEXT,\n    email         TEXT,\n    position      TEXT,\n    t_shirt_size  TEXT,\n    phone         TEXT,\n    zip           INTEGER,\n    link_to_major TEXT,\n    foreign key (link_to_major) references major(major_id),\n    foreign key (zip) references zip_code(zip_code)\n);",
+  "q1": "SELECT T2.date_received FROM member AS T1 INNER JOIN income AS T2 ON T1.member_id = T2.link_to_member WHERE T1.first_name = 'Connor' AND T1.last_name = 'Hilton' AND T2.source = 'Dues'",
+  "q2": "SELECT T1.date_received FROM income AS T1 INNER JOIN member AS T2 ON T1.link_to_member = T2.member_id WHERE T2.first_name = 'Connor' AND T2.last_name = 'Hilton' AND T1.source = 'Dues'",
+  "dialect": "sqlite",
+  "ground_truth": "EQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT T2.date_received FROM member AS T1 INNER JOIN income AS T2 ON T1.member_id = T2.link_to_member WHERE T1.first_name = 'Connor' AND T1.last_name = 'Hilton' AND T2.source = 'Dues'",
+  "q2_prompt_sql": "SELECT T1.date_received FROM income AS T1 INNER JOIN member AS T2 ON T1.link_to_member = T2.member_id WHERE T2.first_name = 'Connor' AND T2.last_name = 'Hilton' AND T1.source = 'Dues'",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries retrieve the date_received from the income table for members named Connor Hilton with source 'Dues'. The join conditions and WHERE clauses are logically equivalent, only differing in table alias names which do not affect the result.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries retrieve the date_received from the income table for members named Connor Hilton with source 'Dues'. The join conditions and WHERE clauses are logically equivalent, only differing in table alias names which do not affect the result.\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem. I need to determine if Q1 and Q2 are semantically equivalent. Let me start by understanding each query.\n\nFirst, looking at Q1: It selects T2.date_received from member as T1 joined with income as T2 on T1.member_id = T2.link_to_member. The WHERE clause filters where T1's first and last name are Connor Hilton and T2.source is 'Dues'. So, Q1 is getting the date_received from the income table for Connor Hilton's member records where the source is Dues.\n\nNow Q2: It selects T1.date_received from income as T1 joined with member as T2 on T1.link_to_member = T2.member_id. The WHERE clause here is T2.first_name = 'Connor' and T2.last_name = 'Hilton' and T1.source = 'Dues'. So Q2 is selecting date_received from income (T1) where the member (T2) has those names and the income's source is Dues.\n\nWait, the main difference seems to be the aliases and which table's columns are being selected. In Q1, T2 is the income table, so date_received is from income. In Q2, T1 is the income table, so date_received is also from income. Wait, but the join conditions are different? Let me check the joins again.\n\nIn Q1, the join is member (T1) and income (T2) on T1.member_id = T2.link_to_member. That makes sense because the member table has member_id, and income has link_to_member which references member's member_id. So that's correct.\n\nIn Q2, the join is income (T1) and member (T2) on T1.link_to_member = T2.member_id. Which is the same as the join in Q1, just swapping the aliases. So the join condition is the same, just the aliases are different.\n\nThe WHERE clauses: Q1 uses T1 (member) for the names and T2 (income) for source. Q2 uses T2 (member) for the names and T1 (income) for source. So the conditions are the same, just the aliases are swapped. But the columns being selected are from the same table (income's date_received) in both cases. Wait, in Q1, T2 is income, so date_received is from T2. In Q2, T1 is income, so date_received is from T1. So both are selecting the same column from the same table, just different aliases.\n\nSo the logic should be the same. The join is between member and income, filtering on the member's name and the income's source. The only difference is the aliases used for the tables. Therefore, the results should be the same. Unless there's some other factor I'm missing.\n\nWait, but maybe there's a case where a member has multiple entries in income? But the queries are selecting date_received, which would return all matching rows. Since the join and where conditions are the same, the results should be identical. So the queries are equivalent. Therefore, the answer should be Y.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 853,
+    "total_tokens": 1569,
+    "completion_tokens": 716,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 655
+    },
+    "generation_seconds": 23.718
+  },
+  "started_at": "2026-10-06T20:59:13.753972+00:00",
+  "elapsed_seconds": 0.0
+}

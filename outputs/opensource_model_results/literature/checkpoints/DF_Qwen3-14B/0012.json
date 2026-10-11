@@ -1,0 +1,58 @@
+{
+  "dbid": "6",
+  "index": "12",
+  "source_index": "13",
+  "schema_ddl": "CREATE TABLE EMP (NAME INT, DEPT INT, EMP INT);\nCREATE TABLE DEPT (DEPT INT, LOC INT, MGR INT);",
+  "q1": "SELECT X.NAME AS XN FROM EMP AS X WHERE (X.EMP, X.DEPT) IN (SELECT Y.MGR, Y.DEPT FROM DEPT AS Y WHERE Y.LOC = 3)",
+  "q2": "SELECT X.NAME AS XN FROM EMP AS X",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "literature",
+  "q1_prompt_sql": "SELECT X.NAME AS XN FROM EMP AS X WHERE (X.EMP, X.DEPT) IN (SELECT Y.MGR, Y.DEPT FROM DEPT AS Y WHERE Y.LOC = 3)",
+  "q2_prompt_sql": "SELECT X.NAME AS XN FROM EMP AS X",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO DEPT (DEPT, LOC, MGR) VALUES (5, 3, 100);\nINSERT INTO EMP (NAME, DEPT, EMP) VALUES (100, 5, 100);\nINSERT INTO EMP (NAME, DEPT, EMP) VALUES (200, 5, 200);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 filters employees who are managers of departments in location 3, while Q2 returns all employees. They are not equivalent when there are employees not managing such departments.",
+  "counterexample_dsp": "A department in location 3 with manager 100, and another employee 200 in the same department but not a manager.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 filters employees who are managers of departments in location 3, while Q2 returns all employees. They are not equivalent when there are employees not managing such departments.\",\n\"counterexample_dsp\": \"A department in location 3 with manager 100, and another employee 200 in the same department but not a manager.\",\n\"counterexample\": \"INSERT INTO DEPT (DEPT, LOC, MGR) VALUES (5, 3, 100);\\nINSERT INTO EMP (NAME, DEPT, EMP) VALUES (100, 5, 100);\\nINSERT INTO EMP (NAME, DEPT, EMP) VALUES (200, 5, 200);\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem. So, I need to figure out if the two SQL queries Q1 and Q2 are semantically equivalent based on the given schema. Let's start by understanding each query.\n\nFirst, the schema: There's an EMP table with columns NAME, DEPT, and EMP. Wait, that's a bit confusing because the column names are similar. The DEPT table has DEPT, LOC, and MGR. So, EMP has an EMP column, which might be an employee ID, and DEPT has a MGR column which is probably the manager's ID for that department.\n\nNow, looking at Q1: It selects the NAME from EMP where (X.EMP, X.DEPT) is in the subquery that selects Y.MGR and Y.DEPT from DEPT where Y.LOC = 3. So, the subquery gets all the (MGR, DEPT) pairs from departments located at 3. Then Q1 is selecting all employees whose EMP and DEPT match those pairs. So, employees who are managers of departments in location 3?\n\nWait, no. Because the subquery is selecting Y.MGR and Y.DEPT. So, for each department in location 3, the manager is Y.MGR and the department is Y.DEPT. So the subquery returns pairs like (mgr1, dept1), (mgr2, dept2), etc., where dept1 and dept2 are in location 3. Then, Q1 is selecting employees whose EMP equals the MGR of such a department and whose DEPT equals the DEPT of that department. Wait, that seems a bit odd. Because the DEPT in the EMP table is the department the employee works in, and the DEPT in the DEPT table is the department's ID. So, if an employee's DEPT is the same as the DEPT from the DEPT table (which is the same department), then their EMP (employee ID) must be equal to the MGR (manager's ID) of that department. So, Q1 is selecting employees who are managers of departments located in location 3. Because the MGR in DEPT is the manager's ID for that department. So, for each department in location 3, we get the manager's ID, and then find the employee with that ID who is in the same department (which is the same as the DEPT of the department, which is redundant? Wait, maybe not. Because the employee's DEPT is the department they belong to, and the DEPT in the DEPT table is the department's ID. So, the subquery gives pairs (manager ID, department ID) for departments in location 3. Then Q1 is selecting employees where their EMP (which is their ID) is the manager ID, and their DEPT is the department ID. That would mean that the employee is the manager of that department. So Q1 is selecting all employees who are managers of departments located in location 3.\n\nNow Q2 is simply selecting all names from EMP. So, Q2 returns all employees, while Q1 returns only those employees who are managers of departments in location 3. Therefore, unless all employees are managers of departments in location 3, which is not necessarily the case, these queries are not equivalent.\n\nSo, the answer is not equivalent. Now, to create a counterexample. Let's think of a scenario where there are employees not in the subquery result.\n\nFor example, suppose there's a department in location 3 with MGR = 100. Then, the EMP table has an employee with EMP=100 and DEPT=5 (assuming the DEPT in the DEPT table is 5). So that employee would be selected by Q1. But if there's another employee in EMP with EMP=200 and DEPT=5, but that employee is not a manager of any department (so not in the subquery), then Q2 would return 200's name, but Q1 would not. Therefore, the counterexample would involve such data.\n\nLet me structure the test data. Let's create a DEPT table with one department in location 3. Let's say DEPT has DEPT=5, LOC=3, MGR=100. Then, in EMP, there's an employee with NAME=100, DEPT=5, EMP=100 (so that's the manager). Also, another employee with NAME=200, DEPT=5, EMP=200. Then Q1 would return NAME=100, and Q2 would return both 100 and 200. Hence, they are not equivalent.\n\nBut need to make sure that the schema constraints are met. The EMP table has columns NAME, DEPT, EMP. The DEPT table has DEPT, LOC, MGR. So, the columns are all integers. The constraints are not specified, so assuming that the data types are correct.\n\nSo the counterexample would involve inserting these records. Let me write the SQL inserts.\n\nFor the DEPT table: insert into DEPT (DEPT, LOC, MGR) values (5, 3, 100); \n\nFor EMP: insert into EMP (NAME, DEPT, EMP) values (100, 5, 100); -- the manager\ninsert into EMP (NAME, DEPT, EMP) values (200, 5, 200); -- a regular employee.\n\nIn this case, Q1 would return 100, Q2 returns 100 and 200. Therefore, they are not equivalent.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 337,
+    "total_tokens": 1686,
+    "completion_tokens": 1349,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1179
+    },
+    "generation_seconds": 40.188
+  },
+  "started_at": "2026-10-06T07:45:50.503875+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      100
+    ]
+  ],
+  "q2_output": [
+    [
+      100
+    ],
+    [
+      200
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT X.NAME AS XN FROM EMP AS X WHERE (X.EMP, X.DEPT) IN (SELECT Y.MGR, Y.DEPT FROM DEPT AS Y WHERE Y.LOC = 3)",
+  "q2_validation_sql": "SELECT X.NAME AS XN FROM EMP AS X"
+}

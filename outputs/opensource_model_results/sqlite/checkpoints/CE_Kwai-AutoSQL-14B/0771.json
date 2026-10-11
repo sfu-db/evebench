@@ -1,0 +1,58 @@
+{
+  "dbid": "student_club",
+  "index": "771",
+  "source_index": "1326",
+  "schema_ddl": "CREATE TABLE event\n(\n    event_id   TEXT\n        constraint event_pk\n            primary key,\n    event_name TEXT,\n    event_date TEXT,\n    type       TEXT,\n    notes      TEXT,\n    location   TEXT,\n    status     TEXT\n);\n\nCREATE TABLE major\n(\n    major_id   TEXT\n        constraint major_pk\n            primary key,\n    major_name TEXT,\n    department TEXT,\n    college    TEXT\n);\n\nCREATE TABLE zip_code\n(\n    zip_code    INTEGER\n        constraint zip_code_pk\n            primary key,\n    type        TEXT,\n    city        TEXT,\n    county      TEXT,\n    state       TEXT,\n    short_state TEXT\n);\n\nCREATE TABLE \"attendance\"\n(\n    link_to_event  TEXT,\n    link_to_member TEXT,\n    primary key (link_to_event, link_to_member),\n    foreign key (link_to_event) references event(event_id),\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"budget\"\n(\n    budget_id     TEXT\n            primary key,\n    category      TEXT,\n    spent         REAL,\n    remaining     REAL,\n    amount        INTEGER,\n    event_status  TEXT,\n    link_to_event TEXT,\n    foreign key (link_to_event) references event(event_id)\n);\n\nCREATE TABLE \"expense\"\n(\n    expense_id          TEXT\n            primary key,\n    expense_description TEXT,\n    expense_date        TEXT,\n    cost                REAL,\n    approved            TEXT,\n    link_to_member      TEXT,\n    link_to_budget      TEXT,\n    foreign key (link_to_budget) references budget(budget_id),\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"income\"\n(\n    income_id      TEXT\n        constraint income_pk\n            primary key,\n    date_received  TEXT,\n    amount         INTEGER,\n    source         TEXT,\n    notes          TEXT,\n    link_to_member TEXT,\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"member\"\n(\n    member_id     TEXT\n        constraint member_pk\n            primary key,\n    first_name    TEXT,\n    last_name     TEXT,\n    email         TEXT,\n    position      TEXT,\n    t_shirt_size  TEXT,\n    phone         TEXT,\n    zip           INTEGER,\n    link_to_major TEXT,\n    foreign key (link_to_major) references major(major_id),\n    foreign key (zip) references zip_code(zip_code)\n);",
+  "q1": "SELECT expense_description FROM expense ORDER BY cost DESC LIMIT 1",
+  "q2": "SELECT expense_description FROM expense WHERE cost = (SELECT MAX(cost) FROM expense)",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT expense_description FROM expense ORDER BY cost DESC LIMIT 1",
+  "q2_prompt_sql": "SELECT expense_description FROM expense WHERE cost = (SELECT MAX(cost) FROM expense)",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO expense (expense_id, expense_description, cost) VALUES ('e1', 'Car Rental', 1000);\nINSERT INTO expense (expense_id, expense_description, cost) VALUES ('e2', 'Lunch', 1000);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 returns only one row (LIMIT 1) with the highest cost, while Q2 returns all rows that share the maximum cost. When multiple rows have the same maximum cost, Q1 returns one (arbitrary if tied) and Q2 returns all, causing different results.",
+  "counterexample_dsp": "Two expense rows with identical maximum cost values. Q1 returns one (first in ordering), Q2 returns both.",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 returns only one row (LIMIT 1) with the highest cost, while Q2 returns all rows that share the maximum cost. When multiple rows have the same maximum cost, Q1 returns one (arbitrary if tied) and Q2 returns all, causing different results.\",\n  \"counterexample_dsp\": \"Two expense rows with identical maximum cost values. Q1 returns one (first in ordering), Q2 returns both.\",\n  \"counterexample\": [\n    \"INSERT INTO expense (expense_id, expense_description, cost) VALUES ('e1', 'Car Rental', 1000);\",\n    \"INSERT INTO expense (expense_id, expense_description, cost) VALUES ('e2', 'Lunch', 1000);\"\n  ]\n}",
+  "reasoning": "\nOkay, let's see. The user wants me to find a counterexample where Q1 and Q2 return different results. The two queries are about the expense table. Q1 selects the expense_description from expense ordered by cost descending and takes the first one. Q2 selects the expense_description where cost equals the maximum cost from expense.\n\nHmm, why would these two not be equivalent? Well, ORDER BY DESC LIMIT 1 should give the same as selecting where cost equals MAX(cost), right? Wait, maybe if there are multiple rows with the same maximum cost. Let me think. Suppose there are two expenses with the same maximum cost. Then Q1 would return one of them (depending on the order), and Q2 would return all of them. But wait, Q2 uses WHERE cost = MAX(cost), which would return all rows with that max value. But Q1 with LIMIT 1 would return just one. So if there are multiple rows with the same maximum cost, Q1 gives one, Q2 gives all. But the question says the user wants a counterexample where they return different results. However, the problem states that the queries are not semantically equivalent. Wait, but looking at the queries again: Q1 is ORDER BY cost DESC LIMIT 1, which gives one row. Q2 is WHERE cost = (SELECT MAX(cost)), which could return multiple rows if there are ties. So in that case, Q1 returns one row, and Q2 returns all rows with the max cost. But the user says that the two queries are not equivalent. So the answer would be when there's a tie in the maximum cost.\n\nWait, but the user's example requires that the two queries return different results. So if I have two expense entries with the same maximum cost, then Q2 would return both, and Q1 would return one. However, the problem is that the user's Q1 is using LIMIT 1, so it returns one row, while Q2 returns all rows with the max cost. Therefore, if there are multiple rows with the same maximum cost, Q2 would return more rows than Q1. So in that case, the two queries are not equivalent.\n\nBut the user's example requires that the counterexample database has such a scenario. So I need to create two expense entries with the same maximum cost. Then Q1 would return one (depending on the order, but in the absence of other ordering, it's the first one), and Q2 returns both. Wait, but the user's Q1 is ORDER BY cost DESC LIMIT 1. So if two rows have the same cost, which one comes first? It depends on the database's ordering when there's a tie. But the problem is that in SQL, when you order by a column and there are duplicates, the order is not guaranteed unless you have a secondary sort key. So in that case, Q1 could return either one of the two, but Q2 returns both. Therefore, the two queries are not equivalent when there are multiple rows with the same maximum cost.\n\nSo the counterexample would be inserting two expense rows with the same maximum cost. Then Q1 returns one, Q2 returns both. Therefore, the results differ.\n\nBut the user's problem says that Q1 and Q2 are not semantically equivalent. So the explanation is that Q1 returns one row (the first one when ordered by cost DESC), while Q2 returns all rows that have the maximum cost. Therefore, when there are multiple rows with the same maximum cost, the results differ.\n\nSo for the counterexample, I need to create two expense entries with the same cost, which is the maximum. Let me check the schema. The expense table has cost as REAL. So inserting two rows with the same cost value. For example, expense_description 'Car Rental' with cost 1000, and another 'Lunch' with cost 1000. Then Q1 would return one of them (depending on how the database orders when there's a tie), but Q2 would return both. Therefore, the outputs are different.\n\nWait, but in the expense table, the primary key is expense_id. So each row is unique. So inserting two rows with same cost but different expense_id. Then Q1 returns one row (the first one in the order), Q2 returns two rows. Therefore, the queries differ.\n\nSo the counterexample would be inserting two expense rows with same cost. Then Q1 returns one, Q2 returns two. Hence, different results.\n\nSo the explanation is that when multiple rows have the same maximum cost, Q1 returns one (due to LIMIT 1) while Q2 returns all of them. The counterexample database has two expense entries with the same maximum cost.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 716,
+    "total_tokens": 1856,
+    "completion_tokens": 1140,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 972
+    },
+    "generation_seconds": 40.531
+  },
+  "started_at": "2026-10-06T19:47:15.377636+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "Car Rental"
+    ]
+  ],
+  "q2_output": [
+    [
+      "Car Rental"
+    ],
+    [
+      "Lunch"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT expense_description FROM expense ORDER BY cost DESC LIMIT 1",
+  "q2_validation_sql": "SELECT expense_description FROM expense WHERE cost = (SELECT MAX(cost) FROM expense)"
+}

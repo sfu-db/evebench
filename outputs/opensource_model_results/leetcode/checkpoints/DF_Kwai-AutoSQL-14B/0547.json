@@ -1,0 +1,57 @@
+{
+  "dbid": "1113",
+  "index": "547",
+  "source_index": "44",
+  "schema_ddl": "CREATE TABLE ACTIONS (\n    USER_ID INT,\n    POST_ID INT,\n    ACTION_DATE DATE,\n    ACTION ENUM('VIEW', 'LIKE', 'REACTION', 'COMMENT', 'REPORT', 'SHARE'),\n    EXTRA VARCHAR(255),\n    CHECK (ACTION_DATE <= '2019-07-05'),\n    CHECK (ACTION IN ('VIEW', 'LIKE', 'REACTION', 'COMMENT', 'REPORT', 'SHARE'))\n);",
+  "q1": "SELECT EXTRA AS REPORT_REASON, COUNT(DISTINCT POST_ID) AS REPORT_COUNT FROM ACTIONS WHERE ACTION = 'REPORT' AND ACTION_DATE = '2019-07-04' GROUP BY EXTRA",
+  "q2": "SELECT EXTRA AS REPORT_REASON, COUNT(DISTINCT POST_ID) AS REPORT_COUNT FROM ACTIONS WHERE ACTION = 'REPORT' AND ACTION_DATE = '2019-07-04' GROUP BY EXTRA HAVING REPORT_COUNT > 0",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT EXTRA AS REPORT_REASON, COUNT(DISTINCT POST_ID) AS REPORT_COUNT FROM ACTIONS WHERE ACTION = 'REPORT' AND ACTION_DATE = '2019-07-04' GROUP BY EXTRA",
+  "q2_prompt_sql": "SELECT EXTRA AS REPORT_REASON, COUNT(DISTINCT POST_ID) AS REPORT_COUNT FROM ACTIONS WHERE ACTION = 'REPORT' AND ACTION_DATE = '2019-07-04' GROUP BY EXTRA HAVING REPORT_COUNT > 0",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO ACTIONS (USER_ID, POST_ID, ACTION_DATE, ACTION, EXTRA) VALUES (1, 101, '2019-07-04', 'REPORT', 'Spam');\nINSERT INTO ACTIONS (USER_ID, POST_ID, ACTION_DATE, ACTION, EXTRA) VALUES (2, 102, '2019-07-04', 'REPORT', 'Spam');\nINSERT INTO ACTIONS (USER_ID, POST_ID, ACTION_DATE, ACTION, EXTRA) VALUES (3, 101, '2019-07-04', 'REPORT', 'Spam');",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 returns all distinct values of EXTRA along with the count of distinct POST_IDs for each group. Q2 adds a HAVING clause that filters out groups where the count of distinct POST_IDs is zero. Therefore, Q2 may return fewer rows than Q1 if any group has zero distinct POST_IDs (which is unlikely given the WHERE clause, but still a difference).",
+  "counterexample_dsp": "A scenario where a group has no POST_IDs matching the criteria, but since the WHERE clause filters on ACTION = 'REPORT', it's unlikely. A more relevant case is when multiple rows share the same EXTRA but have the same POST_ID, but COUNT(DISTINCT) still yields a positive value. Actually, the real difference would be more apparent when the COUNT(DISTINCT POST_ID) could theoretically be zero for a group, but with the given WHERE clause, it's not possible. Let me adjust for clarity.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n  \"equiv\": \"N\",\n  \"explanation\": \"Q1 returns all distinct values of EXTRA along with the count of distinct POST_IDs for each group. Q2 adds a HAVING clause that filters out groups where the count of distinct POST_IDs is zero. Therefore, Q2 may return fewer rows than Q1 if any group has zero distinct POST_IDs (which is unlikely given the WHERE clause, but still a difference).\",\n  \"counterexample_dsp\": \"A scenario where a group has no POST_IDs matching the criteria, but since the WHERE clause filters on ACTION = 'REPORT', it's unlikely. A more relevant case is when multiple rows share the same EXTRA but have the same POST_ID, but COUNT(DISTINCT) still yields a positive value. Actually, the real difference would be more apparent when the COUNT(DISTINCT POST_ID) could theoretically be zero for a group, but with the given WHERE clause, it's not possible. Let me adjust for clarity.\",\n  \"counterexample\": \"INSERT INTO ACTIONS (USER_ID, POST_ID, ACTION_DATE, ACTION, EXTRA) VALUES (1, 101, '2019-07-04', 'REPORT', 'Spam');\\nINSERT INTO ACTIONS (USER_ID, POST_ID, ACTION_DATE, ACTION, EXTRA) VALUES (2, 102, '2019-07-04', 'REPORT', 'Spam');\\nINSERT INTO ACTIONS (USER_ID, POST_ID, ACTION_DATE, ACTION, EXTRA) VALUES (3, 101, '2019-07-04', 'REPORT', 'Spam');\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 441,
+    "total_tokens": 798,
+    "completion_tokens": 357,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 11.688
+  },
+  "started_at": "2026-10-06T15:51:41.521841+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "Spam",
+      2
+    ]
+  ],
+  "q2_output": [
+    [
+      "Spam",
+      2
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT EXTRA AS REPORT_REASON, COUNT(DISTINCT POST_ID) AS REPORT_COUNT FROM ACTIONS WHERE ACTION = 'REPORT' AND ACTION_DATE = '2019-07-04' GROUP BY EXTRA",
+  "q2_validation_sql": "SELECT EXTRA AS REPORT_REASON, COUNT(DISTINCT POST_ID) AS REPORT_COUNT FROM ACTIONS WHERE ACTION = 'REPORT' AND ACTION_DATE = '2019-07-04' GROUP BY EXTRA HAVING REPORT_COUNT > 0"
+}

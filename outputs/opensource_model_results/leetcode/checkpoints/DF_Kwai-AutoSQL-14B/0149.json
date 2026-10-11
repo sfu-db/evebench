@@ -1,0 +1,39 @@
+{
+  "dbid": "182",
+  "index": "149",
+  "source_index": "134",
+  "schema_ddl": "CREATE TABLE PERSON (\n    ID INT,\n    EMAIL VARCHAR(255),\n    PRIMARY KEY (ID)\n);",
+  "q1": "SELECT EMAIL AS EMAIL FROM PERSON GROUP BY EMAIL HAVING COUNT(EMAIL) >1",
+  "q2": "SELECT EMAIL AS EMAIL FROM PERSON GROUP BY EMAIL HAVING (COUNT(EMAIL) > 1)",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT EMAIL AS EMAIL FROM PERSON GROUP BY EMAIL HAVING COUNT(EMAIL) >1",
+  "q2_prompt_sql": "SELECT EMAIL AS EMAIL FROM PERSON GROUP BY EMAIL HAVING (COUNT(EMAIL) > 1)",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are semantically equivalent. Both queries select email addresses from the PERSON table that appear more than once, grouping by EMAIL and applying the same HAVING condition (COUNT(EMAIL) > 1). The difference in parentheses placement does not affect the logic of the query in SQL.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n  \"equiv\": \"Y\",\n  \"explanation\": \"Q1 and Q2 are semantically equivalent. Both queries select email addresses from the PERSON table that appear more than once, grouping by EMAIL and applying the same HAVING condition (COUNT(EMAIL) > 1). The difference in parentheses placement does not affect the logic of the query in SQL.\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 315,
+    "total_tokens": 395,
+    "completion_tokens": 80,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 2.609
+  },
+  "started_at": "2026-10-06T15:33:06.708212+00:00",
+  "elapsed_seconds": 0.0
+}

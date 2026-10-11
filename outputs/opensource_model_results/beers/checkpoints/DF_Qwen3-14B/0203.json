@@ -1,0 +1,55 @@
+{
+  "dbid": "beers",
+  "index": "203",
+  "source_index": "5238",
+  "schema_ddl": "CREATE TABLE Bar (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Beer (\n    name VARCHAR NOT NULL,\n    brewer VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Drinker (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Frequents (\n    drinker VARCHAR NOT NULL,\n    bar VARCHAR NOT NULL,\n    times_a_week SMALLINT NOT NULL,\n    PRIMARY KEY (drinker, bar),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (bar) REFERENCES Bar(name)\n);\n\nCREATE TABLE Serves (\n    bar VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    price DECIMAL(5,2) NOT NULL,\n    PRIMARY KEY (bar, beer),\n    FOREIGN KEY (bar) REFERENCES Bar(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);\n\nCREATE TABLE Likes (\n    drinker VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    PRIMARY KEY (drinker, beer),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);",
+  "q1": "SELECT DISTINCT bar FROM Serves WHERE (beer = 'Amstel' OR beer = 'Corona') AND price > 2",
+  "q2": "SELECT drinker.name FROM drinker JOIN frequents ON drinker.name = frequents.drinker JOIN serves ON frequents.bar = serves.bar WHERE serves.beer = 'Corona' AND NOT drinker.name IN (SELECT drinker FROM likes WHERE beer = 'Corona')",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "beers",
+  "q1_prompt_sql": "SELECT DISTINCT bar FROM Serves WHERE (beer = 'Amstel' OR beer = 'Corona') AND price > 2",
+  "q2_prompt_sql": "SELECT drinker.name FROM drinker JOIN frequents ON drinker.name = frequents.drinker JOIN serves ON frequents.bar = serves.bar WHERE serves.beer = 'Corona' AND NOT drinker.name IN (SELECT drinker FROM likes WHERE beer = 'Corona')",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO Bar (name, address) VALUES ('Bar1', 'Addr1');\nINSERT INTO Beer (name, brewer) VALUES ('Amstel', 'Brewer1'), ('Corona', 'Brewer2');\nINSERT INTO Serves (bar, beer, price) VALUES ('Bar1', 'Amstel', 3.00), ('Bar1', 'Corona', 2.50);\nINSERT INTO Drinker (name, address) VALUES ('Drinker1', 'AddrD');\nINSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('Drinker1', 'Bar1', 3);\nINSERT INTO Likes (drinker, beer) VALUES ('Drinker1', 'Amstel');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 retrieves bars serving Amstel/Corona at price >2, while Q2 retrieves drinkers who frequent bars serving Corona but don't like Corona. They return different data types (bars vs drinkers) and have unrelated conditions.",
+  "counterexample_dsp": "A database with one bar serving Amstel at $3 (so Q1 returns it), and a drinker who frequents a bar serving Corona but isn't in Likes for Corona (so Q2 returns them).",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 retrieves bars serving Amstel/Corona at price >2, while Q2 retrieves drinkers who frequent bars serving Corona but don't like Corona. They return different data types (bars vs drinkers) and have unrelated conditions.\",\n\"counterexample_dsp\": \"A database with one bar serving Amstel at $3 (so Q1 returns it), and a drinker who frequents a bar serving Corona but isn't in Likes for Corona (so Q2 returns them).\",\n\"counterexample\": \"INSERT INTO Bar (name, address) VALUES ('Bar1', 'Addr1');\\nINSERT INTO Beer (name, brewer) VALUES ('Amstel', 'Brewer1'), ('Corona', 'Brewer2');\\nINSERT INTO Serves (bar, beer, price) VALUES ('Bar1', 'Amstel', 3.00), ('Bar1', 'Corona', 2.50);\\nINSERT INTO Drinker (name, address) VALUES ('Drinker1', 'AddrD');\\nINSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('Drinker1', 'Bar1', 3);\\nINSERT INTO Likes (drinker, beer) VALUES ('Drinker1', 'Amstel');\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem. I need to determine if the two SQL queries, Q1 and Q2, are semantically equivalent based on the given database schema. If they're not, I have to come up with a counterexample.\n\nFirst, I'll start by understanding what each query does.\n\nLooking at Q1: It selects distinct 'bar' from the Serves table where the beer is either 'Amstel' or 'Corona' and the price is greater than 2. So Q1 is about finding bars that serve either of those two beers at a price over $2.\n\nNow Q2 is more complex. It joins the Drinker, Frequents, and Serves tables. The WHERE clause specifies that the served beer is 'Corona' and that the drinker's name is not in the list of drinkers who like 'Corona' (from the Likes table). The result is the name of the drinker. Wait, but Q2's SELECT is drinker.name, which comes from the Drinker table. So Q2 is selecting drinkers who frequent a bar that serves Corona, but who don't like Corona.\n\nWait, but Q1 is about bars serving certain beers, while Q2 is about drinkers. So their output columns are different: Q1 returns bars, Q2 returns drinkers. That's a big difference. So they can't be equivalent because they return different data types. Unless there's a misunderstanding here.\n\nWait, let me check again. Q1's output is bar names, and Q2's output is drinker names. So the result sets are entirely different. For example, if a bar serves Amstel or Corona at price >2, Q1 would list that bar. Q2 would list drinkers who go to bars that serve Corona but don't like Corona. These are different entities. Therefore, the queries are not equivalent because they are selecting different attributes from different tables.\n\nBut maybe I'm missing something. Let me check the schema again. The Serves table has bar and beer, and price. The Frequents table links drinkers to bars. Likes links drinkers to beers they like. So Q2 is about drinkers who frequent bars that serve Corona (so they can drink it) but don't like Corona. So the output is drinker names.\n\nQ1 is about bars that serve Amstel or Corona at a price over 2. So their outputs are different: bars vs drinkers. Therefore, the two queries can't be equivalent. Even if their conditions were similar, the output columns are different. So the answer must be that they are not equivalent.\n\nBut wait, maybe the user made a typo? Let me check again. Q1's SELECT is bar, Q2's is drinker.name. So unless there's some overlap in the data that could make them look similar, but logically, they are different. So the answer is N, not equivalent.\n\nTherefore, the explanation is that Q1 retrieves bars serving specific beers with a price condition, while Q2 retrieves drinkers who frequent bars serving Corona but don't like it. The outputs are different (bars vs drinkers), so they are not equivalent.\n\nFor a counterexample, I need to create a database where Q1 returns some bars, and Q2 returns some drinkers. For example, if there's a bar that serves Amstel at $3, Q1 would include it. For Q2, if there's a drinker who frequents a bar that serves Corona but doesn't like Corona, they would be in the result. Since the outputs are different, even in the same database, they can't be the same. So the counterexample would be any data that satisfies the schema, but the queries would return different results because of the different columns selected.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 576,
+    "total_tokens": 1630,
+    "completion_tokens": 1054,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 769
+    },
+    "generation_seconds": 35.234
+  },
+  "started_at": "2026-10-06T09:21:39.599588+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "Bar1"
+    ]
+  ],
+  "q2_output": [
+    [
+      "Drinker1"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DISTINCT bar FROM Serves WHERE (beer = 'Amstel' OR beer = 'Corona') AND price > 2",
+  "q2_validation_sql": "SELECT drinker.name FROM drinker JOIN frequents ON drinker.name = frequents.drinker JOIN serves ON frequents.bar = serves.bar WHERE serves.beer = 'Corona' AND NOT drinker.name IN (SELECT drinker FROM likes WHERE beer = 'Corona')"
+}

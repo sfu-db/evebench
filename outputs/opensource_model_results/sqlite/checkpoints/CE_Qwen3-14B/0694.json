@@ -1,0 +1,55 @@
+{
+  "dbid": "thrombosis_prediction",
+  "index": "694",
+  "source_index": "1223",
+  "schema_ddl": "CREATE TABLE Examination\n(\n    ID                 INTEGER          null,\n    `Examination Date` DATE         null,\n    `aCL IgG`          REAL        null,\n    `aCL IgM`          REAL        null,\n    ANA                INTEGER          null,\n    `ANA Pattern`      TEXT null,\n    `aCL IgA`          INTEGER          null,\n    Diagnosis          TEXT null,\n    KCT                TEXT null,\n    RVVT              TEXT null,\n    LAC                TEXT null,\n    Symptoms           TEXT null,\n    Thrombosis         INTEGER          null,\n    foreign key (ID) references Patient (ID)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE Patient\n(\n    ID           INTEGER default 0 not null\n        primary key,\n    SEX          TEXT  null,\n    Birthday     DATE          null,\n    Description  DATE          null,\n    `First Date` DATE          null,\n    Admission    TEXT  null,\n    Diagnosis    TEXT  null\n);\n\nCREATE TABLE Laboratory\n(\n    ID        INTEGER  default 0            not null,\n    Date      DATE default '0000-00-00' not null,\n    GOT       INTEGER                       null,\n    GPT       INTEGER                        null,\n    LDH       INTEGER                        null,\n    ALP       INTEGER                        null,\n    TP        REAL             null,\n    ALB       REAL             null,\n    UA        REAL             null,\n    UN        INTEGER                       null,\n    CRE       REAL             null,\n    `T-BIL`   REAL             null,\n    `T-CHO`   INTEGER                       null,\n    TG        INTEGER                       null,\n    CPK       INTEGER                       null,\n    GLU       INTEGER                       null,\n    WBC       REAL             null,\n    RBC       REAL             null,\n    HGB       REAL             null,\n    HCT       REAL             null,\n    PLT       INTEGER                       null,\n    PT        REAL             null,\n    APTT      INTEGER                       null,\n    FG        REAL             null,\n    PIC       INTEGER                       null,\n    TAT       INTEGER                       null,\n    TAT2      INTEGER                       null,\n    `U-PRO`   TEXT              null,\n    IGG       INTEGER                       null,\n    IGA       INTEGER                       null,\n    IGM       INTEGER                       null,\n    CRP       TEXT              null,\n    RA        TEXT              null,\n    RF        TEXT              null,\n    C3        INTEGER                       null,\n    C4        INTEGER                       null,\n    RNP       TEXT              null,\n    SM        TEXT              null,\n    SC170     TEXT              null,\n    SSA       TEXT              null,\n    SSB       TEXT              null,\n    CENTROMEA TEXT              null,\n    DNA       TEXT              null,\n    `DNA-II`  INTEGER                       null,\n    primary key (ID, Date),\n        foreign key (ID) references Patient (ID)\n            on update cascade on delete cascade\n);",
+  "q1": "SELECT COUNT(T1.ID) FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T2.CRE >= 1.5 AND T1.SEX = 'M'",
+  "q2": "SELECT COUNT(DISTINCT T1.ID) FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T1.SEX = 'M' AND T2.CRE >= 1.5",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT COUNT(T1.ID) FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T2.CRE >= 1.5 AND T1.SEX = 'M'",
+  "q2_prompt_sql": "SELECT COUNT(DISTINCT T1.ID) FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T1.SEX = 'M' AND T2.CRE >= 1.5",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO Patient (ID, SEX) VALUES (1, 'M');\nINSERT INTO Patient (ID, SEX) VALUES (2, 'M');\nINSERT INTO Laboratory (ID, Date, CRE) VALUES (1, '2023-01-01', 1.6);\nINSERT INTO Laboratory (ID, Date, CRE) VALUES (1, '2023-01-02', 1.7);\nINSERT INTO Laboratory (ID, Date, CRE) VALUES (2, '2023-01-03', 1.5);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 counts all matching rows (including duplicates if a patient has multiple lab entries), while Q2 counts distinct patient IDs. If a male patient has multiple lab records with CRE >=1.5, Q1 will return a higher count than Q2.",
+  "counterexample_dsp": "Two male patients: Patient 1 has two lab entries with CRE >=1.5, Patient 2 has one lab entry with CRE >=1.5. Q1 counts 3 rows (2 from Patient 1, 1 from Patient 2), Q2 counts 2 distinct patients.",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 counts all matching rows (including duplicates if a patient has multiple lab entries), while Q2 counts distinct patient IDs. If a male patient has multiple lab records with CRE >=1.5, Q1 will return a higher count than Q2.\",\n  \"counterexample_dsp\": \"Two male patients: Patient 1 has two lab entries with CRE >=1.5, Patient 2 has one lab entry with CRE >=1.5. Q1 counts 3 rows (2 from Patient 1, 1 from Patient 2), Q2 counts 2 distinct patients.\",\n  \"counterexample\": [\n    \"INSERT INTO Patient (ID, SEX) VALUES (1, 'M');\",\n    \"INSERT INTO Patient (ID, SEX) VALUES (2, 'M');\",\n    \"INSERT INTO Laboratory (ID, Date, CRE) VALUES (1, '2023-01-01', 1.6);\",\n    \"INSERT INTO Laboratory (ID, Date, CRE) VALUES (1, '2023-01-02', 1.7);\",\n    \"INSERT INTO Laboratory (ID, Date, CRE) VALUES (2, '2023-01-03', 1.5);\"\n  ]\n}",
+  "reasoning": "\nOkay, let's see. I need to find a counterexample where Q1 and Q2 return different results. Let me first understand what each query is doing.\n\nQ1: It's counting the number of Patient IDs (T1.ID) from the Patient table joined with Laboratory on ID. The conditions are that T2.CRE >= 1.5 and T1.SEX is 'M'. So, it's a simple count of all matching rows where the CRE value is at least 1.5 and the patient is male.\n\nQ2: This one counts the number of DISTINCT T1.IDs from the same join, with the same conditions. The difference here is that Q2 uses COUNT(DISTINCT ...), which means it counts unique patient IDs even if they have multiple entries in the Laboratory table meeting the criteria.\n\nSo, the key difference is that Q1 counts all rows (so if a male patient has multiple lab entries with CRE >=1.5, each entry is counted), while Q2 counts each patient once, regardless of how many entries they have. Therefore, if there's a male patient with multiple lab records where CRE is >=1.5, Q1's count would be higher than Q2's.\n\nTo create a counterexample, I need a scenario where at least one male patient has multiple entries in the Laboratory table with CRE >=1.5. Let's say there's one patient (ID=1, male) with two lab entries: one with CRE=1.6 and another with CRE=1.4. Wait, no, because the WHERE clause in both queries includes T2.CRE >=1.5. So the second entry with CRE=1.4 wouldn't be included. So, if the same patient has two lab entries where CRE is 1.6 and 1.7, then Q1 would count both entries (so count=2), while Q2 would count the patient once (count=1). That would make the results different.\n\nSo, the test data should have:\n\n- A male patient (SEX='M') with ID=1.\n- In the Laboratory table, two entries for this patient with CRE >=1.5 (like 1.6 and 1.7).\n- Also, maybe another male patient with one lab entry (so that Q1 counts 2 + 1 =3, Q2 counts 2 (the first patient once and the second once)).\n\nWait, but if there's only one patient with two entries, then Q1 would return 2, Q2 would return 1. That's a clear difference.\n\nSo, let's create:\n\nPatient table:\nID=1, SEX='M'\nID=2, SEX='M'\n\nLaboratory table:\nFor ID=1, Date1, CRE=1.6\nFor ID=1, Date2, CRE=1.7\nFor ID=2, Date3, CRE=1.4 (but this would be excluded because CRE <1.5, so not counted)\n\nWait, but if ID=2 has a CRE of 1.4, it's excluded. So in that case, Q1 would count two entries (from ID=1), and Q2 would count 1 (ID=1 once). So the results would be 2 vs 1.\n\nAlternatively, maybe another male patient with a valid CRE. Let's say ID=2 has a lab entry with CRE=1.5. Then Q1 would count 2 (from ID=1's two entries) +1 (ID=2's one entry) =3. Q2 would count 2 (ID=1 and ID=2). So the difference is 3 vs 2.\n\nBut even with just one patient having two entries, the difference is 2 vs 1. That's sufficient.\n\nSo, the counterexample needs to have a male patient with multiple lab entries where CRE >=1.5. Let me structure the INSERT statements accordingly.\n\nCheck schema constraints: The Laboratory table has a composite primary key (ID, Date). So each entry must have a unique (ID, Date) pair. Also, the foreign key references Patient's ID. So for each lab entry, the ID must exist in Patient.\n\nSo, the steps are:\n\n1. Insert Patient records for two males: ID=1 and ID=2.\n\n2. Insert into Laboratory for ID=1 with two different dates, both with CRE >=1.5.\n\n3. Insert into Laboratory for ID=2 with one entry where CRE is 1.5 (so included in both queries).\n\nBut if I do that, Q1 would count 2 (from ID=1) +1 (from ID=2) =3, and Q2 would count 2 (ID=1 and ID=2). So the difference is 3 vs 2.\n\nAlternatively, if ID=2 has a CRE of 1.4, then Q1 counts 2 (ID=1's two entries) and Q2 counts 1 (ID=1). That's also a difference.\n\nEither way works. Let's go with the first scenario where ID=2 has a valid CRE. So that both queries have more than one result.\n\nSo the counterexample would have:\n\nPatients:\n- (1, 'M')\n- (2, 'M')\n\nLaboratory:\n- (1, '2023-01-01', CRE=1.6)\n- (1, '2023-01-02', CRE=1.7)\n- (2, '2023-01-03', CRE=1.5)\n\nNow, Q1 would count 2 (from ID=1) +1 (from ID=2) =3. Q2 would count 2 distinct IDs (1 and 2). So the results differ.\n\nTherefore, the explanation is that Q1 counts all matching rows, while Q2 counts distinct patient IDs. If a male patient has multiple lab entries meeting the CRE condition, Q1's count is higher.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 894,
+    "total_tokens": 2421,
+    "completion_tokens": 1527,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1250
+    },
+    "generation_seconds": 51.875
+  },
+  "started_at": "2026-10-06T17:41:53.084152+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      3
+    ]
+  ],
+  "q2_output": [
+    [
+      2
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT COUNT(T1.ID) FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T2.CRE >= 1.5 AND T1.SEX = 'M'",
+  "q2_validation_sql": "SELECT COUNT(DISTINCT T1.ID) FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T1.SEX = 'M' AND T2.CRE >= 1.5"
+}

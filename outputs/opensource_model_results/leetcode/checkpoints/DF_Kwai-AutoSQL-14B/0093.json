@@ -1,0 +1,39 @@
+{
+  "dbid": "512",
+  "index": "93",
+  "source_index": "199",
+  "schema_ddl": "CREATE TABLE ACTIVITY (\n    PLAYER_ID INT,\n    EVENT_DATE DATE,\n    DEVICE_ID INT,\n    GAMES_PLAYED INT,\n    PRIMARY KEY (PLAYER_ID, EVENT_DATE),\n    CHECK (GAMES_PLAYED >= 0)\n);",
+  "q1": "SELECT PLAYER_ID, DEVICE_ID FROM ACTIVITY WHERE (PLAYER_ID, EVENT_DATE) IN ( SELECT PLAYER_ID, MIN(EVENT_DATE) FROM ACTIVITY GROUP BY PLAYER_ID )",
+  "q2": "SELECT PLAYER_ID, DEVICE_ID FROM ACTIVITY AS A_1 WHERE (A_1.PLAYER_ID, A_1.EVENT_DATE) IN ( SELECT PLAYER_ID, MIN(EVENT_DATE) AS EARLIEST_DATE FROM ACTIVITY AS A_2 GROUP BY PLAYER_ID )",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT PLAYER_ID, DEVICE_ID FROM ACTIVITY WHERE (PLAYER_ID, EVENT_DATE) IN ( SELECT PLAYER_ID, MIN(EVENT_DATE) FROM ACTIVITY GROUP BY PLAYER_ID )",
+  "q2_prompt_sql": "SELECT PLAYER_ID, DEVICE_ID FROM ACTIVITY AS A_1 WHERE (A_1.PLAYER_ID, A_1.EVENT_DATE) IN ( SELECT PLAYER_ID, MIN(EVENT_DATE) AS EARLIEST_DATE FROM ACTIVITY AS A_2 GROUP BY PLAYER_ID )",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are semantically equivalent. Both queries aim to retrieve the PLAYER_ID and DEVICE_ID from the ACTIVITY table for the earliest EVENT_DATE for each PLAYER_ID. The subquery in both selects the PLAYER_ID and the minimum EVENT_DATE per PLAYER_ID, and the outer query filters rows in ACTIVITY that match this pair. The aliasing in Q2 does not change the logic, and both queries produce identical results.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n  \"equiv\": \"Y\",\n  \"explanation\": \"Q1 and Q2 are semantically equivalent. Both queries aim to retrieve the PLAYER_ID and DEVICE_ID from the ACTIVITY table for the earliest EVENT_DATE for each PLAYER_ID. The subquery in both selects the PLAYER_ID and the minimum EVENT_DATE per PLAYER_ID, and the outer query filters rows in ACTIVITY that match this pair. The aliasing in Q2 does not change the logic, and both queries produce identical results.\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 393,
+    "total_tokens": 500,
+    "completion_tokens": 107,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 3.469
+  },
+  "started_at": "2026-10-06T15:29:41.240427+00:00",
+  "elapsed_seconds": 0.0
+}

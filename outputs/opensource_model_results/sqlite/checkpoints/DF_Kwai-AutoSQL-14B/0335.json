@@ -1,0 +1,65 @@
+{
+  "dbid": "codebase_community",
+  "index": "335",
+  "source_index": "588",
+  "schema_ddl": "CREATE TABLE badges\n(\n    Id     INTEGER          not null\n        primary key,\n    UserId INTEGER          null,\n    Name   TEXT null,\n    Date   DATETIME     null,\n        foreign key (UserId) references users (Id)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE comments\n(\n    Id              INTEGER          not null\n        primary key,\n    PostId          INTEGER          null,\n    Score           INTEGER          null,\n    Text            TEXT     null,\n    CreationDate    DATETIME     null,\n    UserId          INTEGER          null,\n    UserDisplayName TEXT null,\n        foreign key (PostId) references posts (Id)\n            on update cascade on delete cascade,\n        foreign key (UserId) references users (Id)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE postHistory\n(\n    Id                INTEGER          not null UNIQUE\n        primary key,\n    PostHistoryTypeId INTEGER          null,\n    PostId            INTEGER          null,\n    RevisionGUID      TEXT null,\n    CreationDate      DATETIME     null,\n    UserId            INTEGER          null,\n    Text              TEXT     null,\n    Comment           TEXT         null,\n    UserDisplayName   TEXT null,\n        foreign key (PostId) references posts (Id)\n            on update cascade on delete cascade,\n        foreign key (UserId) references users (Id)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE postLinks\n(\n    Id            INTEGER      not null\n        primary key,\n    CreationDate  DATETIME null,\n    PostId        INTEGER      null,\n    RelatedPostId INTEGER      null,\n    LinkTypeId    INTEGER      null,\n        foreign key (PostId) references posts (Id)\n            on update cascade on delete cascade,\n        foreign key (RelatedPostId) references posts (Id)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE posts\n(\n    Id                    INTEGER          not null UNIQUE\n        primary key,\n    PostTypeId            INTEGER          null,\n    AcceptedAnswerId      INTEGER          null,\n    CreaionDate           DATETIME     null,\n    Score                 INTEGER          null,\n    ViewCount             INTEGER          null,\n    Body                  TEXT     null,\n    OwnerUserId           INTEGER          null,\n    LasActivityDate       DATETIME     null,\n    Title                 TEXT null,\n    Tags                  TEXT null,\n    AnswerCount           INTEGER          null,\n    CommentCount          INTEGER          null,\n    FavoriteCount         INTEGER          null,\n    LastEditorUserId      INTEGER          null,\n    LastEditDate          DATETIME     null,\n    CommunityOwnedDate    DATETIME    null,\n    ParentId              INTEGER          null,\n    ClosedDate            DATETIME     null,\n    OwnerDisplayName      TEXT null,\n    LastEditorDisplayName TEXT null,\n        foreign key (LastEditorUserId) references users (Id)\n            on update cascade on delete cascade,\n        foreign key (OwnerUserId) references users (Id)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE tags\n(\n    Id            INTEGER          not null\n        primary key,\n    TagName       TEXT null,\n    Count         INTEGER          null,\n    ExcerptPostId INTEGER          null,\n    WikiPostId    INTEGER          null,\n    foreign key (ExcerptPostId) references posts (Id)\n        on update cascade on delete cascade\n);\n\nCREATE TABLE users\n(\n    Id              INTEGER          not null UNIQUE\n        primary key,\n    Reputation      INTEGER          null,\n    CreationDate    DATETIME     null,\n    DisplayName     TEXT null,\n    LastAccessDate  DATETIME     null,\n    WebsiteUrl      TEXT null,\n    Location        TEXT null,\n    AboutMe         TEXT     null,\n    Views           INTEGER          null,\n    UpVotes         INTEGER          null,\n    DownVotes       INTEGER          null,\n    AccountId       INTEGER          null,\n    Age             INTEGER          null,\n    ProfileImageUrl TEXT null\n);\n\nCREATE TABLE votes\n(\n    Id           INTEGER  not null\n        primary key,\n    PostId       INTEGER  null,\n    VoteTypeId   INTEGER  null,\n    CreationDate DATE null,\n    UserId       INTEGER  null,\n    BountyAmount INTEGER  null,\n        foreign key (PostId) references posts (Id)\n            on update cascade on delete cascade,\n        foreign key (UserId) references users (Id)\n            on update cascade on delete cascade\n);",
+  "q1": "SELECT AVG(T2.ViewCount), T2.Title, T1.Text FROM comments AS T1 INNER JOIN posts AS T2 ON T1.Id = T1.PostId WHERE T2.Tags = '<humor>' GROUP BY T2.Title",
+  "q2": "SELECT AVG(T1.ViewCount), T1.Title, T2.Text, T1.Score FROM posts AS T1 INNER JOIN comments AS T2 ON T1.Id = T2.PostId INNER JOIN tags AS T3 ON T1.Id = T3.ExcerptPostId WHERE T3.TagName = 'humor'",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT AVG(T2.ViewCount), T2.Title, T1.Text FROM comments AS T1 INNER JOIN posts AS T2 ON T1.Id = T1.PostId WHERE T2.Tags = '<humor>' GROUP BY T2.Title",
+  "q2_prompt_sql": "SELECT AVG(T1.ViewCount), T1.Title, T2.Text, T1.Score FROM posts AS T1 INNER JOIN comments AS T2 ON T1.Id = T2.PostId INNER JOIN tags AS T3 ON T1.Id = T3.ExcerptPostId WHERE T3.TagName = 'humor'",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO posts (Id, Tags, ViewCount, Title, Body) VALUES (1, '<humor>', 100, 'Post 1', 'Body 1'), (2, '<humor>', 200, 'Post 2', 'Body 2');\nINSERT INTO comments (Id, PostId, Text) VALUES (1, 1, 'Comment 1');\nINSERT INTO tags (Id, TagName, ExcerptPostId) VALUES (1, 'humor', 1);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent. Q1 computes the average ViewCount from comments (T1) joined with posts (T2) where Tags = '<humor>', grouping by T2.Title and returning AVG(T2.ViewCount), T2.Title, T1.Text. Q2 joins posts (T1), comments (T2), and tags (T3) to filter by 'humor' tag and returns AVG(T1.ViewCount), T1.Title, T2.Text, T1.Score. The difference includes grouping, columns returned, and join logic.",
+  "counterexample_dsp": "Create two posts with humor tags, one with a comment and one without. Q1 will group by title and return AVG(ViewCount) from comments, while Q2 will return individual rows with AVG(ViewCount) from posts, leading to different results.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 and Q2 are not semantically equivalent. Q1 computes the average ViewCount from comments (T1) joined with posts (T2) where Tags = '<humor>', grouping by T2.Title and returning AVG(T2.ViewCount), T2.Title, T1.Text. Q2 joins posts (T1), comments (T2), and tags (T3) to filter by 'humor' tag and returns AVG(T1.ViewCount), T1.Title, T2.Text, T1.Score. The difference includes grouping, columns returned, and join logic.\",\n\"counterexample_dsp\": \"Create two posts with humor tags, one with a comment and one without. Q1 will group by title and return AVG(ViewCount) from comments, while Q2 will return individual rows with AVG(ViewCount) from posts, leading to different results.\",\n\"counterexample\": \"INSERT INTO posts (Id, Tags, ViewCount, Title, Body) VALUES (1, '<humor>', 100, 'Post 1', 'Body 1'), (2, '<humor>', 200, 'Post 2', 'Body 2');\\nINSERT INTO comments (Id, PostId, Text) VALUES (1, 1, 'Comment 1');\\nINSERT INTO tags (Id, TagName, ExcerptPostId) VALUES (1, 'humor', 1);\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 1242,
+    "total_tokens": 1553,
+    "completion_tokens": 311,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 12.156
+  },
+  "started_at": "2026-10-06T21:22:00.256790+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      100.0,
+      "Post 1",
+      "Comment 1"
+    ],
+    [
+      200.0,
+      "Post 2",
+      "Comment 1"
+    ]
+  ],
+  "q2_output": [
+    [
+      100.0,
+      "Post 1",
+      "Comment 1",
+      null
+    ]
+  ],
+  "q1_row_count": 2,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT AVG(T2.ViewCount), T2.Title, T1.Text FROM comments AS T1 INNER JOIN posts AS T2 ON T1.Id = T1.PostId WHERE T2.Tags = '<humor>' GROUP BY T2.Title",
+  "q2_validation_sql": "SELECT AVG(T1.ViewCount), T1.Title, T2.Text, T1.Score FROM posts AS T1 INNER JOIN comments AS T2 ON T1.Id = T2.PostId INNER JOIN tags AS T3 ON T1.Id = T3.ExcerptPostId WHERE T3.TagName = 'humor'"
+}

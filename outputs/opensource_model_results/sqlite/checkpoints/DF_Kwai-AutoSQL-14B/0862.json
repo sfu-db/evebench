@@ -1,0 +1,61 @@
+{
+  "dbid": "debit_card_specializing",
+  "index": "862",
+  "source_index": "1515",
+  "schema_ddl": "CREATE TABLE customers\n(\n    CustomerID INTEGER UNIQUE     not null\n        primary key,\n    Segment    TEXT null,\n    Currency   TEXT null\n);\n\nCREATE TABLE gasstations\n(\n    GasStationID INTEGER    UNIQUE   not null\n        primary key,\n    ChainID      INTEGER          null,\n    Country      TEXT null,\n    Segment      TEXT null\n);\n\nCREATE TABLE products\n(\n    ProductID   INTEGER   UNIQUE      not null\n        primary key,\n    Description TEXT null\n);\n\nCREATE TABLE \"transactions_1k\"\n(\n    TransactionID INTEGER\n        primary key autoincrement,\n    Date          DATE,\n    Time          TEXT,\n    CustomerID    INTEGER,\n    CardID        INTEGER,\n    GasStationID  INTEGER,\n    ProductID     INTEGER,\n    Amount        INTEGER,\n    Price         REAL\n);\n\nCREATE TABLE \"yearmonth\"\n(\n    CustomerID  INTEGER not null\n        references customers\n            on update cascade on delete cascade\n        references customers,\n    Date        TEXT    not null,\n    Consumption REAL,\n    primary key (Date, CustomerID)\n);",
+  "q1": "SELECT T3.Currency FROM transactions_1k AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID INNER JOIN customers AS T3 ON T1.CustomerID = T3.CustomerID WHERE T1.Date = '2012-08-24' AND T1.Time = '16:25:00'",
+  "q2": "SELECT T1.Currency FROM customers AS T1 INNER JOIN \"transactions_1k\" AS T2 ON T1.CustomerID = T2.CustomerID WHERE T2.Date = '2012-08-24' AND T2.Time = '16:25:00'",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT T3.Currency FROM transactions_1k AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID INNER JOIN customers AS T3 ON T1.CustomerID = T3.CustomerID WHERE T1.Date = '2012-08-24' AND T1.Time = '16:25:00'",
+  "q2_prompt_sql": "SELECT T1.Currency FROM customers AS T1 INNER JOIN \"transactions_1k\" AS T2 ON T1.CustomerID = T2.CustomerID WHERE T2.Date = '2012-08-24' AND T2.Time = '16:25:00'",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO customers (CustomerID, Segment, Currency) VALUES (1, 'A', 'USD'), (2, 'B', 'EUR');\nINSERT INTO gasstations (GasStationID, ChainID, Country, Segment) VALUES (10, 1, 'USA', 'A'), (11, 2, 'Germany', 'B');\nINSERT INTO transactions_1k (TransactionID, Date, Time, CustomerID, CardID, GasStationID, ProductID, Amount, Price) VALUES (1, '2012-08-24', '16:25:00', 1, 100, 10, 1, 10, 10.5), (2, '2012-08-24', '16:25:00', 2, 200, 11, 2, 20, 20.5);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent. Q1 joins transactions_1k with gasstations and customers to retrieve the Currency from customers for a specific transaction (identified by Date and Time). Q2 joins customers with transactions_1k to retrieve the Currency from customers for the same transaction condition. The difference lies in Q1 joining with gasstations (which is not used in the SELECT clause), whereas Q2 does not join with gasstations. This could lead to different results if there are multiple rows in transactions_1k matching the same Date and Time conditions but different GasStationID values, which could affect the join behavior in Q1.",
+  "counterexample_dsp": "Create a scenario where there are two transactions with the same Date and Time but different GasStationIDs and different CustomerIDs. Q1 will return Currency based on the join with gasstations (but since gasstations isn't used in SELECT, it doesn't matter), while Q2 may return different results if there are multiple customers matching the same transaction condition.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 and Q2 are not semantically equivalent. Q1 joins transactions_1k with gasstations and customers to retrieve the Currency from customers for a specific transaction (identified by Date and Time). Q2 joins customers with transactions_1k to retrieve the Currency from customers for the same transaction condition. The difference lies in Q1 joining with gasstations (which is not used in the SELECT clause), whereas Q2 does not join with gasstations. This could lead to different results if there are multiple rows in transactions_1k matching the same Date and Time conditions but different GasStationID values, which could affect the join behavior in Q1.\",\n\"counterexample_dsp\": \"Create a scenario where there are two transactions with the same Date and Time but different GasStationIDs and different CustomerIDs. Q1 will return Currency based on the join with gasstations (but since gasstations isn't used in SELECT, it doesn't matter), while Q2 may return different results if there are multiple customers matching the same transaction condition.\",\n\"counterexample\": \"INSERT INTO customers (CustomerID, Segment, Currency) VALUES (1, 'A', 'USD'), (2, 'B', 'EUR');\\nINSERT INTO gasstations (GasStationID, ChainID, Country, Segment) VALUES (10, 1, 'USA', 'A'), (11, 2, 'Germany', 'B');\\nINSERT INTO transactions_1k (TransactionID, Date, Time, CustomerID, CardID, GasStationID, ProductID, Amount, Price) VALUES (1, '2012-08-24', '16:25:00', 1, 100, 10, 1, 10, 10.5), (2, '2012-08-24', '16:25:00', 2, 200, 11, 2, 20, 20.5);\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 615,
+    "total_tokens": 1056,
+    "completion_tokens": 441,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 14.641
+  },
+  "started_at": "2026-10-06T21:40:51.698898+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "USD"
+    ],
+    [
+      "EUR"
+    ]
+  ],
+  "q2_output": [
+    [
+      "USD"
+    ],
+    [
+      "EUR"
+    ]
+  ],
+  "q1_row_count": 2,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT T3.Currency FROM transactions_1k AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID INNER JOIN customers AS T3 ON T1.CustomerID = T3.CustomerID WHERE T1.Date = '2012-08-24' AND T1.Time = '16:25:00'",
+  "q2_validation_sql": "SELECT T1.Currency FROM customers AS T1 INNER JOIN \"transactions_1k\" AS T2 ON T1.CustomerID = T2.CustomerID WHERE T2.Date = '2012-08-24' AND T2.Time = '16:25:00'"
+}

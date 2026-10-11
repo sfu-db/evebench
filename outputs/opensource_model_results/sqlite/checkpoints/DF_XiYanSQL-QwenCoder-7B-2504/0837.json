@@ -1,0 +1,53 @@
+{
+  "dbid": "debit_card_specializing",
+  "index": "837",
+  "source_index": "1477",
+  "schema_ddl": "CREATE TABLE customers\n(\n    CustomerID INTEGER UNIQUE     not null\n        primary key,\n    Segment    TEXT null,\n    Currency   TEXT null\n);\n\nCREATE TABLE gasstations\n(\n    GasStationID INTEGER    UNIQUE   not null\n        primary key,\n    ChainID      INTEGER          null,\n    Country      TEXT null,\n    Segment      TEXT null\n);\n\nCREATE TABLE products\n(\n    ProductID   INTEGER   UNIQUE      not null\n        primary key,\n    Description TEXT null\n);\n\nCREATE TABLE \"transactions_1k\"\n(\n    TransactionID INTEGER\n        primary key autoincrement,\n    Date          DATE,\n    Time          TEXT,\n    CustomerID    INTEGER,\n    CardID        INTEGER,\n    GasStationID  INTEGER,\n    ProductID     INTEGER,\n    Amount        INTEGER,\n    Price         REAL\n);\n\nCREATE TABLE \"yearmonth\"\n(\n    CustomerID  INTEGER not null\n        references customers\n            on update cascade on delete cascade\n        references customers,\n    Date        TEXT    not null,\n    Consumption REAL,\n    primary key (Date, CustomerID)\n);",
+  "q1": "SELECT SUM(IIF(T1.Currency = 'CZK', T2.Consumption, 0)) - SUM(IIF(T1.Currency = 'EUR', T2.Consumption, 0)) FROM customers AS T1 INNER JOIN yearmonth AS T2 ON T1.CustomerID = T2.CustomerID WHERE SUBSTRING(T2.Date, 1, 4) = '2012'",
+  "q2": "SELECT (SELECT SUM(Consumption) FROM yearmonth AS T1 INNER JOIN customers AS T2 ON T1.CustomerID = T2.CustomerID WHERE T2.Currency = 'CZK' AND T1.Date BETWEEN '201201' AND '201212') - (SELECT SUM(Consumption) FROM yearmonth AS T1 INNER JOIN customers AS T2 ON T1.CustomerID = T2.CustomerID WHERE T2.Currency = 'EUR' AND T1.Date BETWEEN '201201' AND '201212')",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT SUM(IIF(T1.Currency = 'CZK', T2.Consumption, 0)) - SUM(IIF(T1.Currency = 'EUR', T2.Consumption, 0)) FROM customers AS T1 INNER JOIN yearmonth AS T2 ON T1.CustomerID = T2.CustomerID WHERE SUBSTRING(T2.Date, 1, 4) = '2012'",
+  "q2_prompt_sql": "SELECT (SELECT SUM(Consumption) FROM yearmonth AS T1 INNER JOIN customers AS T2 ON T1.CustomerID = T2.CustomerID WHERE T2.Currency = 'CZK' AND T1.Date BETWEEN '201201' AND '201212') - (SELECT SUM(Consumption) FROM yearmonth AS T1 INNER JOIN customers AS T2 ON T1.CustomerID = T2.CustomerID WHERE T2.Currency = 'EUR' AND T1.Date BETWEEN '201201' AND '201212')",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO customers (CustomerID, Segment, Currency) VALUES (1, 'Consumer', 'CZK'), (2, 'Corporate', 'EUR'); INSERT INTO yearmonth (CustomerID, Date, Consumption) VALUES (1, '20120101', 100), (2, '20120102', 200), (1, '20130101', 150), (2, '20130102', 250);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not equivalent because they use different methods to filter the data for the years 2012. Q1 uses the SUBSTRING function on the Date column, while Q2 uses a BETWEEN condition on the Date column.",
+  "counterexample_dsp": "The difference is triggered when there are records in the yearmonth table with dates in 2012 that do not match the conditions used in Q1 or Q2.",
+  "equiv": "N",
+  "raw_response": "{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 and Q2 are not equivalent because they use different methods to filter the data for the years 2012. Q1 uses the SUBSTRING function on the Date column, while Q2 uses a BETWEEN condition on the Date column.\",\n\"counterexample_dsp\": \"The difference is triggered when there are records in the yearmonth table with dates in 2012 that do not match the conditions used in Q1 or Q2.\",\n\"counterexample\": \"INSERT INTO customers (CustomerID, Segment, Currency) VALUES (1, 'Consumer', 'CZK'), (2, 'Corporate', 'EUR'); INSERT INTO yearmonth (CustomerID, Date, Consumption) VALUES (1, '20120101', 100), (2, '20120102', 200), (1, '20130101', 150), (2, '20130102', 250);\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 699,
+    "total_tokens": 928,
+    "completion_tokens": 229,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 4.422
+  },
+  "started_at": "2026-10-06T20:10:23.328973+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      -100.0
+    ]
+  ],
+  "q2_output": [
+    [
+      -100.0
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT SUM(IIF(T1.Currency = 'CZK', T2.Consumption, 0)) - SUM(IIF(T1.Currency = 'EUR', T2.Consumption, 0)) FROM customers AS T1 INNER JOIN yearmonth AS T2 ON T1.CustomerID = T2.CustomerID WHERE SUBSTRING(T2.Date, 1, 4) = '2012'",
+  "q2_validation_sql": "SELECT (SELECT SUM(Consumption) FROM yearmonth AS T1 INNER JOIN customers AS T2 ON T1.CustomerID = T2.CustomerID WHERE T2.Currency = 'CZK' AND T1.Date BETWEEN '201201' AND '201212') - (SELECT SUM(Consumption) FROM yearmonth AS T1 INNER JOIN customers AS T2 ON T1.CustomerID = T2.CustomerID WHERE T2.Currency = 'EUR' AND T1.Date BETWEEN '201201' AND '201212')"
+}

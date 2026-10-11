@@ -1,0 +1,67 @@
+{
+  "dbid": "175",
+  "index": "439",
+  "source_index": "0",
+  "schema_ddl": "CREATE TABLE PERSON (\n    PERSONID INT,\n    FIRSTNAME VARCHAR(255),\n    LASTNAME VARCHAR(255),\n    PRIMARY KEY (PERSONID)\n);\n\nCREATE TABLE ADDRESS (\n    ADDRESSID INT,\n    PERSONID INT,\n    CITY VARCHAR(255),\n    STATE VARCHAR(255),\n    PRIMARY KEY (ADDRESSID, PERSONID),\n    FOREIGN KEY (PERSONID) REFERENCES PERSON(PERSONID)\n);",
+  "q1": "SELECT FIRSTNAME, LASTNAME, CITY, STATE FROM PERSON AS P LEFT OUTER JOIN ADDRESS AS A ON P.PERSONID = A.PERSONID",
+  "q2": "SELECT DISTINCT FIRSTNAME, LASTNAME, CITY, STATE FROM PERSON AS P LEFT JOIN ADDRESS AS A ON P.PERSONID = A.PERSONID",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT FIRSTNAME, LASTNAME, CITY, STATE FROM PERSON AS P LEFT OUTER JOIN ADDRESS AS A ON P.PERSONID = A.PERSONID",
+  "q2_prompt_sql": "SELECT DISTINCT FIRSTNAME, LASTNAME, CITY, STATE FROM PERSON AS P LEFT JOIN ADDRESS AS A ON P.PERSONID = A.PERSONID",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO PERSON (PERSONID, FIRSTNAME, LASTNAME) VALUES (1, 'John', 'Doe');\nINSERT INTO ADDRESS (ADDRESSID, PERSONID, CITY, STATE) VALUES (1, 1, 'New York', 'NY');\nINSERT INTO ADDRESS (ADDRESSID, PERSONID, CITY, STATE) VALUES (2, 1, 'New York', 'NY');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 allows duplicate rows when a person has multiple addresses with identical CITY/STATE, while Q2 removes duplicates via DISTINCT. The difference arises when a person has multiple addresses with the same city and state.",
+  "counterexample_dsp": "A person with two identical addresses (same city/state). Q1 returns two rows, Q2 returns one distinct row.",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 allows duplicate rows when a person has multiple addresses with identical CITY/STATE, while Q2 removes duplicates via DISTINCT. The difference arises when a person has multiple addresses with the same city and state.\",\n  \"counterexample_dsp\": \"A person with two identical addresses (same city/state). Q1 returns two rows, Q2 returns one distinct row.\",\n  \"counterexample\": [\n    \"INSERT INTO PERSON (PERSONID, FIRSTNAME, LASTNAME) VALUES (1, 'John', 'Doe');\",\n    \"INSERT INTO ADDRESS (ADDRESSID, PERSONID, CITY, STATE) VALUES (1, 1, 'New York', 'NY');\",\n    \"INSERT INTO ADDRESS (ADDRESSID, PERSONID, CITY, STATE) VALUES (2, 1, 'New York', 'NY');\"\n  ]\n}",
+  "reasoning": "\nOkay, let's see. The user wants me to find a counterexample where Q1 and Q2 return different results. The two queries are:\n\nQ1: SELECT FIRSTNAME, LASTNAME, CITY, STATE FROM PERSON AS P LEFT OUTER JOIN ADDRESS AS A ON P.PERSONID = A.PERSONID\n\nQ2: SELECT DISTINCT FIRSTNAME, LASTNAME, CITY, STATE FROM PERSON AS P LEFT JOIN ADDRESS AS A ON P.PERSONID = A.PERSONID\n\nFirst, I need to understand the difference between these two queries. The main difference is that Q1 uses LEFT OUTER JOIN and Q2 uses LEFT JOIN, but wait, in SQL, LEFT JOIN is the same as LEFT OUTER JOIN. Oh, but the other difference is that Q2 has a DISTINCT clause. So Q2 is selecting distinct rows, while Q1 does not. Therefore, if there are duplicate rows in the result of Q1, Q2 would eliminate them, leading to different results.\n\nBut wait, the LEFT JOIN (or LEFT OUTER JOIN) would return all rows from PERSON, and for each, the matching ADDRESS rows. If a PERSON has multiple addresses, then the LEFT JOIN would produce multiple rows for that person. For example, if a person has two addresses, the join would result in two rows for that person. Q1 would return both rows, but Q2 would return only one because of the DISTINCT.\n\nSo, the key is to have a person with multiple addresses that have the same CITY and STATE. Wait, no. If the person has multiple addresses, even if they have different CITY and STATE, then Q1 would return multiple rows, and Q2 would return all of them if they are distinct. But if the addresses have the same CITY and STATE, then Q1 would return multiple rows with the same values, and Q2 would collapse them into one.\n\nWait, but the DISTINCT is applied to all four columns: FIRSTNAME, LASTNAME, CITY, STATE. So, if a person has two different addresses with same CITY and STATE, then Q1 would have two rows with same values, and Q2 would have one. Alternatively, if the addresses have different cities, then Q1 would have two rows with different cities, and Q2 would return both as they are distinct.\n\nSo, to create a counterexample, we need a person with multiple addresses that have the same CITY and STATE. Then Q1 would return multiple rows (same person's name with same city and state), and Q2 would return only one distinct row.\n\nLet me think of an example. Suppose there's a person named John Doe with PERSONID 1. He has two addresses: one in New York, NY and another in New York, NY. Then, Q1 would return two rows with John Doe, New York, NY. Q2 would return one row because of DISTINCT.\n\nAlternatively, if the two addresses are in different cities, then Q1 would return two different rows, and Q2 would return both, so no difference. But if the addresses have same city and state, then Q2 would collapse them.\n\nSo, the counterexample would be a person with multiple addresses that have same city and state. Let me structure that.\n\nNow, checking the schema. The ADDRESS table has a composite primary key (ADDRESSID, PERSONID). So each person can have multiple addresses, as long as the ADDRESSID is unique. So inserting two addresses for the same PERSONID is allowed as long as ADDRESSID is different.\n\nSo, the test data would be:\n\nPERSON table:\nPERSONID | FIRSTNAME | LASTNAME\n1        | John      | Doe\n\nADDRESS table:\nADDRESSID | PERSONID | CITY    | STATE\n1         | 1        | New York | NY\n2         | 1        | New York | NY\n\nIn this case, Q1 would return two rows with John Doe, New York, NY. Q2 would return one row because of the DISTINCT.\n\nThus, the explanation is that Q1 allows duplicates from multiple addresses with same city/state, while Q2 removes them via DISTINCT.\n\nNow, the SQL inserts would be:\n\nINSERT INTO PERSON (PERSONID, FIRSTNAME, LASTNAME) VALUES (1, 'John', 'Doe');\nINSERT INTO ADDRESS (ADDRESSID, PERSONID, CITY, STATE) VALUES (1, 1, 'New York', 'NY');\nINSERT INTO ADDRESS (ADDRESSID, PERSONID, CITY, STATE) VALUES (2, 1, 'New York', 'NY');\n\nThis should create the scenario where Q1 and Q2 differ.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 350,
+    "total_tokens": 1468,
+    "completion_tokens": 1118,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 936
+    },
+    "generation_seconds": 38.141
+  },
+  "started_at": "2026-10-06T11:40:20.549986+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "John",
+      "Doe",
+      "New York",
+      "NY"
+    ],
+    [
+      "John",
+      "Doe",
+      "New York",
+      "NY"
+    ]
+  ],
+  "q2_output": [
+    [
+      "John",
+      "Doe",
+      "New York",
+      "NY"
+    ]
+  ],
+  "q1_row_count": 2,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT FIRSTNAME, LASTNAME, CITY, STATE FROM PERSON AS P LEFT OUTER JOIN ADDRESS AS A ON P.PERSONID = A.PERSONID",
+  "q2_validation_sql": "SELECT DISTINCT FIRSTNAME, LASTNAME, CITY, STATE FROM PERSON AS P LEFT JOIN ADDRESS AS A ON P.PERSONID = A.PERSONID"
+}

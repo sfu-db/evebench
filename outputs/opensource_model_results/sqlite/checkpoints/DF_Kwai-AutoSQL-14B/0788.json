@@ -1,0 +1,55 @@
+{
+  "dbid": "student_club",
+  "index": "788",
+  "source_index": "1368",
+  "schema_ddl": "CREATE TABLE event\n(\n    event_id   TEXT\n        constraint event_pk\n            primary key,\n    event_name TEXT,\n    event_date TEXT,\n    type       TEXT,\n    notes      TEXT,\n    location   TEXT,\n    status     TEXT\n);\n\nCREATE TABLE major\n(\n    major_id   TEXT\n        constraint major_pk\n            primary key,\n    major_name TEXT,\n    department TEXT,\n    college    TEXT\n);\n\nCREATE TABLE zip_code\n(\n    zip_code    INTEGER\n        constraint zip_code_pk\n            primary key,\n    type        TEXT,\n    city        TEXT,\n    county      TEXT,\n    state       TEXT,\n    short_state TEXT\n);\n\nCREATE TABLE \"attendance\"\n(\n    link_to_event  TEXT,\n    link_to_member TEXT,\n    primary key (link_to_event, link_to_member),\n    foreign key (link_to_event) references event(event_id),\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"budget\"\n(\n    budget_id     TEXT\n            primary key,\n    category      TEXT,\n    spent         REAL,\n    remaining     REAL,\n    amount        INTEGER,\n    event_status  TEXT,\n    link_to_event TEXT,\n    foreign key (link_to_event) references event(event_id)\n);\n\nCREATE TABLE \"expense\"\n(\n    expense_id          TEXT\n            primary key,\n    expense_description TEXT,\n    expense_date        TEXT,\n    cost                REAL,\n    approved            TEXT,\n    link_to_member      TEXT,\n    link_to_budget      TEXT,\n    foreign key (link_to_budget) references budget(budget_id),\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"income\"\n(\n    income_id      TEXT\n        constraint income_pk\n            primary key,\n    date_received  TEXT,\n    amount         INTEGER,\n    source         TEXT,\n    notes          TEXT,\n    link_to_member TEXT,\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"member\"\n(\n    member_id     TEXT\n        constraint member_pk\n            primary key,\n    first_name    TEXT,\n    last_name     TEXT,\n    email         TEXT,\n    position      TEXT,\n    t_shirt_size  TEXT,\n    phone         TEXT,\n    zip           INTEGER,\n    link_to_major TEXT,\n    foreign key (link_to_major) references major(major_id),\n    foreign key (zip) references zip_code(zip_code)\n);",
+  "q1": "SELECT T2.college FROM member AS T1 INNER JOIN major AS T2 ON T1.link_to_major = T2.major_id GROUP BY T2.major_id ORDER BY COUNT(T2.college) DESC LIMIT 1",
+  "q2": "SELECT T.college FROM (SELECT T2.college, COUNT(T1.member_id) AS num FROM member AS T1 INNER JOIN major AS T2 ON T1.link_to_major = T2.major_id GROUP BY T2.college) AS T ORDER BY T.num DESC LIMIT 1",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT T2.college FROM member AS T1 INNER JOIN major AS T2 ON T1.link_to_major = T2.major_id GROUP BY T2.major_id ORDER BY COUNT(T2.college) DESC LIMIT 1",
+  "q2_prompt_sql": "SELECT T.college FROM (SELECT T2.college, COUNT(T1.member_id) AS num FROM member AS T1 INNER JOIN major AS T2 ON T1.link_to_major = T2.major_id GROUP BY T2.college) AS T ORDER BY T.num DESC LIMIT 1",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO major (major_id, major_name, department, college) VALUES ('M1', 'Major1', 'Dept1', 'College A'), ('M2', 'Major2', 'Dept2', 'College A'), ('M3', 'Major3', 'Dept3', 'College B');\nINSERT INTO member (member_id, first_name, last_name, link_to_major) VALUES ('M1', 'A', 'X', 'M1'), ('M2', 'B', 'Y', 'M1'), ('M3', 'C', 'Z', 'M1'), ('M4', 'D', 'W', 'M2'), ('M5', 'E', 'V', 'M2'), ('M6', 'F', 'U', 'M2'), ('M7', 'G', 'T', 'M3'), ('M8', 'H', 'S', 'M3'), ('M9', 'I', 'R', 'M3'), ('M10', 'J', 'Q', 'M3'), ('M11', 'K', 'P', 'M3');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 groups by major_id (counting members per major) and returns the college of the major with the most members. Q2 groups by college (summing members across all majors in the same college) and returns the college with the most members. These can differ when a college has multiple majors with fewer members than a single major in another college.",
+  "counterexample_dsp": "College A has 2 majors with 3 members each, College B has 1 major with 5 members. Q1 returns College B (max per-major count), Q2 returns College A (sum of 6 members).",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 groups by major_id (counting members per major) and returns the college of the major with the most members. Q2 groups by college (summing members across all majors in the same college) and returns the college with the most members. These can differ when a college has multiple majors with fewer members than a single major in another college.\",\n\"counterexample_dsp\": \"College A has 2 majors with 3 members each, College B has 1 major with 5 members. Q1 returns College B (max per-major count), Q2 returns College A (sum of 6 members).\",\n\"counterexample\": \"INSERT INTO major (major_id, major_name, department, college) VALUES ('M1', 'Major1', 'Dept1', 'College A'), ('M2', 'Major2', 'Dept2', 'College A'), ('M3', 'Major3', 'Dept3', 'College B');\\nINSERT INTO member (member_id, first_name, last_name, link_to_major) VALUES ('M1', 'A', 'X', 'M1'), ('M2', 'B', 'Y', 'M1'), ('M3', 'C', 'Z', 'M1'), ('M4', 'D', 'W', 'M2'), ('M5', 'E', 'V', 'M2'), ('M6', 'F', 'U', 'M2'), ('M7', 'G', 'T', 'M3'), ('M8', 'H', 'S', 'M3'), ('M9', 'I', 'R', 'M3'), ('M10', 'J', 'Q', 'M3'), ('M11', 'K', 'P', 'M3');\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem step by step. I need to determine if Q1 and Q2 are semantically equivalent. Let me start by understanding each query.\n\nFirst, looking at Q1: It joins member (T1) with major (T2) on T1.link_to_major = T2.major_id. Then it groups by T2.major_id and orders by COUNT(T2.college) descending, taking the first result. So the grouping is by major_id, and the count is of college from T2. Wait, but since T2.college is part of the major table, each row in the join would have the same college value for a given major_id. So grouping by major_id would count the number of members per major, and the college would be the same for all members in that major. But ordering by COUNT(college) DESC would effectively be the same as counting the number of members per major, since college is the same per group. So Q1 returns the college of the major that has the most members.\n\nNow Q2: It's a subquery where they group by T2.college, count member_id (from T1) as num, then order by num DESC and take the first result. So here, the grouping is by college, and the count is the number of members in that college. The outer query picks the college with the highest member count. But wait, college is in the major table, so each major belongs to a college. So grouping by college would aggregate all majors under that college. So Q2 returns the college that has the most members across all majors in that college.\n\nSo the difference is that Q1 groups by major_id (each major has its own college), counts members per major, then picks the major with the most members and returns its college. Q2 groups by college (all majors in the same college are grouped together), counts all members across all majors in that college, then picks the college with the most members.\n\nThese two could give different results. For example, if one college has two majors, each with 1 member, while another college has a single major with 2 members. Then Q1 would return the college of the major with 2 members (since that's the max count per major), but Q2 would return the college that has 2 members (the same as Q1 in this case). Wait, maybe not. Let me think of a different example.\n\nSuppose College A has two majors: Major1 with 3 members, Major2 with 3 members. College B has Major3 with 5 members. Then Q1 groups by major_id. The counts would be 3, 3, 5. So the top is Major3's college (College B). Q2 groups by college: College A has 3+3=6 members, College B has 5. So Q2 returns College A. So here, Q1 and Q2 would return different colleges. That's a counterexample.\n\nSo they are not equivalent. Now, I need to create a test case where this happens. Let's set up members and majors accordingly.\n\nLet me create majors for College A (major_id 'M1', 'M2') and College B (major_id 'M3'). Then have 3 members in M1, 3 in M2, and 5 in M3. Then Q1 would pick the major with 5 members (M3) and return College B. Q2 would sum the members per college: College A has 6, College B has 5, so returns College A. So they differ.\n\nNow, I need to write the INSERT statements for this scenario. The member table has link_to_major pointing to major_id. The major table has college.\n\nSo the major table entries would be:\n\n('M1', 'Major1', 'Dept1', 'College A'),\n('M2', 'Major2', 'Dept2', 'College A'),\n('M3', 'Major3', 'Dept3', 'College B')\n\nThen, member table would have 3 members with link_to_major = 'M1', 3 with 'M2', and 5 with 'M3'. That should do it.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 849,
+    "total_tokens": 2104,
+    "completion_tokens": 1255,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 868
+    },
+    "generation_seconds": 41.25
+  },
+  "started_at": "2026-10-06T21:37:56.338845+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "College B"
+    ]
+  ],
+  "q2_output": [
+    [
+      "College A"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT T2.college FROM member AS T1 INNER JOIN major AS T2 ON T1.link_to_major = T2.major_id GROUP BY T2.major_id ORDER BY COUNT(T2.college) DESC LIMIT 1",
+  "q2_validation_sql": "SELECT T.college FROM (SELECT T2.college, COUNT(T1.member_id) AS num FROM member AS T1 INNER JOIN major AS T2 ON T1.link_to_major = T2.major_id GROUP BY T2.college) AS T ORDER BY T.num DESC LIMIT 1"
+}

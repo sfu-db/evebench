@@ -1,0 +1,55 @@
+{
+  "dbid": "596",
+  "index": "330",
+  "source_index": "55",
+  "schema_ddl": "CREATE TABLE COURSES (\n    STUDENT VARCHAR(255),\n    CLASS VARCHAR(255),\n    PRIMARY KEY (STUDENT)\n);",
+  "q1": "SELECT CLASS FROM COURSES GROUP BY CLASS HAVING COUNT(*)>=5",
+  "q2": "SELECT CLASS FROM (SELECT CLASS , COUNT(DISTINCT STUDENT) AS A FROM COURSES GROUP BY CLASS) AS T WHERE A>=5",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT CLASS FROM COURSES GROUP BY CLASS HAVING COUNT(*)>=5",
+  "q2_prompt_sql": "SELECT CLASS FROM (SELECT CLASS , COUNT(DISTINCT STUDENT) AS A FROM COURSES GROUP BY CLASS) AS T WHERE A>=5",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO COURSES (STUDENT, CLASS) VALUES ('A', 'Math');\nINSERT INTO COURSES (STUDENT, CLASS) VALUES ('B', 'Math');\nINSERT INTO COURSES (STUDENT, CLASS) VALUES ('C', 'Math');\nINSERT INTO COURSES (STUDENT, CLASS) VALUES ('D', 'Math');\nINSERT INTO COURSES (STUDENT, CLASS) VALUES ('E', 'Math');\nINSERT INTO COURSES (STUDENT, CLASS) VALUES ('F', 'Math');\nINSERT INTO COURSES (STUDENT, CLASS) VALUES ('G', 'History');\nINSERT INTO COURSES (STUDENT, CLASS) VALUES ('H', 'History');",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent. Q1 counts all rows per class (including duplicates of STUDENT across different rows, though STUDENT is a primary key so each student appears once per class). Q2 counts distinct students per class explicitly. However, since STUDENT is a primary key, each student appears exactly once per class in COURSES. Thus, COUNT(*) and COUNT(DISTINCT STUDENT) would be the same in this schema. However, Q1 uses COUNT(*) and Q2 uses COUNT(DISTINCT STUDENT), which in general are not equivalent across all possible database schemas. The difference may not manifest in this specific schema but could in others. To be safe, the queries are not fully equivalent in general SQL logic.",
+  "counterexample_dsp": "Create a test database where a class has more than one row per student to show COUNT(*) vs COUNT(DISTINCT STUDENT) difference. However, given the primary key constraint (STUDENT, CLASS), each student appears once per class, so COUNT(*) = COUNT(DISTINCT STUDENT) per class. A different schema or a more general scenario would better expose the difference. Still, the queries are not equivalent in general.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 and Q2 are not semantically equivalent. Q1 counts all rows per class (including duplicates of STUDENT across different rows, though STUDENT is a primary key so each student appears once per class). Q2 counts distinct students per class explicitly. However, since STUDENT is a primary key, each student appears exactly once per class in COURSES. Thus, COUNT(*) and COUNT(DISTINCT STUDENT) would be the same in this schema. However, Q1 uses COUNT(*) and Q2 uses COUNT(DISTINCT STUDENT), which in general are not equivalent across all possible database schemas. The difference may not manifest in this specific schema but could in others. To be safe, the queries are not fully equivalent in general SQL logic.\",\n\"counterexample_dsp\": \"Create a test database where a class has more than one row per student to show COUNT(*) vs COUNT(DISTINCT STUDENT) difference. However, given the primary key constraint (STUDENT, CLASS), each student appears once per class, so COUNT(*) = COUNT(DISTINCT STUDENT) per class. A different schema or a more general scenario would better expose the difference. Still, the queries are not equivalent in general.\",\n\"counterexample\": \"INSERT INTO COURSES (STUDENT, CLASS) VALUES ('A', 'Math');\\nINSERT INTO COURSES (STUDENT, CLASS) VALUES ('B', 'Math');\\nINSERT INTO COURSES (STUDENT, CLASS) VALUES ('C', 'Math');\\nINSERT INTO COURSES (STUDENT, CLASS) VALUES ('D', 'Math');\\nINSERT INTO COURSES (STUDENT, CLASS) VALUES ('E', 'Math');\\nINSERT INTO COURSES (STUDENT, CLASS) VALUES ('F', 'Math');\\nINSERT INTO COURSES (STUDENT, CLASS) VALUES ('G', 'History');\\nINSERT INTO COURSES (STUDENT, CLASS) VALUES ('H', 'History');\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 329,
+    "total_tokens": 748,
+    "completion_tokens": 419,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 14.25
+  },
+  "started_at": "2026-10-06T15:41:03.622030+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "Math"
+    ]
+  ],
+  "q2_output": [
+    [
+      "Math"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT CLASS FROM COURSES GROUP BY CLASS HAVING COUNT(*)>=5",
+  "q2_validation_sql": "SELECT CLASS FROM (SELECT CLASS , COUNT(DISTINCT STUDENT) AS A FROM COURSES GROUP BY CLASS) AS T WHERE A>=5"
+}

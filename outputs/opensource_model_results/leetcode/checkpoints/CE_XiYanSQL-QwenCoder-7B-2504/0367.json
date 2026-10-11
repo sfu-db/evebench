@@ -1,0 +1,53 @@
+{
+  "dbid": "182",
+  "index": "367",
+  "source_index": "251",
+  "schema_ddl": "CREATE TABLE PERSON (\n    ID INT,\n    EMAIL VARCHAR(255),\n    PRIMARY KEY (ID)\n);",
+  "q1": "SELECT EMAIL AS EMAIL FROM PERSON GROUP BY EMAIL HAVING COUNT(EMAIL) >1",
+  "q2": "SELECT DISTINCT EMAIL FROM PERSON P1 WHERE (SELECT COUNT(*) FROM PERSON P2 WHERE P2.EMAIL = P1.EMAIL) > 1",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT EMAIL AS EMAIL FROM PERSON GROUP BY EMAIL HAVING COUNT(EMAIL) >1",
+  "q2_prompt_sql": "SELECT DISTINCT EMAIL FROM PERSON P1 WHERE (SELECT COUNT(*) FROM PERSON P2 WHERE P2.EMAIL = P1.EMAIL) > 1",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO PERSON (ID, EMAIL) VALUES (1, 'a@example.com'), (2, 'a@example.com'), (3, 'b@example.com');",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 groups the emails and filters for those with a count greater than 1, which can include duplicates in the result. Q2, on the other hand, uses a subquery to count the occurrences of each email and selects distinct emails where this count is greater than 1, which inherently avoids duplicates in the result.",
+  "counterexample_dsp": "The test data should have at least one email that appears more than once, and another email that appears only once. The query results should differ because Q1 might return the duplicate email more than once, while Q2 will return it only once.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 groups the emails and filters for those with a count greater than 1, which can include duplicates in the result. Q2, on the other hand, uses a subquery to count the occurrences of each email and selects distinct emails where this count is greater than 1, which inherently avoids duplicates in the result.\",\n  \"counterexample_dsp\": \"The test data should have at least one email that appears more than once, and another email that appears only once. The query results should differ because Q1 might return the duplicate email more than once, while Q2 will return it only once.\",\n  \"counterexample\": \"INSERT INTO PERSON (ID, EMAIL) VALUES (1, 'a@example.com'), (2, 'a@example.com'), (3, 'b@example.com');\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 289,
+    "total_tokens": 460,
+    "completion_tokens": 171,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 2.844
+  },
+  "started_at": "2026-10-06T09:51:13.401009+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "a@example.com"
+    ]
+  ],
+  "q2_output": [
+    [
+      "a@example.com"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT EMAIL AS EMAIL FROM PERSON GROUP BY EMAIL HAVING COUNT(EMAIL) >1",
+  "q2_validation_sql": "SELECT DISTINCT EMAIL FROM PERSON P1 WHERE (SELECT COUNT(*) FROM PERSON P2 WHERE P2.EMAIL = P1.EMAIL) > 1"
+}

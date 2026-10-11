@@ -1,0 +1,57 @@
+{
+  "dbid": "1084",
+  "index": "248",
+  "source_index": "36",
+  "schema_ddl": "CREATE TABLE PRODUCT (\n    PRODUCT_ID INT,\n    PRODUCT_NAME VARCHAR(255),\n    UNIT_PRICE INT,\n    PRIMARY KEY (PRODUCT_ID),\n    CHECK (UNIT_PRICE > 0)\n);\n\nCREATE TABLE SALES (\n    PRODUCT_ID INT,\n    SELLER_ID INT,\n    BUYER_ID INT,\n    SALE_DATE DATE,\n    QUANTITY INT,\n    PRICE INT,\n    FOREIGN KEY (PRODUCT_ID) REFERENCES PRODUCT(PRODUCT_ID),\n    CHECK (QUANTITY > 0),\n    CHECK (PRICE > 0)\n);",
+  "q1": "SELECT P.PRODUCT_ID, P.PRODUCT_NAME FROM PRODUCT P INNER JOIN ( SELECT PRODUCT_ID FROM SALES GROUP BY PRODUCT_ID HAVING MIN(SALE_DATE) >= '2019-01-01' AND MAX(SALE_DATE) <= '2019-03-31' ) S ON (P.PRODUCT_ID = S.PRODUCT_ID)",
+  "q2": "SELECT P.PRODUCT_ID, P.PRODUCT_NAME FROM SALES S LEFT JOIN PRODUCT P ON S.PRODUCT_ID = P.PRODUCT_ID GROUP BY P.PRODUCT_ID HAVING MAX(SALE_DATE) <= '2019-03-31' AND MIN(SALE_DATE) >= '2019-01-01'",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT P.PRODUCT_ID, P.PRODUCT_NAME FROM PRODUCT P INNER JOIN ( SELECT PRODUCT_ID FROM SALES GROUP BY PRODUCT_ID HAVING MIN(SALE_DATE) >= '2019-01-01' AND MAX(SALE_DATE) <= '2019-03-31' ) S ON (P.PRODUCT_ID = S.PRODUCT_ID)",
+  "q2_prompt_sql": "SELECT P.PRODUCT_ID, P.PRODUCT_NAME FROM SALES S LEFT JOIN PRODUCT P ON S.PRODUCT_ID = P.PRODUCT_ID GROUP BY P.PRODUCT_ID HAVING MAX(SALE_DATE) <= '2019-03-31' AND MIN(SALE_DATE) >= '2019-01-01'",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO PRODUCT (PRODUCT_ID, PRODUCT_NAME, UNIT_PRICE) VALUES (1, 'Product A', 100), (2, 'Product B', 200);\nINSERT INTO SALES (PRODUCT_ID, SELLER_ID, BUYER_ID, SALE_DATE, QUANTITY, PRICE) VALUES (1, 101, 201, '2018-12-31', 1, 100), (2, 102, 202, '2019-01-15', 1, 200);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent. Q1 filters products whose sales records are entirely within the date range '2019-01-01' to '2019-03-31'. Q2 uses a LEFT JOIN and groups by product, which can include products not in SALES if there are no sales (but unlikely due to foreign key). However, the key difference is that Q1 returns only products that have sales in the specified range, while Q2 returns all products (including those without sales) that meet the aggregate conditions on the sales dates.",
+  "counterexample_dsp": "A product without any sales will not appear in Q1 but will appear in Q2 if the aggregate conditions are satisfied (which they won't be since MIN(SALE_DATE) and MAX(SALE_DATE) would be NULL for no sales). A product with sales outside the date range will appear in Q2 if there is at least one sale within the range (due to aggregate behavior).",
+  "equiv": "N",
+  "raw_response": "\n\n{\n  \"equiv\": \"N\",\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent. Q1 filters products whose sales records are entirely within the date range '2019-01-01' to '2019-03-31'. Q2 uses a LEFT JOIN and groups by product, which can include products not in SALES if there are no sales (but unlikely due to foreign key). However, the key difference is that Q1 returns only products that have sales in the specified range, while Q2 returns all products (including those without sales) that meet the aggregate conditions on the sales dates.\",\n  \"counterexample_dsp\": \"A product without any sales will not appear in Q1 but will appear in Q2 if the aggregate conditions are satisfied (which they won't be since MIN(SALE_DATE) and MAX(SALE_DATE) would be NULL for no sales). A product with sales outside the date range will appear in Q2 if there is at least one sale within the range (due to aggregate behavior).\",\n  \"counterexample\": \"INSERT INTO PRODUCT (PRODUCT_ID, PRODUCT_NAME, UNIT_PRICE) VALUES (1, 'Product A', 100), (2, 'Product B', 200);\\nINSERT INTO SALES (PRODUCT_ID, SELLER_ID, BUYER_ID, SALE_DATE, QUANTITY, PRICE) VALUES (1, 101, 201, '2018-12-31', 1, 100), (2, 102, 202, '2019-01-15', 1, 200);\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 514,
+    "total_tokens": 881,
+    "completion_tokens": 367,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 11.375
+  },
+  "started_at": "2026-10-06T15:40:02.595203+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      2,
+      "Product B"
+    ]
+  ],
+  "q2_output": [
+    [
+      2,
+      "Product B"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT P.PRODUCT_ID, P.PRODUCT_NAME FROM PRODUCT P INNER JOIN ( SELECT PRODUCT_ID FROM SALES GROUP BY PRODUCT_ID HAVING MIN(SALE_DATE) >= '2019-01-01' AND MAX(SALE_DATE) <= '2019-03-31' ) S ON (P.PRODUCT_ID = S.PRODUCT_ID)",
+  "q2_validation_sql": "SELECT P.PRODUCT_ID, P.PRODUCT_NAME FROM SALES S LEFT JOIN PRODUCT P ON S.PRODUCT_ID = P.PRODUCT_ID GROUP BY P.PRODUCT_ID HAVING MAX(SALE_DATE) <= '2019-03-31' AND MIN(SALE_DATE) >= '2019-01-01'"
+}

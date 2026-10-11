@@ -1,0 +1,51 @@
+{
+  "dbid": "32",
+  "index": "54",
+  "source_index": "61",
+  "schema_ddl": "CREATE TABLE COURSE (COURSE_ID INT, TITLE INT, DEPT_NAME INT, CREDITS INT);\nCREATE TABLE DEPARTMENT (DEPT_NAME INT, BUILDING INT, BUDGET INT);\nCREATE TABLE INSTRUCTOR (ID INT, NAME INT, SALARY INT, DEPT_NAME INT);\nCREATE TABLE TEACHES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, SEMESTER INT, INSTRUCTOR INT);\nCREATE TABLE SECTION (COURSE_ID INT, SEC_ID INT, YEAR INT, BUILDING INT, ROOM_NUMBER INT, TIME_SLOT_ID INT);\nCREATE TABLE TAKES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, GRADE INT);\nCREATE TABLE STUDENT (ID INT, NAME INT, DEPT_NAME INT, TOT_CRED INT);",
+  "q1": "SELECT DISTINCT INSTRUCTOR.ID, INSTRUCTOR.NAME, TEACHES.COURSE_ID FROM INSTRUCTOR LEFT OUTER JOIN TEACHES ON INSTRUCTOR.ID > TEACHES.ID",
+  "q2": "SELECT DISTINCT INSTRUCTOR.ID, INSTRUCTOR.NAME, TEACHES.COURSE_ID FROM INSTRUCTOR, TEACHES WHERE INSTRUCTOR.ID = TEACHES.ID",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "literature",
+  "q1_prompt_sql": "SELECT DISTINCT INSTRUCTOR.ID, INSTRUCTOR.NAME, TEACHES.COURSE_ID FROM INSTRUCTOR LEFT OUTER JOIN TEACHES ON INSTRUCTOR.ID > TEACHES.ID",
+  "q2_prompt_sql": "SELECT DISTINCT INSTRUCTOR.ID, INSTRUCTOR.NAME, TEACHES.COURSE_ID FROM INSTRUCTOR, TEACHES WHERE INSTRUCTOR.ID = TEACHES.ID",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO INSTRUCTOR (ID, NAME, SALARY, DEPT_NAME) VALUES (1, 'John Doe', 50000, 'Math');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 uses a LEFT OUTER JOIN, which returns all records from the INSTRUCTOR table and the matched records from the TEACHES table. The result is NULL on the side of the TEACHES table, if there is no match. Q2 uses an INNER JOIN, which returns records that have matching values in both tables.",
+  "counterexample_dsp": "Create an instructor who does not teach any course. This instructor will be present in the result of Q1 but not in the result of Q2.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 uses a LEFT OUTER JOIN, which returns all records from the INSTRUCTOR table and the matched records from the TEACHES table. The result is NULL on the side of the TEACHES table, if there is no match. Q2 uses an INNER JOIN, which returns records that have matching values in both tables.\",\n  \"counterexample_dsp\": \"Create an instructor who does not teach any course. This instructor will be present in the result of Q1 but not in the result of Q2.\",\n  \"counterexample\": \"INSERT INTO INSTRUCTOR (ID, NAME, SALARY, DEPT_NAME) VALUES (1, 'John Doe', 50000, 'Math');\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 455,
+    "total_tokens": 609,
+    "completion_tokens": 154,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 2.437
+  },
+  "started_at": "2026-10-06T07:09:01.266112+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      1,
+      "John Doe",
+      null
+    ]
+  ],
+  "q2_output": [],
+  "q1_row_count": 1,
+  "q2_row_count": 0,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DISTINCT INSTRUCTOR.ID, INSTRUCTOR.NAME, TEACHES.COURSE_ID FROM INSTRUCTOR LEFT OUTER JOIN TEACHES ON INSTRUCTOR.ID > TEACHES.ID",
+  "q2_validation_sql": "SELECT DISTINCT INSTRUCTOR.ID, INSTRUCTOR.NAME, TEACHES.COURSE_ID FROM INSTRUCTOR, TEACHES WHERE INSTRUCTOR.ID = TEACHES.ID"
+}

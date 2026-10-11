@@ -1,0 +1,39 @@
+{
+  "dbid": "550",
+  "index": "393",
+  "source_index": "223",
+  "schema_ddl": "CREATE TABLE ACTIVITY (\n    PLAYER_ID INT,\n    EVENT_DATE DATE,\n    DEVICE_ID INT,\n    GAMES_PLAYED INT,\n    PRIMARY KEY (PLAYER_ID, EVENT_DATE),\n    CHECK (GAMES_PLAYED >= 0)\n);",
+  "q1": "SELECT ROUND((SUM(CASE WHEN (TEMP.MIN_DATE + 1) = A.EVENT_DATE THEN 1 ELSE 0 END) / COUNT(DISTINCT TEMP.PLAYER_ID)), 2) AS FRACTION FROM (SELECT PLAYER_ID, MIN(EVENT_DATE) AS MIN_DATE FROM ACTIVITY GROUP BY PLAYER_ID) AS TEMP JOIN ACTIVITY AS A ON TEMP.PLAYER_ID = A.PLAYER_ID",
+  "q2": "SELECT ROUND(SUM(CASE WHEN TEMP.MINDATE+1=A.EVENT_DATE THEN 1 ELSE 0 END)/COUNT(DISTINCT A.PLAYER_ID),2) AS FRACTION FROM (SELECT PLAYER_ID,MIN(EVENT_DATE) AS MINDATE FROM ACTIVITY GROUP BY PLAYER_ID) AS TEMP JOIN ACTIVITY A ON A.PLAYER_ID = TEMP.PLAYER_ID",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT ROUND((SUM(CASE WHEN (TEMP.MIN_DATE + 1) = A.EVENT_DATE THEN 1 ELSE 0 END) / COUNT(DISTINCT TEMP.PLAYER_ID)), 2) AS FRACTION FROM (SELECT PLAYER_ID, MIN(EVENT_DATE) AS MIN_DATE FROM ACTIVITY GROUP BY PLAYER_ID) AS TEMP JOIN ACTIVITY AS A ON TEMP.PLAYER_ID = A.PLAYER_ID",
+  "q2_prompt_sql": "SELECT ROUND(SUM(CASE WHEN TEMP.MINDATE+1=A.EVENT_DATE THEN 1 ELSE 0 END)/COUNT(DISTINCT A.PLAYER_ID),2) AS FRACTION FROM (SELECT PLAYER_ID,MIN(EVENT_DATE) AS MINDATE FROM ACTIVITY GROUP BY PLAYER_ID) AS TEMP JOIN ACTIVITY A ON A.PLAYER_ID = TEMP.PLAYER_ID",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries calculate the fraction of events that occur exactly one day after a player's earliest event date. The only difference is the alias name (MIN_DATE vs MINDATE), which does not affect the logic or result.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries calculate the fraction of events that occur exactly one day after a player's earliest event date. The only difference is the alias name (MIN_DATE vs MINDATE), which does not affect the logic or result.\"\n}",
+  "reasoning": "\nOkay, let's start by understanding what these two SQL queries are doing. \n\nFirst, looking at Q1: It's calculating a fraction. The numerator is the sum of cases where the minimum date for a player plus one equals the event date in the activity table. The denominator is the count of distinct player IDs. The ROUND function is applied to two decimal places. \n\nThe subquery TEMP in Q1 groups the activity table by PLAYER_ID and finds the minimum EVENT_DATE for each player. Then, it joins this TEMP table with the ACTIVITY table on PLAYER_ID. For each row in the join, it checks if TEMP.MIN_DATE + 1 equals A.EVENT_DATE. If so, it adds 1 to the sum, else 0. The denominator counts distinct PLAYER_IDs from TEMP, which is the same as the number of players since each player is grouped once in TEMP.\n\nNow, Q2 looks very similar. The structure is almost the same. The TEMP subquery is the same, grouping by PLAYER_ID and getting MIN(EVENT_DATE) as MINDATE. The join is also on PLAYER_ID. The CASE WHEN checks if TEMP.MINDATE + 1 equals A.EVENT_DATE. The denominator here is COUNT(DISTINCT A.PLAYER_ID). Wait, but in Q1, the denominator is COUNT(DISTINCT TEMP.PLAYER_ID), which is the same as COUNT(DISTINCT A.PLAYER_ID) because the join is on PLAYER_ID. So maybe they are the same?\n\nWait, but in Q1, the COUNT is on TEMP.PLAYER_ID, and in Q2, it's on A.PLAYER_ID. But since the join is on TEMP.PLAYER_ID = A.PLAYER_ID, the distinct count of either should be the same. So the denominator is the same in both cases. \n\nBut wait, what about the numerator? The numerator in Q1 is SUM(CASE WHEN (TEMP.MIN_DATE +1) = A.EVENT_DATE THEN 1 ELSE 0 END). In Q2, it's SUM(CASE WHEN TEMP.MINDATE +1 = A.EVENT_DATE THEN 1 ELSE 0 END). The only difference here is that in Q1, the MIN_DATE is from the TEMP table, and in Q2, it's MINDATE, which is the same as MIN_DATE. So the condition is the same. \n\nWait, maybe there's a typo in the variable names. In Q1, the subquery TEMP has MIN_DATE as the alias, and in Q2, it's MINDATE. But that's just a naming difference. The logic is the same. So the two queries should be equivalent. \n\nBut maybe there's a hidden difference. Let me think again. \n\nIn Q1, the SUM is over the CASE statement, which counts how many times a player's event date is exactly one day after their earliest event date. Then, the denominator is the count of distinct players. \n\nIn Q2, the same logic applies. The only difference is the alias name for the min date. So the numerator and denominator are the same. Therefore, the two queries should be semantically equivalent. \n\nBut wait, maybe there's a case where the same player has multiple entries in the ACTIVITY table. For example, if a player has multiple events, but the join would produce multiple rows. However, the COUNT(DISTINCT) in the denominator would still count each player once. The numerator would count each occurrence where the event date is one day after their earliest. \n\nBut in both queries, the numerator is summing 1 for each such occurrence. So if a player has two events that are one day after their earliest, that would add 2 to the numerator. But the denominator counts the player once. \n\nSo the fraction is the average number of such events per player. But the queries are structuring the same calculation. \n\nTherefore, I think the two queries are equivalent. The only difference is the alias name for the min date (MIN_DATE vs MINDATE), which doesn't affect the logic. So the answer should be \"Y\".\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 464,
+    "total_tokens": 1360,
+    "completion_tokens": 896,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 835
+    },
+    "generation_seconds": 29.313
+  },
+  "started_at": "2026-10-06T15:06:15.290263+00:00",
+  "elapsed_seconds": 0.0
+}

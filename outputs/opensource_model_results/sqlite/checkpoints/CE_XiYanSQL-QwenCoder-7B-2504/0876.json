@@ -1,0 +1,57 @@
+{
+  "dbid": "debit_card_specializing",
+  "index": "876",
+  "source_index": "1532",
+  "schema_ddl": "CREATE TABLE customers\n(\n    CustomerID INTEGER UNIQUE     not null\n        primary key,\n    Segment    TEXT null,\n    Currency   TEXT null\n);\n\nCREATE TABLE gasstations\n(\n    GasStationID INTEGER    UNIQUE   not null\n        primary key,\n    ChainID      INTEGER          null,\n    Country      TEXT null,\n    Segment      TEXT null\n);\n\nCREATE TABLE products\n(\n    ProductID   INTEGER   UNIQUE      not null\n        primary key,\n    Description TEXT null\n);\n\nCREATE TABLE \"transactions_1k\"\n(\n    TransactionID INTEGER\n        primary key autoincrement,\n    Date          DATE,\n    Time          TEXT,\n    CustomerID    INTEGER,\n    CardID        INTEGER,\n    GasStationID  INTEGER,\n    ProductID     INTEGER,\n    Amount        INTEGER,\n    Price         REAL\n);\n\nCREATE TABLE \"yearmonth\"\n(\n    CustomerID  INTEGER not null\n        references customers\n            on update cascade on delete cascade\n        references customers,\n    Date        TEXT    not null,\n    Consumption REAL,\n    primary key (Date, CustomerID)\n);",
+  "q1": "SELECT T2.CustomerID, SUM(T2.Price / T2.Amount), T1.Currency FROM customers AS T1 INNER JOIN transactions_1k AS T2 ON T1.CustomerID = T2.CustomerID WHERE T2.CustomerID = (SELECT CustomerID FROM yearmonth ORDER BY Consumption DESC LIMIT 1) GROUP BY T2.CustomerID, T1.Currency",
+  "q2": "SELECT T1.CustomerID, AVG(T2.Price / T2.Amount) AS AveragePricePerItem, T1.Currency FROM customers AS T1 INNER JOIN transactions_1k AS T2 ON T1.CustomerID = T2.CustomerID GROUP BY T1.CustomerID ORDER BY SUM(T2.Price) DESC LIMIT 1",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT T2.CustomerID, SUM(T2.Price / T2.Amount), T1.Currency FROM customers AS T1 INNER JOIN transactions_1k AS T2 ON T1.CustomerID = T2.CustomerID WHERE T2.CustomerID = (SELECT CustomerID FROM yearmonth ORDER BY Consumption DESC LIMIT 1) GROUP BY T2.CustomerID, T1.Currency",
+  "q2_prompt_sql": "SELECT T1.CustomerID, AVG(T2.Price / T2.Amount) AS AveragePricePerItem, T1.Currency FROM customers AS T1 INNER JOIN transactions_1k AS T2 ON T1.CustomerID = T2.CustomerID GROUP BY T1.CustomerID ORDER BY SUM(T2.Price) DESC LIMIT 1",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO customers (CustomerID, Segment, Currency) VALUES (1, 'Consumer', 'USD'), (2, 'Corporate', 'USD'); INSERT INTO transactions_1k (TransactionID, Date, Time, CustomerID, CardID, GasStationID, ProductID, Amount, Price) VALUES (1, '2023-01-01', '10:00:00', 1, 101, 1, 1, 2, 20), (2, '2023-01-02', '11:00:00', 2, 102, 2, 2, 3, 30); INSERT INTO yearmonth (CustomerID, Date, Consumption) VALUES (1, '2023-01', 100), (2, '2023-01', 50);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 calculates the sum of the price per item for the customer with the highest consumption in the yearmonth table, while Q2 calculates the average price per item for the customer with the highest total transaction price in the transactions_1k table.",
+  "counterexample_dsp": "The difference arises when the customer with the highest total transaction price has a different consumption value in the yearmonth table, leading to a different result in Q1.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 calculates the sum of the price per item for the customer with the highest consumption in the yearmonth table, while Q2 calculates the average price per item for the customer with the highest total transaction price in the transactions_1k table.\",\n  \"counterexample_dsp\": \"The difference arises when the customer with the highest total transaction price has a different consumption value in the yearmonth table, leading to a different result in Q1.\",\n  \"counterexample\": \"INSERT INTO customers (CustomerID, Segment, Currency) VALUES (1, 'Consumer', 'USD'), (2, 'Corporate', 'USD'); INSERT INTO transactions_1k (TransactionID, Date, Time, CustomerID, CardID, GasStationID, ProductID, Amount, Price) VALUES (1, '2023-01-01', '10:00:00', 1, 101, 1, 1, 2, 20), (2, '2023-01-02', '11:00:00', 2, 102, 2, 2, 3, 30); INSERT INTO yearmonth (CustomerID, Date, Consumption) VALUES (1, '2023-01', 100), (2, '2023-01', 50);\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 577,
+    "total_tokens": 882,
+    "completion_tokens": 305,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 5.453
+  },
+  "started_at": "2026-10-06T16:07:11.400254+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      1,
+      10.0,
+      "USD"
+    ]
+  ],
+  "q2_output": [
+    [
+      2,
+      10.0,
+      "USD"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT T2.CustomerID, SUM(T2.Price / T2.Amount), T1.Currency FROM customers AS T1 INNER JOIN transactions_1k AS T2 ON T1.CustomerID = T2.CustomerID WHERE T2.CustomerID = (SELECT CustomerID FROM yearmonth ORDER BY Consumption DESC LIMIT 1) GROUP BY T2.CustomerID, T1.Currency",
+  "q2_validation_sql": "SELECT T1.CustomerID, AVG(T2.Price / T2.Amount) AS AveragePricePerItem, T1.Currency FROM customers AS T1 INNER JOIN transactions_1k AS T2 ON T1.CustomerID = T2.CustomerID GROUP BY T1.CustomerID ORDER BY SUM(T2.Price) DESC LIMIT 1"
+}

@@ -1,0 +1,39 @@
+{
+  "dbid": "thrombosis_prediction",
+  "index": "716",
+  "source_index": "1254",
+  "schema_ddl": "CREATE TABLE Examination\n(\n    ID                 INTEGER          null,\n    `Examination Date` DATE         null,\n    `aCL IgG`          REAL        null,\n    `aCL IgM`          REAL        null,\n    ANA                INTEGER          null,\n    `ANA Pattern`      TEXT null,\n    `aCL IgA`          INTEGER          null,\n    Diagnosis          TEXT null,\n    KCT                TEXT null,\n    RVVT              TEXT null,\n    LAC                TEXT null,\n    Symptoms           TEXT null,\n    Thrombosis         INTEGER          null,\n    foreign key (ID) references Patient (ID)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE Patient\n(\n    ID           INTEGER default 0 not null\n        primary key,\n    SEX          TEXT  null,\n    Birthday     DATE          null,\n    Description  DATE          null,\n    `First Date` DATE          null,\n    Admission    TEXT  null,\n    Diagnosis    TEXT  null\n);\n\nCREATE TABLE Laboratory\n(\n    ID        INTEGER  default 0            not null,\n    Date      DATE default '0000-00-00' not null,\n    GOT       INTEGER                       null,\n    GPT       INTEGER                        null,\n    LDH       INTEGER                        null,\n    ALP       INTEGER                        null,\n    TP        REAL             null,\n    ALB       REAL             null,\n    UA        REAL             null,\n    UN        INTEGER                       null,\n    CRE       REAL             null,\n    `T-BIL`   REAL             null,\n    `T-CHO`   INTEGER                       null,\n    TG        INTEGER                       null,\n    CPK       INTEGER                       null,\n    GLU       INTEGER                       null,\n    WBC       REAL             null,\n    RBC       REAL             null,\n    HGB       REAL             null,\n    HCT       REAL             null,\n    PLT       INTEGER                       null,\n    PT        REAL             null,\n    APTT      INTEGER                       null,\n    FG        REAL             null,\n    PIC       INTEGER                       null,\n    TAT       INTEGER                       null,\n    TAT2      INTEGER                       null,\n    `U-PRO`   TEXT              null,\n    IGG       INTEGER                       null,\n    IGA       INTEGER                       null,\n    IGM       INTEGER                       null,\n    CRP       TEXT              null,\n    RA        TEXT              null,\n    RF        TEXT              null,\n    C3        INTEGER                       null,\n    C4        INTEGER                       null,\n    RNP       TEXT              null,\n    SM        TEXT              null,\n    SC170     TEXT              null,\n    SSA       TEXT              null,\n    SSB       TEXT              null,\n    CENTROMEA TEXT              null,\n    DNA       TEXT              null,\n    `DNA-II`  INTEGER                       null,\n    primary key (ID, Date),\n        foreign key (ID) references Patient (ID)\n            on update cascade on delete cascade\n);",
+  "q1": "SELECT patientData.Diagnosis FROM Patient AS patientData INNER JOIN Laboratory AS labData ON patientData.ID = labData.ID WHERE labData.IGA BETWEEN 80 AND 500 ORDER BY labData.IGA DESC LIMIT 1",
+  "q2": "SELECT T2.Diagnosis FROM Laboratory AS T1 INNER JOIN Patient AS T2 ON T1.ID = T2.ID WHERE T1.IGA BETWEEN 80 AND 500 ORDER BY T1.IGA DESC LIMIT 1",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT patientData.Diagnosis FROM Patient AS patientData INNER JOIN Laboratory AS labData ON patientData.ID = labData.ID WHERE labData.IGA BETWEEN 80 AND 500 ORDER BY labData.IGA DESC LIMIT 1",
+  "q2_prompt_sql": "SELECT T2.Diagnosis FROM Laboratory AS T1 INNER JOIN Patient AS T2 ON T1.ID = T2.ID WHERE T1.IGA BETWEEN 80 AND 500 ORDER BY T1.IGA DESC LIMIT 1",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries join Patient and Laboratory on ID, filter by IGA between 80 and 500, order by IGA descending, and return the first result. The only difference is alias naming, which does not affect the result.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries join Patient and Laboratory on ID, filter by IGA between 80 and 500, order by IGA descending, and return the first result. The only difference is alias naming, which does not affect the result.\"\n}",
+  "reasoning": "\nOkay, let's see. I need to determine if Q1 and Q2 are semantically equivalent. Let me start by understanding each query.\n\nLooking at Q1: It selects Diagnosis from Patient (aliased as patientData) joined with Laboratory (labData) on ID. The WHERE condition is labData.IGA between 80 and 500. Then it orders by labData.IGA descending and takes the first row. So it's getting the patient's diagnosis where the lab's IGA is in that range, ordered highest first.\n\nQ2 is similar but the aliases are swapped. Laboratory is T1 and Patient is T2. The join is on T1.ID = T2.ID. The WHERE is T1.IGA between 80 and 500, same order by T1.IGA DESC, LIMIT 1. So the structure is almost the same except the table aliases.\n\nWait, the main difference might be in the column references. In Q1, the Diagnosis comes from patientData (Patient table), and in Q2, it's from T2 which is also the Patient table. So both are selecting Diagnosis from Patient. The join condition is on ID, which is the primary key of Patient and part of the composite key in Laboratory. So the join should be correct in both cases.\n\nBut wait, the Laboratory table has a composite primary key (ID, Date). So when joining, each Laboratory row for a patient could have multiple entries (different dates). But the queries don't specify a date, so they might be getting all lab entries for each patient. However, since both queries order by IGA DESC and take the first row, the highest IGA value would be picked regardless of date. \n\nWait, but in Q1, labData.IGA is used in the WHERE and ORDER BY. In Q2, T1.IGA is the same. Since T1 is Laboratory in Q2, and labData is Laboratory in Q1, they are the same. So the WHERE and ORDER BY are the same. The only difference is the alias names. So the result should be the same.\n\nWait, but maybe the join order or some other implicit behavior? Let me check the actual columns. In the Patient table, Diagnosis is present. In the Laboratory table, there's no Diagnosis column. So both queries are correctly selecting Diagnosis from Patient. \n\nSo both queries are joining Patient and Laboratory on ID, filtering on IGA between 80 and 500, ordering by IGA descending, and taking the top 1. So they should produce the same result. Therefore, they are equivalent.\n\nHmm, but maybe there's a case where the join produces multiple rows for a single patient, but the ORDER BY and LIMIT 1 would still pick one. Since both queries use the same join condition and same ordering, the result should be the same.\n\nSo I think they are equivalent. So the answer would be Y.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 960,
+    "total_tokens": 1636,
+    "completion_tokens": 676,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 610
+    },
+    "generation_seconds": 22.875
+  },
+  "started_at": "2026-10-06T21:34:21.421887+00:00",
+  "elapsed_seconds": 0.0
+}

@@ -1,0 +1,61 @@
+{
+  "dbid": "1084",
+  "index": "337",
+  "source_index": "476",
+  "schema_ddl": "CREATE TABLE PRODUCT (\n    PRODUCT_ID INT,\n    PRODUCT_NAME VARCHAR(255),\n    UNIT_PRICE INT,\n    PRIMARY KEY (PRODUCT_ID),\n    CHECK (UNIT_PRICE > 0)\n);\n\nCREATE TABLE SALES (\n    PRODUCT_ID INT,\n    SELLER_ID INT,\n    BUYER_ID INT,\n    SALE_DATE DATE,\n    QUANTITY INT,\n    PRICE INT,\n    FOREIGN KEY (PRODUCT_ID) REFERENCES PRODUCT(PRODUCT_ID),\n    CHECK (QUANTITY > 0),\n    CHECK (PRICE > 0)\n);",
+  "q1": "SELECT P.PRODUCT_ID, P.PRODUCT_NAME FROM PRODUCT P INNER JOIN ( SELECT PRODUCT_ID FROM SALES GROUP BY PRODUCT_ID HAVING MIN(SALE_DATE) >= '2019-01-01' AND MAX(SALE_DATE) <= '2019-03-31' ) S ON (P.PRODUCT_ID = S.PRODUCT_ID)",
+  "q2": "WITH SALES_NOT_1Q_2022 AS ( SELECT S.* FROM SALES S WHERE S.SALE_DATE <'2019-01-01' OR S.SALE_DATE > '2019-03-31' ) SELECT P.PRODUCT_ID, P.PRODUCT_NAME FROM PRODUCT P WHERE P.PRODUCT_ID NOT IN (SELECT PRODUCT_ID FROM SALES_NOT_1Q_2022)",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT P.PRODUCT_ID, P.PRODUCT_NAME FROM PRODUCT P INNER JOIN ( SELECT PRODUCT_ID FROM SALES GROUP BY PRODUCT_ID HAVING MIN(SALE_DATE) >= '2019-01-01' AND MAX(SALE_DATE) <= '2019-03-31' ) S ON (P.PRODUCT_ID = S.PRODUCT_ID)",
+  "q2_prompt_sql": "WITH SALES_NOT_1Q_2022 AS ( SELECT S.* FROM SALES S WHERE S.SALE_DATE <'2019-01-01' OR S.SALE_DATE > '2019-03-31' ) SELECT P.PRODUCT_ID, P.PRODUCT_NAME FROM PRODUCT P WHERE P.PRODUCT_ID NOT IN (SELECT PRODUCT_ID FROM SALES_NOT_1Q_2022)",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO PRODUCT (PRODUCT_ID, PRODUCT_NAME, UNIT_PRICE) VALUES (1, 'Product A', 10);\nINSERT INTO PRODUCT (PRODUCT_ID, PRODUCT_NAME, UNIT_PRICE) VALUES (2, 'Product B', 20);\nINSERT INTO SALES (PRODUCT_ID, SELLER_ID, BUYER_ID, SALE_DATE, QUANTITY, PRICE) VALUES (1, 101, 201, '2019-02-15', 5, 50);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 requires all sales of a product to be within the specified date range, while Q2 includes products with no sales at all. Q2's NOT IN clause excludes products with any sales outside the range but includes products with no sales, which Q1 does not consider.",
+  "counterexample_dsp": "A product with no sales (e.g., PRODUCT_ID=2) will be included in Q2's result but excluded from Q1's result. Q1 only includes products with sales within the date range, while Q2 includes products with no sales.",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 requires all sales of a product to be within the specified date range, while Q2 includes products with no sales at all. Q2's NOT IN clause excludes products with any sales outside the range but includes products with no sales, which Q1 does not consider.\",\n  \"counterexample_dsp\": \"A product with no sales (e.g., PRODUCT_ID=2) will be included in Q2's result but excluded from Q1's result. Q1 only includes products with sales within the date range, while Q2 includes products with no sales.\",\n  \"counterexample\": [\n    \"INSERT INTO PRODUCT (PRODUCT_ID, PRODUCT_NAME, UNIT_PRICE) VALUES (1, 'Product A', 10);\",\n    \"INSERT INTO PRODUCT (PRODUCT_ID, PRODUCT_NAME, UNIT_PRICE) VALUES (2, 'Product B', 20);\",\n    \"INSERT INTO SALES (PRODUCT_ID, SELLER_ID, BUYER_ID, SALE_DATE, QUANTITY, PRICE) VALUES (1, 101, 201, '2019-02-15', 5, 50);\"\n  ]\n}",
+  "reasoning": "\nOkay, let's see. I need to find a counterexample where Q1 and Q2 return different results. First, I should understand what each query does.\n\nQ1: It selects products that have all their sales within the first quarter of 2019 (Jan-Mar). The subquery groups sales by product_id and checks that the minimum sale date is >= '2019-01-01' and the maximum sale date is <= '2019-03-31'. So, if a product has any sale outside that range, it's excluded.\n\nQ2: It uses a CTE to find all sales not in the first quarter. Then, it selects products whose product_id is not in that CTE. So, this would include products that have no sales outside the quarter, meaning all their sales are within the quarter. Wait, but what if a product has no sales at all? Then, the NOT IN would include it because there are no sales in the CTE. But Q1 would not include such products because the subquery in Q1 would not have their product_id (since there are no sales). So, Q1 and Q2 might differ in that case.\n\nWait, let's think. If a product has no sales, then in Q1, the subquery S would not include it, so the INNER JOIN would not find a match, so the product wouldn't be selected. In Q2, the NOT IN (SELECT PRODUCT_ID FROM SALES_NOT_1Q_2022) would check if the product's ID is not in the CTE. Since the CTE includes sales not in the quarter, but if the product has no sales, then the subquery in Q2's NOT IN would return no rows. So, the NOT IN would be true, and the product would be selected. So, Q2 would include products with no sales, while Q1 would not. That's a difference.\n\nSo, if there's a product with no sales, Q2 would include it, but Q1 would not. That's a case where they differ.\n\nAnother scenario: a product has sales only in the first quarter. Then both Q1 and Q2 would include it. But if a product has some sales in the quarter and some outside, Q1 would exclude it, and Q2 would also exclude it because the NOT IN would check if the product has any sales outside the quarter. Wait, no. Wait, SALES_NOT_1Q_2022 includes sales that are before Jan 1 or after Mar 31. The NOT IN (SELECT PRODUCT_ID FROM SALES_NOT_1Q_2022) would exclude products that have any sales outside the quarter. Wait, no: if a product has a sale outside the quarter, then it is in SALES_NOT_1Q_2022. So, the NOT IN would exclude that product. So, Q2 is selecting products that have no sales outside the quarter. Which is the same as Q1? Wait, maybe not. Let me think again.\n\nQ1: All sales for the product are within the quarter. Because the min and max are within the quarter. So, if a product has sales only in the quarter, it's included.\n\nQ2: The NOT IN (SELECT PRODUCT_ID FROM SALES_NOT_1Q_2022) would be products that have no sales in SALES_NOT_1Q_2022. Which means all their sales are in the quarter. But also includes products that have no sales at all, since their product_id isn't in the subquery.\n\nSo, the difference is that Q2 includes products with no sales, while Q1 does not. Therefore, if there's a product with no sales, Q2 would return it, but Q1 would not. That's the key difference.\n\nSo, to create a counterexample, I need a product with no sales. Let's create two products: Product A has sales in the quarter, Product B has no sales. Then Q1 would return Product A, and Q2 would return both Product A and Product B.\n\nWait, but Product B has no sales. Let me check:\n\nFor Q1: The subquery S selects product_ids from SALES where all their sales are in the quarter. Since Product B has no sales, it's not in S. So, the INNER JOIN would not find it, so Q1 doesn't return it.\n\nFor Q2: The SALES_NOT_1Q_2022 CTE would have sales outside the quarter. Product B has no sales, so the subquery (SELECT PRODUCT_ID FROM SALES_NOT_1Q_2022) would return nothing. So, the NOT IN would be true for Product B, so it's included in Q2's result.\n\nThus, in this case, Q1 and Q2 differ. So, the counterexample would be a product with no sales.\n\nAnother possible case: a product has sales both inside and outside the quarter. Let's say Product C has sales in Jan and May. Then, in Q1, since the min is Jan (<= Mar) but max is May (> Mar), so the HAVING clause would fail. So, Q1 would exclude it. In Q2, since Product C has sales in May (outside the quarter), it's in SALES_NOT_1Q_2022, so NOT IN would exclude it. So, both queries exclude it. So, no difference here.\n\nBut if a product has sales only in the quarter and another product has no sales, then the difference is there.\n\nSo, the counterexample would involve a product with no sales. Let's create that.\n\nSo, the test data would have:\n\n- Product 1: has sales in the quarter (say, Jan 1, 2019)\n- Product 2: has no sales\n- Product 3: has sales outside the quarter (say, April 1, 2019)\n\nThen:\n\nQ1 would return Product 1 (since all sales are in the quarter), and not Product 2 (no sales) or Product 3 (sales outside).\n\nQ2 would return Product 1 (all sales in quarter) and Product 2 (no sales). Product 3 is excluded because it's in SALES_NOT_1Q_2022.\n\nSo, the difference is Product 2 is in Q2's result but not in Q1's.\n\nThus, the counterexample needs to include a product with no sales. So, inserting Product 2 into the PRODUCT table, but not inserting any sales for it.\n\nSo, the SQL statements would be:\n\nINSERT INTO PRODUCT (PRODUCT_ID, PRODUCT_NAME, UNIT_PRICE) VALUES (1, 'Product A', 10);\nINSERT INTO PRODUCT (PRODUCT_ID, PRODUCT_NAME, UNIT_PRICE) VALUES (2, 'Product B', 20);\nINSERT INTO SALES (PRODUCT_ID, SELLER_ID, BUYER_ID, SALE_DATE, QUANTITY, PRICE) VALUES (1, 101, 201, '2019-02-15', 5, 50);\nINSERT INTO SALES (PRODUCT_ID, SELLER_ID, BUYER_ID, SALE_DATE, QUANTITY, PRICE) VALUES (3, 102, 202, '2019-04-10', 2, 30);\n\nWait, but Product 3 is not in the PRODUCT table. Wait, in the example, Product 3 would have sales outside the quarter. But in the counterexample, maybe we don't need Product 3. The key is to have Product 2 with no sales.\n\nSo, the counterexample would be:\n\nProduct 1 has sales in the quarter, Product 2 has no sales.\n\nSo, the INSERTs would be:\n\nInsert into PRODUCT:\n(1, 'A', 10)\n(2, 'B', 20)\n\nInsert into SALES:\n(1, 1, 1, '2019-02-01', 1, 10)\n\nSo, in this case, Q1 would return Product 1, and Q2 would return Product 1 and Product 2. Thus, they differ.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 480,
+    "total_tokens": 2463,
+    "completion_tokens": 1983,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1732
+    },
+    "generation_seconds": 70.39
+  },
+  "started_at": "2026-10-06T11:17:22.813401+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      1,
+      "Product A"
+    ]
+  ],
+  "q2_output": [
+    [
+      1,
+      "Product A"
+    ],
+    [
+      2,
+      "Product B"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT P.PRODUCT_ID, P.PRODUCT_NAME FROM PRODUCT P INNER JOIN ( SELECT PRODUCT_ID FROM SALES GROUP BY PRODUCT_ID HAVING MIN(SALE_DATE) >= '2019-01-01' AND MAX(SALE_DATE) <= '2019-03-31' ) S ON (P.PRODUCT_ID = S.PRODUCT_ID)",
+  "q2_validation_sql": "WITH SALES_NOT_1Q_2022 AS ( SELECT S.* FROM SALES S WHERE S.SALE_DATE <'2019-01-01' OR S.SALE_DATE > '2019-03-31' ) SELECT P.PRODUCT_ID, P.PRODUCT_NAME FROM PRODUCT P WHERE P.PRODUCT_ID NOT IN (SELECT PRODUCT_ID FROM SALES_NOT_1Q_2022)"
+}

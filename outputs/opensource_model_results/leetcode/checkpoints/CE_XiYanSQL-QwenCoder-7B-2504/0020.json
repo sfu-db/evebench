@@ -1,0 +1,59 @@
+{
+  "dbid": "175",
+  "index": "20",
+  "source_index": "96",
+  "schema_ddl": "CREATE TABLE PERSON (\n    PERSONID INT,\n    FIRSTNAME VARCHAR(255),\n    LASTNAME VARCHAR(255),\n    PRIMARY KEY (PERSONID)\n);\n\nCREATE TABLE ADDRESS (\n    ADDRESSID INT,\n    PERSONID INT,\n    CITY VARCHAR(255),\n    STATE VARCHAR(255),\n    PRIMARY KEY (ADDRESSID, PERSONID),\n    FOREIGN KEY (PERSONID) REFERENCES PERSON(PERSONID)\n);",
+  "q1": "SELECT FIRSTNAME, LASTNAME, CITY, STATE FROM PERSON AS P LEFT OUTER JOIN ADDRESS AS A ON P.PERSONID = A.PERSONID",
+  "q2": "SELECT FIRSTNAME,LASTNAME,CITY,STATE FROM PERSON P LEFT JOIN ADDRESS D ON P.PERSONID=D.PERSONID",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT FIRSTNAME, LASTNAME, CITY, STATE FROM PERSON AS P LEFT OUTER JOIN ADDRESS AS A ON P.PERSONID = A.PERSONID",
+  "q2_prompt_sql": "SELECT FIRSTNAME,LASTNAME,CITY,STATE FROM PERSON P LEFT JOIN ADDRESS D ON P.PERSONID=D.PERSONID",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO PERSON (PERSONID, FIRSTNAME, LASTNAME) VALUES (1, 'John', 'Doe');",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent because of the difference in the JOIN syntax. Q1 uses the keyword OUTER, which is not standard SQL and is not recognized by all SQL engines. Q2 uses the standard LEFT JOIN syntax, which is universally recognized. The difference in JOIN syntax can lead to different results depending on the SQL engine being used.",
+  "counterexample_dsp": "The test data should include a person who does not have an address. In this case, Q1 should return the person's information with NULL values for city and state, while Q2 should not return the person's information at all.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent because of the difference in the JOIN syntax. Q1 uses the keyword OUTER, which is not standard SQL and is not recognized by all SQL engines. Q2 uses the standard LEFT JOIN syntax, which is universally recognized. The difference in JOIN syntax can lead to different results depending on the SQL engine being used.\",\n  \"counterexample_dsp\": \"The test data should include a person who does not have an address. In this case, Q1 should return the person's information with NULL values for city and state, while Q2 should not return the person's information at all.\",\n  \"counterexample\": \"INSERT INTO PERSON (PERSONID, FIRSTNAME, LASTNAME) VALUES (1, 'John', 'Doe');\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 367,
+    "total_tokens": 534,
+    "completion_tokens": 167,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 2.828
+  },
+  "started_at": "2026-10-06T09:49:59.709132+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "John",
+      "Doe",
+      null,
+      null
+    ]
+  ],
+  "q2_output": [
+    [
+      "John",
+      "Doe",
+      null,
+      null
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT FIRSTNAME, LASTNAME, CITY, STATE FROM PERSON AS P LEFT OUTER JOIN ADDRESS AS A ON P.PERSONID = A.PERSONID",
+  "q2_validation_sql": "SELECT FIRSTNAME,LASTNAME,CITY,STATE FROM PERSON P LEFT JOIN ADDRESS D ON P.PERSONID=D.PERSONID"
+}

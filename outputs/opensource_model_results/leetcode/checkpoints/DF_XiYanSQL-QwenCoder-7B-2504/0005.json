@@ -1,0 +1,55 @@
+{
+  "dbid": "577",
+  "index": "5",
+  "source_index": "39",
+  "schema_ddl": "CREATE TABLE EMPLOYEE (\n    EMPID INT,\n    NAME VARCHAR(255),\n    SUPERVISOR INT,\n    SALARY INT,\n    PRIMARY KEY (EMPID),\n    CHECK (EMPID <> SUPERVISOR),\n    CHECK (SALARY >= 0)\n);\n\nCREATE TABLE BONUS (\n    EMPID INT,\n    BONUS INT,\n    PRIMARY KEY (EMPID),\n    FOREIGN KEY (EMPID) REFERENCES EMPLOYEE(EMPID),\n    CHECK (BONUS >= 0)\n);",
+  "q1": "SELECT EMPLOYEE.NAME, BONUS.BONUS FROM EMPLOYEE LEFT JOIN BONUS ON EMPLOYEE.EMPID = BONUS.EMPID WHERE BONUS < 1000 OR BONUS IS NULL",
+  "q2": "SELECT NAME, BONUS FROM EMPLOYEE LEFT JOIN BONUS USING(EMPID) WHERE BONUS <1000 OR BONUS IS NULL",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT EMPLOYEE.NAME, BONUS.BONUS FROM EMPLOYEE LEFT JOIN BONUS ON EMPLOYEE.EMPID = BONUS.EMPID WHERE BONUS < 1000 OR BONUS IS NULL",
+  "q2_prompt_sql": "SELECT NAME, BONUS FROM EMPLOYEE LEFT JOIN BONUS USING(EMPID) WHERE BONUS <1000 OR BONUS IS NULL",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO EMPLOYEE (EMPID, NAME, SUPERVISOR, SALARY) VALUES (1, 'John', 2, 5000); INSERT INTO BONUS (EMPID, BONUS) VALUES (1, 500);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not equivalent because Q2 uses the 'USING' clause, which implicitly joins on the common column (EMPID) and eliminates the need for an alias in the SELECT clause. Q1, on the other hand, uses an alias (EMPLOYEE) for the join, which is not necessary in this context but does not affect the outcome. The difference arises when the 'USING' clause is used, as it simplifies the query and removes the need for an alias in the SELECT clause.",
+  "counterexample_dsp": "The difference between Q1 and Q2 is subtle and does not affect the outcome in this specific case. However, if we were to create a test case where the 'USING' clause is used, it would not change the output of the query. The counterexample is provided below.",
+  "equiv": "N",
+  "raw_response": "{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 and Q2 are not equivalent because Q2 uses the 'USING' clause, which implicitly joins on the common column (EMPID) and eliminates the need for an alias in the SELECT clause. Q1, on the other hand, uses an alias (EMPLOYEE) for the join, which is not necessary in this context but does not affect the outcome. The difference arises when the 'USING' clause is used, as it simplifies the query and removes the need for an alias in the SELECT clause.\",\n\"counterexample_dsp\": \"The difference between Q1 and Q2 is subtle and does not affect the outcome in this specific case. However, if we were to create a test case where the 'USING' clause is used, it would not change the output of the query. The counterexample is provided below.\",\n\"counterexample\": \"INSERT INTO EMPLOYEE (EMPID, NAME, SUPERVISOR, SALARY) VALUES (1, 'John', 2, 5000); INSERT INTO BONUS (EMPID, BONUS) VALUES (1, 500);\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 452,
+    "total_tokens": 696,
+    "completion_tokens": 244,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 4.485
+  },
+  "started_at": "2026-10-06T14:32:43.306302+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "John",
+      500
+    ]
+  ],
+  "q2_output": [
+    [
+      "John",
+      500
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT EMPLOYEE.NAME, BONUS.BONUS FROM EMPLOYEE LEFT JOIN BONUS ON EMPLOYEE.EMPID = BONUS.EMPID WHERE BONUS < 1000 OR BONUS IS NULL",
+  "q2_validation_sql": "SELECT NAME, BONUS FROM EMPLOYEE LEFT JOIN BONUS USING(EMPID) WHERE BONUS <1000 OR BONUS IS NULL"
+}

@@ -1,0 +1,53 @@
+{
+  "dbid": "619",
+  "index": "277",
+  "source_index": "262",
+  "schema_ddl": "CREATE TABLE MYNUMBERS (\n    NUM INT\n);",
+  "q1": "SELECT MAX(NUM) AS NUM FROM (SELECT NUM FROM MYNUMBERS GROUP BY NUM HAVING COUNT(NUM) = 1) AS T",
+  "q2": "SELECT IFNULL((SELECT NUM FROM MYNUMBERS GROUP BY NUM HAVING COUNT(NUM) =1 ORDER BY 1 DESC LIMIT 1), NULL) AS NUM",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT MAX(NUM) AS NUM FROM (SELECT NUM FROM MYNUMBERS GROUP BY NUM HAVING COUNT(NUM) = 1) AS T",
+  "q2_prompt_sql": "SELECT IFNULL((SELECT NUM FROM MYNUMBERS GROUP BY NUM HAVING COUNT(NUM) =1 ORDER BY 1 DESC LIMIT 1), NULL) AS NUM",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO MYNUMBERS (NUM) VALUES (1), (2), (3), (4), (5);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not equivalent. Q1 finds the maximum unique number in the table, while Q2 finds the last unique number when all unique numbers are sorted in ascending order.",
+  "counterexample_dsp": "A table with multiple unique numbers where the last unique number is not the maximum.",
+  "equiv": "N",
+  "raw_response": "{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 and Q2 are not equivalent. Q1 finds the maximum unique number in the table, while Q2 finds the last unique number when all unique numbers are sorted in ascending order.\",\n\"counterexample_dsp\": \"A table with multiple unique numbers where the last unique number is not the maximum.\",\n\"counterexample\": \"INSERT INTO MYNUMBERS (NUM) VALUES (1), (2), (3), (4), (5);\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 349,
+    "total_tokens": 454,
+    "completion_tokens": 105,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 1.797
+  },
+  "started_at": "2026-10-06T14:33:32.382214+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      5
+    ]
+  ],
+  "q2_output": [
+    [
+      5
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT MAX(NUM) AS NUM FROM (SELECT NUM FROM MYNUMBERS GROUP BY NUM HAVING COUNT(NUM) = 1) AS T",
+  "q2_validation_sql": "SELECT IFNULL((SELECT NUM FROM MYNUMBERS GROUP BY NUM HAVING COUNT(NUM) =1 ORDER BY 1 DESC LIMIT 1), NULL) AS NUM"
+}

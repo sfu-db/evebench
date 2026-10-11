@@ -1,0 +1,39 @@
+{
+  "dbid": "student_club",
+  "index": "814",
+  "source_index": "1435",
+  "schema_ddl": "CREATE TABLE event\n(\n    event_id   TEXT\n        constraint event_pk\n            primary key,\n    event_name TEXT,\n    event_date TEXT,\n    type       TEXT,\n    notes      TEXT,\n    location   TEXT,\n    status     TEXT\n);\n\nCREATE TABLE major\n(\n    major_id   TEXT\n        constraint major_pk\n            primary key,\n    major_name TEXT,\n    department TEXT,\n    college    TEXT\n);\n\nCREATE TABLE zip_code\n(\n    zip_code    INTEGER\n        constraint zip_code_pk\n            primary key,\n    type        TEXT,\n    city        TEXT,\n    county      TEXT,\n    state       TEXT,\n    short_state TEXT\n);\n\nCREATE TABLE \"attendance\"\n(\n    link_to_event  TEXT,\n    link_to_member TEXT,\n    primary key (link_to_event, link_to_member),\n    foreign key (link_to_event) references event(event_id),\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"budget\"\n(\n    budget_id     TEXT\n            primary key,\n    category      TEXT,\n    spent         REAL,\n    remaining     REAL,\n    amount        INTEGER,\n    event_status  TEXT,\n    link_to_event TEXT,\n    foreign key (link_to_event) references event(event_id)\n);\n\nCREATE TABLE \"expense\"\n(\n    expense_id          TEXT\n            primary key,\n    expense_description TEXT,\n    expense_date        TEXT,\n    cost                REAL,\n    approved            TEXT,\n    link_to_member      TEXT,\n    link_to_budget      TEXT,\n    foreign key (link_to_budget) references budget(budget_id),\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"income\"\n(\n    income_id      TEXT\n        constraint income_pk\n            primary key,\n    date_received  TEXT,\n    amount         INTEGER,\n    source         TEXT,\n    notes          TEXT,\n    link_to_member TEXT,\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"member\"\n(\n    member_id     TEXT\n        constraint member_pk\n            primary key,\n    first_name    TEXT,\n    last_name     TEXT,\n    email         TEXT,\n    position      TEXT,\n    t_shirt_size  TEXT,\n    phone         TEXT,\n    zip           INTEGER,\n    link_to_major TEXT,\n    foreign key (link_to_major) references major(major_id),\n    foreign key (zip) references zip_code(zip_code)\n);",
+  "q1": "SELECT zip_code FROM zip_code WHERE type = 'PO Box' AND county = 'San Juan Municipio' AND state = 'Puerto Rico'",
+  "q2": "SELECT T1.zip_code FROM zip_code AS T1 WHERE T1.type = 'PO Box' AND T1.county = 'San Juan Municipio' AND T1.state = 'Puerto Rico'",
+  "dialect": "sqlite",
+  "ground_truth": "EQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT zip_code FROM zip_code WHERE type = 'PO Box' AND county = 'San Juan Municipio' AND state = 'Puerto Rico'",
+  "q2_prompt_sql": "SELECT T1.zip_code FROM zip_code AS T1 WHERE T1.type = 'PO Box' AND T1.county = 'San Juan Municipio' AND T1.state = 'Puerto Rico'",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries select zip codes from the zip_code table with the same conditions. The only difference is the use of an alias (T1) in Q2, which does not affect the result since all columns referenced are unambiguously from the zip_code table.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries select zip codes from the zip_code table with the same conditions. The only difference is the use of an alias (T1) in Q2, which does not affect the result since all columns referenced are unambiguously from the zip_code table.\"\n}",
+  "reasoning": "\nOkay, let's see. I need to determine if Q1 and Q2 are semantically equivalent. Let me look at the queries again.\n\nQ1 is selecting zip_code from zip_code where type is 'PO Box', county is 'San Juan Municipio', and state is 'Puerto Rico'. \n\nQ2 is almost the same, but it uses a table alias T1 for zip_code and references T1.type, T1.county, T1.state. \n\nWait, the only difference here is the use of the alias. In SQL, when you use an alias like T1, you have to reference the columns with the alias, right? But in Q1, they didn't use an alias, so they just refer to the columns directly. But in Q2, they're using T1.zip_code and T1.type, etc. However, since the table is aliased as T1, but the column names are the same as the table name, but in this case, the columns are type, county, state, etc. \n\nBut wait, the table name is zip_code, and the columns are type, county, state. So in Q1, when they write type = 'PO Box', that's unambiguous because the zip_code table is the only one with a type column here. But in Q2, they are using the alias T1, so they have to prefix the columns with T1. \n\nBut are there any other tables that have columns with the same names? Let me check the schema. The other tables are event, major, zip_code, attendance, budget, expense, income, member. \n\nLooking at the columns: \n\nIn event, there's a type column. Oh! So the event table has a type column. Similarly, the zip_code table has a type column. So if there was a join between event and zip_code, then referencing type without an alias could be ambiguous. However, in both Q1 and Q2, they are only querying the zip_code table. \n\nSo in Q1, the query is from zip_code, so the type, county, and state columns are all from zip_code. Since there's no ambiguity, the WHERE clause is straightforward. In Q2, the alias T1 is used, but since the columns are from the same table, using T1.type is the same as type. \n\nTherefore, both queries are selecting from the same table, using the same conditions, just with an alias in Q2. Since the alias doesn't change the meaning of the query, they should be equivalent. \n\nWait, but maybe there's a case where the alias could cause a problem. For example, if there was a column in the zip_code table named the same as the table name, but in this case, the table is zip_code and the columns are type, county, state, etc. So the alias T1 is just a table alias, and the columns are referenced with T1. So the queries are the same. \n\nSo the answer should be that they are equivalent. Therefore, the equiv is Y.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 815,
+    "total_tokens": 1516,
+    "completion_tokens": 701,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 631
+    },
+    "generation_seconds": 23.531
+  },
+  "started_at": "2026-10-06T20:59:13.784289+00:00",
+  "elapsed_seconds": 0.0
+}

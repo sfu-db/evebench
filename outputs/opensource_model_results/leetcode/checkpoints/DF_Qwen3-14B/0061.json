@@ -1,0 +1,51 @@
+{
+  "dbid": "607",
+  "index": "61",
+  "source_index": "567",
+  "schema_ddl": "CREATE TABLE SALESPERSON (\n    SALES_ID INT,\n    NAME VARCHAR(255),\n    SALARY INT,\n    COMMISSION_RATE INT,\n    HIRE_DATE VARCHAR(255)\n);\n\nCREATE TABLE COMPANY (\n    COM_ID INT,\n    NAME VARCHAR(255),\n    CITY VARCHAR(255)\n);\n\nCREATE TABLE ORDERS (\n    ORDER_ID INT,\n    COM_ID INT,\n    SALES_ID INT,\n    ORDER_DATE VARCHAR(255),\n    AMOUNT INT\n);",
+  "q1": "SELECT NAME FROM SALESPERSON AS S WHERE 0 = ( SELECT COUNT(*) FROM ORDERS AS O JOIN COMPANY AS C ON O.COM_ID = C.COM_ID WHERE O.SALES_ID = S.SALES_ID AND C.NAME = 'RED' )",
+  "q2": "SELECT NAME FROM SALESPERSON WHERE NAME NOT IN (SELECT DISTINCT SALESPERSON.NAME FROM SALESPERSON JOIN (SELECT ORDERS.* FROM ORDERS JOIN COMPANY ON ORDERS.COM_ID = COMPANY.COM_ID WHERE COMPANY.NAME = 'RED' ) ORDERS ON SALESPERSON.SALES_ID = ORDERS.SALES_ID)",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT NAME FROM SALESPERSON AS S WHERE 0 = ( SELECT COUNT(*) FROM ORDERS AS O JOIN COMPANY AS C ON O.COM_ID = C.COM_ID WHERE O.SALES_ID = S.SALES_ID AND C.NAME = 'RED' )",
+  "q2_prompt_sql": "SELECT NAME FROM SALESPERSON WHERE NAME NOT IN (SELECT DISTINCT SALESPERSON.NAME FROM SALESPERSON JOIN (SELECT ORDERS.* FROM ORDERS JOIN COMPANY ON ORDERS.COM_ID = COMPANY.COM_ID WHERE COMPANY.NAME = 'RED' ) ORDERS ON SALESPERSON.SALES_ID = ORDERS.SALES_ID)",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO COMPANY (COM_ID, NAME, CITY) VALUES (1, 'RED', 'City1');\nINSERT INTO SALESPERSON (SALES_ID, NAME, SALARY, COMMISSION_RATE, HIRE_DATE) VALUES (1, 'John', 50000, 5, '2020-01-01'), (2, 'John', 60000, 6, '2021-01-01');\nINSERT INTO ORDERS (ORDER_ID, COM_ID, SALES_ID, ORDER_DATE, AMOUNT) VALUES (1, 1, 1, '2022-01-01', 1000);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not equivalent because Q2 uses SALESPERSON.NAME in a NOT IN clause, which can incorrectly exclude salespeople with duplicate names if any of them have orders with 'RED'. Q1 checks per-salesperson counts, avoiding this issue.",
+  "counterexample_dsp": "Two salespeople with the same name: one has an order with 'RED', the other does not. Q1 includes the latter, Q2 excludes both due to name duplication.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 and Q2 are not equivalent because Q2 uses SALESPERSON.NAME in a NOT IN clause, which can incorrectly exclude salespeople with duplicate names if any of them have orders with 'RED'. Q1 checks per-salesperson counts, avoiding this issue.\",\n\"counterexample_dsp\": \"Two salespeople with the same name: one has an order with 'RED', the other does not. Q1 includes the latter, Q2 excludes both due to name duplication.\",\n\"counterexample\": \"INSERT INTO COMPANY (COM_ID, NAME, CITY) VALUES (1, 'RED', 'City1');\\nINSERT INTO SALESPERSON (SALES_ID, NAME, SALARY, COMMISSION_RATE, HIRE_DATE) VALUES (1, 'John', 50000, 5, '2020-01-01'), (2, 'John', 60000, 6, '2021-01-01');\\nINSERT INTO ORDERS (ORDER_ID, COM_ID, SALES_ID, ORDER_DATE, AMOUNT) VALUES (1, 1, 1, '2022-01-01', 1000);\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem. So, I need to determine if Q1 and Q2 are semantically equivalent. If not, I have to provide a counterexample. Let's start by understanding each query.\n\nFirst, Q1: It selects the name from SALESPERSON where the subquery returns 0. The subquery counts the number of orders from the ORDERS table joined with COMPANY where the company name is 'RED' and the salesperson's ID matches. So, this is looking for salespeople who have zero orders associated with the 'RED' company.\n\nNow Q2: It selects names from SALESPERSON where the name is not in a subquery. The subquery joins SALESPERSON with a subset of ORDERS that have joined with COMPANY where the company name is 'RED'. The DISTINCT is used, but the main point is that it's selecting all salespeople who have at least one order related to 'RED' company and then excluding them. So Q2 is trying to get salespeople who are not in that list.\n\nWait, but Q1 is checking for salespeople with zero orders from 'RED', while Q2 is excluding those who have any orders from 'RED'. So they should be equivalent. But maybe there's a nuance here.\n\nWait, Q2 uses SALESPERSON.NAME NOT IN (subquery). The subquery is selecting SALESPERSON.NAME from SALESPERSON joined with the filtered ORDERS. However, if a salesperson has multiple orders with 'RED', the subquery would have their name multiple times, but with DISTINCT, it's only once. So the NOT IN would exclude any salesperson who has at least one such order.\n\nQ1 uses a COUNT(*) = 0, which would be salespeople who have no such orders. So logically, these should be the same. But maybe there's a case where a salesperson has no orders at all, or orders not related to 'RED', but Q1 would include them, and Q2 would also include them because they are not in the subquery. Hmm.\n\nWait, but what if there's a salesperson who has no orders at all? Then in Q1, the subquery would return 0, so they would be selected. In Q2, since they don't appear in the subquery (because they have no orders with 'RED'), they would be included as well. So that seems the same.\n\nBut maybe there's a case where the subquery in Q2 returns NULLs? Wait, the subquery in Q2 is selecting SALESPERSON.NAME from SALESPERSON joined with the filtered ORDERS. If a salesperson has no orders with 'RED', then they wouldn't be in the subquery. So the NOT IN would include them. So that's the same as Q1.\n\nWait, but what if there are salespeople with the same name? For example, two different salespeople with the same name. Let's say there are two salespeople named 'John' and 'John' again. Suppose one of them has an order with 'RED' and the other doesn't. Then Q2's subquery would have 'John' in the list, and the NOT IN would exclude both 'John's. But Q1 would check for each salesperson's count. The one with an order would have count >0 and be excluded, the other would be included. However, in Q2, if the subquery returns 'John', then both would be excluded. Wait, but that's a problem. Because Q1 would include the salesperson who doesn't have any orders with 'RED', but Q2 would exclude them if their name is in the subquery. But if the subquery includes 'John' because one of them has an order, then the NOT IN would exclude both 'John's. But that's incorrect because one of them might not have any orders with 'RED'.\n\nAh, that's a key difference. Because Q1 is checking per salesperson, while Q2 is using the name. If there are multiple salespeople with the same name, Q2's NOT IN would exclude all of them if any of them has an order with 'RED', even if others don't. But Q1 would correctly check each salesperson individually.\n\nSo that's a case where they are not equivalent. Let's create a counterexample with that.\n\nFor example, two salespeople with the same name. One has an order with 'RED', the other doesn't. Then Q1 would include the one without any orders with 'RED', but Q2 would exclude both because the name is in the subquery (due to the first one).\n\nSo the counterexample would have:\n\nSALESPERSON:\nSALES_ID 1, NAME 'John'\nSALES_ID 2, NAME 'John'\n\nORDERS:\nORDER_ID 1, COM_ID 1 (which is 'RED'), SALES_ID 1\nORDERS for SALES_ID 2 has no orders with 'RED'.\n\nIn this case, Q1 would select 'John' (SALES_ID 2) because he has 0 orders with 'RED'. Q2 would not select either 'John' because the subquery includes 'John' (from SALES_ID 1), so the NOT IN would exclude both.\n\nThus, they are not equivalent.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 480,
+    "total_tokens": 1858,
+    "completion_tokens": 1378,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1102
+    },
+    "generation_seconds": 43.922
+  },
+  "started_at": "2026-10-06T14:41:53.381927+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "John"
+    ]
+  ],
+  "q2_output": [],
+  "q1_row_count": 1,
+  "q2_row_count": 0,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT NAME FROM SALESPERSON AS S WHERE 0 = ( SELECT COUNT(*) FROM ORDERS AS O JOIN COMPANY AS C ON O.COM_ID = C.COM_ID WHERE O.SALES_ID = S.SALES_ID AND C.NAME = 'RED' )",
+  "q2_validation_sql": "SELECT NAME FROM SALESPERSON WHERE NAME NOT IN (SELECT DISTINCT SALESPERSON.NAME FROM SALESPERSON JOIN (SELECT ORDERS.* FROM ORDERS JOIN COMPANY ON ORDERS.COM_ID = COMPANY.COM_ID WHERE COMPANY.NAME = 'RED' ) ORDERS ON SALESPERSON.SALES_ID = ORDERS.SALES_ID)"
+}

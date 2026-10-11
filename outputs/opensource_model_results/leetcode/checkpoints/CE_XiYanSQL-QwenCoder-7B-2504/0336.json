@@ -1,0 +1,57 @@
+{
+  "dbid": "1097",
+  "index": "336",
+  "source_index": "340",
+  "schema_ddl": "CREATE TABLE ACTIVITY (\n    PLAYER_ID INT,\n    EVENT_DATE DATE,\n    DEVICE_ID INT,\n    GAMES_PLAYED INT,\n    PRIMARY KEY (PLAYER_ID, EVENT_DATE),\n    CHECK (GAMES_PLAYED >= 0)\n);",
+  "q1": "SELECT A1.FIRST_LOGIN AS INSTALL_DT, COUNT(DISTINCT A1.PLAYER_ID) AS INSTALLS, ROUND((SUM(CASE WHEN (A1.FIRST_LOGIN + 1) = A2.EVENT_DATE THEN 1 ELSE 0 END)/ COUNT(DISTINCT A1.PLAYER_ID)), 2) AS DAY1_RETENTION FROM (SELECT PLAYER_ID, MIN(EVENT_DATE) AS FIRST_LOGIN FROM ACTIVITY GROUP BY PLAYER_ID) AS A1 JOIN ACTIVITY AS A2 ON A1.PLAYER_ID = A2.PLAYER_ID GROUP BY A1.FIRST_LOGIN",
+  "q2": "SELECT INSTALL_DT, COUNT(D1.PLAYER_ID) AS INSTALLS, ROUND(COUNT(CASE WHEN D2.PLAYER_ID THEN D2.PLAYER_ID ELSE NULL END)/CAST(COUNT(D1.PLAYER_ID) AS DECIMAL), 2) AS DAY1_RETENTION FROM (SELECT PLAYER_ID, MIN(EVENT_DATE) AS INSTALL_DT FROM ACTIVITY GROUP BY 1) D1 LEFT JOIN ACTIVITY D2 ON D1.PLAYER_ID = D2.PLAYER_ID AND D1.INSTALL_DT + 1 = D2.EVENT_DATE GROUP BY 1",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT A1.FIRST_LOGIN AS INSTALL_DT, COUNT(DISTINCT A1.PLAYER_ID) AS INSTALLS, ROUND((SUM(CASE WHEN (A1.FIRST_LOGIN + 1) = A2.EVENT_DATE THEN 1 ELSE 0 END)/ COUNT(DISTINCT A1.PLAYER_ID)), 2) AS DAY1_RETENTION FROM (SELECT PLAYER_ID, MIN(EVENT_DATE) AS FIRST_LOGIN FROM ACTIVITY GROUP BY PLAYER_ID) AS A1 JOIN ACTIVITY AS A2 ON A1.PLAYER_ID = A2.PLAYER_ID GROUP BY A1.FIRST_LOGIN",
+  "q2_prompt_sql": "SELECT INSTALL_DT, COUNT(D1.PLAYER_ID) AS INSTALLS, ROUND(COUNT(CASE WHEN D2.PLAYER_ID THEN D2.PLAYER_ID ELSE NULL END)/CAST(COUNT(D1.PLAYER_ID) AS DECIMAL), 2) AS DAY1_RETENTION FROM (SELECT PLAYER_ID, MIN(EVENT_DATE) AS INSTALL_DT FROM ACTIVITY GROUP BY 1) D1 LEFT JOIN ACTIVITY D2 ON D1.PLAYER_ID = D2.PLAYER_ID AND D1.INSTALL_DT + 1 = D2.EVENT_DATE GROUP BY 1",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO ACTIVITY (PLAYER_ID, EVENT_DATE, DEVICE_ID, GAMES_PLAYED) VALUES (1, '2023-01-01', 101, 5), (1, '2023-01-03', 101, 3);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent because Q1 uses an INNER JOIN, which excludes players who do not have an event on the day after their first login, while Q2 uses a LEFT JOIN, which includes all players from the first login date, even if they do not have an event on the day after.",
+  "counterexample_dsp": "The difference is triggered when a player has their first login on a date but no event on the following day.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent because Q1 uses an INNER JOIN, which excludes players who do not have an event on the day after their first login, while Q2 uses a LEFT JOIN, which includes all players from the first login date, even if they do not have an event on the day after.\",\n  \"counterexample_dsp\": \"The difference is triggered when a player has their first login on a date but no event on the following day.\",\n  \"counterexample\": \"INSERT INTO ACTIVITY (PLAYER_ID, EVENT_DATE, DEVICE_ID, GAMES_PLAYED) VALUES (1, '2023-01-01', 101, 5), (1, '2023-01-03', 101, 3);\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 506,
+    "total_tokens": 684,
+    "completion_tokens": 178,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 2.985
+  },
+  "started_at": "2026-10-06T09:51:06.069854+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "2023-01-01",
+      1,
+      "0.00"
+    ]
+  ],
+  "q2_output": [
+    [
+      "2023-01-01",
+      1,
+      "0.00"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT A1.FIRST_LOGIN AS INSTALL_DT, COUNT(DISTINCT A1.PLAYER_ID) AS INSTALLS, ROUND((SUM(CASE WHEN (A1.FIRST_LOGIN + 1) = A2.EVENT_DATE THEN 1 ELSE 0 END)/ COUNT(DISTINCT A1.PLAYER_ID)), 2) AS DAY1_RETENTION FROM (SELECT PLAYER_ID, MIN(EVENT_DATE) AS FIRST_LOGIN FROM ACTIVITY GROUP BY PLAYER_ID) AS A1 JOIN ACTIVITY AS A2 ON A1.PLAYER_ID = A2.PLAYER_ID GROUP BY A1.FIRST_LOGIN",
+  "q2_validation_sql": "SELECT INSTALL_DT, COUNT(D1.PLAYER_ID) AS INSTALLS, ROUND(COUNT(CASE WHEN D2.PLAYER_ID THEN D2.PLAYER_ID ELSE NULL END)/CAST(COUNT(D1.PLAYER_ID) AS DECIMAL), 2) AS DAY1_RETENTION FROM (SELECT PLAYER_ID, MIN(EVENT_DATE) AS INSTALL_DT FROM ACTIVITY GROUP BY 1) D1 LEFT JOIN ACTIVITY D2 ON D1.PLAYER_ID = D2.PLAYER_ID AND D1.INSTALL_DT + 1 = D2.EVENT_DATE GROUP BY 1"
+}

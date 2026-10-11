@@ -1,0 +1,53 @@
+{
+  "dbid": "619",
+  "index": "560",
+  "source_index": "312",
+  "schema_ddl": "CREATE TABLE MYNUMBERS (\n    NUM INT\n);",
+  "q1": "SELECT MAX(NUM) AS NUM FROM (SELECT NUM FROM MYNUMBERS GROUP BY NUM HAVING COUNT(NUM) = 1) AS T",
+  "q2": "WITH SINGLE AS ( SELECT CASE WHEN MAX(DISTINCT NUM) THEN NUM ELSE NULL END NUM FROM MYNUMBERS GROUP BY NUM HAVING COUNT(NUM) = 1) SELECT MAX(NUM) AS NUM FROM SINGLE",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT MAX(NUM) AS NUM FROM (SELECT NUM FROM MYNUMBERS GROUP BY NUM HAVING COUNT(NUM) = 1) AS T",
+  "q2_prompt_sql": "WITH SINGLE AS ( SELECT CASE WHEN MAX(DISTINCT NUM) THEN NUM ELSE NULL END NUM FROM MYNUMBERS GROUP BY NUM HAVING COUNT(NUM) = 1) SELECT MAX(NUM) AS NUM FROM SINGLE",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO MYNUMBERS (NUM) VALUES (1), (2);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not equivalent. Q1 is intended to find the maximum unique number in the table, while Q2 attempts to find the maximum number that appears only once in the table. The difference lies in the handling of the MAX function and the CASE statement.",
+  "counterexample_dsp": "A test database with two unique numbers, where the second number is greater than the first.",
+  "equiv": "N",
+  "raw_response": "{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 and Q2 are not equivalent. Q1 is intended to find the maximum unique number in the table, while Q2 attempts to find the maximum number that appears only once in the table. The difference lies in the handling of the MAX function and the CASE statement.\",\n\"counterexample_dsp\": \"A test database with two unique numbers, where the second number is greater than the first.\",\n\"counterexample\": \"INSERT INTO MYNUMBERS (NUM) VALUES (1), (2);\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 359,
+    "total_tokens": 474,
+    "completion_tokens": 115,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 2.0
+  },
+  "started_at": "2026-10-06T14:34:26.866505+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      2
+    ]
+  ],
+  "q2_output": [
+    [
+      2
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT MAX(NUM) AS NUM FROM (SELECT NUM FROM MYNUMBERS GROUP BY NUM HAVING COUNT(NUM) = 1) AS T",
+  "q2_validation_sql": "WITH SINGLE AS ( SELECT CASE WHEN MAX(DISTINCT NUM) THEN NUM ELSE NULL END NUM FROM MYNUMBERS GROUP BY NUM HAVING COUNT(NUM) = 1) SELECT MAX(NUM) AS NUM FROM SINGLE"
+}

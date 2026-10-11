@@ -1,0 +1,39 @@
+{
+  "dbid": "183",
+  "index": "184",
+  "source_index": "102",
+  "schema_ddl": "CREATE TABLE CUSTOMERS (\n    ID INT,\n    NAME VARCHAR(255),\n    PRIMARY KEY (ID)\n);\n\nCREATE TABLE ORDERS (\n    ID INT,\n    CUSTOMERID VARCHAR(255),\n    PRIMARY KEY (ID),\n    FOREIGN KEY (CUSTOMERID) REFERENCES CUSTOMERS(ID)\n);",
+  "q1": "SELECT NAME AS CUSTOMERS FROM CUSTOMERS WHERE ID NOT IN (SELECT CUSTOMERID FROM ORDERS)",
+  "q2": "SELECT NAME AS CUSTOMERS FROM CUSTOMERS WHERE (ID NOT IN (SELECT CUSTOMERID FROM ORDERS))",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT NAME AS CUSTOMERS FROM CUSTOMERS WHERE ID NOT IN (SELECT CUSTOMERID FROM ORDERS)",
+  "q2_prompt_sql": "SELECT NAME AS CUSTOMERS FROM CUSTOMERS WHERE (ID NOT IN (SELECT CUSTOMERID FROM ORDERS))",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries select customers without orders. The parentheses in Q2's WHERE clause do not alter the logical condition, making them semantically identical.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries select customers without orders. The parentheses in Q2's WHERE clause do not alter the logical condition, making them semantically identical.\"\n}",
+  "reasoning": "\nOkay, let's take a look at these two SQL queries. The user wants to know if Q1 and Q2 are semantically equivalent. \n\nFirst, I need to understand what each query is doing. Both queries are selecting the NAME from the CUSTOMERS table where the ID is not in the list of CUSTOMERID from the ORDERS table. Wait, but looking at the structure, Q1 has the WHERE clause as ID NOT IN (subquery), and Q2 has the same condition but with an extra set of parentheses around the WHERE clause. \n\nWait, the actual difference between Q1 and Q2 is that Q1's WHERE clause is written without parentheses, while Q2 has the same condition wrapped in parentheses. But in SQL, the parentheses around the WHERE condition don't change the logic. The WHERE clause in both cases is checking if ID is not in the subquery result. So logically, they should be the same.\n\nBut maybe there's a trick here. Let me think again. The subquery in both cases is (SELECT CUSTOMERID FROM ORDERS). The only difference is that Q1's WHERE is written as \"ID NOT IN (subquery)\" and Q2's is \"WHERE (ID NOT IN (subquery))\". Parentheses in the WHERE clause usually don't affect the logic unless there's a logical operator precedence issue. But in this case, the entire condition is a single predicate. So adding parentheses around it shouldn't change the result.\n\nWait, maybe there's a typo in the original queries? Let me check again. The user wrote:\n\nQ1: SELECT NAME AS CUSTOMERS FROM CUSTOMERS WHERE ID NOT IN (SELECT CUSTOMERID FROM ORDERS)\n\nQ2: SELECT NAME AS CUSTOMERS FROM CUSTOMERS WHERE (ID NOT IN (SELECT CUSTOMERID FROM ORDERS))\n\nYes, the only difference is the parentheses around the WHERE condition in Q2. But in SQL, parentheses in the WHERE clause for a single condition don't affect the outcome. So both queries should return the same results.\n\nBut maybe there's a scenario where the parentheses could affect something? For example, if there were other conditions combined with AND or OR. But in this case, both queries have the same single condition. Therefore, the two queries are semantically equivalent. \n\nSo the answer should be that they are equivalent. Therefore, the equiv is Y, and the explanation is that the parentheses in Q2's WHERE clause do not alter the logical condition, so both queries produce the same result.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 360,
+    "total_tokens": 916,
+    "completion_tokens": 556,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 511
+    },
+    "generation_seconds": 17.485
+  },
+  "started_at": "2026-10-06T14:49:46.070473+00:00",
+  "elapsed_seconds": 0.0
+}

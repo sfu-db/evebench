@@ -1,0 +1,55 @@
+{
+  "dbid": "financial",
+  "index": "89",
+  "source_index": "115",
+  "schema_ddl": "CREATE TABLE account\n(\n    account_id  INTEGER default 0 not null\n        primary key,\n    district_id INTEGER default 0 not null,\n    frequency   TEXT   not null,\n    date        DATE          not null,\n    foreign key (district_id) references district (district_id)\n);\n\nCREATE TABLE card\n(\n    card_id INTEGER default 0 not null\n        primary key,\n    disp_id INTEGER           not null,\n    type    TEXT    not null,\n    issued  DATE          not null,\n    foreign key (disp_id) references disp (disp_id)\n);\n\nCREATE TABLE client\n(\n    client_id   INTEGER        not null\n        primary key,\n    gender      TEXT not null,\n    birth_date  DATE       not null,\n    district_id INTEGER        not null,\n    foreign key (district_id) references district (district_id)\n);\n\nCREATE TABLE disp\n(\n    disp_id    INTEGER        not null\n        primary key,\n    client_id  INTEGER        not null,\n    account_id INTEGER        not null,\n    type      TEXT not null,\n    foreign key (account_id) references account (account_id),\n    foreign key (client_id) references client (client_id)\n);\n\nCREATE TABLE district\n(\n    district_id INTEGER default 0 not null\n        primary key,\n    A2          TEXT   not null,\n    A3          TEXT   not null,\n    A4          TEXT       not null,\n    A5          TEXT           not null,\n    A6          TEXT           not null,\n    A7          TEXT           not null,\n    A8          INTEGER        not null,\n    A9          INTEGER           not null,\n    A10         REAL not null,\n    A11         INTEGER           not null,\n    A12         REAL null,\n    A13         REAL not null,\n    A14         INTEGER           not null,\n    A15         INTEGER        null,\n    A16         INTEGER          not null\n);\n\nCREATE TABLE loan\n(\n    loan_id    INTEGER default 0 not null\n        primary key,\n    account_id INTEGER           not null,\n    date       DATE          not null,\n    amount     INTEGER           not null,\n    duration   INTEGER           not null,\n    payments   REAL not null,\n    status     TEXT    not null,\n    foreign key (account_id) references account (account_id)\n);\n\nCREATE TABLE \"order\"\n(\n    order_id   INTEGER default 0 not null\n        primary key,\n    account_id INTEGER           not null,\n    bank_to    TEXT    not null,\n    account_to INTEGER           not null,\n    amount     REAL not null,\n    k_symbol   TEXT    not null,\n    foreign key (account_id) references account (account_id)\n);\n\nCREATE TABLE trans\n(\n    trans_id   INTEGER default 0    not null\n        primary key,\n    account_id INTEGER default 0    not null,\n    date       DATE             not null,\n    type       TEXT       not null,\n    operation  TEXT      null,\n    amount     INTEGER              not null,\n    balance    INTEGER             not null,\n    k_symbol   TEXT      null,\n    bank       TEXT       null,\n    account    INTEGER          null,\n    foreign key (account_id) references account (account_id)\n);",
+  "q1": "SELECT T1.account_id FROM account AS T1 INNER JOIN district AS T2 ON T1.district_id = T2.district_id WHERE T2.A3 = 'Prague' ORDER BY T1.date ASC LIMIT 1",
+  "q2": "SELECT T1.account_id FROM account AS T1 INNER JOIN district AS T2 ON T1.district_id = T2.district_id WHERE T2.A3 = 'Prague' ORDER BY T1.date LIMIT 1",
+  "dialect": "sqlite",
+  "ground_truth": "EQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT T1.account_id FROM account AS T1 INNER JOIN district AS T2 ON T1.district_id = T2.district_id WHERE T2.A3 = 'Prague' ORDER BY T1.date ASC LIMIT 1",
+  "q2_prompt_sql": "SELECT T1.account_id FROM account AS T1 INNER JOIN district AS T2 ON T1.district_id = T2.district_id WHERE T2.A3 = 'Prague' ORDER BY T1.date LIMIT 1",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO district (district_id, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16) VALUES (1, 'A', 'Prague', 'B', 'C', 'D', 'E', 1, 2, 3.0, 4, 5.0, 6.0, 7, 8, 9);\nINSERT INTO account (account_id, district_id, frequency, date) VALUES (101, 1, 'DAILY', '2020-01-01');\nINSERT INTO account (account_id, district_id, frequency, date) VALUES (102, 1, 'DAILY', '2020-01-02');",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent because the ORDER BY clause in Q1 explicitly specifies T1.date ASC while Q2 uses T1.date without an explicit ASC keyword. In most SQL implementations, the default sort order is ASC, so the behavior may seem similar. However, in some SQL dialects or under specific query optimizations, the absence of ASC could be interpreted differently, especially if there is ambiguity. The difference is minor but theoretically possible.",
+  "counterexample_dsp": "Create a test database with two accounts in the 'Prague' district, one with an earlier date and one with a later date. Q1 will return the account with the earlier date due to ORDER BY T1.date ASC, while Q2 will also return the same account since ASC is the default. However, if a different dialect or engine interprets T1.date without ASC differently, it could yield a different result.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 and Q2 are not semantically equivalent because the ORDER BY clause in Q1 explicitly specifies T1.date ASC while Q2 uses T1.date without an explicit ASC keyword. In most SQL implementations, the default sort order is ASC, so the behavior may seem similar. However, in some SQL dialects or under specific query optimizations, the absence of ASC could be interpreted differently, especially if there is ambiguity. The difference is minor but theoretically possible.\",\n\"counterexample_dsp\": \"Create a test database with two accounts in the 'Prague' district, one with an earlier date and one with a later date. Q1 will return the account with the earlier date due to ORDER BY T1.date ASC, while Q2 will also return the same account since ASC is the default. However, if a different dialect or engine interprets T1.date without ASC differently, it could yield a different result.\",\n\"counterexample\": \"INSERT INTO district (district_id, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16) VALUES (1, 'A', 'Prague', 'B', 'C', 'D', 'E', 1, 2, 3.0, 4, 5.0, 6.0, 7, 8, 9);\\nINSERT INTO account (account_id, district_id, frequency, date) VALUES (101, 1, 'DAILY', '2020-01-01');\\nINSERT INTO account (account_id, district_id, frequency, date) VALUES (102, 1, 'DAILY', '2020-01-02');\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 1012,
+    "total_tokens": 1416,
+    "completion_tokens": 404,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 14.172
+  },
+  "started_at": "2026-10-06T21:09:56.465020+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      101
+    ]
+  ],
+  "q2_output": [
+    [
+      101
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT T1.account_id FROM account AS T1 INNER JOIN district AS T2 ON T1.district_id = T2.district_id WHERE T2.A3 = 'Prague' ORDER BY T1.date ASC LIMIT 1",
+  "q2_validation_sql": "SELECT T1.account_id FROM account AS T1 INNER JOIN district AS T2 ON T1.district_id = T2.district_id WHERE T2.A3 = 'Prague' ORDER BY T1.date LIMIT 1"
+}

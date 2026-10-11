@@ -1,0 +1,67 @@
+{
+  "dbid": "175",
+  "index": "493",
+  "source_index": "8",
+  "schema_ddl": "CREATE TABLE PERSON (\n    PERSONID INT,\n    FIRSTNAME VARCHAR(255),\n    LASTNAME VARCHAR(255),\n    PRIMARY KEY (PERSONID)\n);\n\nCREATE TABLE ADDRESS (\n    ADDRESSID INT,\n    PERSONID INT,\n    CITY VARCHAR(255),\n    STATE VARCHAR(255),\n    PRIMARY KEY (ADDRESSID, PERSONID),\n    FOREIGN KEY (PERSONID) REFERENCES PERSON(PERSONID)\n);",
+  "q1": "SELECT FIRSTNAME, LASTNAME, CITY, STATE FROM PERSON AS P LEFT OUTER JOIN ADDRESS AS A ON P.PERSONID = A.PERSONID",
+  "q2": "SELECT FIRSTNAME, LASTNAME, CITY, STATE FROM PERSON LEFT JOIN ADDRESS ON PERSON.PERSONID = ADDRESS.PERSONID WHERE PERSON.PERSONID > 0",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT FIRSTNAME, LASTNAME, CITY, STATE FROM PERSON AS P LEFT OUTER JOIN ADDRESS AS A ON P.PERSONID = A.PERSONID",
+  "q2_prompt_sql": "SELECT FIRSTNAME, LASTNAME, CITY, STATE FROM PERSON LEFT JOIN ADDRESS ON PERSON.PERSONID = ADDRESS.PERSONID WHERE PERSON.PERSONID > 0",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO PERSON (PERSONID, FIRSTNAME, LASTNAME) VALUES (0, 'Alice', 'Smith');\nINSERT INTO PERSON (PERSONID, FIRSTNAME, LASTNAME) VALUES (1, 'Bob', 'Johnson');\nINSERT INTO ADDRESS (ADDRESSID, PERSONID, CITY, STATE) VALUES (1, 1, 'New York', 'NY');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 includes all persons with a LEFT JOIN, while Q2 filters out persons with PERSONID <= 0 via the WHERE clause. A person with PERSONID = 0 in PERSON but no matching ADDRESS row will appear in Q1 but not in Q2.",
+  "counterexample_dsp": "Insert a person with PERSONID = 0 (no address) and a person with PERSONID = 1 (with address). Q1 returns both rows (NULLs for person 0's address), Q2 excludes person 0 due to WHERE PERSON.PERSONID > 0.",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 includes all persons with a LEFT JOIN, while Q2 filters out persons with PERSONID <= 0 via the WHERE clause. A person with PERSONID = 0 in PERSON but no matching ADDRESS row will appear in Q1 but not in Q2.\",\n  \"counterexample_dsp\": \"Insert a person with PERSONID = 0 (no address) and a person with PERSONID = 1 (with address). Q1 returns both rows (NULLs for person 0's address), Q2 excludes person 0 due to WHERE PERSON.PERSONID > 0.\",\n  \"counterexample\": [\n    \"INSERT INTO PERSON (PERSONID, FIRSTNAME, LASTNAME) VALUES (0, 'Alice', 'Smith');\",\n    \"INSERT INTO PERSON (PERSONID, FIRSTNAME, LASTNAME) VALUES (1, 'Bob', 'Johnson');\",\n    \"INSERT INTO ADDRESS (ADDRESSID, PERSONID, CITY, STATE) VALUES (1, 1, 'New York', 'NY');\"\n  ]\n}",
+  "reasoning": "\nOkay, let's see. I need to find a counterexample where Q1 and Q2 return different results. The user says they're not semantically equivalent, so I have to figure out why.\n\nFirst, looking at Q1: It's a LEFT OUTER JOIN between PERSON and ADDRESS on PERSONID. That means all rows from PERSON are included, even if there's no matching ADDRESS row. So if a person has no address, their city and state would be NULL.\n\nQ2 is a LEFT JOIN as well, but with an additional WHERE condition: PERSON.PERSONID > 0. Wait, but the LEFT JOIN already includes all PERSON rows. However, the WHERE clause could affect the result. Wait, no—LEFT JOIN with a WHERE on the left table's column. Wait, the WHERE condition here is on PERSON.PERSONID > 0. But since LEFT JOIN includes all rows from PERSON, even those with no address. But if a person's PERSONID is 0, then the WHERE would exclude them. But if the PERSON table has a person with PERSONID = 0, then Q2 would exclude that person, while Q1 would include them (with NULLs for address fields).\n\nWait, but the original question says that the counterexample shouldn't violate constraints. The primary key of PERSON is PERSONID, which is an INT. So it's possible for a person to have PERSONID = 0. Let me check the schema again. The PERSON table's primary key is PERSONID, which is an INT. So yes, a person can have 0 as their ID.\n\nSo if there's a person with PERSONID = 0, then Q1 would include them with NULL city and state. But Q2 has a WHERE PERSON.PERSONID > 0, which would exclude that person. Therefore, in that case, Q1 returns that person with NULLs, while Q2 does not. So that's a difference.\n\nBut wait, what if there are other conditions? Let me think of a scenario. Let's create a test case where there's a person with PERSONID = 0, and another person with PERSONID = 1. Suppose person 0 has no address, and person 1 has an address. Then Q1 would return both, with person 0's address fields as NULL. Q2 would return only person 1, since person 0's ID is not greater than 0. So that would be a difference.\n\nAlternatively, maybe the WHERE clause is on the PERSON table's column. Wait, in Q2, the ON clause is PERSON.PERSONID = ADDRESS.PERSONID, and the WHERE is PERSON.PERSONID > 0. Since LEFT JOIN on PERSON, the WHERE condition on PERSON.PERSONID would filter out any rows where that column is not greater than 0. So yes, that would exclude any person with PERSONID <= 0.\n\nTherefore, if there's a person with PERSONID = 0, then Q1 includes them, Q2 excludes them. That's a clear difference.\n\nSo the counterexample would involve inserting a person with PERSONID = 0 and no address, and another person with PERSONID = 1 and an address. Then Q1 returns both rows (with person 0's address as NULL), while Q2 returns only person 1's row.\n\nLet me test this. Suppose:\n\nINSERT INTO PERSON (PERSONID, FIRSTNAME, LASTNAME) VALUES (0, 'Alice', 'Smith');\nINSERT INTO PERSON (PERSONID, FIRSTNAME, LASTNAME) VALUES (1, 'Bob', 'Johnson');\nINSERT INTO ADDRESS (ADDRESSID, PERSONID, CITY, STATE) VALUES (1, 1, 'New York', 'NY');\n\nThen Q1 would return two rows: Alice with NULL city and state, and Bob with New York, NY. Q2 would return only Bob's row because the WHERE condition excludes PERSONID 0.\n\nYes, that's a valid counterexample. Also, the schema allows PERSONID to be 0 since it's an INT. The primary key is just a single column, so 0 is allowed.\n\nAnother thing to check: the ADDRESS table's primary key is (ADDRESSID, PERSONID). So each address must have a unique combination. But that's fine here.\n\nSo the explanation is that Q2 has a WHERE clause that excludes persons with PERSONID <= 0, while Q1 doesn't have that filter. Therefore, any person with PERSONID <= 0 will be in Q1's result but not in Q2's. Hence, the counterexample needs such a person.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 353,
+    "total_tokens": 1521,
+    "completion_tokens": 1168,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 946
+    },
+    "generation_seconds": 41.344
+  },
+  "started_at": "2026-10-06T14:08:06.111564+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "Alice",
+      "Smith",
+      null,
+      null
+    ],
+    [
+      "Bob",
+      "Johnson",
+      "New York",
+      "NY"
+    ]
+  ],
+  "q2_output": [
+    [
+      "Bob",
+      "Johnson",
+      "New York",
+      "NY"
+    ]
+  ],
+  "q1_row_count": 2,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT FIRSTNAME, LASTNAME, CITY, STATE FROM PERSON AS P LEFT OUTER JOIN ADDRESS AS A ON P.PERSONID = A.PERSONID",
+  "q2_validation_sql": "SELECT FIRSTNAME, LASTNAME, CITY, STATE FROM PERSON LEFT JOIN ADDRESS ON PERSON.PERSONID = ADDRESS.PERSONID WHERE PERSON.PERSONID > 0"
+}

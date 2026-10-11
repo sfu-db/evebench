@@ -1,0 +1,59 @@
+{
+  "dbid": "1097",
+  "index": "551",
+  "source_index": "496",
+  "schema_ddl": "CREATE TABLE ACTIVITY (\n    PLAYER_ID INT,\n    EVENT_DATE DATE,\n    DEVICE_ID INT,\n    GAMES_PLAYED INT,\n    PRIMARY KEY (PLAYER_ID, EVENT_DATE),\n    CHECK (GAMES_PLAYED >= 0)\n);",
+  "q1": "SELECT A1.FIRST_LOGIN AS INSTALL_DT, COUNT(DISTINCT A1.PLAYER_ID) AS INSTALLS, ROUND((SUM(CASE WHEN (A1.FIRST_LOGIN + 1) = A2.EVENT_DATE THEN 1 ELSE 0 END)/ COUNT(DISTINCT A1.PLAYER_ID)), 2) AS DAY1_RETENTION FROM (SELECT PLAYER_ID, MIN(EVENT_DATE) AS FIRST_LOGIN FROM ACTIVITY GROUP BY PLAYER_ID) AS A1 JOIN ACTIVITY AS A2 ON A1.PLAYER_ID = A2.PLAYER_ID GROUP BY A1.FIRST_LOGIN",
+  "q2": "WITH INSTALL_DATE AS ( SELECT PLAYER_ID, MIN(EVENT_DATE) AS INSTALL_DT FROM ACTIVITY GROUP BY 1 ) SELECT A.INSTALL_DT, COUNT(A.PLAYER_ID) AS INSTALLS, ROUND(SUM(CASE WHEN B.PLAYER_ID>0 THEN 1 ELSE 0 END)/COUNT(A.PLAYER_ID),2) AS DAY1_RETENTION FROM INSTALL_DATE A LEFT JOIN (SELECT ID.INSTALL_DT, ID.PLAYER_ID FROM INSTALL_DATE ID JOIN ACTIVITY A ON ID.INSTALL_DT=A.EVENT_DATE-1 AND ID.PLAYER_ID = A.PLAYER_ID ) B ON A.INSTALL_DT=B.INSTALL_DT AND A.PLAYER_ID = B.PLAYER_ID GROUP BY 1",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT A1.FIRST_LOGIN AS INSTALL_DT, COUNT(DISTINCT A1.PLAYER_ID) AS INSTALLS, ROUND((SUM(CASE WHEN (A1.FIRST_LOGIN + 1) = A2.EVENT_DATE THEN 1 ELSE 0 END)/ COUNT(DISTINCT A1.PLAYER_ID)), 2) AS DAY1_RETENTION FROM (SELECT PLAYER_ID, MIN(EVENT_DATE) AS FIRST_LOGIN FROM ACTIVITY GROUP BY PLAYER_ID) AS A1 JOIN ACTIVITY AS A2 ON A1.PLAYER_ID = A2.PLAYER_ID GROUP BY A1.FIRST_LOGIN",
+  "q2_prompt_sql": "WITH INSTALL_DATE AS ( SELECT PLAYER_ID, MIN(EVENT_DATE) AS INSTALL_DT FROM ACTIVITY GROUP BY 1 ) SELECT A.INSTALL_DT, COUNT(A.PLAYER_ID) AS INSTALLS, ROUND(SUM(CASE WHEN B.PLAYER_ID>0 THEN 1 ELSE 0 END)/COUNT(A.PLAYER_ID),2) AS DAY1_RETENTION FROM INSTALL_DATE A LEFT JOIN (SELECT ID.INSTALL_DT, ID.PLAYER_ID FROM INSTALL_DATE ID JOIN ACTIVITY A ON ID.INSTALL_DT=A.EVENT_DATE-1 AND ID.PLAYER_ID = A.PLAYER_ID ) B ON A.INSTALL_DT=B.INSTALL_DT AND A.PLAYER_ID = B.PLAYER_ID GROUP BY 1",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO ACTIVITY (PLAYER_ID, EVENT_DATE, DEVICE_ID, GAMES_PLAYED) VALUES (0, '2023-01-01', 1, 0), (0, '2023-01-02', 2, 1), (1, '2023-01-01', 3, 0);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 differ in how they handle player IDs during retention calculation. Q1 counts all players with an event on the day after their first login, while Q2 only counts players with PLAYER_ID > 0 in the joined subquery B. This leads to different results when a player with PLAYER_ID = 0 has a day-1 event.",
+  "counterexample_dsp": "Test data includes Player 0 with first login on 2023-01-01 and a day-1 event, and Player 1 with first login on 2023-01-01 but no day-1 event. Q1 counts Player 0 as retained, but Q2 does not due to the PLAYER_ID > 0 check.",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 and Q2 differ in how they handle player IDs during retention calculation. Q1 counts all players with an event on the day after their first login, while Q2 only counts players with PLAYER_ID > 0 in the joined subquery B. This leads to different results when a player with PLAYER_ID = 0 has a day-1 event.\",\n  \"counterexample_dsp\": \"Test data includes Player 0 with first login on 2023-01-01 and a day-1 event, and Player 1 with first login on 2023-01-01 but no day-1 event. Q1 counts Player 0 as retained, but Q2 does not due to the PLAYER_ID > 0 check.\",\n  \"counterexample\": \"INSERT INTO ACTIVITY (PLAYER_ID, EVENT_DATE, DEVICE_ID, GAMES_PLAYED) VALUES (0, '2023-01-01', 1, 0), (0, '2023-01-02', 2, 1), (1, '2023-01-01', 3, 0);\"\n}",
+  "reasoning": "\nOkay, I need to figure out why Q1 and Q2 are not equivalent and create a counterexample where they produce different results. Let me start by understanding both queries.\n\nLooking at Q1: It first finds the first login date for each player (A1), then joins with the ACTIVITY table (A2) on the same player. For each install date, it counts the distinct players and calculates the day 1 retention by checking if the player had an event on the day after their first login. The retention rate is the sum of those cases divided by the total installs, rounded to two decimals.\n\nNow Q2 uses a CTE called INSTALL_DATE to get the first login date for each player. Then it left joins with a subquery B that finds players who have an event on the day after their install date. The retention is calculated by counting the non-null entries in B divided by the total installs. Wait, but in Q2's subquery B, they're joining INSTALL_DATE with ACTIVITY where EVENT_DATE is INSTALL_DT + 1. But the condition in the JOIN is ID.INSTALL_DT = A.EVENT_DATE -1. So that's equivalent to A.EVENT_DATE = ID.INSTALL_DT +1. So B is getting the events that happen exactly one day after the install date. Then, in the main query, they left join A (install dates) with B on the same install date and player ID. The retention is SUM(CASE WHEN B.PLAYER_ID>0 THEN 1 ELSE 0 END) divided by count of installs. Wait, but B.PLAYER_ID is not necessarily >0. Wait, the CASE statement in Q2 is checking if B.PLAYER_ID >0. But the PLAYER_ID is an INT, and in the ACTIVITY table, it's part of the primary key, so it can't be zero? Wait, the schema says PLAYER_ID is an INT, but the primary key is (PLAYER_ID, EVENT_DATE). The check constraint is on GAMES_PLAYED >=0, but PLAYER_ID can be zero? Wait, the schema doesn't have a check on PLAYER_ID. So if a player has ID 0, that's allowed. But in the subquery B, the JOIN condition is on ID.PLAYER_ID = A.PLAYER_ID. So if a player has a zero ID, then B.PLAYER_ID would be zero, and the CASE WHEN B.PLAYER_ID>0 would be false. So in Q2, the retention count is only those players who have an event on the next day and their player ID is greater than zero. Wait, that's a problem. Because in Q1, the condition is checking if A1.FIRST_LOGIN +1 equals A2.EVENT_DATE. So for a player who has an event on the next day, regardless of their player ID, it would count. But in Q2, the CASE is checking if B.PLAYER_ID >0. So if a player has a player ID of zero, even if they have an event on the next day, it's not counted. That's a difference.\n\nSo the key difference is that Q1 counts all players who have an event on the next day, while Q2 only counts those where B.PLAYER_ID is greater than zero. Therefore, if there's a player with PLAYER_ID = 0 who has an event on the next day, Q1 would count them, but Q2 would not. That would make their results different.\n\nSo to create a counterexample, I need a scenario where a player with ID 0 has their first login on day X, and an event on day X+1. Then, Q1 would count that as a retention, but Q2 would not because B.PLAYER_ID is 0, which is not >0.\n\nLet me think of a test case. Let's say:\n\nPlayer 0 has first login on 2023-01-01 (install_dt), and an event on 2023-01-02 (the next day). So Q1 would count this as a retention. But in Q2's subquery B, when joining, the B.PLAYER_ID would be 0, so the CASE WHEN would return 0. Therefore, the retention in Q2 would not count this player.\n\nSo in this case, Q1 would have a higher retention rate than Q2.\n\nAnother player, say player 1, has first login on 2023-01-01, and no event on 2023-01-02. Then, both queries would not count them. But if there's another player with ID 1 who has an event on the next day, then Q2 would count them, and Q1 would as well.\n\nSo the test data would need:\n\n- Player 0 with first login on 2023-01-01 and an event on 2023-01-02.\n- Player 1 with first login on 2023-01-01 and no event on 2023-01-02.\n\nThen, for install_dt 2023-01-01:\n\nQ1's install count is 2 (players 0 and 1). The retention is (1/2) = 0.5.\n\nQ2's install count is 2. The retention would be (0/2) = 0.0, because player 0's B.PLAYER_ID is 0, so the CASE returns 0, and player 1 has no event, so B is null. So SUM is 0.\n\nSo the results would differ.\n\nBut wait, in Q2, the subquery B is:\n\nSELECT ID.INSTALL_DT, ID.PLAYER_ID FROM INSTALL_DATE ID JOIN ACTIVITY A ON ID.INSTALL_DT = A.EVENT_DATE -1 AND ID.PLAYER_ID = A.PLAYER_ID.\n\nSo for player 0, their install_dt is 2023-01-01. Then, in the subquery B, we look for events where EVENT_DATE is install_dt +1 (i.e., 2023-01-02) and same player. So player 0 has such an event. So B would have a row with INSTALL_DT 2023-01-01 and PLAYER_ID 0. Then, in the main query, when we left join A (install dates) with B on A.INSTALL_DT = B.INSTALL_DT and A.PLAYER_ID = B.PLAYER_ID. So for player 0, B has a row, so B.PLAYER_ID is 0. The CASE WHEN B.PLAYER_ID >0 is false, so it adds 0. For player 1, there's no such event, so B is null, and the CASE returns 0. So the sum is 0, divided by 2, which is 0.0.\n\nIn Q1, the same case: player 0 has an event on the next day, so the CASE returns 1, and player 1 does not, so sum is 1. Divided by 2, 0.5.\n\nSo the two queries would return different results. Therefore, this test case would work.\n\nNow, I need to create the test data. The schema requires that the primary key is (PLAYER_ID, EVENT_DATE). So for player 0, we need to insert events on 2023-01-01 (first login) and 2023-01-02. But wait, the first login is the minimum event date. So for player 0, the first login is 2023-01-01, and then another event on 2023-01-02. For player 1, their first login is 2023-01-01, and no event on 2023-01-02.\n\nSo inserting:\n\nINSERT INTO ACTIVITY (PLAYER_ID, EVENT_DATE, DEVICE_ID, GAMES_PLAYED) VALUES\n(0, '2023-01-01', 1, 0),\n(0, '2023-01-02', 2, 1),\n(1, '2023-01-01', 3, 0);\n\nWait, but the primary key is (PLAYER_ID, EVENT_DATE), so each player can have multiple events on different dates. That's okay. Also, GAMES_PLAYED is >=0, which is satisfied here.\n\nThis setup would make Q1 and Q2 return different results. So this should be the counterexample.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 512,
+    "total_tokens": 2588,
+    "completion_tokens": 2076,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1816
+    },
+    "generation_seconds": 72.937
+  },
+  "started_at": "2026-10-06T12:06:24.424046+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "2023-01-01",
+      2,
+      "0.50"
+    ]
+  ],
+  "q2_output": [
+    [
+      "2023-01-01",
+      2,
+      "0.00"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT A1.FIRST_LOGIN AS INSTALL_DT, COUNT(DISTINCT A1.PLAYER_ID) AS INSTALLS, ROUND((SUM(CASE WHEN (A1.FIRST_LOGIN + 1) = A2.EVENT_DATE THEN 1 ELSE 0 END)/ COUNT(DISTINCT A1.PLAYER_ID)), 2) AS DAY1_RETENTION FROM (SELECT PLAYER_ID, MIN(EVENT_DATE) AS FIRST_LOGIN FROM ACTIVITY GROUP BY PLAYER_ID) AS A1 JOIN ACTIVITY AS A2 ON A1.PLAYER_ID = A2.PLAYER_ID GROUP BY A1.FIRST_LOGIN",
+  "q2_validation_sql": "WITH INSTALL_DATE AS ( SELECT PLAYER_ID, MIN(EVENT_DATE) AS INSTALL_DT FROM ACTIVITY GROUP BY 1 ) SELECT A.INSTALL_DT, COUNT(A.PLAYER_ID) AS INSTALLS, ROUND(SUM(CASE WHEN B.PLAYER_ID>0 THEN 1 ELSE 0 END)/COUNT(A.PLAYER_ID),2) AS DAY1_RETENTION FROM INSTALL_DATE A LEFT JOIN (SELECT ID.INSTALL_DT, ID.PLAYER_ID FROM INSTALL_DATE ID JOIN ACTIVITY A ON ID.INSTALL_DT=A.EVENT_DATE-1 AND ID.PLAYER_ID = A.PLAYER_ID ) B ON A.INSTALL_DT=B.INSTALL_DT AND A.PLAYER_ID = B.PLAYER_ID GROUP BY 1"
+}

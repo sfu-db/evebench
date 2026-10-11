@@ -1,0 +1,55 @@
+{
+  "dbid": "toxicology",
+  "index": "167",
+  "source_index": "235",
+  "schema_ddl": "CREATE TABLE `atom` (\n  `atom_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `element` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `bond` (\n  `bond_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `bond_type` TEXT DEFAULT NULL,\n  PRIMARY KEY (`bond_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `connected` (\n  `atom_id` TEXT NOT NULL,\n  `atom_id2` TEXT NOT NULL,\n  `bond_id` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`,`atom_id2`),\n  FOREIGN KEY (`atom_id`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`atom_id2`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`bond_id`) REFERENCES `bond` (`bond_id`) ON DELETE CASCADE ON UPDATE CASCADE\n);\n\nCREATE TABLE `molecule` (\n  `molecule_id` TEXT NOT NULL,\n  `label` TEXT DEFAULT NULL,\n  PRIMARY KEY (`molecule_id`)\n);",
+  "q1": "SELECT COUNT(T2.bond_id) FROM bond AS T1 INNER JOIN connected AS T2 ON T1.bond_id = T2.bond_id WHERE T1.molecule_id = 'TR009' AND T2.atom_id = T1.molecule_id || '_1' AND T2.atom_id2 = T1.molecule_id || '_2'",
+  "q2": "SELECT COUNT(bond_id) FROM connected WHERE (atom_id = 'TR009_12' OR atom_id2 = 'TR009_12') AND bond_id LIKE 'TR009_%'",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT COUNT(T2.bond_id) FROM bond AS T1 INNER JOIN connected AS T2 ON T1.bond_id = T2.bond_id WHERE T1.molecule_id = 'TR009' AND T2.atom_id = T1.molecule_id || '_1' AND T2.atom_id2 = T1.molecule_id || '_2'",
+  "q2_prompt_sql": "SELECT COUNT(bond_id) FROM connected WHERE (atom_id = 'TR009_12' OR atom_id2 = 'TR009_12') AND bond_id LIKE 'TR009_%'",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO molecule (molecule_id) VALUES ('TR009');\nINSERT INTO atom (atom_id, molecule_id) VALUES ('TR009_1', 'TR009'), ('TR009_2', 'TR009'), ('TR009_12', 'TR009');\nINSERT INTO bond (bond_id, molecule_id) VALUES ('TR009_bond1', 'TR009');\nINSERT INTO connected (atom_id, atom_id2, bond_id) VALUES ('TR009_1', 'TR009_2', 'TR009_bond1');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 differ in their WHERE clause conditions. Q1 constructs atom identifiers dynamically using T1.molecule_id concatenated with '_1' and '_2', while Q2 explicitly checks for atom identifiers containing '_12'. Additionally, Q2 uses a LIKE pattern on bond_id, whereas Q1 relies on the bond table's molecule_id constraint.",
+  "counterexample_dsp": "A connected row matching Q1's conditions (atom_id='TR009_1', atom_id2='TR009_2') but not Q2's (no '_12'). Conversely, a connected row matching Q2's conditions (atom_id='TR009_12') but not Q1's.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n  \"equiv\": \"N\",\n  \"explanation\": \"Q1 and Q2 differ in their WHERE clause conditions. Q1 constructs atom identifiers dynamically using T1.molecule_id concatenated with '_1' and '_2', while Q2 explicitly checks for atom identifiers containing '_12'. Additionally, Q2 uses a LIKE pattern on bond_id, whereas Q1 relies on the bond table's molecule_id constraint.\",\n  \"counterexample_dsp\": \"A connected row matching Q1's conditions (atom_id='TR009_1', atom_id2='TR009_2') but not Q2's (no '_12'). Conversely, a connected row matching Q2's conditions (atom_id='TR009_12') but not Q1's.\",\n  \"counterexample\": \"INSERT INTO molecule (molecule_id) VALUES ('TR009');\\nINSERT INTO atom (atom_id, molecule_id) VALUES ('TR009_1', 'TR009'), ('TR009_2', 'TR009'), ('TR009_12', 'TR009');\\nINSERT INTO bond (bond_id, molecule_id) VALUES ('TR009_bond1', 'TR009');\\nINSERT INTO connected (atom_id, atom_id2, bond_id) VALUES ('TR009_1', 'TR009_2', 'TR009_bond1');\"\n}",
+  "reasoning": "\nOkay, let's try to figure out if these two SQL queries are equivalent. First, I need to understand what each query is doing.\n\nStarting with Q1: It selects the count of T2.bond_id from bond T1 joined with connected T2 on bond_id. The WHERE clause has T1.molecule_id = 'TR009', and then T2.atom_id equals T1.molecule_id concatenated with '_1', and similarly T2.atom_id2 equals T1.molecule_id concatenated with '_2'. So for molecule 'TR009', it's looking for connected entries where atom_id is 'TR009_1' and atom_id2 is 'TR009_2'. Then it counts those bonds.\n\nNow Q2: It selects the count of bond_id from connected where either atom_id or atom_id2 is 'TR009_12', and bond_id starts with 'TR009_'. So it's looking for connected rows that have atom_id or atom_id2 equal to 'TR009_12' and bond_id like 'TR009_%'.\n\nHmm, the main difference seems to be the conditions in the WHERE clauses. Let me break them down.\n\nIn Q1, the atom_id and atom_id2 are constructed by taking the molecule_id from the bond table (which is 'TR009') and appending '_1' and '_2' respectively. So the atom_ids would be 'TR009_1' and 'TR009_2'.\n\nIn Q2, the condition checks if atom_id or atom_id2 is 'TR009_12', which is a different string. Also, the bond_id in Q2 must start with 'TR009_', but in Q1, the bond_id comes from the bond table where molecule_id is 'TR009'. So bond_ids in the bond table for molecule_id 'TR009' would have that same prefix.\n\nSo Q1 is looking for connected entries where atom_id is 'TR009_1' and atom_id2 is 'TR009_2', and the bond is from molecule TR009. Q2 is looking for connected entries where either atom is 'TR009_12' and bond_id starts with 'TR009_'.\n\nThese conditions are different. For example, if there's a connected entry with atom_id 'TR009_1' and atom_id2 'TR009_2', it would be counted in Q1 but not in Q2 because Q2's atom_id check is for 'TR009_12'. Conversely, if there's a connected entry with atom_id 'TR009_12' and bond_id 'TR009_something', that would be counted in Q2 but not in Q1.\n\nTherefore, they are not equivalent. To create a counterexample, I need a scenario where one query returns a count different from the other.\n\nLet me think of a test case. Suppose I have a bond with bond_id 'TR009_bond1' and molecule_id 'TR009'. Then in connected, there's a row with atom_id 'TR009_1', atom_id2 'TR009_2', bond_id 'TR009_bond1'. This would be counted by Q1 but not Q2 since the atom_ids don't match 'TR009_12'.\n\nAnother scenario: a connected row with atom_id 'TR009_12', atom_id2 'something', bond_id 'TR009_other'. This would be counted by Q2 but not Q1 because the atom_ids don't match the concatenated ones from Q1.\n\nSo inserting these two rows would make the counts differ. Let me structure the test data accordingly.\n\nFirst, create the necessary entries in bond and connected. Also, need atoms for those atom_ids. But since the atom table's molecule_id is referenced, I need to make sure those atoms are in the molecule table.\n\nWait, the atom table has molecule_id. So for atom_id 'TR009_1', the molecule_id should be 'TR009'. Similarly for 'TR009_2' and 'TR009_12'.\n\nSo inserting into molecule: molecule_id 'TR009'.\n\nThen atoms: insert atom_id 'TR009_1' with molecule_id 'TR009', atom_id 'TR009_2' with same, and atom_id 'TR009_12' with same.\n\nBond: insert bond_id 'TR009_bond1' with molecule_id 'TR009'.\n\nConnected: two rows. One with atom_id 'TR009_1', atom_id2 'TR009_2', bond_id 'TR009_bond1' (counted by Q1). Another row with atom_id 'TR009_12', atom_id2 'TR009_2', bond_id 'TR009_bond2' (counted by Q2).\n\nIn this case, Q1 would count 1 (the first connected row), Q2 would count 1 (the second connected row). But if there's only one row for each, then they are different. Alternatively, maybe a case where Q1 counts 1 and Q2 counts 0, or vice versa.\n\nWait, in the example I thought of, Q1 counts 1 (from the first connected row), and Q2 counts 1 (from the second connected row). But if I have only one connected row that matches Q1 but none that match Q2, then Q1 would return 1 and Q2 0. Or vice versa.\n\nAlternatively, maybe a scenario where Q1 returns 1 and Q2 returns 0. Let me set up that case.\n\nLet me have connected row with atom_id 'TR009_1', atom_id2 'TR009_2', bond_id 'TR009_bond1'. Then Q1 counts 1. Q2's condition is (atom_id = 'TR009_12' OR atom_id2 = 'TR009_12') which is not met here. So Q2 returns 0. Therefore, they are different.\n\nSo in this case, Q1 returns 1 and Q2 returns 0. Hence, they are not equivalent.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 642,
+    "total_tokens": 2315,
+    "completion_tokens": 1673,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1358
+    },
+    "generation_seconds": 54.5
+  },
+  "started_at": "2026-10-06T21:12:50.747242+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      1
+    ]
+  ],
+  "q2_output": [
+    [
+      0
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT COUNT(T2.bond_id) FROM bond AS T1 INNER JOIN connected AS T2 ON T1.bond_id = T2.bond_id WHERE T1.molecule_id = 'TR009' AND T2.atom_id = T1.molecule_id || '_1' AND T2.atom_id2 = T1.molecule_id || '_2'",
+  "q2_validation_sql": "SELECT COUNT(bond_id) FROM connected WHERE (atom_id = 'TR009_12' OR atom_id2 = 'TR009_12') AND bond_id LIKE 'TR009_%'"
+}

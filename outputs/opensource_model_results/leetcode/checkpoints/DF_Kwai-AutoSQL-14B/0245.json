@@ -1,0 +1,55 @@
+{
+  "dbid": "607",
+  "index": "245",
+  "source_index": "544",
+  "schema_ddl": "CREATE TABLE SALESPERSON (\n    SALES_ID INT,\n    NAME VARCHAR(255),\n    SALARY INT,\n    COMMISSION_RATE INT,\n    HIRE_DATE VARCHAR(255)\n);\n\nCREATE TABLE COMPANY (\n    COM_ID INT,\n    NAME VARCHAR(255),\n    CITY VARCHAR(255)\n);\n\nCREATE TABLE ORDERS (\n    ORDER_ID INT,\n    COM_ID INT,\n    SALES_ID INT,\n    ORDER_DATE VARCHAR(255),\n    AMOUNT INT\n);",
+  "q1": "SELECT NAME FROM SALESPERSON AS S WHERE 0 = ( SELECT COUNT(*) FROM ORDERS AS O JOIN COMPANY AS C ON O.COM_ID = C.COM_ID WHERE O.SALES_ID = S.SALES_ID AND C.NAME = 'RED' )",
+  "q2": "SELECT NAME FROM SALESPERSON SP WHERE NOT EXISTS( SELECT * FROM ORDERS O LEFT JOIN COMPANY C USING (COM_ID) WHERE SP.SALES_ID=O.SALES_ID AND C.NAME='RED')",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT NAME FROM SALESPERSON AS S WHERE 0 = ( SELECT COUNT(*) FROM ORDERS AS O JOIN COMPANY AS C ON O.COM_ID = C.COM_ID WHERE O.SALES_ID = S.SALES_ID AND C.NAME = 'RED' )",
+  "q2_prompt_sql": "SELECT NAME FROM SALESPERSON SP WHERE NOT EXISTS( SELECT * FROM ORDERS O LEFT JOIN COMPANY C USING (COM_ID) WHERE SP.SALES_ID=O.SALES_ID AND C.NAME='RED')",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO SALESPERSON (SALES_ID, NAME) VALUES (1, 'Alice');\nINSERT INTO COMPANY (COM_ID, NAME, CITY) VALUES (1, 'BLUE', 'New York');\nINSERT INTO ORDERS (ORDER_ID, COM_ID, SALES_ID, ORDER_DATE, AMOUNT) VALUES (1, 1, 1, '2023-01-01', 100);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent. Q1 uses a scalar subquery that counts the number of matching rows and checks if it equals 0, which effectively returns salespersons who have zero orders associated with the company named 'RED'. Q2 uses NOT EXISTS with a LEFT JOIN, which may return salespersons who have no order associated with 'RED', but due to the LEFT JOIN, it may not behave the same way as Q1 in all cases, especially when orders exist with NULL or unmatched company references.",
+  "counterexample_dsp": "A salesperson with one order linked to a company other than 'RED' will be returned by Q2 but not by Q1. This discrepancy arises because Q1 explicitly checks for zero matches with 'RED', while Q2 may still return the salesperson if the join doesn't match 'RED'.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n  \"equiv\": \"N\",\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent. Q1 uses a scalar subquery that counts the number of matching rows and checks if it equals 0, which effectively returns salespersons who have zero orders associated with the company named 'RED'. Q2 uses NOT EXISTS with a LEFT JOIN, which may return salespersons who have no order associated with 'RED', but due to the LEFT JOIN, it may not behave the same way as Q1 in all cases, especially when orders exist with NULL or unmatched company references.\",\n  \"counterexample_dsp\": \"A salesperson with one order linked to a company other than 'RED' will be returned by Q2 but not by Q1. This discrepancy arises because Q1 explicitly checks for zero matches with 'RED', while Q2 may still return the salesperson if the join doesn't match 'RED'.\",\n  \"counterexample\": \"INSERT INTO SALESPERSON (SALES_ID, NAME) VALUES (1, 'Alice');\\nINSERT INTO COMPANY (COM_ID, NAME, CITY) VALUES (1, 'BLUE', 'New York');\\nINSERT INTO ORDERS (ORDER_ID, COM_ID, SALES_ID, ORDER_DATE, AMOUNT) VALUES (1, 1, 1, '2023-01-01', 100);\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 454,
+    "total_tokens": 750,
+    "completion_tokens": 296,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 9.484
+  },
+  "started_at": "2026-10-06T15:40:02.593211+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "Alice"
+    ]
+  ],
+  "q2_output": [
+    [
+      "Alice"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT NAME FROM SALESPERSON AS S WHERE 0 = ( SELECT COUNT(*) FROM ORDERS AS O JOIN COMPANY AS C ON O.COM_ID = C.COM_ID WHERE O.SALES_ID = S.SALES_ID AND C.NAME = 'RED' )",
+  "q2_validation_sql": "SELECT NAME FROM SALESPERSON SP WHERE NOT EXISTS( SELECT * FROM ORDERS O LEFT JOIN COMPANY C USING (COM_ID) WHERE SP.SALES_ID=O.SALES_ID AND C.NAME='RED')"
+}

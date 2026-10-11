@@ -1,0 +1,39 @@
+{
+  "dbid": "formula_1",
+  "index": "540",
+  "source_index": "978",
+  "schema_ddl": "CREATE TABLE circuits\n(\n    circuitId  INTEGER\n        primary key autoincrement,\n    circuitRef TEXT default '' not null,\n    name       TEXT default '' not null,\n    location   TEXT,\n    country    TEXT,\n    lat        REAL,\n    lng        REAL,\n    alt        INTEGER,\n    url        TEXT default '' not null\n        unique\n);\n\nCREATE TABLE constructors\n(\n    constructorId  INTEGER\n        primary key autoincrement,\n    constructorRef TEXT default '' not null,\n    name           TEXT default '' not null\n        unique,\n    nationality    TEXT,\n    url            TEXT default '' not null\n);\n\nCREATE TABLE drivers\n(\n    driverId    INTEGER\n        primary key autoincrement,\n    driverRef   TEXT default '' not null,\n    number      INTEGER,\n    code        TEXT,\n    forename    TEXT default '' not null,\n    surname     TEXT default '' not null,\n    dob         DATE,\n    nationality TEXT,\n    url         TEXT default '' not null\n        unique\n);\n\nCREATE TABLE seasons\n(\n    year INTEGER default 0  not null\n        primary key,\n    url  TEXT    default '' not null\n        unique\n);\n\nCREATE TABLE races\n(\n    raceId    INTEGER\n        primary key autoincrement,\n    year      INTEGER default 0            not null,\n    round     INTEGER default 0            not null,\n    circuitId INTEGER default 0            not null,\n    name      TEXT    default ''           not null,\n    date      DATE    default '0000-00-00' not null,\n    time      TEXT,\n    url       TEXT unique,\n    foreign key (year) references seasons(year),\n    foreign key (circuitId) references circuits(circuitId)\n);\n\nCREATE TABLE constructorResults\n(\n    constructorResultsId INTEGER\n        primary key autoincrement,\n    raceId               INTEGER default 0 not null,\n    constructorId        INTEGER default 0 not null,\n    points               REAL,\n    status               TEXT,\n    foreign key (raceId) references races(raceId),\n    foreign key (constructorId) references constructors(constructorId)\n\n);\n\nCREATE TABLE constructorStandings\n(\n    constructorStandingsId INTEGER\n        primary key autoincrement,\n    raceId                 INTEGER default 0 not null,\n    constructorId          INTEGER default 0 not null,\n    points                 REAL   default 0 not null,\n    position               INTEGER,\n    positionText           TEXT,\n    wins                   INTEGER default 0 not null,\n    foreign key (raceId) references races(raceId),\n    foreign key (constructorId) references constructors(constructorId)\n);\n\nCREATE TABLE driverStandings\n(\n    driverStandingsId INTEGER\n        primary key autoincrement,\n    raceId            INTEGER default 0 not null,\n    driverId          INTEGER default 0 not null,\n    points            REAL   default 0 not null,\n    position          INTEGER,\n    positionText      TEXT,\n    wins              INTEGER default 0 not null,\n    foreign key (raceId) references races(raceId),\n    foreign key (driverId) references drivers(driverId)\n);\n\nCREATE TABLE lapTimes\n(\n    raceId       INTEGER not null,\n    driverId     INTEGER not null,\n    lap          INTEGER not null,\n    position     INTEGER,\n    time         TEXT,\n    milliseconds INTEGER,\n    primary key (raceId, driverId, lap),\n    foreign key (raceId) references races(raceId),\n    foreign key (driverId) references drivers(driverId)\n);\n\nCREATE TABLE pitStops\n(\n    raceId       INTEGER not null,\n    driverId     INTEGER not null,\n    stop         INTEGER not null,\n    lap          INTEGER not null,\n    time         TEXT    not null,\n    duration     TEXT,\n    milliseconds INTEGER,\n    primary key (raceId, driverId, stop),\n    foreign key (raceId) references races(raceId),\n    foreign key (driverId) references drivers(driverId)\n);\n\nCREATE TABLE qualifying\n(\n    qualifyId     INTEGER\n        primary key autoincrement,\n    raceId        INTEGER default 0 not null,\n    driverId      INTEGER default 0 not null,\n    constructorId INTEGER default 0 not null,\n    number        INTEGER default 0 not null,\n    position      INTEGER,\n    q1            TEXT,\n    q2            TEXT,\n    q3            TEXT,\n    foreign key (raceId) references races(raceId),\n    foreign key (driverId) references drivers(driverId),\n    foreign key (constructorId) references constructors(constructorId)\n);\n\nCREATE TABLE status\n(\n    statusId INTEGER\n        primary key autoincrement,\n    status   TEXT default '' not null\n);\n\nCREATE TABLE results\n(\n    resultId        INTEGER\n        primary key autoincrement,\n    raceId          INTEGER default 0  not null,\n    driverId        INTEGER default 0  not null,\n    constructorId   INTEGER default 0  not null,\n    number          INTEGER,\n    grid            INTEGER default 0  not null,\n    position        INTEGER,\n    positionText    TEXT    default '' not null,\n    positionOrder   INTEGER default 0  not null,\n    points          REAL   default 0  not null,\n    laps            INTEGER default 0  not null,\n    time            TEXT,\n    milliseconds    INTEGER,\n    fastestLap      INTEGER,\n    rank            INTEGER default 0,\n    fastestLapTime  TEXT,\n    fastestLapSpeed TEXT,\n    statusId        INTEGER default 0  not null,\n    foreign key (raceId) references races(raceId),\n    foreign key (driverId) references drivers(driverId),\n    foreign key (constructorId) references constructors(constructorId),\n    foreign key (statusId) references status(statusId)\n);",
+  "q1": "SELECT SUM(IIF(NOT time IS NULL, 1, 0)) FROM results WHERE statusId = 2 AND raceID < 100 AND raceId > 50",
+  "q2": "SELECT COUNT(T1.resultId) FROM results AS T1 WHERE T1.raceId > 50 AND T1.raceId < 100 AND T1.statusId = 2 AND NOT T1.time IS NULL",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT SUM(IIF(NOT time IS NULL, 1, 0)) FROM results WHERE statusId = 2 AND raceID < 100 AND raceId > 50",
+  "q2_prompt_sql": "SELECT COUNT(T1.resultId) FROM results AS T1 WHERE T1.raceId > 50 AND T1.raceId < 100 AND T1.statusId = 2 AND NOT T1.time IS NULL",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are semantically equivalent. Both queries count the number of rows in the results table where raceId is between 50 and 100, statusId is 2, and time is not null. Q1 uses SUM with IIF to count non-null time values, while Q2 uses COUNT on resultId with an explicit NOT NULL check on time. Since the WHERE clause already restricts to statusId = 2 and raceId range, the result will be the same.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n  \"equiv\": \"Y\",\n  \"explanation\": \"Q1 and Q2 are semantically equivalent. Both queries count the number of rows in the results table where raceId is between 50 and 100, statusId is 2, and time is not null. Q1 uses SUM with IIF to count non-null time values, while Q2 uses COUNT on resultId with an explicit NOT NULL check on time. Since the WHERE clause already restricts to statusId = 2 and raceId range, the result will be the same.\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 1519,
+    "total_tokens": 1642,
+    "completion_tokens": 123,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 4.516
+  },
+  "started_at": "2026-10-06T21:27:34.449904+00:00",
+  "elapsed_seconds": 0.0
+}

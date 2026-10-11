@@ -1,0 +1,39 @@
+{
+  "dbid": "1141",
+  "index": "482",
+  "source_index": "303",
+  "schema_ddl": "CREATE TABLE ACTIVITY (\n    USER_ID INT,\n    SESSION_ID INT,\n    ACTIVITY_DATE DATE,\n    ACTIVITY_TYPE ENUM('OPEN_SESSION', 'END_SESSION', 'SCROLL_DOWN', 'SEND_MESSAGE'),\n    CHECK (ACTIVITY_TYPE IN ('OPEN_SESSION', 'END_SESSION', 'SCROLL_DOWN', 'SEND_MESSAGE'))\n);",
+  "q1": "SELECT ACTIVITY_DATE AS DAY, COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY WHERE ACTIVITY_DATE BETWEEN '2019-06-28' AND '2019-07-27' GROUP BY ACTIVITY_DATE",
+  "q2": "SELECT ACTIVITY_DATE AS DAY, COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY WHERE ACTIVITY_DATE BETWEEN DATE_ADD('2019-07-27', INTERVAL -29 DAY) AND '2019-07-27' GROUP BY ACTIVITY_DATE HAVING COUNT(DISTINCT USER_ID) > 0",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT ACTIVITY_DATE AS DAY, COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY WHERE ACTIVITY_DATE BETWEEN '2019-06-28' AND '2019-07-27' GROUP BY ACTIVITY_DATE",
+  "q2_prompt_sql": "SELECT ACTIVITY_DATE AS DAY, COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY WHERE ACTIVITY_DATE BETWEEN DATE_ADD('2019-07-27', INTERVAL -29 DAY) AND '2019-07-27' GROUP BY ACTIVITY_DATE HAVING COUNT(DISTINCT USER_ID) > 0",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries compute the count of distinct users per day for the same date range (June 28 to July 27, 2019). Q2's HAVING clause (COUNT(DISTINCT USER_ID) > 0) is redundant because any group in the result set must have at least one row (and thus COUNT(DISTINCT USER_ID) >= 1) due to the WHERE clause. Hence, the results are identical.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries compute the count of distinct users per day for the same date range (June 28 to July 27, 2019). Q2's HAVING clause (COUNT(DISTINCT USER_ID) > 0) is redundant because any group in the result set must have at least one row (and thus COUNT(DISTINCT USER_ID) >= 1) due to the WHERE clause. Hence, the results are identical.\"\n}",
+  "reasoning": "\nOkay, let's start by understanding both queries.\n\nQ1 selects the activity date as DAY and the count of distinct user IDs as ACTIVE_USERS from the ACTIVITY table where the ACTIVITY_DATE is between '2019-06-28' and '2019-07-27'. It groups by ACTIVITY_DATE. So, this query is giving the number of unique users each day from June 28th to July 27th, inclusive.\n\nQ2 is similar but the date range is from DATE_ADD('2019-07-27', INTERVAL -29 DAY) which is June 28th (since July 27 minus 29 days is June 28, 2019). So the date range is the same as Q1: June 28 to July 27. But Q2 adds a HAVING clause that requires the count of distinct user IDs to be greater than 0. However, since COUNT(DISTINCT USER_ID) would naturally be zero only if there are no users on a given day, but the WHERE clause already restricts to dates that have some activity. Wait, no. Wait, the WHERE clause in Q2 is the same date range as Q1. But the HAVING clause in Q2 filters out groups where the count of distinct users is zero. But in Q1, there's no HAVING clause, so all groups (dates) in that range are included. But if a date in that range has no activity (i.e., no rows), then Q1 would still group by that date, but the count would be zero. Wait, no. Wait, the GROUP BY is on ACTIVITY_DATE from the ACTIVITY table. So if a date in that range has no activity (no rows in ACTIVITY for that date), then the GROUP BY would not produce that date. Because the GROUP BY is done on the ACTIVITY_DATE column from the ACTIVITY table. So if there are no rows for a certain date, that date won't appear in the result. So Q1 and Q2 both would have the same dates in their results, since the WHERE clause includes the same dates. But Q2 adds a HAVING COUNT(DISTINCT USER_ID) > 0. Wait, but in Q2, the HAVING is applied after grouping. So for each date in the date range, if the count is zero (which would only happen if there are no rows for that date, but the WHERE clause already includes the date range, so if there are no rows for a date, then that date wouldn't be in the result set. Wait, no. Let me think again. The WHERE clause in Q2 is ACTIVITY_DATE BETWEEN date_start and date_end. So if a date is in that range but there are no rows for that date, then the SELECT would not have any rows for that date. Because the GROUP BY is on ACTIVITY_DATE from the ACTIVITY table. So if there are no rows for a date in the range, then that date isn't part of the result. Therefore, in Q1, the GROUP BY ACTIVITY_DATE would produce one row per date that exists in the ACTIVITY table within that range. Similarly for Q2. But the HAVING clause in Q2 is COUNT(DISTINCT USER_ID) > 0. However, if there are rows for that date, then the count of distinct user IDs would be at least 1. Because if there's at least one row, then there's at least one user. Wait, no. Suppose there are multiple rows for the same user on that date. Then COUNT(DISTINCT USER_ID) would still be 1. So the HAVING clause in Q2 is redundant. Because if a group (a date) exists in the result set, it means there are rows for that date, so COUNT(DISTINCT USER_ID) would be at least 1. Therefore, the HAVING clause in Q2 doesn't change the result. Therefore, Q1 and Q2 should be equivalent.\n\nWait, but maybe I'm missing something. Let me check again. Q1's WHERE condition is between '2019-06-28' and '2019-07-27'. Q2's date range is from DATE_ADD('2019-07-27', INTERVAL -29 DAY) which is 2019-06-28. So both queries have the same date range. The HAVING clause in Q2 is COUNT(DISTINCT USER_ID) > 0. But for any group that appears in the result, the count would be at least 1. Because if there's at least one row for that date, then there's at least one user. Therefore, the HAVING clause in Q2 doesn't filter out any rows. Therefore, Q1 and Q2 are equivalent.\n\nWait, but what if a date in the range has no rows? Then in Q1, that date wouldn't appear. In Q2, the same applies. So the HAVING clause doesn't affect anything. Therefore, the two queries are equivalent. So the answer should be Y.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 454,
+    "total_tokens": 1643,
+    "completion_tokens": 1189,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1080
+    },
+    "generation_seconds": 36.86
+  },
+  "started_at": "2026-10-06T15:50:11.292074+00:00",
+  "elapsed_seconds": 0.0
+}

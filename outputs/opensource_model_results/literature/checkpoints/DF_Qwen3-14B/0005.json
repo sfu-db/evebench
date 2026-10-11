@@ -1,0 +1,39 @@
+{
+  "dbid": "3",
+  "index": "5",
+  "source_index": "4",
+  "schema_ddl": "CREATE TABLE ITP (\n    ITEMN INT,\n    PONUM INT,\n    PRIMARY KEY (ITEMN)\n);\nCREATE TABLE ITL (\n    ITEMN INT,\n    WKCEN INT,\n    LOCAN INT\n);",
+  "q1": "SELECT * FROM ITP AS ITP WHERE ITP.ITEMN IN (SELECT ITL.ITEMN FROM ITL AS ITL WHERE ITL.WKCEN = 468 AND ITL.LOCAN = 0)",
+  "q2": "SELECT DISTINCT ITP.* FROM ITP AS ITP, ITL AS ITL WHERE ITP.ITEMN = ITL.ITEMN AND ITL.WKCEN = 468 AND ITL.LOCAN = 0",
+  "dialect": "sqlite",
+  "ground_truth": "EQ",
+  "source": "literature",
+  "q1_prompt_sql": "SELECT * FROM ITP AS ITP WHERE ITP.ITEMN IN (SELECT ITL.ITEMN FROM ITL AS ITL WHERE ITL.WKCEN = 468 AND ITL.LOCAN = 0)",
+  "q2_prompt_sql": "SELECT DISTINCT ITP.* FROM ITP AS ITP, ITL AS ITL WHERE ITP.ITEMN = ITL.ITEMN AND ITL.WKCEN = 468 AND ITL.LOCAN = 0",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries retrieve ITP records with ITEMN values that exist in ITL where WKCEN=468 and LOCAN=0. Q1 uses a subquery with IN, while Q2 uses an explicit JOIN with DISTINCT. Since ITP.ITEMN is a primary key, duplicates are not possible, making both approaches equivalent.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries retrieve ITP records with ITEMN values that exist in ITL where WKCEN=468 and LOCAN=0. Q1 uses a subquery with IN, while Q2 uses an explicit JOIN with DISTINCT. Since ITP.ITEMN is a primary key, duplicates are not possible, making both approaches equivalent.\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem. So, I need to determine if Q1 and Q2 are semantically equivalent. Let me start by understanding what each query does.\n\nFirst, looking at Q1: It selects all rows from ITP where ITEMN is in the result of a subquery. The subquery selects ITEMN from ITL where WKCEN is 468 and LOCAN is 0. So Q1 is getting all ITP records that have an ITEMN that exists in ITL with those specific conditions.\n\nNow Q2: It uses an explicit JOIN between ITP and ITL on ITEMN, with the same conditions on WKCEN and LOCAN. Also, it uses SELECT DISTINCT ITP.*. Since ITP has ITEMN as the primary key, each ITEMN is unique, so DISTINCT might not be necessary here, but it's there.\n\nWait, but in Q1, the subquery could return duplicates if there are multiple entries in ITL with the same ITEMN meeting the conditions. However, since Q1 uses IN, duplicates in the subquery wouldn't matter because IN checks for existence. But Q2 uses DISTINCT, but since ITP's ITEMN is a primary key, each row in ITP is unique. However, if there are multiple ITL entries for the same ITEMN meeting the conditions, then joining would produce multiple rows for the same ITP.ITEMN. But since Q2 uses DISTINCT, it would collapse those into one. But Q1 would return each ITP row once if the ITEMN is in the subquery, regardless of how many times it appears in the subquery.\n\nWait, but in Q1, the subquery might return multiple ITEMNs, but if the same ITEMN is present multiple times in the subquery, the IN clause would still include it once. So Q1 would return each ITP row once per ITEMN in the subquery. However, if the same ITEMN is in the subquery multiple times, the IN clause doesn't duplicate the result. So Q1 would return all ITP rows where ITEMN is in the set of ITEMNs from the subquery.\n\nBut Q2, when joining, could have multiple entries for the same ITP.ITEMN if there are multiple ITL rows with the same ITEMN and the conditions. Then, using DISTINCT would remove duplicates, so Q2 would return each ITP row once for each unique ITEMN in the join. But since ITP.ITEMN is a primary key, each ITP row is unique. So the DISTINCT in Q2 might not do anything if each ITP.ITEMN is unique. Wait, but the join could produce multiple rows for the same ITP.ITEMN if there are multiple ITL entries with the same ITEMN. So, for example, if an ITEMN in ITP has two entries in ITL with WKCEN=468 and LOCAN=0, then the join would produce two rows for that ITP.ITEMN, but Q2 would select DISTINCT, which would collapse them into one.\n\nSo in that case, Q1 would return that ITP row once, and Q2 would also return it once. So maybe they are equivalent. But wait, what about the case where the subquery in Q1 has duplicates? Let me think.\n\nIn Q1, the subquery is (SELECT ITL.ITEMN FROM ITL AS ITL WHERE ITL.WKCEN = 468 AND ITL.LOCAN = 0). Suppose this subquery returns ITEMN 100 twice. Then the IN clause would still consider 100 as present once. So Q1 would return ITP rows with ITEMN 100 once. In Q2, if there are two ITL rows for ITEMN 100, then joining would produce two rows, but DISTINCT would make it one. So in this case, both queries would return the same result.\n\nBut what if the subquery in Q1 returns ITEMN 100 once, but in Q2, there's a join that produces multiple rows for that ITEMN? Wait, no. Because the subquery in Q1 is selecting ITEMN from ITL where WKCEN and LOCAN are set. So the same ITEMN could be present multiple times in ITL. But Q1's subquery would return all those ITEMNs, but IN would treat them as a set. So the result of the subquery is a list of ITEMNs, possibly with duplicates, but the IN clause treats it as a set. Therefore, Q1 would return all ITP rows where ITEMN is in that set.\n\nIn Q2, the join would produce multiple rows for the same ITP.ITEMN if there are multiple ITL entries. But the DISTINCT would collapse them into one. Therefore, Q2 would return the same as Q1. So maybe they are equivalent.\n\nWait, but what if there are multiple ITL entries for the same ITEMN and conditions, but the ITP has that ITEMN once. Then Q1 would return that ITP row once, and Q2 would return it once (due to DISTINCT). So they are the same.\n\nBut wait, what if the subquery in Q1 returns ITEMN 100 once, and in Q2, the join would have one row. Then both would return the same. So maybe they are equivalent.\n\nBut wait, another angle: Q1 uses a correlated subquery? No, it's a non-correlated subquery. The subquery is independent of ITP. So the subquery is just selecting all ITEMNs from ITL where WKCEN and LOCAN are 468 and 0. Then Q1 is selecting all ITP rows with ITEMN in that set.\n\nQ2 is selecting all ITP rows that have an ITEMN matching any ITL row with those conditions, and then using DISTINCT. But since ITP.ITEMN is unique, the DISTINCT is redundant, but it's there. So Q2 is effectively the same as Q1.\n\nWait, but in Q2, the join is between ITP and ITL on ITEMN. So for each ITP row, if there's at least one ITL row with the same ITEMN and the conditions, then the ITP row is included. But since the join would produce as many rows as there are ITL entries for that ITEMN, but DISTINCT would collapse them into one. So the result is the same as Q1.\n\nTherefore, they are equivalent. But wait, maybe not. Suppose that in the ITL table, there are multiple entries for the same ITEMN with the same WKCEN and LOCAN. Then Q1 would include that ITEMN once, and Q2 would include it once. So they are same.\n\nAnother scenario: if there are no ITL entries for a particular ITEMN. Then Q1 would not include it, and Q2 would not either.\n\nSo in all cases, the results should be the same. Therefore, Q1 and Q2 are equivalent. Hence, the answer should be \"Y\".\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 393,
+    "total_tokens": 1943,
+    "completion_tokens": 1550,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1465
+    },
+    "generation_seconds": 46.265
+  },
+  "started_at": "2026-10-06T07:45:19.484576+00:00",
+  "elapsed_seconds": 0.0
+}

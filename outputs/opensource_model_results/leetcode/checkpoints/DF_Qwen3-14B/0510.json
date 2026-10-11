@@ -1,0 +1,39 @@
+{
+  "dbid": "175",
+  "index": "510",
+  "source_index": "36",
+  "schema_ddl": "CREATE TABLE PERSON (\n    PERSONID INT,\n    FIRSTNAME VARCHAR(255),\n    LASTNAME VARCHAR(255),\n    PRIMARY KEY (PERSONID)\n);\n\nCREATE TABLE ADDRESS (\n    ADDRESSID INT,\n    PERSONID INT,\n    CITY VARCHAR(255),\n    STATE VARCHAR(255),\n    PRIMARY KEY (ADDRESSID, PERSONID),\n    FOREIGN KEY (PERSONID) REFERENCES PERSON(PERSONID)\n);",
+  "q1": "SELECT FIRSTNAME, LASTNAME, CITY, STATE FROM PERSON AS P LEFT OUTER JOIN ADDRESS AS A ON P.PERSONID = A.PERSONID",
+  "q2": "SELECT FIRSTNAME , LASTNAME , CITY , STATE FROM PERSON P LEFT JOIN ADDRESS A ON 1=1 AND P.PERSONID = A.PERSONID",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT FIRSTNAME, LASTNAME, CITY, STATE FROM PERSON AS P LEFT OUTER JOIN ADDRESS AS A ON P.PERSONID = A.PERSONID",
+  "q2_prompt_sql": "SELECT FIRSTNAME , LASTNAME , CITY , STATE FROM PERSON P LEFT JOIN ADDRESS A ON 1=1 AND P.PERSONID = A.PERSONID",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries perform a LEFT JOIN between PERSON and ADDRESS on PERSONID. The ON 1=1 in Q2 is a tautology and does not alter the join condition, making the queries semantically identical.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries perform a LEFT JOIN between PERSON and ADDRESS on PERSONID. The ON 1=1 in Q2 is a tautology and does not alter the join condition, making the queries semantically identical.\"\n}",
+  "reasoning": "\nOkay, let's see. I need to determine if Q1 and Q2 are semantically equivalent. Let me start by understanding each query.\n\nQ1 is a LEFT OUTER JOIN between PERSON and ADDRESS on PERSONID. That means for each person, it will get their details and the corresponding address. If there's no address, the address fields will be NULL.\n\nQ2 is a LEFT JOIN with a condition ON 1=1 AND P.PERSONID = A.PERSONID. Wait, the ON 1=1 is always true. So the join condition is effectively just P.PERSONID = A.PERSONID. But why would someone write ON 1=1? Maybe they intended to add more conditions but forgot? But in this case, the ON clause is redundant because 1=1 is always true. So the join condition is the same as Q1. So maybe they are equivalent?\n\nWait, but in SQL, the ON clause in a LEFT JOIN determines how the tables are joined. If the ON condition is always true, then it's like a cross join, but since it's a LEFT JOIN, it would return all rows from PERSON and for each, all rows from ADDRESS that satisfy the condition. Wait, no. Wait, the LEFT JOIN with ON 1=1 would actually result in a cross join between PERSON and ADDRESS, but since it's a LEFT JOIN, it would take all rows from PERSON and all rows from ADDRESS where the condition is true. But the condition is P.PERSONID = A.PERSONID. Wait, no. The ON clause here is (1=1 AND P.PERSONID = A.PERSONID). Since 1=1 is always true, the effective condition is just P.PERSONID = A.PERSONID. So the join condition is the same as Q1. Therefore, the two queries should be equivalent.\n\nBut wait, maybe there's a nuance here. Let me think again. In Q1, the LEFT JOIN is on P.PERSONID = A.PERSONID. In Q2, the LEFT JOIN is on 1=1 AND P.PERSONID = A.PERSONID. Since 1=1 is always true, the ON clause is equivalent to just P.PERSONID = A.PERSONID. So the join conditions are the same. Therefore, the result should be the same. So they should be equivalent.\n\nBut maybe there's a case where the ON clause in Q2 is different. Wait, no. The ON clause is evaluated as a boolean condition. If 1=1 is true, then the rest of the condition is checked. So the join is based on P.PERSONID = A.PERSONID. So the two queries are the same. Therefore, they are semantically equivalent.\n\nBut wait, maybe there's a mistake in the way the join is done. For example, in some SQL dialects, using ON 1=1 might have different behavior. But according to standard SQL, the ON clause is a logical condition. So in both cases, the join is on P.PERSONID = A.PERSONID. So the results should be the same. Therefore, the answer is Y.\n\nBut maybe I'm missing something. Let me think of a test case. Suppose there are multiple addresses for a person. For example, if a person has two addresses. In Q1, the LEFT JOIN would return both addresses. In Q2, since the ON condition is the same, it would also return both addresses. So the results should be the same. Therefore, the queries are equivalent.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 408,
+    "total_tokens": 1203,
+    "completion_tokens": 795,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 735
+    },
+    "generation_seconds": 24.578
+  },
+  "started_at": "2026-10-06T15:14:29.470958+00:00",
+  "elapsed_seconds": 0.0
+}

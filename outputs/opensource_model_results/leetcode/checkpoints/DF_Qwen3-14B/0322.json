@@ -1,0 +1,39 @@
+{
+  "dbid": "1050",
+  "index": "322",
+  "source_index": "80",
+  "schema_ddl": "CREATE TABLE ACTORDIRECTOR (\n    TIMESTAMP INT,\n    ACTOR_ID INT,\n    DIRECTOR_ID INT,\n    PRIMARY KEY (TIMESTAMP)\n);",
+  "q1": "SELECT ACTOR_ID,DIRECTOR_ID FROM ACTORDIRECTOR GROUP BY ACTOR_ID,DIRECTOR_ID HAVING COUNT(*)>=3",
+  "q2": "SELECT A.ACTOR_ID, A.DIRECTOR_ID FROM ( SELECT ACTOR_ID, DIRECTOR_ID, COUNT(*) AS NUMS FROM ACTORDIRECTOR GROUP BY 1,2)A WHERE NUMS >= 3",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT ACTOR_ID,DIRECTOR_ID FROM ACTORDIRECTOR GROUP BY ACTOR_ID,DIRECTOR_ID HAVING COUNT(*)>=3",
+  "q2_prompt_sql": "SELECT A.ACTOR_ID, A.DIRECTOR_ID FROM ( SELECT ACTOR_ID, DIRECTOR_ID, COUNT(*) AS NUMS FROM ACTORDIRECTOR GROUP BY 1,2)A WHERE NUMS >= 3",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries aim to find pairs of ACTOR_ID and DIRECTOR_ID that appear together in the ACTORDIRECTOR table at least three times. Q1 uses HAVING COUNT(*) >=3 directly, while Q2 calculates the count in a subquery and filters with WHERE NUMS >=3. The logic is equivalent as both count the occurrences of each (ACTOR_ID, DIRECTOR_ID) pair and filter based on the count.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries aim to find pairs of ACTOR_ID and DIRECTOR_ID that appear together in the ACTORDIRECTOR table at least three times. Q1 uses HAVING COUNT(*) >=3 directly, while Q2 calculates the count in a subquery and filters with WHERE NUMS >=3. The logic is equivalent as both count the occurrences of each (ACTOR_ID, DIRECTOR_ID) pair and filter based on the count.\"\n}",
+  "reasoning": "\nOkay, let's see. I need to determine if Q1 and Q2 are semantically equivalent. Let me start by understanding each query.\n\nQ1 is selecting ACTOR_ID and DIRECTOR_ID from ACTORDIRECTOR, grouping by both columns, and using HAVING COUNT(*) >= 3. So this should return pairs of actor and director that appear together in the table at least three times. But wait, the table has a primary key on TIMESTAMP, so each row is unique. So COUNT(*) here counts how many times the same (ACTOR_ID, DIRECTOR_ID) pair exists in the table. So Q1 is looking for pairs that have three or more entries in the ACTORDIRECTOR table.\n\nQ2 is a subquery where they first group by ACTOR_ID and DIRECTOR_ID, count the number of entries (as NUMS), then select those where NUMS >=3. The subquery is aliased as A, and then they select the columns from that subquery. So this should be the same as Q1, right? Because both are grouping by the same columns and filtering on the count. But wait, maybe there's a difference in how the grouping is done. Let me check the syntax.\n\nIn Q1, the GROUP BY is on ACTOR_ID, DIRECTOR_ID. In Q2, the GROUP BY is on 1,2, which refers to the first two columns of the subquery's SELECT list. The subquery's SELECT list is ACTOR_ID, DIRECTOR_ID, COUNT(*). So the first two columns are ACTOR_ID and DIRECTOR_ID. So grouping by 1,2 in the subquery is equivalent to grouping by ACTOR_ID, DIRECTOR_ID. Therefore, the logic should be the same. Then why would they not be equivalent?\n\nWait, but maybe there's a difference in how the COUNT(*) is handled. In Q1, the HAVING clause uses COUNT(*), which counts the number of rows in each group. In Q2, the subquery computes COUNT(*) as NUMS, and then the WHERE clause filters on NUMS >=3. But COUNT(*) is the same as the number of rows in the group. So both queries should return the same result. So maybe they are equivalent?\n\nBut wait, could there be any case where they differ? Let me think. Suppose there are multiple entries with the same ACTOR_ID and DIRECTOR_ID. Both queries would count those entries. For example, if a pair occurs three times, both would include it. But what about if there's a row with the same ACTOR_ID and DIRECTOR_ID but different TIMESTAMP? Since TIMESTAMP is the primary key, each row is unique, but the same pair can appear multiple times. So in that case, the count would be correct. \n\nHmm, maybe the only difference is that Q1 uses HAVING and Q2 uses a WHERE clause on a derived column. But logically, they are the same. So perhaps they are equivalent. Therefore, the answer would be Y.\n\nWait, but I need to be careful. Are there any SQL dialects where GROUP BY 1,2 might not refer to the columns in the SELECT list? Like, in some versions, the GROUP BY uses column positions, but in the subquery, the SELECT list has three columns. So grouping by 1,2 would be ACTOR_ID and DIRECTOR_ID. So that's correct. Therefore, the two queries should return the same results. Hence, they are equivalent. Therefore, the answer is Y.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 361,
+    "total_tokens": 1190,
+    "completion_tokens": 829,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 725
+    },
+    "generation_seconds": 26.265
+  },
+  "started_at": "2026-10-06T15:02:26.008368+00:00",
+  "elapsed_seconds": 0.0
+}

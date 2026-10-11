@@ -1,0 +1,55 @@
+{
+  "dbid": "beers",
+  "index": "248",
+  "source_index": "7692",
+  "schema_ddl": "CREATE TABLE Bar (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Beer (\n    name VARCHAR NOT NULL,\n    brewer VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Drinker (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Frequents (\n    drinker VARCHAR NOT NULL,\n    bar VARCHAR NOT NULL,\n    times_a_week SMALLINT NOT NULL,\n    PRIMARY KEY (drinker, bar),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (bar) REFERENCES Bar(name)\n);\n\nCREATE TABLE Serves (\n    bar VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    price DECIMAL(5,2) NOT NULL,\n    PRIMARY KEY (bar, beer),\n    FOREIGN KEY (bar) REFERENCES Bar(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);\n\nCREATE TABLE Likes (\n    drinker VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    PRIMARY KEY (drinker, beer),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);",
+  "q1": "SELECT bar FROM Serves GROUP BY bar HAVING COUNT(beer) >= 5",
+  "q2": "SELECT times_a_week FROM frequents GROUP BY times_a_week HAVING times_a_week >= MAX(times_a_week)",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "beers",
+  "q1_prompt_sql": "SELECT bar FROM Serves GROUP BY bar HAVING COUNT(beer) >= 5",
+  "q2_prompt_sql": "SELECT times_a_week FROM frequents GROUP BY times_a_week HAVING times_a_week >= MAX(times_a_week)",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO Bar (name, address) VALUES ('Bar1', '123 Main St');\nINSERT INTO Beer (name, brewer) VALUES ('BeerA', 'BrewerX'), ('BeerB', 'BrewerX'), ('BeerC', 'BrewerX'), ('BeerD', 'BrewerX'), ('BeerE', 'BrewerX');\nINSERT INTO Serves (bar, beer, price) VALUES ('Bar1', 'BeerA', 2.50), ('Bar1', 'BeerB', 3.00), ('Bar1', 'BeerC', 2.75), ('Bar1', 'BeerD', 3.25), ('Bar1', 'BeerE', 2.90);\nINSERT INTO Drinker (name, address) VALUES ('Drinker1', '456 Oak St');\nINSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('Drinker1', 'Bar1', 3);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 returns bars that serve at least 5 beers, while Q2 returns distinct times_a_week values from Frequents (HAVING condition is always true). They return different types of data (bar names vs numbers), so they are not equivalent.",
+  "counterexample_dsp": "Bar1 serves 5 beers, so Q1 returns 'Bar1'. A drinker frequents Bar1 3 times a week, so Q2 returns 3. Results differ in type and content.",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 returns bars that serve at least 5 beers, while Q2 returns distinct times_a_week values from Frequents (HAVING condition is always true). They return different types of data (bar names vs numbers), so they are not equivalent.\",\n  \"counterexample_dsp\": \"Bar1 serves 5 beers, so Q1 returns 'Bar1'. A drinker frequents Bar1 3 times a week, so Q2 returns 3. Results differ in type and content.\",\n  \"counterexample\": [\n    \"INSERT INTO Bar (name, address) VALUES ('Bar1', '123 Main St');\",\n    \"INSERT INTO Beer (name, brewer) VALUES ('BeerA', 'BrewerX'), ('BeerB', 'BrewerX'), ('BeerC', 'BrewerX'), ('BeerD', 'BrewerX'), ('BeerE', 'BrewerX');\",\n    \"INSERT INTO Serves (bar, beer, price) VALUES ('Bar1', 'BeerA', 2.50), ('Bar1', 'BeerB', 3.00), ('Bar1', 'BeerC', 2.75), ('Bar1', 'BeerD', 3.25), ('Bar1', 'BeerE', 2.90);\",\n    \"INSERT INTO Drinker (name, address) VALUES ('Drinker1', '456 Oak St');\",\n    \"INSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('Drinker1', 'Bar1', 3);\"\n  ]\n}",
+  "reasoning": "\nOkay, let's tackle this problem. I need to find a counterexample where Q1 and Q2 return different results. First, I should understand what each query does.\n\nQ1 is selecting bar from Serves, grouping by bar, and having count(beer) >= 5. That means for each bar, count the number of beers they serve. If that count is 5 or more, the bar is returned. So Q1 is about bars that serve at least 5 different beers.\n\nQ2 is selecting times_a_week from Frequents, grouping by times_a_week, and having times_a_week >= MAX(times_a_week). Wait, that seems odd. The HAVING clause is comparing each group's times_a_week to the maximum times_a_week in the entire group. But since times_a_week is part of the GROUP BY, each group has a single value. So the HAVING condition is times_a_week >= MAX(times_a_week). But MAX of a single value is that same value. So this condition would only be true if times_a_week equals the max, which is itself. So effectively, the HAVING clause is redundant here. So the query would return all distinct times_a_week values from Frequents. Wait, no. Let me think again. When you group by times_a_week, each group has one value of times_a_week. The MAX(times_a_week) in that group is the same as the value of times_a_week for that group. So the HAVING condition becomes times_a_week >= times_a_week, which is always true. So Q2 would return all distinct times_a_week values from the Frequents table. But that doesn't make sense. Wait, no. The HAVING clause is applied after grouping. So for each group (each unique times_a_week value), the HAVING condition checks if that value is greater than or equal to the maximum of times_a_week in that group. But since the group has only one value, the MAX is that same value. So the condition is always true. Therefore, Q2 would return all distinct times_a_week values from Frequents. Wait, but that's not right. Because if you group by times_a_week, each group has one row. So the HAVING condition is always true. So Q2 is equivalent to SELECT times_a_week FROM Frequents GROUP BY times_a_week. So the result is all distinct times_a_week values present in Frequents.\n\nSo Q1 returns bars that serve at least 5 beers. Q2 returns all distinct times_a_week values from Frequents. These are two completely different things. Therefore, they are not equivalent. But the user says they are not semantically equivalent, so I need to create a test case where their results differ.\n\nSo to make Q1 and Q2 return different results, I need to have a database where Q1 returns some bars and Q2 returns some times_a_week values. Since they are different types of data (bars vs numbers), they can't be the same. But maybe the user made a mistake in the queries? Wait, looking again at Q2: the HAVING is times_a_week >= MAX(times_a_week). Wait, that's a bit strange. Let me re-examine. Suppose the group by is on times_a_week. So each group has one value of times_a_week. The MAX of times_a_week in that group is the same as the group's value. So the HAVING condition is that value >= itself, which is always true. Therefore, Q2 returns all distinct times_a_week values. So Q1 returns bars with count(beer) >=5, Q2 returns distinct times_a_week from Frequents. So they are different. Therefore, any database that has at least one bar serving 5+ beers (so Q1 returns something) and at least one times_a_week value (so Q2 returns something) will make them different. But since they are different result types, they can't be the same. So the counterexample is trivial.\n\nWait, but maybe I'm misunderstanding Q2. Let me recheck the query. The query is:\n\nSELECT times_a_week FROM frequents GROUP BY times_a_week HAVING times_a_week >= MAX(times_a_week)\n\nBut grouping by times_a_week gives each distinct times_a_week value. For each group, the HAVING condition checks if that value is >= the maximum of times_a_week in that group. Since each group has only one value, the max is that same value. So the condition is always true. Therefore, the HAVING clause doesn't filter anything. So Q2 is equivalent to SELECT times_a_week FROM Frequents GROUP BY times_a_week, which returns all distinct times_a_week values from the Frequents table.\n\nSo the two queries are about different things. Therefore, their results are different unless both are empty. So to create a counterexample, I just need to have some data where Q1 returns some bars and Q2 returns some times_a_week values.\n\nFor example, let's create a scenario where:\n\n- There is a bar named \"Bar1\" that serves 5 beers (so Q1 returns Bar1).\n- In the Frequents table, there are entries with times_a_week values like 3, 5, etc. So Q2 returns those distinct values.\n\nIn this case, Q1 returns a bar name, Q2 returns numbers. So they are different. Therefore, any non-empty data would suffice.\n\nBut the user wants a specific counterexample where the results are different. Let me create a simple test database.\n\nLet me create:\n\n- Bar: name, address. Let's have one bar, \"Bar1\".\n- Beer: some beers. Let's say 5 beers (BeerA, BeerB, BeerC, BeerD, BeerE).\n- Serves: bar is Bar1, each beer with some price. So Serves has 5 rows, each for a different beer. Then Q1 would return Bar1 because count(beer) is 5 >=5.\n\nFor Q2, let's have Frequents entries. Suppose a drinker \"Drinker1\" frequents Bar1 with times_a_week = 3. Then Q2 would return 3. So Q1 returns a bar name, Q2 returns a number. Different results.\n\nSo the counterexample would be inserting these data points. Let me write the INSERT statements.\n\nBut I need to make sure that all constraints are met. For example, the Bar table must have the bar name, the Beer table must have the beer names, etc.\n\nSo the steps:\n\n1. Insert into Bar: insert into Bar (name, address) values ('Bar1', 'addr1');\n2. Insert into Beer: insert into Beer (name, brewer) values ('BeerA', 'Brewer1'), etc. 5 beers.\n3. Insert into Serves: for each beer, insert (bar, beer, price). So Bar1 serves all 5 beers.\n4. Insert into Frequents: insert into Frequents (drinker, bar, times_a_week) values ('Drinker1', 'Bar1', 3);\n5. Insert into Drinker: insert into Drinker (name, address) values ('Drinker1', 'addr2');\n6. Insert into Likes: maybe not needed, but the schema allows it, but the queries don't use it.\n\nSo with this data, Q1 returns Bar1, Q2 returns 3. Different results. Therefore, this is a valid counterexample.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 476,
+    "total_tokens": 2362,
+    "completion_tokens": 1886,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1540
+    },
+    "generation_seconds": 63.859
+  },
+  "started_at": "2026-10-06T09:03:12.122957+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "Bar1"
+    ]
+  ],
+  "q2_output": [
+    [
+      3
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT bar FROM Serves GROUP BY bar HAVING COUNT(beer) >= 5",
+  "q2_validation_sql": "SELECT times_a_week FROM frequents GROUP BY times_a_week HAVING times_a_week >= MAX(times_a_week)"
+}

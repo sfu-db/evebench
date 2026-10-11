@@ -1,0 +1,51 @@
+{
+  "dbid": "toxicology",
+  "index": "154",
+  "source_index": "215",
+  "schema_ddl": "CREATE TABLE `atom` (\n  `atom_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `element` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `bond` (\n  `bond_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `bond_type` TEXT DEFAULT NULL,\n  PRIMARY KEY (`bond_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `connected` (\n  `atom_id` TEXT NOT NULL,\n  `atom_id2` TEXT NOT NULL,\n  `bond_id` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`,`atom_id2`),\n  FOREIGN KEY (`atom_id`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`atom_id2`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`bond_id`) REFERENCES `bond` (`bond_id`) ON DELETE CASCADE ON UPDATE CASCADE\n);\n\nCREATE TABLE `molecule` (\n  `molecule_id` TEXT NOT NULL,\n  `label` TEXT DEFAULT NULL,\n  PRIMARY KEY (`molecule_id`)\n);",
+  "q1": "SELECT DISTINCT T2.label FROM atom AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id WHERE T1.element <> 'sn'",
+  "q2": "SELECT label FROM molecule WHERE NOT molecule_id IN (SELECT molecule_id FROM atom WHERE element = 'sn')",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT DISTINCT T2.label FROM atom AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id WHERE T1.element <> 'sn'",
+  "q2_prompt_sql": "SELECT label FROM molecule WHERE NOT molecule_id IN (SELECT molecule_id FROM atom WHERE element = 'sn')",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO molecule (molecule_id, label) VALUES ('m1', 'water');\nINSERT INTO atom (atom_id, molecule_id, element) VALUES ('a1', 'm1', 'sn');\nINSERT INTO atom (atom_id, molecule_id, element) VALUES ('a2', 'm1', 'he');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 selects distinct labels from molecule for molecules that have at least one atom with element not equal to 'sn'. Q2 selects labels from molecule for molecules whose molecule_id does not appear in any atom with element = 'sn'. These are not equivalent. Q1 includes molecules that have at least one non-'sn' element, while Q2 excludes molecules that have any 'sn' element. A molecule with both 'sn' and non-'sn' atoms would be included in Q1 but excluded in Q2.",
+  "counterexample_dsp": "A molecule with both 'sn' and 'he' atoms. Q1 returns the label because there is at least one atom not equal to 'sn'. Q2 excludes the label because there is an atom equal to 'sn'.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n  \"equiv\": \"N\",\n  \"explanation\": \"Q1 selects distinct labels from molecule for molecules that have at least one atom with element not equal to 'sn'. Q2 selects labels from molecule for molecules whose molecule_id does not appear in any atom with element = 'sn'. These are not equivalent. Q1 includes molecules that have at least one non-'sn' element, while Q2 excludes molecules that have any 'sn' element. A molecule with both 'sn' and non-'sn' atoms would be included in Q1 but excluded in Q2.\",\n  \"counterexample_dsp\": \"A molecule with both 'sn' and 'he' atoms. Q1 returns the label because there is at least one atom not equal to 'sn'. Q2 excludes the label because there is an atom equal to 'sn'.\",\n  \"counterexample\": \"INSERT INTO molecule (molecule_id, label) VALUES ('m1', 'water');\\nINSERT INTO atom (atom_id, molecule_id, element) VALUES ('a1', 'm1', 'sn');\\nINSERT INTO atom (atom_id, molecule_id, element) VALUES ('a2', 'm1', 'he');\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 577,
+    "total_tokens": 833,
+    "completion_tokens": 256,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 8.625
+  },
+  "started_at": "2026-10-06T21:12:50.733736+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "water"
+    ]
+  ],
+  "q2_output": [],
+  "q1_row_count": 1,
+  "q2_row_count": 0,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DISTINCT T2.label FROM atom AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id WHERE T1.element <> 'sn'",
+  "q2_validation_sql": "SELECT label FROM molecule WHERE NOT molecule_id IN (SELECT molecule_id FROM atom WHERE element = 'sn')"
+}

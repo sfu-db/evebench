@@ -1,0 +1,74 @@
+{
+  "dbid": "beers",
+  "index": "148",
+  "source_index": "2845",
+  "schema_ddl": "CREATE TABLE Bar (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Beer (\n    name VARCHAR NOT NULL,\n    brewer VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Drinker (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Frequents (\n    drinker VARCHAR NOT NULL,\n    bar VARCHAR NOT NULL,\n    times_a_week SMALLINT NOT NULL,\n    PRIMARY KEY (drinker, bar),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (bar) REFERENCES Bar(name)\n);\n\nCREATE TABLE Serves (\n    bar VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    price DECIMAL(5,2) NOT NULL,\n    PRIMARY KEY (bar, beer),\n    FOREIGN KEY (bar) REFERENCES Bar(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);\n\nCREATE TABLE Likes (\n    drinker VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    PRIMARY KEY (drinker, beer),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);",
+  "q1": "SELECT beer.name, min_price, bar FROM beer LEFT OUTER JOIN (SELECT beer, MIN(price) AS min_price FROM serves GROUP BY beer) AS t ON beer.name = t.beer LEFT OUTER JOIN serves ON beer.name = serves.beer AND min_price = serves.price",
+  "q2": "SELECT beer, MIN(price) AS lowest_price, bar FROM serves GROUP BY beer, bar ORDER BY beer",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "beers",
+  "q1_prompt_sql": "SELECT beer.name, min_price, bar FROM beer LEFT OUTER JOIN (SELECT beer, MIN(price) AS min_price FROM serves GROUP BY beer) AS t ON beer.name = t.beer LEFT OUTER JOIN serves ON beer.name = serves.beer AND min_price = serves.price",
+  "q2_prompt_sql": "SELECT beer, MIN(price) AS lowest_price, bar FROM serves GROUP BY beer, bar ORDER BY beer",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO Bar (name, address) VALUES ('B1', '123 Main St'), ('B2', '456 Oak St'), ('B3', '789 Pine St');\nINSERT INTO Beer (name, brewer) VALUES ('IPA', 'Great Brewery');\nINSERT INTO Serves (bar, beer, price) VALUES ('B1', 'IPA', 2.00), ('B2', 'IPA', 3.00), ('B3', 'IPA', 2.00);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 finds the minimum price per beer and the bars that offer it at that price, while Q2 lists all (beer, bar, price) entries from Serves. When a beer is served at multiple bars with varying prices, Q1 returns only the minimum price and corresponding bars, whereas Q2 returns all serves entries.",
+  "counterexample_dsp": "Beer 'IPA' is served at B1 ($2), B2 ($3), and B3 ($2). Q1 returns IPA with min_price $2 and bars B1/B3. Q2 returns all three serves entries with their respective prices.",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 finds the minimum price per beer and the bars that offer it at that price, while Q2 lists all (beer, bar, price) entries from Serves. When a beer is served at multiple bars with varying prices, Q1 returns only the minimum price and corresponding bars, whereas Q2 returns all serves entries.\",\n  \"counterexample_dsp\": \"Beer 'IPA' is served at B1 ($2), B2 ($3), and B3 ($2). Q1 returns IPA with min_price $2 and bars B1/B3. Q2 returns all three serves entries with their respective prices.\",\n  \"counterexample\": [\n    \"INSERT INTO Bar (name, address) VALUES ('B1', '123 Main St'), ('B2', '456 Oak St'), ('B3', '789 Pine St');\",\n    \"INSERT INTO Beer (name, brewer) VALUES ('IPA', 'Great Brewery');\",\n    \"INSERT INTO Serves (bar, beer, price) VALUES ('B1', 'IPA', 2.00), ('B2', 'IPA', 3.00), ('B3', 'IPA', 2.00);\"\n  ]\n}",
+  "reasoning": "\nOkay, let's see. I need to find a counterexample where Q1 and Q2 return different results. First, I should understand what each query does.\n\nStarting with Q1: It selects beer.name, min_price, and bar. It does a left outer join between Beer and a subquery that finds the minimum price per beer. Then, it joins that with the Serves table where the price equals the min_price. So, for each beer, it gets the minimum price and the bars that serve it at that price. But since it's a left outer join, even if there are no serves, it would still include the beer with nulls. But the subquery groups by beer, so each beer has one min_price. Then joining with Serves on beer.name and price equals min_price would get the bars where that beer is served at the minimum price.\n\nNow Q2: It selects beer, the minimum price as lowest_price, and bar, grouping by beer and bar. Then orders by beer. So for each beer and bar combination, it's getting the minimum price. Wait, but if you group by beer and bar, the MIN(price) would be the price for that specific bar and beer. But since the primary key of Serves is (bar, beer), each (bar, beer) pair has exactly one price. So the MIN(price) here would just be the same as the price in the Serves table. So Q2 is essentially listing all (beer, bar, price) triples from Serves, but grouped by beer and bar. But since each (bar, beer) is unique, it's just the same as the Serves table. However, the query groups by beer and bar, so the result is the same as the Serves table. But the MIN(price) is redundant here because each group has only one price. So Q2's output is all the entries in Serves, but with the price as the minimum (which is the same as the price in the table). \n\nWait, but Q1 is trying to find for each beer, the minimum price across all bars, and then the bars that serve it at that price. Q2 is grouping by beer and bar, so each row is a bar and a beer with their price. So Q1's result would be for each beer, the minimum price and the bars that have that price. Q2's result is all the (beer, bar, price) entries, but grouped by beer and bar. So they are different. \n\nBut why would they differ? Let's think of an example. Suppose there's a beer that is served in multiple bars at different prices. For example, Beer A is served at Bar 1 for $2, Bar 2 for $3, and Bar 3 for $2. Then Q1 would find the min price as $2 and list Bar 1 and Bar 3. Q2 would list all three entries (Bar1, BeerA, $2), (Bar2, BeerA, $3), (Bar3, BeerA, $2). So Q1 would have two rows for Beer A with min_price $2 and bars Bar1 and Bar3. Q2 would have three rows for Beer A, each with their respective bar and price. So the results are different.\n\nSo, the difference comes from Q1 aggregating the minimum price across all bars for each beer and then finding the bars that have that price, while Q2 is just listing all the serves with their respective prices, grouped by beer and bar. \n\nSo to create a counterexample, I need a scenario where a beer has multiple bars serving it at different prices, with at least two bars having the same minimum price. Then Q1 would list the beer with min_price and those bars, while Q2 would list all the serves, including higher-priced ones.\n\nLet me create a test database. Let's have Beer 'IPA' served at Bar 'B1' for $2, Bar 'B2' for $3, and Bar 'B3' for $2. Then, for Q1, the min_price is $2, and the bars are B1 and B3. So Q1 would return (IPA, 2, B1) and (IPA, 2, B3). Q2 would return (IPA, 2, B1), (IPA, 3, B2), (IPA, 2, B3). So the results are different.\n\nBut wait, in Q2, the grouping is by beer and bar. So each (beer, bar) pair is a group, and the MIN(price) is just the price in that row. So Q2's output is exactly the same as the Serves table. Therefore, if the Serves table has entries for BeerA at different bars with different prices, Q2 will return all of them. Whereas Q1 will return for each beer, the min price and the bars that have that price. \n\nSo in this case, if there's a beer with multiple bars serving it at different prices, Q1 and Q2 will have different outputs. \n\nSo the counterexample would involve inserting Beer entries and Serves entries where a beer is served in multiple bars with varying prices. Let's make sure that the Beer and Bar tables have entries. Let's say:\n\nBars: B1, B2, B3.\n\nBeers: IPA.\n\nServes:\nB1 serves IPA at $2.\nB2 serves IPA at $3.\nB3 serves IPA at $2.\n\nIn this case, Q1 would return IPA with min_price 2, and bars B1 and B3. Q2 would return all three entries. Therefore, the results are different.\n\nSo the explanation is that Q1 finds the minimum price per beer and the bars that offer it at that price, while Q2 lists all (beer, bar, price) entries from the Serves table. Hence, when a beer is served at multiple bars with varying prices, Q1 and Q2 return different results.\n\nNow, the counterexample needs to have these entries. Let's write the SQL inserts.\n\nFirst, insert into Bar: B1, B2, B3.\n\nThen Beer: IPA.\n\nThen Serves entries for each bar and beer with the respective prices.\n\nSo the counterexample would be:\n\nINSERT INTO Bar (name, address) VALUES ('B1', 'Addr1'), ('B2', 'Addr2'), ('B3', 'Addr3');\nINSERT INTO Beer (name, brewer) VALUES ('IPA', 'Brewer1');\nINSERT INTO Serves (bar, beer, price) VALUES ('B1', 'IPA', 2), ('B2', 'IPA', 3), ('B3', 'IPA', 2);\n\nThis should create the scenario where Q1 and Q2 differ.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 513,
+    "total_tokens": 2184,
+    "completion_tokens": 1671,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1407
+    },
+    "generation_seconds": 53.172
+  },
+  "started_at": "2026-10-06T08:20:47.225437+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "IPA",
+      2,
+      "B1"
+    ],
+    [
+      "IPA",
+      2,
+      "B3"
+    ]
+  ],
+  "q2_output": [
+    [
+      "IPA",
+      2,
+      "B1"
+    ],
+    [
+      "IPA",
+      3,
+      "B2"
+    ],
+    [
+      "IPA",
+      2,
+      "B3"
+    ]
+  ],
+  "q1_row_count": 2,
+  "q2_row_count": 3,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT beer.name, min_price, bar FROM beer LEFT OUTER JOIN (SELECT beer, MIN(price) AS min_price FROM serves GROUP BY beer) AS t ON beer.name = t.beer LEFT OUTER JOIN serves ON beer.name = serves.beer AND min_price = serves.price",
+  "q2_validation_sql": "SELECT beer, MIN(price) AS lowest_price, bar FROM serves GROUP BY beer, bar ORDER BY beer"
+}

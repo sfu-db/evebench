@@ -1,0 +1,53 @@
+{
+  "dbid": "607",
+  "index": "477",
+  "source_index": "12",
+  "schema_ddl": "CREATE TABLE SALESPERSON (\n    SALES_ID INT,\n    NAME VARCHAR(255),\n    SALARY INT,\n    COMMISSION_RATE INT,\n    HIRE_DATE VARCHAR(255)\n);\n\nCREATE TABLE COMPANY (\n    COM_ID INT,\n    NAME VARCHAR(255),\n    CITY VARCHAR(255)\n);\n\nCREATE TABLE ORDERS (\n    ORDER_ID INT,\n    COM_ID INT,\n    SALES_ID INT,\n    ORDER_DATE VARCHAR(255),\n    AMOUNT INT\n);",
+  "q1": "SELECT NAME FROM SALESPERSON AS S WHERE 0 = ( SELECT COUNT(*) FROM ORDERS AS O JOIN COMPANY AS C ON O.COM_ID = C.COM_ID WHERE O.SALES_ID = S.SALES_ID AND C.NAME = 'RED' )",
+  "q2": "SELECT NAME FROM SALESPERSON WHERE NAME NOT IN (SELECT DISTINCT NAME FROM SALESPERSON WHERE SALES_ID IN (SELECT SALES_ID FROM ORDERS WHERE COM_ID IN (SELECT COM_ID FROM COMPANY WHERE NAME='RED')))",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT NAME FROM SALESPERSON AS S WHERE 0 = ( SELECT COUNT(*) FROM ORDERS AS O JOIN COMPANY AS C ON O.COM_ID = C.COM_ID WHERE O.SALES_ID = S.SALES_ID AND C.NAME = 'RED' )",
+  "q2_prompt_sql": "SELECT NAME FROM SALESPERSON WHERE NAME NOT IN (SELECT DISTINCT NAME FROM SALESPERSON WHERE SALES_ID IN (SELECT SALES_ID FROM ORDERS WHERE COM_ID IN (SELECT COM_ID FROM COMPANY WHERE NAME='RED')))",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO COMPANY (COM_ID, NAME, CITY) VALUES (1, 'RED', 'New York'); INSERT INTO SALESPERSON (SALES_ID, NAME, SALARY, COMMISSION_RATE, HIRE_DATE) VALUES (1, 'Salesperson A', 50000, 10, '2010-01-01'), (2, 'Salesperson B', 60000, 15, '2012-05-15'); INSERT INTO ORDERS (ORDER_ID, COM_ID, SALES_ID, ORDER_DATE, AMOUNT) VALUES (1, 1, 2, '2021-06-10', 1000);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not equivalent. Q1 checks if there are no orders from the 'RED' company for each salesperson, while Q2 checks if the salesperson has not worked for the 'RED' company.",
+  "counterexample_dsp": "Salesperson A has no orders from the 'RED' company, but Salesperson B has an order from the 'RED' company.",
+  "equiv": "N",
+  "raw_response": "{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 and Q2 are not equivalent. Q1 checks if there are no orders from the 'RED' company for each salesperson, while Q2 checks if the salesperson has not worked for the 'RED' company.\",\n\"counterexample_dsp\": \"Salesperson A has no orders from the 'RED' company, but Salesperson B has an order from the 'RED' company.\",\n\"counterexample\": \"INSERT INTO COMPANY (COM_ID, NAME, CITY) VALUES (1, 'RED', 'New York'); INSERT INTO SALESPERSON (SALES_ID, NAME, SALARY, COMMISSION_RATE, HIRE_DATE) VALUES (1, 'Salesperson A', 50000, 10, '2010-01-01'), (2, 'Salesperson B', 60000, 15, '2012-05-15'); INSERT INTO ORDERS (ORDER_ID, COM_ID, SALES_ID, ORDER_DATE, AMOUNT) VALUES (1, 1, 2, '2021-06-10', 1000);\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 481,
+    "total_tokens": 739,
+    "completion_tokens": 258,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 4.531
+  },
+  "started_at": "2026-10-06T14:34:09.837705+00:00",
+  "elapsed_seconds": 0.703,
+  "q1_output": [
+    [
+      "Salesperson A"
+    ]
+  ],
+  "q2_output": [
+    [
+      "Salesperson A"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT NAME FROM SALESPERSON AS S WHERE 0 = ( SELECT COUNT(*) FROM ORDERS AS O JOIN COMPANY AS C ON O.COM_ID = C.COM_ID WHERE O.SALES_ID = S.SALES_ID AND C.NAME = 'RED' )",
+  "q2_validation_sql": "SELECT NAME FROM SALESPERSON WHERE NAME NOT IN (SELECT DISTINCT NAME FROM SALESPERSON WHERE SALES_ID IN (SELECT SALES_ID FROM ORDERS WHERE COM_ID IN (SELECT COM_ID FROM COMPANY WHERE NAME='RED')))"
+}

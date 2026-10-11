@@ -1,0 +1,54 @@
+{
+  "dbid": "debit_card_specializing",
+  "index": "839",
+  "source_index": "1481",
+  "schema_ddl": "CREATE TABLE customers\n(\n    CustomerID INTEGER UNIQUE     not null\n        primary key,\n    Segment    TEXT null,\n    Currency   TEXT null\n);\n\nCREATE TABLE gasstations\n(\n    GasStationID INTEGER    UNIQUE   not null\n        primary key,\n    ChainID      INTEGER          null,\n    Country      TEXT null,\n    Segment      TEXT null\n);\n\nCREATE TABLE products\n(\n    ProductID   INTEGER   UNIQUE      not null\n        primary key,\n    Description TEXT null\n);\n\nCREATE TABLE \"transactions_1k\"\n(\n    TransactionID INTEGER\n        primary key autoincrement,\n    Date          DATE,\n    Time          TEXT,\n    CustomerID    INTEGER,\n    CardID        INTEGER,\n    GasStationID  INTEGER,\n    ProductID     INTEGER,\n    Amount        INTEGER,\n    Price         REAL\n);\n\nCREATE TABLE \"yearmonth\"\n(\n    CustomerID  INTEGER not null\n        references customers\n            on update cascade on delete cascade\n        references customers,\n    Date        TEXT    not null,\n    Consumption REAL,\n    primary key (Date, CustomerID)\n);",
+  "q1": "SELECT SUBSTRING(T2.Date, 5, 2) FROM customers AS T1 INNER JOIN yearmonth AS T2 ON T1.CustomerID = T2.CustomerID WHERE SUBSTRING(T2.Date, 1, 4) = '2013' AND T1.Segment = 'SME' GROUP BY SUBSTRING(T2.Date, 5, 2) ORDER BY SUM(T2.Consumption) DESC LIMIT 1",
+  "q2": "SELECT SUBSTR(Date, 6, 2) AS Month, SUM(Consumption) AS Total_Consumption FROM yearmonth AS T1 INNER JOIN customers AS T2 ON T1.CustomerID = T2.CustomerID WHERE T2.Segment = 'SME' AND SUBSTR(T1.Date, 1, 4) = '2013' GROUP BY Month ORDER BY Total_Consumption DESC LIMIT 1",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT SUBSTRING(T2.Date, 5, 2) FROM customers AS T1 INNER JOIN yearmonth AS T2 ON T1.CustomerID = T2.CustomerID WHERE SUBSTRING(T2.Date, 1, 4) = '2013' AND T1.Segment = 'SME' GROUP BY SUBSTRING(T2.Date, 5, 2) ORDER BY SUM(T2.Consumption) DESC LIMIT 1",
+  "q2_prompt_sql": "SELECT SUBSTR(Date, 6, 2) AS Month, SUM(Consumption) AS Total_Consumption FROM yearmonth AS T1 INNER JOIN customers AS T2 ON T1.CustomerID = T2.CustomerID WHERE T2.Segment = 'SME' AND SUBSTR(T1.Date, 1, 4) = '2013' GROUP BY Month ORDER BY Total_Consumption DESC LIMIT 1",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO customers (CustomerID, Segment, Currency) VALUES (1, 'SME', 'USD'); INSERT INTO yearmonth (CustomerID, Date, Consumption) VALUES (1, '2013-01-15', 100);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent because they use different functions (SUBSTRING vs. SUBSTR) to extract the month from the Date column in the yearmonth table. Although these functions are similar in many SQL dialects, they may not behave exactly the same way in all cases, especially when dealing with different character encodings or locale settings.",
+  "counterexample_dsp": "The test data should include a date in the yearmonth table where the month part is '01' (January) when using SUBSTRING, but '1' (January) when using SUBSTR. This will trigger the difference in the results of Q1 and Q2.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent because they use different functions (SUBSTRING vs. SUBSTR) to extract the month from the Date column in the yearmonth table. Although these functions are similar in many SQL dialects, they may not behave exactly the same way in all cases, especially when dealing with different character encodings or locale settings.\",\n  \"counterexample_dsp\": \"The test data should include a date in the yearmonth table where the month part is '01' (January) when using SUBSTRING, but '1' (January) when using SUBSTR. This will trigger the difference in the results of Q1 and Q2.\",\n  \"counterexample\": \"INSERT INTO customers (CustomerID, Segment, Currency) VALUES (1, 'SME', 'USD'); INSERT INTO yearmonth (CustomerID, Date, Consumption) VALUES (1, '2013-01-15', 100);\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 620,
+    "total_tokens": 827,
+    "completion_tokens": 207,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 4.0
+  },
+  "started_at": "2026-10-06T16:07:11.363688+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "-0"
+    ]
+  ],
+  "q2_output": [
+    [
+      "01",
+      100.0
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT SUBSTRING(T2.Date, 5, 2) FROM customers AS T1 INNER JOIN yearmonth AS T2 ON T1.CustomerID = T2.CustomerID WHERE SUBSTRING(T2.Date, 1, 4) = '2013' AND T1.Segment = 'SME' GROUP BY SUBSTRING(T2.Date, 5, 2) ORDER BY SUM(T2.Consumption) DESC LIMIT 1",
+  "q2_validation_sql": "SELECT SUBSTR(Date, 6, 2) AS Month, SUM(Consumption) AS Total_Consumption FROM yearmonth AS T1 INNER JOIN customers AS T2 ON T1.CustomerID = T2.CustomerID WHERE T2.Segment = 'SME' AND SUBSTR(T1.Date, 1, 4) = '2013' GROUP BY Month ORDER BY Total_Consumption DESC LIMIT 1"
+}

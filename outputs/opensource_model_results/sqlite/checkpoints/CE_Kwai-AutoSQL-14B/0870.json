@@ -1,0 +1,51 @@
+{
+  "dbid": "debit_card_specializing",
+  "index": "870",
+  "source_index": "1525",
+  "schema_ddl": "CREATE TABLE customers\n(\n    CustomerID INTEGER UNIQUE     not null\n        primary key,\n    Segment    TEXT null,\n    Currency   TEXT null\n);\n\nCREATE TABLE gasstations\n(\n    GasStationID INTEGER    UNIQUE   not null\n        primary key,\n    ChainID      INTEGER          null,\n    Country      TEXT null,\n    Segment      TEXT null\n);\n\nCREATE TABLE products\n(\n    ProductID   INTEGER   UNIQUE      not null\n        primary key,\n    Description TEXT null\n);\n\nCREATE TABLE \"transactions_1k\"\n(\n    TransactionID INTEGER\n        primary key autoincrement,\n    Date          DATE,\n    Time          TEXT,\n    CustomerID    INTEGER,\n    CardID        INTEGER,\n    GasStationID  INTEGER,\n    ProductID     INTEGER,\n    Amount        INTEGER,\n    Price         REAL\n);\n\nCREATE TABLE \"yearmonth\"\n(\n    CustomerID  INTEGER not null\n        references customers\n            on update cascade on delete cascade\n        references customers,\n    Date        TEXT    not null,\n    Consumption REAL,\n    primary key (Date, CustomerID)\n);",
+  "q1": "SELECT T2.Country FROM transactions_1k AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID WHERE T1.Date = '2012-08-24' AND T1.Price = 548.4",
+  "q2": "SELECT T2.Country FROM \"transactions_1k\" AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID WHERE T1.Date = '2012-08-24' AND T1.Amount = 548.4",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT T2.Country FROM transactions_1k AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID WHERE T1.Date = '2012-08-24' AND T1.Price = 548.4",
+  "q2_prompt_sql": "SELECT T2.Country FROM \"transactions_1k\" AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID WHERE T1.Date = '2012-08-24' AND T1.Amount = 548.4",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO gasstations (GasStationID, ChainID, Country, Segment) VALUES (1, 1, 'USA', 'A');\nINSERT INTO transactions_1k (TransactionID, Date, Time, CustomerID, CardID, GasStationID, ProductID, Amount, Price) VALUES (1, '2012-08-24', '10:00:00', 1, 100, 1, 1, 10, 548.4);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 filters on transactions_1k.Price = 548.4, while Q2 filters on transactions_1k.Amount = 548.4. These are distinct columns with different data types (REAL vs INTEGER), so they can yield different results when their values differ for the same date.",
+  "counterexample_dsp": "A single transaction with Date = '2012-08-24', Price = 548.4, and Amount = 10 (so Q1 returns the country but Q2 does not).",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 filters on transactions_1k.Price = 548.4, while Q2 filters on transactions_1k.Amount = 548.4. These are distinct columns with different data types (REAL vs INTEGER), so they can yield different results when their values differ for the same date.\",\n  \"counterexample_dsp\": \"A single transaction with Date = '2012-08-24', Price = 548.4, and Amount = 10 (so Q1 returns the country but Q2 does not).\",\n  \"counterexample\": [\n    \"INSERT INTO gasstations (GasStationID, ChainID, Country, Segment) VALUES (1, 1, 'USA', 'A');\",\n    \"INSERT INTO transactions_1k (TransactionID, Date, Time, CustomerID, CardID, GasStationID, ProductID, Amount, Price) VALUES (1, '2012-08-24', '10:00:00', 1, 100, 1, 1, 10, 548.4);\"\n  ]\n}",
+  "reasoning": "\nOkay, let's tackle this problem. So, I need to find a counterexample where Q1 and Q2 return different results. Let me first understand the two queries.\n\nQ1 selects Country from gasstations (T2) by joining with transactions_1k (T1) on GasStationID. The conditions are T1.Date = '2012-08-24' and T1.Price = 548.4.\n\nQ2 is almost the same except the condition is T1.Amount = 548.4 instead of Price.\n\nSo the difference is that Q1 uses Price column and Q2 uses Amount column. Since Price is REAL and Amount is INTEGER in the transactions_1k table, their values are different. \n\nThe key here is that Price and Amount are different fields. So, if there's a transaction where Price is 548.4 but Amount is not, or vice versa, the two queries would return different results. \n\nLet me think of a scenario. Suppose there's a transaction with Date '2012-08-24', Price 548.4, and Amount something else. Then Q1 would return the country, but Q2 wouldn't because Amount isn't 548.4. Conversely, if there's a transaction where Amount is 548.4 but Price isn't, then Q2 would return it and Q1 wouldn't.\n\nSo the counterexample needs to have at least one transaction where Price is 548.4 and another where Amount is 548.4. Wait, but maybe even a single transaction where Price is 548.4 but Amount is not, and another transaction where Amount is 548.4 but Price is different. But perhaps even one transaction that satisfies one condition but not the other would suffice.\n\nWait, but the queries are both selecting from the same table. So if there's a row in transactions_1k where Date is '2012-08-24' and Price is 548.4 but Amount is not 548.4, then Q1 would return the country, but Q2 wouldn't. Alternatively, if there's a row where Date is same, Amount is 548.4 but Price isn't, then Q2 would return and Q1 wouldn't. So creating a scenario where exactly one of the two conditions is met.\n\nSo, let's create two transactions. Let's say:\n\nTransaction 1: Date '2012-08-24', Price 548.4, Amount 100. Then Q1 would return Country, but Q2 wouldn't.\n\nTransaction 2: Date '2012-08-24', Price 600.0, Amount 548.4. Then Q2 would return Country, but Q1 wouldn't.\n\nBut maybe even one transaction that satisfies one condition. Let's say there's one transaction with Price 548.4 (so Q1 returns country) and no transaction with Amount 548.4. Then Q1 would return something, Q2 returns nothing. Or vice versa.\n\nAlternatively, maybe a case where both conditions are met for the same transaction. But that would make both queries return the same result. So to have different results, there must be at least one transaction that satisfies one condition but not the other.\n\nSo let's create a simple example. Let's have one transaction where Price is 548.4 and Amount is, say, 10. Then Q1 would return the country, but Q2 would not. So if the gas station is in a certain country, then Q1 returns that country, and Q2 returns nothing.\n\nAlternatively, another transaction where Amount is 548.4 but Price is different. So Q2 returns that country, Q1 doesn't.\n\nSo for the counterexample, I can insert two transactions. Let me think of the gasstations table. Let's say GasStationID 1 is in Country 'USA', and GasStationID 2 is in Country 'Canada'.\n\nTransaction 1: GasStationID 1, Date '2012-08-24', Price 548.4, Amount 10.\n\nTransaction 2: GasStationID 2, Date '2012-08-24', Price 600, Amount 548.4.\n\nThen Q1 would return USA (from transaction 1), and Q2 would return Canada (from transaction 2). So the two queries would return different results.\n\nAlternatively, if I have only one transaction where Price is 548.4 but Amount is not. Then Q1 returns one country, Q2 returns nothing. That's also a valid counterexample.\n\nBut the problem says to create a test database. So I need to insert into gasstations, transactions_1k, and maybe other tables. But the other tables (customers, products, yearmonth) don't seem to be involved in the queries. So I can leave them empty or insert minimal data.\n\nLet me structure the counterexample:\n\n- Insert into gasstations: two entries, GasStationID 1 (Country 'USA') and GasStationID 2 (Country 'Canada').\n\n- Insert into transactions_1k: one transaction with GasStationID 1, Date '2012-08-24', Price 548.4, Amount 10. So Q1 would return USA, Q2 doesn't match because Amount is 10.\n\nAnother transaction with GasStationID 2, Date same, Amount 548.4, Price 600. Then Q2 returns Canada, Q1 doesn't match. But if I only have one transaction, say, the first one, then Q1 returns USA and Q2 returns nothing. That's a valid case where the results differ.\n\nSo let's go with that. Let me write the SQL statements for that.\n\nFirst, insert into gasstations:\n\nINSERT INTO gasstations (GasStationID, ChainID, Country, Segment) VALUES (1, 1, 'USA', 'A');\n\nINSERT INTO gasstations (GasStationID, ChainID, Country, Segment) VALUES (2, 2, 'Canada', 'B');\n\nThen insert into transactions_1k:\n\nINSERT INTO transactions_1k (TransactionID, Date, Time, CustomerID, CardID, GasStationID, ProductID, Amount, Price) VALUES (1, '2012-08-24', '10:00:00', 1, 100, 1, 1, 10, 548.4);\n\nThis transaction meets the Date and Price condition for Q1, so Q1 returns 'USA', but the Amount is 10, not 548.4, so Q2 doesn't return anything.\n\nThus, the two queries would return different results. Hence, this is a valid counterexample.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 542,
+    "total_tokens": 2279,
+    "completion_tokens": 1737,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1482
+    },
+    "generation_seconds": 57.922
+  },
+  "started_at": "2026-10-06T19:58:33.787708+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "USA"
+    ]
+  ],
+  "q2_output": [],
+  "q1_row_count": 1,
+  "q2_row_count": 0,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT T2.Country FROM transactions_1k AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID WHERE T1.Date = '2012-08-24' AND T1.Price = 548.4",
+  "q2_validation_sql": "SELECT T2.Country FROM \"transactions_1k\" AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID WHERE T1.Date = '2012-08-24' AND T1.Amount = 548.4"
+}

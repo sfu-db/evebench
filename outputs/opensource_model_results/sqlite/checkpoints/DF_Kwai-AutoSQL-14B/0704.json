@@ -1,0 +1,64 @@
+{
+  "dbid": "thrombosis_prediction",
+  "index": "704",
+  "source_index": "1235",
+  "schema_ddl": "CREATE TABLE Examination\n(\n    ID                 INTEGER          null,\n    `Examination Date` DATE         null,\n    `aCL IgG`          REAL        null,\n    `aCL IgM`          REAL        null,\n    ANA                INTEGER          null,\n    `ANA Pattern`      TEXT null,\n    `aCL IgA`          INTEGER          null,\n    Diagnosis          TEXT null,\n    KCT                TEXT null,\n    RVVT              TEXT null,\n    LAC                TEXT null,\n    Symptoms           TEXT null,\n    Thrombosis         INTEGER          null,\n    foreign key (ID) references Patient (ID)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE Patient\n(\n    ID           INTEGER default 0 not null\n        primary key,\n    SEX          TEXT  null,\n    Birthday     DATE          null,\n    Description  DATE          null,\n    `First Date` DATE          null,\n    Admission    TEXT  null,\n    Diagnosis    TEXT  null\n);\n\nCREATE TABLE Laboratory\n(\n    ID        INTEGER  default 0            not null,\n    Date      DATE default '0000-00-00' not null,\n    GOT       INTEGER                       null,\n    GPT       INTEGER                        null,\n    LDH       INTEGER                        null,\n    ALP       INTEGER                        null,\n    TP        REAL             null,\n    ALB       REAL             null,\n    UA        REAL             null,\n    UN        INTEGER                       null,\n    CRE       REAL             null,\n    `T-BIL`   REAL             null,\n    `T-CHO`   INTEGER                       null,\n    TG        INTEGER                       null,\n    CPK       INTEGER                       null,\n    GLU       INTEGER                       null,\n    WBC       REAL             null,\n    RBC       REAL             null,\n    HGB       REAL             null,\n    HCT       REAL             null,\n    PLT       INTEGER                       null,\n    PT        REAL             null,\n    APTT      INTEGER                       null,\n    FG        REAL             null,\n    PIC       INTEGER                       null,\n    TAT       INTEGER                       null,\n    TAT2      INTEGER                       null,\n    `U-PRO`   TEXT              null,\n    IGG       INTEGER                       null,\n    IGA       INTEGER                       null,\n    IGM       INTEGER                       null,\n    CRP       TEXT              null,\n    RA        TEXT              null,\n    RF        TEXT              null,\n    C3        INTEGER                       null,\n    C4        INTEGER                       null,\n    RNP       TEXT              null,\n    SM        TEXT              null,\n    SC170     TEXT              null,\n    SSA       TEXT              null,\n    SSB       TEXT              null,\n    CENTROMEA TEXT              null,\n    DNA       TEXT              null,\n    `DNA-II`  INTEGER                       null,\n    primary key (ID, Date),\n        foreign key (ID) references Patient (ID)\n            on update cascade on delete cascade\n);",
+  "q1": "SELECT DISTINCT T1.ID, T1.SEX, T1.Birthday FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T2.WBC <= 3.5 OR T2.WBC >= 9.0 GROUP BY T1.SEX, T1.ID ORDER BY T1.Birthday ASC",
+  "q2": "SELECT P.ID, P.SEX, P.Birthday FROM Patient AS P INNER JOIN Laboratory AS L ON P.ID = L.ID WHERE L.WBC <= 3.5 OR L.WBC >= 9.0 GROUP BY P.SEX ORDER BY P.Birthday ASC",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT DISTINCT T1.ID, T1.SEX, T1.Birthday FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T2.WBC <= 3.5 OR T2.WBC >= 9.0 GROUP BY T1.SEX, T1.ID ORDER BY T1.Birthday ASC",
+  "q2_prompt_sql": "SELECT P.ID, P.SEX, P.Birthday FROM Patient AS P INNER JOIN Laboratory AS L ON P.ID = L.ID WHERE L.WBC <= 3.5 OR L.WBC >= 9.0 GROUP BY P.SEX ORDER BY P.Birthday ASC",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO Patient (ID, SEX, Birthday) VALUES (1, 'M', '1990-01-01');\nINSERT INTO Patient (ID, SEX, Birthday) VALUES (2, 'M', '1990-02-01');\nINSERT INTO Laboratory (ID, Date, WBC) VALUES (1, '2020-01-01', 3.0);\nINSERT INTO Laboratory (ID, Date, WBC) VALUES (2, '2020-01-01', 9.5);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 groups by T1.SEX and T1.ID, returning one row per patient. Q2 groups by P.SEX, collapsing all patients of the same sex into one row. The GROUP BY clause in Q2 invalidates the output structure compared to Q1.",
+  "counterexample_dsp": "Two male patients with different birthdays and WBC values satisfying the condition. Q1 returns both patients; Q2 returns one row (with ambiguous ID/Birthday).",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 groups by T1.SEX and T1.ID, returning one row per patient. Q2 groups by P.SEX, collapsing all patients of the same sex into one row. The GROUP BY clause in Q2 invalidates the output structure compared to Q1.\",\n\"counterexample_dsp\": \"Two male patients with different birthdays and WBC values satisfying the condition. Q1 returns both patients; Q2 returns one row (with ambiguous ID/Birthday).\",\n\"counterexample\": \"INSERT INTO Patient (ID, SEX, Birthday) VALUES (1, 'M', '1990-01-01');\\nINSERT INTO Patient (ID, SEX, Birthday) VALUES (2, 'M', '1990-02-01');\\nINSERT INTO Laboratory (ID, Date, WBC) VALUES (1, '2020-01-01', 3.0);\\nINSERT INTO Laboratory (ID, Date, WBC) VALUES (2, '2020-01-01', 9.5);\"\n}",
+  "reasoning": "\nOkay, let's start by understanding the two queries.\n\nQ1: SELECT DISTINCT T1.ID, T1.SEX, T1.Birthday FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T2.WBC <= 3.5 OR T2.WBC >= 9.0 GROUP BY T1.SEX, T1.ID ORDER BY T1.Birthday ASC\n\nQ2: SELECT P.ID, P.SEX, P.Birthday FROM Patient AS P INNER JOIN Laboratory AS L ON P.ID = L.ID WHERE L.WBC <= 3.5 OR L.WBC >= 9.0 GROUP BY P.SEX ORDER BY P.Birthday ASC\n\nFirst, looking at the GROUP BY clauses. Q1 groups by T1.SEX and T1.ID, which means each patient (ID) will appear once per group. Since they use DISTINCT, but grouping by ID and SEX already gives unique rows per patient. The ORDER BY in Q1 is on T1.Birthday, which is per row.\n\nQ2 groups by P.SEX only. So all patients of the same sex will be grouped into one row. But the SELECT clause includes P.ID and P.Birthday. Wait, that's a problem. In standard SQL, when you use GROUP BY, the selected columns must be either in the GROUP BY clause or aggregate functions. However, Q2 selects P.ID and P.Birthday without aggregating them. But in some SQL dialects, like MySQL with certain settings, this might be allowed, but it's not standard. However, the question is about semantic equivalence regardless of SQL dialect, so maybe the user assumes standard SQL.\n\nBut let's not get stuck on that. The main difference is the GROUP BY. Q1 groups by each patient's ID and SEX, so each patient appears once if they meet the WBC condition. Q2 groups by SEX only, which would collapse all patients of the same sex into a single row. But the SELECT clause includes ID and Birthday, which would be ambiguous unless an aggregate is used. So Q2 is likely invalid, but assuming it's allowed (maybe using some non-standard SQL), the output would be different.\n\nWait, but the user probably wants to check the logic. Let's think about the intended purpose. Both queries are joining Patient and Laboratory on ID, filtering on WBC. The difference is in grouping. Q1 groups by patient ID and SEX, so each patient appears once per their own data. Q2 groups by SEX, which would combine all patients of the same sex into one row. But then, what about the ORDER BY in Q2? It's ordering by P.Birthday, which would be problematic if there are multiple rows per group. But again, assuming that the SQL engine allows this, the output would be different.\n\nAnother point: Q1 uses DISTINCT, but grouping by T1.SEX and T1.ID already produces unique rows. So DISTINCT is redundant here. Q2 doesn't have DISTINCT. But again, the main issue is GROUP BY.\n\nLet me think of a counterexample. Suppose there are two patients with the same SEX but different birthdays. In Q1, each would appear once. In Q2, grouping by SEX would produce one row per sex. But the SELECT includes ID and Birthday. In standard SQL, this would be an error, but assuming it's allowed (like using MIN or MAX), but the actual output would differ.\n\nWait, maybe the user intended that Q2 groups by P.SEX, but the SELECT includes P.ID and P.Birthday. That's invalid unless an aggregate function is used. But perhaps the user made a mistake in the query. However, the question is about equivalence. So if Q2 is invalid, but assuming it's executed, what would happen?\n\nAlternatively, maybe Q2's GROUP BY is incorrect, leading to different results. For example, if there are two patients with the same sex but different birthdays, Q1 would return both, while Q2 would return one row (the first or some aggregate of the birthdays). But without aggregate functions, the behavior is undefined. However, in practice, some databases might return arbitrary values.\n\nBut the main difference is the GROUP BY clause. Q1 groups by each individual patient (ID and SEX), so each patient appears once. Q2 groups by SEX, so all patients of the same sex are grouped into one row. Therefore, the results would be different.\n\nSo, to create a counterexample, create two patients of the same sex with different birthdays. Then, in Q1, both would appear, while in Q2, grouping by SEX would return one row (with possibly one of the IDs and birthdays, or an error).\n\nLet me create a test case with two patients, both male, with different birthdays and WBC values meeting the condition. Then Q1 would return two rows, Q2 would return one row (but the exact data depends on the SQL engine's handling of non-aggregated columns in GROUP BY).\n\nSo the counterexample would show that Q1 returns more rows than Q2.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 986,
+    "total_tokens": 2273,
+    "completion_tokens": 1287,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1042
+    },
+    "generation_seconds": 42.937
+  },
+  "started_at": "2026-10-06T21:33:49.980568+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      1,
+      "M",
+      "1990-01-01"
+    ],
+    [
+      2,
+      "M",
+      "1990-02-01"
+    ]
+  ],
+  "q2_output": [
+    [
+      1,
+      "M",
+      "1990-01-01"
+    ]
+  ],
+  "q1_row_count": 2,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DISTINCT T1.ID, T1.SEX, T1.Birthday FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T2.WBC <= 3.5 OR T2.WBC >= 9.0 GROUP BY T1.SEX, T1.ID ORDER BY T1.Birthday ASC",
+  "q2_validation_sql": "SELECT P.ID, P.SEX, P.Birthday FROM Patient AS P INNER JOIN Laboratory AS L ON P.ID = L.ID WHERE L.WBC <= 3.5 OR L.WBC >= 9.0 GROUP BY P.SEX ORDER BY P.Birthday ASC"
+}

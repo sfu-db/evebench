@@ -1,0 +1,39 @@
+{
+  "dbid": "596",
+  "index": "512",
+  "source_index": "114",
+  "schema_ddl": "CREATE TABLE COURSES (\n    STUDENT VARCHAR(255),\n    CLASS VARCHAR(255),\n    PRIMARY KEY (STUDENT)\n);",
+  "q1": "SELECT CLASS FROM COURSES GROUP BY CLASS HAVING COUNT(*)>=5",
+  "q2": "SELECT X.CLASS FROM (SELECT CLASS, COUNT(STUDENT) FROM COURSES GROUP BY CLASS HAVING COUNT(STUDENT)>=5) X",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT CLASS FROM COURSES GROUP BY CLASS HAVING COUNT(*)>=5",
+  "q2_prompt_sql": "SELECT X.CLASS FROM (SELECT CLASS, COUNT(STUDENT) FROM COURSES GROUP BY CLASS HAVING COUNT(STUDENT)>=5) X",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both Q1 and Q2 return the same result. They both select classes from the COURSES table that have at least 5 students. Q1 uses COUNT(*) in the HAVING clause, while Q2 uses COUNT(STUDENT). Since STUDENT is part of the primary key, every row in COURSES has a unique STUDENT, so COUNT(STUDENT) and COUNT(*) are equivalent in this context. The subquery in Q2 is unnecessary and does not change the outcome.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both Q1 and Q2 return the same result. They both select classes from the COURSES table that have at least 5 students. Q1 uses COUNT(*) in the HAVING clause, while Q2 uses COUNT(STUDENT). Since STUDENT is part of the primary key, every row in COURSES has a unique STUDENT, so COUNT(STUDENT) and COUNT(*) are equivalent in this context. The subquery in Q2 is unnecessary and does not change the outcome.\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 327,
+    "total_tokens": 442,
+    "completion_tokens": 115,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 3.891
+  },
+  "started_at": "2026-10-06T15:51:28.060617+00:00",
+  "elapsed_seconds": 0.0
+}

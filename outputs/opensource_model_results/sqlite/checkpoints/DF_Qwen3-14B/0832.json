@@ -1,0 +1,55 @@
+{
+  "dbid": "student_club",
+  "index": "832",
+  "source_index": "1469",
+  "schema_ddl": "CREATE TABLE event\n(\n    event_id   TEXT\n        constraint event_pk\n            primary key,\n    event_name TEXT,\n    event_date TEXT,\n    type       TEXT,\n    notes      TEXT,\n    location   TEXT,\n    status     TEXT\n);\n\nCREATE TABLE major\n(\n    major_id   TEXT\n        constraint major_pk\n            primary key,\n    major_name TEXT,\n    department TEXT,\n    college    TEXT\n);\n\nCREATE TABLE zip_code\n(\n    zip_code    INTEGER\n        constraint zip_code_pk\n            primary key,\n    type        TEXT,\n    city        TEXT,\n    county      TEXT,\n    state       TEXT,\n    short_state TEXT\n);\n\nCREATE TABLE \"attendance\"\n(\n    link_to_event  TEXT,\n    link_to_member TEXT,\n    primary key (link_to_event, link_to_member),\n    foreign key (link_to_event) references event(event_id),\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"budget\"\n(\n    budget_id     TEXT\n            primary key,\n    category      TEXT,\n    spent         REAL,\n    remaining     REAL,\n    amount        INTEGER,\n    event_status  TEXT,\n    link_to_event TEXT,\n    foreign key (link_to_event) references event(event_id)\n);\n\nCREATE TABLE \"expense\"\n(\n    expense_id          TEXT\n            primary key,\n    expense_description TEXT,\n    expense_date        TEXT,\n    cost                REAL,\n    approved            TEXT,\n    link_to_member      TEXT,\n    link_to_budget      TEXT,\n    foreign key (link_to_budget) references budget(budget_id),\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"income\"\n(\n    income_id      TEXT\n        constraint income_pk\n            primary key,\n    date_received  TEXT,\n    amount         INTEGER,\n    source         TEXT,\n    notes          TEXT,\n    link_to_member TEXT,\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"member\"\n(\n    member_id     TEXT\n        constraint member_pk\n            primary key,\n    first_name    TEXT,\n    last_name     TEXT,\n    email         TEXT,\n    position      TEXT,\n    t_shirt_size  TEXT,\n    phone         TEXT,\n    zip           INTEGER,\n    link_to_major TEXT,\n    foreign key (link_to_major) references major(major_id),\n    foreign key (zip) references zip_code(zip_code)\n);",
+  "q1": "SELECT T2.city FROM member AS T1 INNER JOIN zip_code AS T2 ON T2.zip_code = T1.zip WHERE T1.first_name = 'Garrett' AND T1.last_name = 'Gerke'",
+  "q2": "SELECT city FROM member AS T1 INNER JOIN zip_code AS T2 ON T1.zip = T2.zip_code WHERE T1.first_name = 'Garrett' AND T1.last_name = 'Girke'",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT T2.city FROM member AS T1 INNER JOIN zip_code AS T2 ON T2.zip_code = T1.zip WHERE T1.first_name = 'Garrett' AND T1.last_name = 'Gerke'",
+  "q2_prompt_sql": "SELECT city FROM member AS T1 INNER JOIN zip_code AS T2 ON T1.zip = T2.zip_code WHERE T1.first_name = 'Garrett' AND T1.last_name = 'Girke'",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO zip_code (zip_code, type, city, county, state, short_state) VALUES (12345, 'STANDARD', 'Springfield', 'Greene', 'Missouri', 'MO'), (67890, 'STANDARD', 'Shelbyville', 'Shelby', 'Kentucky', 'KY');\nINSERT INTO member (member_id, first_name, last_name, zip) VALUES ('M1', 'Garrett', 'Gerke', 12345), ('M2', 'Garrett', 'Girke', 67890);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 differ in the WHERE clause: Q1 uses 'Gerke' while Q2 uses 'Girke'. This typo in the last name causes them to filter different members, leading to potentially different results.",
+  "counterexample_dsp": "A member named 'Garrett Gerke' with zip code 12345 (city 'Springfield') and another named 'Garrett Girke' with zip code 67890 (city 'Shelbyville') exists. Q1 returns 'Springfield', Q2 returns 'Shelbyville'.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 and Q2 differ in the WHERE clause: Q1 uses 'Gerke' while Q2 uses 'Girke'. This typo in the last name causes them to filter different members, leading to potentially different results.\",\n\"counterexample_dsp\": \"A member named 'Garrett Gerke' with zip code 12345 (city 'Springfield') and another named 'Garrett Girke' with zip code 67890 (city 'Shelbyville') exists. Q1 returns 'Springfield', Q2 returns 'Shelbyville'.\",\n\"counterexample\": \"INSERT INTO zip_code (zip_code, type, city, county, state, short_state) VALUES (12345, 'STANDARD', 'Springfield', 'Greene', 'Missouri', 'MO'), (67890, 'STANDARD', 'Shelbyville', 'Shelby', 'Kentucky', 'KY');\\nINSERT INTO member (member_id, first_name, last_name, zip) VALUES ('M1', 'Garrett', 'Gerke', 12345), ('M2', 'Garrett', 'Girke', 67890);\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem. So, the user wants to know if Q1 and Q2 are semantically equivalent. Let me start by understanding what each query does.\n\nLooking at Q1: It selects the city from zip_code (T2) by joining member (T1) on T2.zip_code = T1.zip. The WHERE clause filters for first_name 'Garrett' and last_name 'Gerke'. \n\nQ2 is similar but the join condition is T1.zip = T2.zip_code. Wait, that's the same as Q1's join condition, right? Because T1.zip is the foreign key referencing zip_code.zip_code. So the join condition is the same. But wait, looking at the WHERE clause, Q2 has last_name 'Girke' instead of 'Gerke'. Oh, that's a typo. So the main difference is the last name in the WHERE clause. \n\nWait, the user probably made a typo in the last names. Q1 has 'Gerke' and Q2 has 'Girke'. So if the database has a member with first name Garrett and last name Gerke, Q1 would find that, but Q2 would look for Girke, which might not exist. So the WHERE clauses are different. \n\nBut the join conditions are the same. The join is between T1.zip and T2.zip_code, which is correct because the member's zip is a foreign key to zip_code's zip_code. So the join is correct in both cases. \n\nSo the main difference is the last name in the WHERE clause. Q1 uses 'Gerke', Q2 uses 'Girke'. Therefore, if there's a member with 'Garrett Gerke', Q1 would return their city, but Q2 would not find any matching member. Conversely, if there's a member with 'Garrett Girke', Q2 would return their city, but Q1 wouldn't. \n\nSo they are not equivalent because the WHERE clauses are different. The join conditions are the same, but the filtering on the last name is different. \n\nTo create a counterexample, I need to have a member with first name Garrett and last name Gerke, and another with Garrett and Girke. Then, Q1 would return the city for Gerke, and Q2 for Girke. \n\nBut wait, the user's schema has the member table with first_name and last_name. So inserting two members with those names. Also, ensuring that their zip codes point to existing zip_code entries. \n\nSo the counterexample would involve inserting a member with Garrett Gerke and another with Garrett Girke, each with different zip codes. Then, Q1 would return the city from the zip_code of the Gerke member, and Q2 would return the city of the Girke member. \n\nBut the user's question is whether Q1 and Q2 are equivalent. Since their WHERE clauses differ in the last name, they are not equivalent. Hence, the answer is N.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 832,
+    "total_tokens": 1726,
+    "completion_tokens": 894,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 617
+    },
+    "generation_seconds": 29.657
+  },
+  "started_at": "2026-10-06T20:59:49.701500+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "Springfield"
+    ]
+  ],
+  "q2_output": [
+    [
+      "Shelbyville"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT T2.city FROM member AS T1 INNER JOIN zip_code AS T2 ON T2.zip_code = T1.zip WHERE T1.first_name = 'Garrett' AND T1.last_name = 'Gerke'",
+  "q2_validation_sql": "SELECT city FROM member AS T1 INNER JOIN zip_code AS T2 ON T1.zip = T2.zip_code WHERE T1.first_name = 'Garrett' AND T1.last_name = 'Girke'"
+}

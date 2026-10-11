@@ -1,0 +1,39 @@
+{
+  "dbid": "1083",
+  "index": "402",
+  "source_index": "865",
+  "schema_ddl": "CREATE TABLE PRODUCT (\n    PRODUCT_ID INT,\n    PRODUCT_NAME VARCHAR(255),\n    UNIT_PRICE INT,\n    PRIMARY KEY (PRODUCT_ID),\n    CHECK (UNIT_PRICE > 0),\n    CHECK (PRODUCT_NAME IN ('S8', 'IPHONE'))\n);\n\nCREATE TABLE SALES (\n    PRODUCT_ID INT,\n    SELLER_ID INT,\n    BUYER_ID INT,\n    SALE_DATE DATE,\n    QUANTITY INT,\n    PRICE INT,\n    FOREIGN KEY (PRODUCT_ID) REFERENCES PRODUCT(PRODUCT_ID),\n    CHECK (QUANTITY > 0),\n    CHECK (PRICE > 0)\n);",
+  "q1": "SELECT DISTINCT SALES.BUYER_ID AS BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'S8' AND SALES.BUYER_ID NOT IN ( SELECT SALES.BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'IPHONE')",
+  "q2": "SELECT S.BUYER_ID FROM SALES S JOIN PRODUCT P ON S.PRODUCT_ID = P.PRODUCT_ID GROUP BY S.BUYER_ID HAVING SUM(P.PRODUCT_NAME = 'S8') > 0 AND SUM(P.PRODUCT_NAME = 'IPHONE') = 0 AND SUM(P.PRODUCT_NAME='G4') = 0",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT DISTINCT SALES.BUYER_ID AS BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'S8' AND SALES.BUYER_ID NOT IN ( SELECT SALES.BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'IPHONE')",
+  "q2_prompt_sql": "SELECT S.BUYER_ID FROM SALES S JOIN PRODUCT P ON S.PRODUCT_ID = P.PRODUCT_ID GROUP BY S.BUYER_ID HAVING SUM(P.PRODUCT_NAME = 'S8') > 0 AND SUM(P.PRODUCT_NAME = 'IPHONE') = 0 AND SUM(P.PRODUCT_NAME='G4') = 0",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries aim to find buyers who purchased 'S8' but not 'IPHONE'. Q1 uses a NOT IN subquery, while Q2 uses GROUP BY with HAVING to ensure at least one 'S8' purchase and no 'IPHONE' purchases. Since the schema restricts product names to 'S8' and 'IPHONE', the 'G4' condition in Q2 is redundant and does not affect the result. Both queries logically produce the same set of buyer IDs.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries aim to find buyers who purchased 'S8' but not 'IPHONE'. Q1 uses a NOT IN subquery, while Q2 uses GROUP BY with HAVING to ensure at least one 'S8' purchase and no 'IPHONE' purchases. Since the schema restricts product names to 'S8' and 'IPHONE', the 'G4' condition in Q2 is redundant and does not affect the result. Both queries logically produce the same set of buyer IDs.\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem. I need to determine if Q1 and Q2 are semantically equivalent. Let's start by understanding each query.\n\nFirst, Q1: It selects distinct BUYER_ID from SALES where the product is 'S8' and the BUYER_ID is not in the subquery that finds buyers of 'IPHONE'. So, it's getting all buyers who bought 'S8' but not 'IPHONE'.\n\nQ2: It joins SALES and PRODUCT, groups by BUYER_ID. The HAVING clause checks that the sum of 'S8' is greater than 0 (so the buyer has at least one 'S8'), sum of 'IPHONE' is 0 (no 'IPHONE' purchases), and sum of 'G4' is 0. Wait, but the PRODUCT table's PRODUCT_NAME is constrained to 'S8' or 'IPHONE' only. The schema says CHECK (PRODUCT_NAME IN ('S8', 'IPHONE')). So 'G4' can't exist in the PRODUCT table. That means the SUM(P.PRODUCT_NAME='G4') is always 0, so that condition is redundant. So Q2 is effectively checking that the buyer has at least one 'S8' and no 'IPHONE' purchases.\n\nSo Q2's HAVING clause is equivalent to SUM(P.PRODUCT_NAME='S8') > 0 and SUM(P.PRODUCT_NAME='IPHONE') = 0. Since 'G4' is not in the product names, the third condition is always true. So Q2 is selecting buyers who bought at least one 'S8' and no 'IPHONE'.\n\nComparing to Q1: Q1 is selecting buyers who bought 'S8' and not in the list of buyers who bought 'IPHONE'. So that would be buyers of 'S8' but not 'IPHONE'. However, Q1 uses DISTINCT, but since it's a single column, that's just ensuring uniqueness.\n\nWait, but Q2's GROUP BY and HAVING would also ensure that each BUYER_ID is listed once. So both queries are selecting the same set of buyers: those who bought 'S8' and not 'IPHONE'.\n\nBut wait, what about buyers who bought multiple 'S8's but also bought 'IPHONE' in other sales? Q1 would exclude them. Q2 would also exclude them because the SUM for 'IPHONE' would be positive.\n\nBut what about a buyer who bought 'S8' and another product (but the schema says product names are only 'S8' or 'IPHONE'). So, the only products are 'S8' and 'IPHONE'. So, any sale must be for one of these. Therefore, the HAVING clause in Q2 is checking that the buyer has at least one 'S8' (so they bought 'S8') and no 'IPHONE' (so they didn't buy 'IPHONE').\n\nQ1 is selecting buyers who bought 'S8' (from the inner join) and not in the subquery (which is buyers of 'IPHONE'). So both queries are effectively selecting buyers who bought 'S8' and not 'IPHONE'.\n\nBut wait, there's a possible difference. What if a buyer bought 'S8' and also bought 'S8' again? But that's allowed. Q1 would include them once (since it's DISTINCT), and Q2 would include them once (GROUP BY). So same result.\n\nAnother point: Q1's subquery is for buyers of 'IPHONE', so any buyer who bought 'IPHONE' in any sale is excluded. Q2's HAVING clause checks that the sum of 'IPHONE' is zero, meaning the buyer has no 'IPHONE' sales.\n\nTherefore, the two queries should be equivalent. But wait, let me check again.\n\nWait, the Q2's HAVING clause is SUM(P.PRODUCT_NAME='S8') > 0. But the SUM is counting the number of rows where the product name is 'S8'. So if a buyer has multiple 'S8' purchases, the sum would be >0. So that's correct. And SUM(P.PRODUCT_NAME='IPHONE') = 0 means that the buyer has no 'IPHONE' sales.\n\nSo Q2 is equivalent to Q1. So the answer would be \"Y\".\n\nBut wait, the schema says that PRODUCT_NAME is in ('S8', 'IPHONE'), so the 'G4' check in Q2 is redundant. So the third condition in HAVING is always true. Therefore, Q2 is equivalent to selecting buyers with at least one 'S8' and no 'IPHONE' sales.\n\nSo the two queries should be equivalent. Therefore, the answer is Y.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 528,
+    "total_tokens": 1631,
+    "completion_tokens": 1103,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 986
+    },
+    "generation_seconds": 35.703
+  },
+  "started_at": "2026-10-06T15:08:00.202903+00:00",
+  "elapsed_seconds": 0.0
+}

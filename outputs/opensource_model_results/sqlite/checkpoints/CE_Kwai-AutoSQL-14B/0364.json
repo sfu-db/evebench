@@ -1,0 +1,58 @@
+{
+  "dbid": "codebase_community",
+  "index": "364",
+  "source_index": "664",
+  "schema_ddl": "CREATE TABLE badges\n(\n    Id     INTEGER          not null\n        primary key,\n    UserId INTEGER          null,\n    Name   TEXT null,\n    Date   DATETIME     null,\n        foreign key (UserId) references users (Id)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE comments\n(\n    Id              INTEGER          not null\n        primary key,\n    PostId          INTEGER          null,\n    Score           INTEGER          null,\n    Text            TEXT     null,\n    CreationDate    DATETIME     null,\n    UserId          INTEGER          null,\n    UserDisplayName TEXT null,\n        foreign key (PostId) references posts (Id)\n            on update cascade on delete cascade,\n        foreign key (UserId) references users (Id)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE postHistory\n(\n    Id                INTEGER          not null UNIQUE\n        primary key,\n    PostHistoryTypeId INTEGER          null,\n    PostId            INTEGER          null,\n    RevisionGUID      TEXT null,\n    CreationDate      DATETIME     null,\n    UserId            INTEGER          null,\n    Text              TEXT     null,\n    Comment           TEXT         null,\n    UserDisplayName   TEXT null,\n        foreign key (PostId) references posts (Id)\n            on update cascade on delete cascade,\n        foreign key (UserId) references users (Id)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE postLinks\n(\n    Id            INTEGER      not null\n        primary key,\n    CreationDate  DATETIME null,\n    PostId        INTEGER      null,\n    RelatedPostId INTEGER      null,\n    LinkTypeId    INTEGER      null,\n        foreign key (PostId) references posts (Id)\n            on update cascade on delete cascade,\n        foreign key (RelatedPostId) references posts (Id)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE posts\n(\n    Id                    INTEGER          not null UNIQUE\n        primary key,\n    PostTypeId            INTEGER          null,\n    AcceptedAnswerId      INTEGER          null,\n    CreaionDate           DATETIME     null,\n    Score                 INTEGER          null,\n    ViewCount             INTEGER          null,\n    Body                  TEXT     null,\n    OwnerUserId           INTEGER          null,\n    LasActivityDate       DATETIME     null,\n    Title                 TEXT null,\n    Tags                  TEXT null,\n    AnswerCount           INTEGER          null,\n    CommentCount          INTEGER          null,\n    FavoriteCount         INTEGER          null,\n    LastEditorUserId      INTEGER          null,\n    LastEditDate          DATETIME     null,\n    CommunityOwnedDate    DATETIME    null,\n    ParentId              INTEGER          null,\n    ClosedDate            DATETIME     null,\n    OwnerDisplayName      TEXT null,\n    LastEditorDisplayName TEXT null,\n        foreign key (LastEditorUserId) references users (Id)\n            on update cascade on delete cascade,\n        foreign key (OwnerUserId) references users (Id)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE tags\n(\n    Id            INTEGER          not null\n        primary key,\n    TagName       TEXT null,\n    Count         INTEGER          null,\n    ExcerptPostId INTEGER          null,\n    WikiPostId    INTEGER          null,\n    foreign key (ExcerptPostId) references posts (Id)\n        on update cascade on delete cascade\n);\n\nCREATE TABLE users\n(\n    Id              INTEGER          not null UNIQUE\n        primary key,\n    Reputation      INTEGER          null,\n    CreationDate    DATETIME     null,\n    DisplayName     TEXT null,\n    LastAccessDate  DATETIME     null,\n    WebsiteUrl      TEXT null,\n    Location        TEXT null,\n    AboutMe         TEXT     null,\n    Views           INTEGER          null,\n    UpVotes         INTEGER          null,\n    DownVotes       INTEGER          null,\n    AccountId       INTEGER          null,\n    Age             INTEGER          null,\n    ProfileImageUrl TEXT null\n);\n\nCREATE TABLE votes\n(\n    Id           INTEGER  not null\n        primary key,\n    PostId       INTEGER  null,\n    VoteTypeId   INTEGER  null,\n    CreationDate DATE null,\n    UserId       INTEGER  null,\n    BountyAmount INTEGER  null,\n        foreign key (PostId) references posts (Id)\n            on update cascade on delete cascade,\n        foreign key (UserId) references users (Id)\n            on update cascade on delete cascade\n);",
+  "q1": "SELECT Id FROM users WHERE Age = (SELECT MIN(Age) FROM users)",
+  "q2": "SELECT Id FROM users ORDER BY Age ASC LIMIT 1",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT Id FROM users WHERE Age = (SELECT MIN(Age) FROM users)",
+  "q2_prompt_sql": "SELECT Id FROM users ORDER BY Age ASC LIMIT 1",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO users (Id, Age) VALUES (1, 18);\nINSERT INTO users (Id, Age) VALUES (2, 18);\nINSERT INTO users (Id, Age) VALUES (3, 20);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 returns all users with the minimum age, while Q2 returns only one user (the first one when ordered by age ascending). When multiple users share the minimum age, Q1 returns more rows than Q2.",
+  "counterexample_dsp": "Two users share the minimum age (18), and one user has a higher age (20). Q1 returns both users with age 18, while Q2 returns only one.",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 returns all users with the minimum age, while Q2 returns only one user (the first one when ordered by age ascending). When multiple users share the minimum age, Q1 returns more rows than Q2.\",\n  \"counterexample_dsp\": \"Two users share the minimum age (18), and one user has a higher age (20). Q1 returns both users with age 18, while Q2 returns only one.\",\n  \"counterexample\": [\n    \"INSERT INTO users (Id, Age) VALUES (1, 18);\",\n    \"INSERT INTO users (Id, Age) VALUES (2, 18);\",\n    \"INSERT INTO users (Id, Age) VALUES (3, 20);\"\n  ]\n}",
+  "reasoning": "\nOkay, let's tackle this problem. The user wants me to find a counterexample where Q1 and Q2 return different results. Let me first understand what each query does.\n\nQ1 selects the Id from users where Age equals the minimum Age from users. So it's getting all users who have the minimum age. If there are multiple users with the same minimum age, Q1 will return all of them.\n\nQ2 orders the users by Age ascending and takes the first one, so it returns just one user, the one with the smallest age. If there are multiple users with the same minimum age, Q2 will only return one of them (the first one in the ordering, which could be arbitrary if there's a tie).\n\nSo the difference is when there are multiple users with the same minimum age. Q1 returns all of them, Q2 returns just one. Therefore, to create a counterexample, I need a scenario where more than one user has the minimum age. Then Q1 would return multiple Ids, while Q2 returns just one.\n\nLet me think of a test case. Suppose there are two users, both with Age = 18, which is the minimum. Then Q1 would return both Ids, and Q2 would return one (probably the one with the smaller Id if the default ordering is by Id, but maybe the order by Age ASC would just pick the first one in the table, but in practice, if two rows have the same Age, the order is undefined unless there's another column in the ORDER BY. Wait, Q2's ORDER BY is just Age ASC. So in that case, if two users have the same Age, the database may return either one, but the LIMIT 1 will just pick one. So in that case, Q1 returns both, Q2 returns one. That's the difference.\n\nSo the counterexample would have two users with the same minimum age. Let me create that. Insert two users with Age = 18, and another user with a higher age. Then Q1 returns both users with Age 18, while Q2 returns one (probably the one that comes first in the table, but since the order is not specified beyond Age, but the LIMIT 1 would pick one of them, but the exact one isn't determined by the query. However, the key is that Q1 returns more than one row, while Q2 returns one. So the difference is clear.\n\nWait, but what if the minimum age occurs once? Then both queries return the same result. So the counterexample must have multiple users with the same minimum age. So the test data should have two users with the same minimum age. Let me create that.\n\nLet me insert three users. User1 with Age 18, User2 with Age 18, and User3 with Age 20. Then Q1 would return both User1 and User2. Q2 would return one of them (depending on the order, but the actual result could be either, but the point is that Q2 returns only one, while Q1 returns both). So the two queries are not equivalent.\n\nSo the explanation is that Q1 returns all users with the minimum age, while Q2 returns only one user (the first one when ordered by age ascending). So when there are multiple users with the minimum age, the results differ.\n\nNow, the counterexample database. I need to insert into the users table. Let's say:\n\nINSERT INTO users (Id, Age) VALUES (1, 18);\nINSERT INTO users (Id, Age) VALUES (2, 18);\nINSERT INTO users (Id, Age) VALUES (3, 20);\n\nOther tables can be empty since the queries only involve the users table. The constraints don't require any other tables to be populated. So the counterexample would have these three users.\n\nTesting Q1: SELECT Id FROM users WHERE Age = (SELECT MIN(Age) FROM users) → returns 1 and 2.\n\nTesting Q2: SELECT Id FROM users ORDER BY Age ASC LIMIT 1 → returns 1 (assuming that the order is by the order in the table, but if the database uses some other ordering, like by Id, then it's 1. Either way, it's one row.)\n\nSo that's the difference. The explanation is that Q1 returns all users with the minimum age, while Q2 returns only one. So the counterexample is when there are multiple users with the same minimum age.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 1100,
+    "total_tokens": 2191,
+    "completion_tokens": 1091,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 923
+    },
+    "generation_seconds": 39.156
+  },
+  "started_at": "2026-10-06T18:52:53.221996+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      1
+    ],
+    [
+      2
+    ]
+  ],
+  "q2_output": [
+    [
+      1
+    ]
+  ],
+  "q1_row_count": 2,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT Id FROM users WHERE Age = (SELECT MIN(Age) FROM users)",
+  "q2_validation_sql": "SELECT Id FROM users ORDER BY Age ASC LIMIT 1"
+}

@@ -1,0 +1,63 @@
+{
+  "dbid": "614",
+  "index": "401",
+  "source_index": "251",
+  "schema_ddl": "CREATE TABLE FOLLOW (\n    FOLLOWEE VARCHAR(255),\n    FOLLOWER VARCHAR(255),\n    PRIMARY KEY (FOLLOWEE, FOLLOWER),\n    CHECK (FOLLOWEE <> FOLLOWER)\n);",
+  "q1": "SELECT FOLLOWEE AS FOLLOWER, COUNT(FOLLOWEE) AS NUM FROM FOLLOW WHERE FOLLOWEE IN (SELECT FOLLOWER FROM FOLLOW) GROUP BY 1 ORDER BY 1",
+  "q2": "SELECT FOLLOWEE AS FOLLOWER, COUNT(DISTINCT FOLLOWEE, FOLLOWER) AS NUM FROM FOLLOW WHERE FOLLOWEE IN (SELECT DISTINCT FOLLOW.FOLLOWER FROM FOLLOW) GROUP BY FOLLOWEE ORDER BY FOLLOWER",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT FOLLOWEE AS FOLLOWER, COUNT(FOLLOWEE) AS NUM FROM FOLLOW WHERE FOLLOWEE IN (SELECT FOLLOWER FROM FOLLOW) GROUP BY 1 ORDER BY 1",
+  "q2_prompt_sql": "SELECT FOLLOWEE AS FOLLOWER, COUNT(DISTINCT FOLLOWEE, FOLLOWER) AS NUM FROM FOLLOW WHERE FOLLOWEE IN (SELECT DISTINCT FOLLOW.FOLLOWER FROM FOLLOW) GROUP BY FOLLOWEE ORDER BY FOLLOWER",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO FOLLOW (FOLLOWEE, FOLLOWER) VALUES ('a', 'b'), ('a', 'c'), ('a', 'd'), ('b', 'e'), ('b', 'f'), ('c', 'g'), ('c', 'h');",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent because Q1 counts the number of followers for each followee, while Q2 attempts to count the number of unique (followee, follower) pairs for each followee. The COUNT(DISTINCT FOLLOWEE, FOLLOWER) in Q2 is incorrect as it will count the same (followee, follower) pair multiple times if it appears in the table, which is not the intended behavior.",
+  "counterexample_dsp": "The test data should have at least two followers for the same followee to trigger the difference in results. The first follower should have a different number of followers than the second follower.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent because Q1 counts the number of followers for each followee, while Q2 attempts to count the number of unique (followee, follower) pairs for each followee. The COUNT(DISTINCT FOLLOWEE, FOLLOWER) in Q2 is incorrect as it will count the same (followee, follower) pair multiple times if it appears in the table, which is not the intended behavior.\",\n  \"counterexample_dsp\": \"The test data should have at least two followers for the same followee to trigger the difference in results. The first follower should have a different number of followers than the second follower.\",\n  \"counterexample\": \"INSERT INTO FOLLOW (FOLLOWEE, FOLLOWER) VALUES ('a', 'b'), ('a', 'c'), ('a', 'd'), ('b', 'e'), ('b', 'f'), ('c', 'g'), ('c', 'h');\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 343,
+    "total_tokens": 547,
+    "completion_tokens": 204,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 3.344
+  },
+  "started_at": "2026-10-06T09:51:21.493701+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "b",
+      2
+    ],
+    [
+      "c",
+      2
+    ]
+  ],
+  "q2_output": [
+    [
+      "b",
+      2
+    ],
+    [
+      "c",
+      2
+    ]
+  ],
+  "q1_row_count": 2,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT FOLLOWEE AS FOLLOWER, COUNT(FOLLOWEE) AS NUM FROM FOLLOW WHERE FOLLOWEE IN (SELECT FOLLOWER FROM FOLLOW) GROUP BY 1 ORDER BY 1",
+  "q2_validation_sql": "SELECT FOLLOWEE AS FOLLOWER, COUNT(DISTINCT FOLLOWEE, FOLLOWER) AS NUM FROM FOLLOW WHERE FOLLOWEE IN (SELECT DISTINCT FOLLOW.FOLLOWER FROM FOLLOW) GROUP BY FOLLOWEE ORDER BY FOLLOWER"
+}

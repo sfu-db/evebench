@@ -1,0 +1,54 @@
+{
+  "dbid": "1148",
+  "index": "230",
+  "source_index": "180",
+  "schema_ddl": "CREATE TABLE VIEWS (\n    ARTICLE_ID INT,\n    AUTHOR_ID INT,\n    VIEWER_ID INT,\n    VIEW_DATE DATE\n);",
+  "q1": "SELECT DISTINCT AUTHOR_ID AS ID FROM VIEWS WHERE AUTHOR_ID = VIEWER_ID ORDER BY ID",
+  "q2": "SELECT DISTINCT A.AUTHOR_ID AS ID FROM VIEWS A, VIEWS B WHERE A.AUTHOR_ID = B.VIEWER_ID AND A.ARTICLE_ID = B.ARTICLE_ID ORDER BY A.AUTHOR_ID ASC",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT DISTINCT AUTHOR_ID AS ID FROM VIEWS WHERE AUTHOR_ID = VIEWER_ID ORDER BY ID",
+  "q2_prompt_sql": "SELECT DISTINCT A.AUTHOR_ID AS ID FROM VIEWS A, VIEWS B WHERE A.AUTHOR_ID = B.VIEWER_ID AND A.ARTICLE_ID = B.ARTICLE_ID ORDER BY A.AUTHOR_ID ASC",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO VIEWS (ARTICLE_ID, AUTHOR_ID, VIEWER_ID, VIEW_DATE) VALUES (1, 1, 2, '2023-01-01'), (1, 2, 1, '2023-01-02');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 finds authors who viewed their own articles (AUTHOR_ID = VIEWER_ID). Q2 finds authors where there exists another view on the same article where that view's viewer is the author. These are different conditions; Q2 can return authors not in Q1.",
+  "counterexample_dsp": "Two views on same article: (AUTHOR=1, VIEWER=2) and (AUTHOR=2, VIEWER=1). Q2 returns 1, Q1 returns nothing.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 finds authors who viewed their own articles (AUTHOR_ID = VIEWER_ID). Q2 finds authors where there exists another view on the same article where that view's viewer is the author. These are different conditions; Q2 can return authors not in Q1.\",\n\"counterexample_dsp\": \"Two views on same article: (AUTHOR=1, VIEWER=2) and (AUTHOR=2, VIEWER=1). Q2 returns 1, Q1 returns nothing.\",\n\"counterexample\": \"INSERT INTO VIEWS (ARTICLE_ID, AUTHOR_ID, VIEWER_ID, VIEW_DATE) VALUES (1, 1, 2, '2023-01-01'), (1, 2, 1, '2023-01-02');\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem. I need to determine if Q1 and Q2 are semantically equivalent. Let's start by understanding each query.\n\nQ1 selects distinct AUTHOR_ID from VIEWS where AUTHOR_ID equals VIEWER_ID. So it's finding all authors who have viewed their own articles. The result is ordered by ID. The DISTINCT ensures no duplicates.\n\nQ2 is a bit more complex. It uses a self-join on VIEWS (A and B) with two conditions: A.AUTHOR_ID = B.VIEWER_ID and A.ARTICLE_ID = B.ARTICLE_ID. Then it selects distinct A.AUTHOR_ID. The ordering is by A.AUTHOR_ID ascending.\n\nSo what's the difference here? Q1 is looking for rows where the author is the same as the viewer. Q2 is joining two rows from the same table where the author of one row is the viewer of the other, and they share the same article. \n\nLet me think about the logic. For Q1, it's straightforward: any row where AUTHOR_ID = VIEWER_ID. For Q2, it's looking for pairs of rows where one's AUTHOR is the other's VIEWER, and same article. So, for example, if there's a row A (article X, author Y, viewer Z) and a row B (article X, author Z, viewer Y), then Q2 would find this pair. But Q1 would only find rows where author equals viewer, which would be rows where Y=Z in this case. \n\nWait, but in Q2, the join condition is A.AUTHOR_ID = B.VIEWER_ID. So A's author is B's viewer. Also, they have the same article. So Q2 is looking for cases where there's a pair of views on the same article: one where someone (B) viewed an article authored by A's author, and another where that author (A's author) viewed the same article as B's viewer. Wait, maybe I'm getting confused here.\n\nAlternatively, maybe Q2 is looking for authors who have viewed the same article as someone else who is their viewer. Let me think of an example. Suppose there's an article with author 1 and viewer 2. Then another entry for the same article with author 2 and viewer 1. Then Q2 would join these two rows because A.AUTHOR_ID (1) = B.VIEWER_ID (1) and same article. So A would be the row with author 1, viewer 2, and B would be the row with author 2, viewer 1. So the result would include author 1. But in Q1, that row (author 1, viewer 2) wouldn't be selected because 1 != 2. However, if there's a row where author is 1 and viewer is 1, then Q1 would include that.\n\nSo Q2 is looking for authors who have at least one view where there's another view on the same article where that other view's viewer is the author. But Q1 is just looking for authors who viewed their own articles. Therefore, Q2's result could include authors who are not in Q1, but only if there's a pair of views that satisfy the join condition.\n\nLet me think of a counterexample. Suppose the table has:\n\nRow1: ARTICLE_ID 1, AUTHOR_ID 1, VIEWER_ID 2\nRow2: ARTICLE_ID 1, AUTHOR_ID 2, VIEWER_ID 1\n\nIn this case, Q2 would join Row1 (A) with Row2 (B) because A.AUTHOR_ID (1) = B.VIEWER_ID (1) and same article. So Q2 would return author 1. But Q1 would not return 1 because in Row1, AUTHOR_ID is 1 and VIEWER_ID is 2, which are not equal. So Q2 would have 1 in the result, but Q1 would not. Therefore, they are not equivalent.\n\nAnother example: if there's a row where AUTHOR_ID equals VIEWER_ID, then Q1 would include it. For Q2, if there's a row A where AUTHOR_ID = VIEWER_ID, then would there be a B row that matches? If B is the same row, then A.AUTHOR_ID = B.VIEWER_ID (since A and B are the same row), and same article. So that would be a case where Q2 includes that author. So if there's a row where AUTHOR_ID = VIEWER_ID, then Q2 would include that author as well. But Q2 could include authors even if they don't have a row where AUTHOR_ID = VIEWER_ID, as long as there's a pair of rows that satisfy the join condition.\n\nSo the main difference is that Q1 is looking for authors who viewed their own articles, while Q2 is looking for authors who have a view on an article that is also viewed by someone else (their viewer). Therefore, Q2 can return authors who are not in Q1, but Q1's results are a subset of Q2's? Or maybe not. Wait, if there's a row where AUTHOR_ID = VIEWER_ID, then that row would be part of Q1. For Q2, that row could be joined with itself (if the same article). So that author would be in Q2's result as well. So Q1's results are a subset of Q2's? But the previous example shows that Q2 can have results not in Q1. Therefore, the queries are not equivalent.\n\nSo the answer is not equivalent. The counterexample would be the two rows I mentioned earlier. Let me check if that's possible. The schema allows multiple entries with same article_id, author_id, viewer_id. So inserting those two rows would create a scenario where Q2 returns 1, but Q1 does not. Therefore, the counterexample is correct.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 348,
+    "total_tokens": 1760,
+    "completion_tokens": 1412,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1225
+    },
+    "generation_seconds": 43.219
+  },
+  "started_at": "2026-10-06T14:56:20.597956+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [],
+  "q2_output": [
+    [
+      1
+    ],
+    [
+      2
+    ]
+  ],
+  "q1_row_count": 0,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DISTINCT AUTHOR_ID AS ID FROM VIEWS WHERE AUTHOR_ID = VIEWER_ID ORDER BY ID",
+  "q2_validation_sql": "SELECT DISTINCT A.AUTHOR_ID AS ID FROM VIEWS A, VIEWS B WHERE A.AUTHOR_ID = B.VIEWER_ID AND A.ARTICLE_ID = B.ARTICLE_ID ORDER BY A.AUTHOR_ID ASC"
+}

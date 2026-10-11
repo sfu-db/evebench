@@ -1,0 +1,57 @@
+{
+  "dbid": "thrombosis_prediction",
+  "index": "666",
+  "source_index": "1180",
+  "schema_ddl": "CREATE TABLE Examination\n(\n    ID                 INTEGER          null,\n    `Examination Date` DATE         null,\n    `aCL IgG`          REAL        null,\n    `aCL IgM`          REAL        null,\n    ANA                INTEGER          null,\n    `ANA Pattern`      TEXT null,\n    `aCL IgA`          INTEGER          null,\n    Diagnosis          TEXT null,\n    KCT                TEXT null,\n    RVVT              TEXT null,\n    LAC                TEXT null,\n    Symptoms           TEXT null,\n    Thrombosis         INTEGER          null,\n    foreign key (ID) references Patient (ID)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE Patient\n(\n    ID           INTEGER default 0 not null\n        primary key,\n    SEX          TEXT  null,\n    Birthday     DATE          null,\n    Description  DATE          null,\n    `First Date` DATE          null,\n    Admission    TEXT  null,\n    Diagnosis    TEXT  null\n);\n\nCREATE TABLE Laboratory\n(\n    ID        INTEGER  default 0            not null,\n    Date      DATE default '0000-00-00' not null,\n    GOT       INTEGER                       null,\n    GPT       INTEGER                        null,\n    LDH       INTEGER                        null,\n    ALP       INTEGER                        null,\n    TP        REAL             null,\n    ALB       REAL             null,\n    UA        REAL             null,\n    UN        INTEGER                       null,\n    CRE       REAL             null,\n    `T-BIL`   REAL             null,\n    `T-CHO`   INTEGER                       null,\n    TG        INTEGER                       null,\n    CPK       INTEGER                       null,\n    GLU       INTEGER                       null,\n    WBC       REAL             null,\n    RBC       REAL             null,\n    HGB       REAL             null,\n    HCT       REAL             null,\n    PLT       INTEGER                       null,\n    PT        REAL             null,\n    APTT      INTEGER                       null,\n    FG        REAL             null,\n    PIC       INTEGER                       null,\n    TAT       INTEGER                       null,\n    TAT2      INTEGER                       null,\n    `U-PRO`   TEXT              null,\n    IGG       INTEGER                       null,\n    IGA       INTEGER                       null,\n    IGM       INTEGER                       null,\n    CRP       TEXT              null,\n    RA        TEXT              null,\n    RF        TEXT              null,\n    C3        INTEGER                       null,\n    C4        INTEGER                       null,\n    RNP       TEXT              null,\n    SM        TEXT              null,\n    SC170     TEXT              null,\n    SSA       TEXT              null,\n    SSB       TEXT              null,\n    CENTROMEA TEXT              null,\n    DNA       TEXT              null,\n    `DNA-II`  INTEGER                       null,\n    primary key (ID, Date),\n        foreign key (ID) references Patient (ID)\n            on update cascade on delete cascade\n);",
+  "q1": "SELECT \"aCL IgA\", \"aCL IgG\", \"aCL IgM\" FROM Examination WHERE ID IN (SELECT ID FROM Patient WHERE Diagnosis = 'SLE' AND Description = '1994-02-19') AND \"Examination Date\" = '1993-11-12'",
+  "q2": "SELECT T2.\"aCL IgM\" FROM Patient AS T1 INNER JOIN Examination AS T2 ON T1.ID = T2.ID WHERE T1.Diagnosis = 'SLE' AND T1.Description = '1994-02-19' AND T2.\"Examination Date\" = '1993-11-12'",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT \"aCL IgA\", \"aCL IgG\", \"aCL IgM\" FROM Examination WHERE ID IN (SELECT ID FROM Patient WHERE Diagnosis = 'SLE' AND Description = '1994-02-19') AND \"Examination Date\" = '1993-11-12'",
+  "q2_prompt_sql": "SELECT T2.\"aCL IgM\" FROM Patient AS T1 INNER JOIN Examination AS T2 ON T1.ID = T2.ID WHERE T1.Diagnosis = 'SLE' AND T1.Description = '1994-02-19' AND T2.\"Examination Date\" = '1993-11-12'",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO Patient (ID, Diagnosis, Description) VALUES (1, 'SLE', '1994-02-19');\nINSERT INTO Examination (ID, `Examination Date`, `aCL IgA`, `aCL IgG`, `aCL IgM`) VALUES (1, '1993-11-12', 5, 10, 15);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 returns three columns (aCL IgA, aCL IgG, aCL IgM) from Examination, while Q2 returns only aCL IgM. The structural difference in output columns makes them semantically inequivalent.",
+  "counterexample_dsp": "A single patient with Diagnosis='SLE', Description='1994-02-19', and an associated examination on '1993-11-12' with non-null aCL IgA and aCL IgG values. Q1 would return all three columns, Q2 only aCL IgM.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 returns three columns (aCL IgA, aCL IgG, aCL IgM) from Examination, while Q2 returns only aCL IgM. The structural difference in output columns makes them semantically inequivalent.\",\n\"counterexample_dsp\": \"A single patient with Diagnosis='SLE', Description='1994-02-19', and an associated examination on '1993-11-12' with non-null aCL IgA and aCL IgG values. Q1 would return all three columns, Q2 only aCL IgM.\",\n\"counterexample\": \"INSERT INTO Patient (ID, Diagnosis, Description) VALUES (1, 'SLE', '1994-02-19');\\nINSERT INTO Examination (ID, `Examination Date`, `aCL IgA`, `aCL IgG`, `aCL IgM`) VALUES (1, '1993-11-12', 5, 10, 15);\"\n}",
+  "reasoning": "\nOkay, let's see. I need to check if Q1 and Q2 are semantically equivalent. Let me start by understanding each query.\n\nQ1 selects the columns \"aCL IgA\", \"aCL IgG\", \"aCL IgM\" from Examination where the ID is in a subquery that gets IDs from Patient where Diagnosis is 'SLE' and Description is '1994-02-19'. Also, the Examination Date is '1993-11-12'. \n\nQ2 does an INNER JOIN between Patient (T1) and Examination (T2) on ID, with the same conditions on Diagnosis and Description from Patient, and Examination Date from Examination. Then it selects only \"aCL IgM\" from T2.\n\nWait, the main difference here is that Q1 selects three columns from Examination, while Q2 selects only one column (aCL IgM) from Examination. Also, the subquery in Q1 is on Patient where Diagnosis and Description are set, but Q2 has those same conditions on the Patient table in the JOIN.\n\nLooking at the schema: Patient has Diagnosis and Description. Examination has Examination Date, and the aCL columns. So Q1 is filtering on Patient's Diagnosis and Description, then getting the Examination rows where the date is '1993-11-12'. Q2 is joining Patient and Examination on ID, applying the same conditions on Patient and the same date condition on Examination.\n\nSo the main difference is that Q1 is selecting all three aCL columns from Examination, while Q2 is selecting only aCL IgM. Wait, but the question says Q2 selects T2.\"aCL IgM\". So Q1's output has three columns, Q2's output has one. That's a structural difference. Therefore, they are not equivalent. Even if they return the same number of rows, the columns differ.\n\nWait, but maybe I'm missing something. Let me check again. Q1's SELECT is \"aCL IgA\", \"aCL IgG\", \"aCL IgM\" from Examination. Q2's SELECT is T2.\"aCL IgM\". So Q1 returns three columns, Q2 returns one. Therefore, the result sets are different in structure. Hence, they are not equivalent.\n\nBut maybe there's more. Let me think about the JOIN vs the subquery. The subquery in Q1 is selecting IDs from Patient where Diagnosis = 'SLE' and Description = '1994-02-19'. Then Q1 uses those IDs to filter Examination where Examination Date is '1993-11-12'. In Q2, the JOIN on Patient and Examination would get the same set of IDs, but with the same date condition on Examination. So the rows selected should be the same, but the columns differ.\n\nSo the queries are not equivalent because they return different columns. However, perhaps the user intended to check for the same columns? Wait, no. Let me check the original queries again.\n\nQ1: SELECT \"aCL IgA\", \"aCL IgG\", \"aCL IgM\" FROM Examination WHERE ID IN (subquery) AND \"Examination Date\" = '1993-11-12'\n\nQ2: SELECT T2.\"aCL IgM\" FROM Patient AS T1 INNER JOIN Examination AS T2 ON T1.ID = T2.ID WHERE T1.Diagnosis = 'SLE' AND T1.Description = '1994-02-19' AND T2.\"Examination Date\" = '1993-11-12'\n\nSo Q2's output is only aCL IgM, while Q1's output is all three. So unless the other two columns (aCL IgA and aCL IgG) are not present in the data, but that's not the case. So the two queries are not equivalent because they return different sets of columns.\n\nBut maybe there's a mistake in the way I'm interpreting the columns. Wait, the Patient table has Diagnosis and Description. The Examination table has \"Examination Date\". So both queries are selecting on the same conditions. The difference is in the columns selected. Therefore, they are not equivalent.\n\nTherefore, the answer is no. They are not equivalent. The counterexample would be a case where there's a row in Examination that meets the conditions, and the aCL IgA and aCL IgG are non-null. Then Q1 would return all three columns, while Q2 returns only one. Alternatively, even if they have same data, the columns differ.\n\nWait, but the problem says to check if they are semantically equivalent. If they return different columns, then they are not equivalent. So the answer is N. The explanation would be that Q1 returns three columns from Examination while Q2 returns only one column (aCL IgM). Therefore, their outputs differ in structure.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 1004,
+    "total_tokens": 2264,
+    "completion_tokens": 1260,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1025
+    },
+    "generation_seconds": 43.171
+  },
+  "started_at": "2026-10-06T21:32:24.469735+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      5,
+      10.0,
+      15.0
+    ]
+  ],
+  "q2_output": [
+    [
+      15.0
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT \"aCL IgA\", \"aCL IgG\", \"aCL IgM\" FROM Examination WHERE ID IN (SELECT ID FROM Patient WHERE Diagnosis = 'SLE' AND Description = '1994-02-19') AND \"Examination Date\" = '1993-11-12'",
+  "q2_validation_sql": "SELECT T2.\"aCL IgM\" FROM Patient AS T1 INNER JOIN Examination AS T2 ON T1.ID = T2.ID WHERE T1.Diagnosis = 'SLE' AND T1.Description = '1994-02-19' AND T2.\"Examination Date\" = '1993-11-12'"
+}

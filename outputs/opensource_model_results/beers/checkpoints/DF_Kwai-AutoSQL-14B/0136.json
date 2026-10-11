@@ -1,0 +1,58 @@
+{
+  "dbid": "beers",
+  "index": "136",
+  "source_index": "2673",
+  "schema_ddl": "CREATE TABLE Bar (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Beer (\n    name VARCHAR NOT NULL,\n    brewer VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Drinker (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Frequents (\n    drinker VARCHAR NOT NULL,\n    bar VARCHAR NOT NULL,\n    times_a_week SMALLINT NOT NULL,\n    PRIMARY KEY (drinker, bar),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (bar) REFERENCES Bar(name)\n);\n\nCREATE TABLE Serves (\n    bar VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    price DECIMAL(5,2) NOT NULL,\n    PRIMARY KEY (bar, beer),\n    FOREIGN KEY (bar) REFERENCES Bar(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);\n\nCREATE TABLE Likes (\n    drinker VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    PRIMARY KEY (drinker, beer),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);",
+  "q1": "SELECT bar FROM Serves GROUP BY bar HAVING COUNT(beer) >= 5",
+  "q2": "SELECT DISTINCT bar FROM serves WHERE (5 <= (SELECT COUNT(DISTINCT serves.beer) FROM serves))",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "beers",
+  "q1_prompt_sql": "SELECT bar FROM Serves GROUP BY bar HAVING COUNT(beer) >= 5",
+  "q2_prompt_sql": "SELECT DISTINCT bar FROM serves WHERE (5 <= (SELECT COUNT(DISTINCT serves.beer) FROM serves))",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO Bar (name, address) VALUES ('Bar1', 'Addr1'), ('Bar2', 'Addr2');\nINSERT INTO Beer (name, brewer) VALUES ('B1', 'brewer1'), ('B2', 'brewer1'), ('B3', 'brewer1'), ('B4', 'brewer1'), ('B5', 'brewer1');\nINSERT INTO Serves (bar, beer, price) VALUES ('Bar1', 'B1', 1.0), ('Bar1', 'B2', 2.0), ('Bar1', 'B3', 3.0), ('Bar1', 'B4', 4.0), ('Bar1', 'B5', 5.0), ('Bar2', 'B1', 1.0), ('Bar2', 'B2', 2.0), ('Bar2', 'B3', 3.0);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 groups by bar and returns bars with at least 5 beers. Q2 checks if the total distinct beers across all bars is >=5 and returns all bars. They differ when some bars have <5 beers but total distinct beers across all bars is >=5.",
+  "counterexample_dsp": "Bar1 serves 5 distinct beers, Bar2 serves 3 distinct beers (but total distinct beers across all bars is 5). Q1 returns Bar1, Q2 returns both bars.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 groups by bar and returns bars with at least 5 beers. Q2 checks if the total distinct beers across all bars is >=5 and returns all bars. They differ when some bars have <5 beers but total distinct beers across all bars is >=5.\",\n\"counterexample_dsp\": \"Bar1 serves 5 distinct beers, Bar2 serves 3 distinct beers (but total distinct beers across all bars is 5). Q1 returns Bar1, Q2 returns both bars.\",\n\"counterexample\": \"INSERT INTO Bar (name, address) VALUES ('Bar1', 'Addr1'), ('Bar2', 'Addr2');\\nINSERT INTO Beer (name, brewer) VALUES ('B1', 'brewer1'), ('B2', 'brewer1'), ('B3', 'brewer1'), ('B4', 'brewer1'), ('B5', 'brewer1');\\nINSERT INTO Serves (bar, beer, price) VALUES ('Bar1', 'B1', 1.0), ('Bar1', 'B2', 2.0), ('Bar1', 'B3', 3.0), ('Bar1', 'B4', 4.0), ('Bar1', 'B5', 5.0), ('Bar2', 'B1', 1.0), ('Bar2', 'B2', 2.0), ('Bar2', 'B3', 3.0);\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem. I need to determine if Q1 and Q2 are semantically equivalent. Let me start by understanding each query.\n\nFirst, looking at Q1: SELECT bar FROM Serves GROUP BY bar HAVING COUNT(beer) >= 5. This groups the Serves table by bar and returns bars that have at least 5 beers served. The COUNT(beer) counts the number of beers per bar, so each bar that serves 5 or more different beers will appear in the result.\n\nNow Q2: SELECT DISTINCT bar FROM serves WHERE (5 <= (SELECT COUNT(DISTINCT serves.beer) FROM serves)). Wait, the subquery here is a scalar subquery that counts distinct beers in the entire Serves table. The WHERE clause checks if that count is >=5. But since the subquery doesn't reference any column from the outer query, it's the same for every row in the outer query. So, if the total number of distinct beers across all bars is >=5, then all bars in the Serves table will be returned (with DISTINCT applied). If the total is less than 5, then no rows are returned.\n\nWait, that's a big difference. Q1 is about each bar individually having at least 5 beers, while Q2 is about the entire table having at least 5 beers, and returning all bars. So they are not equivalent.\n\nFor example, suppose there are two bars: Bar A serves 5 beers, Bar B serves 3 beers. Then Q1 would return Bar A, since it has 5 beers. But Q2's subquery counts all distinct beers in Serves. Let's say total distinct beers is 5 (from Bar A's 5). Then the subquery returns 5, so 5 >=5 is true. So Q2 would return all bars (Bar A and Bar B) because the WHERE condition is true for every row. But Q1 only returns Bar A. So that's a counterexample.\n\nSo they are not equivalent. Now I need to create a test case where this difference shows up. Let's create two bars. Bar1 has 5 beers, Bar2 has 3 beers. Then Q1 returns Bar1, Q2 returns both.\n\nBut wait, the subquery in Q2 is SELECT COUNT(DISTINCT serves.beer) FROM serves. Since the outer query is on the Serves table, but the subquery is over all serves. So in this case, the total distinct beers would be 5 (if Bar1 has 5 unique beers and Bar2 has 3 that are not overlapping). Wait, no—if Bar1 has 5 beers and Bar2 has 3, but maybe some overlap. Let me make sure that the total distinct beers is exactly 5. Suppose Bar1 serves beers A, B, C, D, E (5 beers). Bar2 serves A, B, C (3 beers). Then total distinct beers is 5. Then the subquery returns 5, which meets the >=5 condition. So Q2's WHERE clause is true for every row in the Serves table. So the DISTINCT bar would return both Bar1 and Bar2. But Q1 only returns Bar1. So that's a clear difference.\n\nSo the counterexample would have two bars: one with 5 beers, another with 3, but total distinct beers across all serves is 5. Then Q1 gives one bar, Q2 gives two.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 531,
+    "total_tokens": 1570,
+    "completion_tokens": 1039,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 716
+    },
+    "generation_seconds": 33.094
+  },
+  "started_at": "2026-10-06T09:39:17.805673+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "Bar1"
+    ]
+  ],
+  "q2_output": [
+    [
+      "Bar1"
+    ],
+    [
+      "Bar2"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT bar FROM Serves GROUP BY bar HAVING COUNT(beer) >= 5",
+  "q2_validation_sql": "SELECT DISTINCT bar FROM serves WHERE (5 <= (SELECT COUNT(DISTINCT serves.beer) FROM serves))"
+}

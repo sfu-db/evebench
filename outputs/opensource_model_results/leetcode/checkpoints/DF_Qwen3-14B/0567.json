@@ -1,0 +1,39 @@
+{
+  "dbid": "1113",
+  "index": "567",
+  "source_index": "193",
+  "schema_ddl": "CREATE TABLE ACTIONS (\n    USER_ID INT,\n    POST_ID INT,\n    ACTION_DATE DATE,\n    ACTION ENUM('VIEW', 'LIKE', 'REACTION', 'COMMENT', 'REPORT', 'SHARE'),\n    EXTRA VARCHAR(255),\n    CHECK (ACTION_DATE <= '2019-07-05'),\n    CHECK (ACTION IN ('VIEW', 'LIKE', 'REACTION', 'COMMENT', 'REPORT', 'SHARE'))\n);",
+  "q1": "SELECT EXTRA AS REPORT_REASON, COUNT(DISTINCT POST_ID) AS REPORT_COUNT FROM ACTIONS WHERE ACTION = 'REPORT' AND ACTION_DATE = '2019-07-04' GROUP BY EXTRA",
+  "q2": "SELECT EXTRA AS REPORT_REASON, COUNT(DISTINCT POST_ID) AS REPORT_COUNT FROM ACTIONS WHERE ACTION_DATE = '2019-07-04' AND ACTION = 'REPORT' GROUP BY 1 ORDER BY 1",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT EXTRA AS REPORT_REASON, COUNT(DISTINCT POST_ID) AS REPORT_COUNT FROM ACTIONS WHERE ACTION = 'REPORT' AND ACTION_DATE = '2019-07-04' GROUP BY EXTRA",
+  "q2_prompt_sql": "SELECT EXTRA AS REPORT_REASON, COUNT(DISTINCT POST_ID) AS REPORT_COUNT FROM ACTIONS WHERE ACTION_DATE = '2019-07-04' AND ACTION = 'REPORT' GROUP BY 1 ORDER BY 1",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries filter rows where ACTION is 'REPORT' and ACTION_DATE is '2019-07-04', then group by the EXTRA column (using GROUP BY 1 in Q2, which refers to the first SELECT column). The ORDER BY 1 in Q2 only affects row ordering, not the data content, and the WHERE clause conditions are logically equivalent regardless of order. Thus, the results are semantically identical.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries filter rows where ACTION is 'REPORT' and ACTION_DATE is '2019-07-04', then group by the EXTRA column (using GROUP BY 1 in Q2, which refers to the first SELECT column). The ORDER BY 1 in Q2 only affects row ordering, not the data content, and the WHERE clause conditions are logically equivalent regardless of order. Thus, the results are semantically identical.\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem step by step. The user wants to know if the two SQL queries Q1 and Q2 are semantically equivalent. If not, they need a counterexample.\n\nFirst, I need to understand what each query does. Let's look at Q1:\n\nQ1 selects EXTRA as REPORT_REASON and counts the distinct POST_IDs where ACTION is 'REPORT' and ACTION_DATE is '2019-07-04', grouping by EXTRA. So it's grouping by the EXTRA column and counting unique posts per each EXTRA value.\n\nQ2 is similar but the WHERE clause has the conditions in a different order. The ACTION and ACTION_DATE checks are swapped. However, the GROUP BY clause in Q2 uses GROUP BY 1, which refers to the first column in the SELECT list, which is EXTRA. Also, there's an ORDER BY 1, which would order the results by the first column, EXTRA.\n\nWait, but the WHERE clause in both queries has the same conditions. The order of the conditions in the WHERE clause shouldn't matter because AND is commutative. So the filtering part is the same for both queries.\n\nNow, the GROUP BY part: Q1 uses GROUP BY EXTRA, and Q2 uses GROUP BY 1. Since the first column in the SELECT is EXTRA, GROUP BY 1 is equivalent to GROUP BY EXTRA. So that part is the same.\n\nBut wait, what about the ORDER BY in Q2? Q1 doesn't have an ORDER BY, while Q2 does. However, the problem is about the result sets being semantically equivalent. If the order of rows differs, but the data is the same, are they considered equivalent? In SQL, unless specified, the order of results isn't guaranteed. However, when comparing for equivalence, sometimes the order is considered. But in this case, the question is about the output data, not the order. However, the presence of ORDER BY might affect the output if the database engine's default ordering is different. But since the GROUP BY is the same, and the data is the same, the ORDER BY in Q2 would just sort the results by EXTRA, but the actual data (the counts) would be the same as Q1. Unless there's some other difference.\n\nWait, but maybe there's a difference in how the GROUP BY is handled. Let me check again. Both queries group by EXTRA. Q1 groups by EXTRA, and Q2 groups by 1, which is the same as EXTRA. So that's the same.\n\nWait, but what if there are multiple columns in the SELECT list? But in both cases, the SELECT list is only EXTRA and the count. So GROUP BY 1 in Q2 is equivalent to GROUP BY EXTRA in Q1.\n\nSo the only difference between Q1 and Q2 is the order of the conditions in the WHERE clause (which shouldn't matter) and the presence of ORDER BY 1 in Q2. But since the ORDER BY doesn't affect the data itself, just the order of the rows, the actual results (the counts) should be the same. Therefore, the two queries should be semantically equivalent.\n\nBut wait, maybe there's a scenario where the presence of ORDER BY affects the result? No, ORDER BY doesn't change the data, just the order. So unless the problem considers the order of rows as part of the result, which in SQL is not typically considered for equivalence unless specified. So the answer would be that they are equivalent.\n\nBut wait, the user might be considering that in some SQL implementations, if the GROUP BY is done on a column alias, but in Q2, the GROUP BY 1 refers to the first column in the SELECT list, which is EXTRA. Since the alias is REPORT_REASON, but the GROUP BY is on the column position. However, in SQL, when using GROUP BY with column positions, it refers to the position in the SELECT list. So if the SELECT list is (EXTRA AS REPORT_REASON, ...), then GROUP BY 1 would group by EXTRA. So that's the same as Q1's GROUP BY EXTRA.\n\nTherefore, both queries are equivalent. The only difference is the order of the WHERE conditions and the ORDER BY clause, which doesn't affect the data returned. Hence, the answer should be equivalent.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 439,
+    "total_tokens": 1426,
+    "completion_tokens": 987,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 881
+    },
+    "generation_seconds": 31.797
+  },
+  "started_at": "2026-10-06T15:21:55.264950+00:00",
+  "elapsed_seconds": 0.0
+}

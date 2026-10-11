@@ -1,0 +1,39 @@
+{
+  "dbid": "1050",
+  "index": "322",
+  "source_index": "80",
+  "schema_ddl": "CREATE TABLE ACTORDIRECTOR (\n    TIMESTAMP INT,\n    ACTOR_ID INT,\n    DIRECTOR_ID INT,\n    PRIMARY KEY (TIMESTAMP)\n);",
+  "q1": "SELECT ACTOR_ID,DIRECTOR_ID FROM ACTORDIRECTOR GROUP BY ACTOR_ID,DIRECTOR_ID HAVING COUNT(*)>=3",
+  "q2": "SELECT A.ACTOR_ID, A.DIRECTOR_ID FROM ( SELECT ACTOR_ID, DIRECTOR_ID, COUNT(*) AS NUMS FROM ACTORDIRECTOR GROUP BY 1,2)A WHERE NUMS >= 3",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT ACTOR_ID,DIRECTOR_ID FROM ACTORDIRECTOR GROUP BY ACTOR_ID,DIRECTOR_ID HAVING COUNT(*)>=3",
+  "q2_prompt_sql": "SELECT A.ACTOR_ID, A.DIRECTOR_ID FROM ( SELECT ACTOR_ID, DIRECTOR_ID, COUNT(*) AS NUMS FROM ACTORDIRECTOR GROUP BY 1,2)A WHERE NUMS >= 3",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both Q1 and Q2 are semantically equivalent. They both retrieve pairs of ACTOR_ID and DIRECTOR_ID from the ACTORDIRECTOR table where the count of occurrences is at least 3. Q1 uses HAVING directly in the outer query, while Q2 uses a subquery to compute the count and then filters in the WHERE clause. Both achieve the same result.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both Q1 and Q2 are semantically equivalent. They both retrieve pairs of ACTOR_ID and DIRECTOR_ID from the ACTORDIRECTOR table where the count of occurrences is at least 3. Q1 uses HAVING directly in the outer query, while Q2 uses a subquery to compute the count and then filters in the WHERE clause. Both achieve the same result.\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 361,
+    "total_tokens": 456,
+    "completion_tokens": 95,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 3.312
+  },
+  "started_at": "2026-10-06T15:41:03.612032+00:00",
+  "elapsed_seconds": 0.0
+}

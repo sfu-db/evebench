@@ -1,0 +1,52 @@
+{
+  "dbid": "1084",
+  "index": "505",
+  "source_index": "481",
+  "schema_ddl": "CREATE TABLE PRODUCT (\n    PRODUCT_ID INT,\n    PRODUCT_NAME VARCHAR(255),\n    UNIT_PRICE INT,\n    PRIMARY KEY (PRODUCT_ID),\n    CHECK (UNIT_PRICE > 0)\n);\n\nCREATE TABLE SALES (\n    PRODUCT_ID INT,\n    SELLER_ID INT,\n    BUYER_ID INT,\n    SALE_DATE DATE,\n    QUANTITY INT,\n    PRICE INT,\n    FOREIGN KEY (PRODUCT_ID) REFERENCES PRODUCT(PRODUCT_ID),\n    CHECK (QUANTITY > 0),\n    CHECK (PRICE > 0)\n);",
+  "q1": "SELECT P.PRODUCT_ID, P.PRODUCT_NAME FROM PRODUCT P INNER JOIN ( SELECT PRODUCT_ID FROM SALES GROUP BY PRODUCT_ID HAVING MIN(SALE_DATE) >= '2019-01-01' AND MAX(SALE_DATE) <= '2019-03-31' ) S ON (P.PRODUCT_ID = S.PRODUCT_ID)",
+  "q2": "SELECT PRODUCT_ID, MAX(PRODUCT_NAME) PRODUCT_NAME FROM SALES LEFT JOIN PRODUCT USING(PRODUCT_ID) GROUP BY PRODUCT_ID HAVING MAX(QUARTER(SALE_DATE)) = 1",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT P.PRODUCT_ID, P.PRODUCT_NAME FROM PRODUCT P INNER JOIN ( SELECT PRODUCT_ID FROM SALES GROUP BY PRODUCT_ID HAVING MIN(SALE_DATE) >= '2019-01-01' AND MAX(SALE_DATE) <= '2019-03-31' ) S ON (P.PRODUCT_ID = S.PRODUCT_ID)",
+  "q2_prompt_sql": "SELECT PRODUCT_ID, MAX(PRODUCT_NAME) PRODUCT_NAME FROM SALES LEFT JOIN PRODUCT USING(PRODUCT_ID) GROUP BY PRODUCT_ID HAVING MAX(QUARTER(SALE_DATE)) = 1",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO PRODUCT (PRODUCT_ID, PRODUCT_NAME, UNIT_PRICE) VALUES (1, 'Old Product', 100);\nINSERT INTO SALES (PRODUCT_ID, SELLER_ID, BUYER_ID, SALE_DATE, QUANTITY, PRICE) VALUES (1, 101, 201, '2018-03-31', 1, 100);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 restricts sales to exactly Q1 of 2019 (dates between '2019-01-01' and '2019-03-31'). Q2 uses QUARTER(SALE_DATE) = 1, which includes any Q1 of any year. A product with sales in Q1 of 2018 would be included by Q2 but excluded by Q1.",
+  "counterexample_dsp": "A product with a sale in Q1 2018 (e.g., SALE_DATE = '2018-03-31'). Q2 includes it via QUARTER logic; Q1 excludes it via explicit date range.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 restricts sales to exactly Q1 of 2019 (dates between '2019-01-01' and '2019-03-31'). Q2 uses QUARTER(SALE_DATE) = 1, which includes any Q1 of any year. A product with sales in Q1 of 2018 would be included by Q2 but excluded by Q1.\",\n\"counterexample_dsp\": \"A product with a sale in Q1 2018 (e.g., SALE_DATE = '2018-03-31'). Q2 includes it via QUARTER logic; Q1 excludes it via explicit date range.\",\n\"counterexample\": \"INSERT INTO PRODUCT (PRODUCT_ID, PRODUCT_NAME, UNIT_PRICE) VALUES (1, 'Old Product', 100);\\nINSERT INTO SALES (PRODUCT_ID, SELLER_ID, BUYER_ID, SALE_DATE, QUANTITY, PRICE) VALUES (1, 101, 201, '2018-03-31', 1, 100);\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem step by step. I need to determine if the two SQL queries, Q1 and Q2, are semantically equivalent. If not, I have to provide a counterexample.\n\nFirst, let me understand what each query does.\n\nStarting with Q1: It selects PRODUCT_ID and PRODUCT_NAME from the PRODUCT table joined with a subquery. The subquery on SALES groups by PRODUCT_ID and uses HAVING to filter those where the minimum SALE_DATE is >= '2019-01-01' and the maximum SALE_DATE is <= '2019-03-31'. So this subquery finds products whose all sales occurred within the first quarter of 2019. Then, Q1 joins this result with PRODUCT to get the product names. So Q1 returns products that had all their sales between Jan 1st and Mar 31st, 2019.\n\nNow Q2: It does a LEFT JOIN between SALES and PRODUCT on PRODUCT_ID, groups by PRODUCT_ID, and uses HAVING with MAX(QUARTER(SALE_DATE)) = 1. The QUARTER function returns 1 for dates in Q1 (Jan-Mar). The MAX of that would be 1 if all SALE_DATEs are in Q1. However, since it's a LEFT JOIN, even products with no sales would be included (but LEFT JOIN on SALES would have NULLs for sales columns, but the GROUP BY is on PRODUCT_ID from the SALES table? Wait, no. Wait, the LEFT JOIN is from SALES to PRODUCT. Wait, no: the LEFT JOIN is SALES LEFT JOIN PRODUCT. Wait, the syntax is LEFT JOIN PRODUCT USING(PRODUCT_ID). Wait, no, the LEFT JOIN is on SALES LEFT JOIN PRODUCT. So SALES is the left table, and PRODUCT is the right. So for each row in SALES, it joins with PRODUCT. But grouping by PRODUCT_ID. Wait, the GROUP BY is on PRODUCT_ID. But since it's a LEFT JOIN, even if there are multiple sales per product, grouping by PRODUCT_ID would aggregate them. The HAVING condition is MAX(QUARTER(SALE_DATE)) = 1. Since QUARTER(SALE_DATE) returns 1 for Q1 dates, the MAX would be 1 only if all SALE_DATEs for that product are in Q1. Wait, but if a product has some sales in Q1 and some in Q2, then MAX would be 2, which would not satisfy the HAVING. So Q2 is selecting products where all their sales dates are in Q1. But since it's a LEFT JOIN, does that include products that have no sales at all? Wait, no. Because the LEFT JOIN is on SALES. Wait, the LEFT JOIN is SALES LEFT JOIN PRODUCT. So the SALES table is the left table. So if a product has no sales, there would be no rows in SALES for that product, so the LEFT JOIN would not bring them in. Wait, no. Wait, the LEFT JOIN is SALES LEFT JOIN PRODUCT. So the rows come from SALES. If a product has no sales, then there are no rows in SALES for that product. Therefore, the LEFT JOIN would not produce any rows for products with no sales. So Q2 is grouping SALES rows by PRODUCT_ID, and for each product, checking that all their sale dates are in Q1. But since the LEFT JOIN with PRODUCT would still get the PRODUCT_NAME even if there are multiple sales rows. Wait, but the GROUP BY is on PRODUCT_ID from SALES (which is the same as the PRODUCT_ID from PRODUCT). The SELECT is PRODUCT_ID and MAX(PRODUCT_NAME). Since each row in SALES has a PRODUCT_ID, grouping by that would aggregate the product names. But since each sale row for the same product would have the same PRODUCT_NAME, MAX would just return that name. So Q2 is effectively returning products that have all their sales in Q1, and their product names. But wait, the LEFT JOIN is SALES LEFT JOIN PRODUCT. So for each sale row, we get the product name. But grouping by PRODUCT_ID would combine all those rows into one per product. So Q2's result would be products where all their sales are in Q1, and their product name (which is the same across all sale rows for that product).\n\nNow comparing Q1 and Q2: Both are selecting products that have all their sales within Q1 (Jan-Mar 2019). However, Q1 uses a subquery that groups SALES by PRODUCT_ID and checks that MIN(SALE_DATE) >= start and MAX(SALE_DATE) <= end. Q2 uses MAX(QUARTER(SALE_DATE)) = 1. But wait, the QUARTER function returns 1 for any date in Q1. So if all sale dates are in Q1, then MAX(QUARTER(...)) would be 1. But if there's a sale in Q1 and another in Q2, then MAX would be 2. So Q2's HAVING condition effectively enforces that all sale dates are in Q1. So in that sense, Q1 and Q2 should be equivalent. However, there might be a difference in the date range. Q1 uses the exact dates '2019-01-01' to '2019-03-31'. But Q2's HAVING condition is MAX(QUARTER(SALE_DATE)) = 1, which includes all dates in Q1 of 2019, but also Q1 of other years. Wait, but the problem is that the SALES table's SALE_DATE could be any date. However, the HAVING condition in Q1 is checking that the minimum sale date is >= '2019-01-01' and maximum <= '2019-03-31'. So Q1 restricts to the first quarter of 2019, while Q2's condition using QUARTER(SALE_DATE) = 1 would include any sale date in Q1 of any year. For example, a sale on 2018-03-31 would have QUARTER 1, but the MIN(SALE_DATE) would be < '2019-01-01', so it would not satisfy Q1's HAVING but would satisfy Q2's HAVING. Therefore, Q1 and Q2 are not equivalent because Q2 could include products with sales dates in Q1 of previous or future years, while Q1 is strictly for 2019 Q1.\n\nWait, but the original question's Q1 has HAVING MIN(SALE_DATE) >= '2019-01-01' AND MAX(SALE_DATE) <= '2019-03-31'. So that's exactly Q1 of 2019. Q2's HAVING is MAX(QUARTER(SALE_DATE)) = 1, which would include any sale date in Q1 of any year. So for example, a product with a sale date in 2018-03-31 would have QUARTER 1, so MAX would be 1, so it would pass Q2's HAVING but not Q1's HAVING. Therefore, these two queries are not equivalent. Hence, the answer is N.\n\nNow, to create a counterexample: create a product with a sale date in Q1 of 2018. Then Q2 would include it, but Q1 would not. Let me set up the data.\n\nLet's have a product with PRODUCT_ID = 1, PRODUCT_NAME = 'Test'. Then in SALES, insert a row with SALE_DATE = '2018-03-31'. Then, Q2 would group by PRODUCT_ID (1), and MAX(QUARTER(SALE_DATE)) would be 1, so it would return this product. But Q1's subquery checks that MIN(SALE_DATE) >= '2019-01-01', which would not be the case here. Hence, Q1 would not return it, while Q2 would. That's a counterexample.\n\nAnother possible case: a product with a sale date in Q1 of 2019 (e.g., 2019-03-31) would be included in both. But if there's a product with a sale date in Q1 of 2018, then Q2 would include it but Q1 wouldn't. So that's the counterexample.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 482,
+    "total_tokens": 2548,
+    "completion_tokens": 2066,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1808
+    },
+    "generation_seconds": 67.359
+  },
+  "started_at": "2026-10-06T15:51:28.053608+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [],
+  "q2_output": [
+    [
+      1,
+      "Old Product"
+    ]
+  ],
+  "q1_row_count": 0,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT P.PRODUCT_ID, P.PRODUCT_NAME FROM PRODUCT P INNER JOIN ( SELECT PRODUCT_ID FROM SALES GROUP BY PRODUCT_ID HAVING MIN(SALE_DATE) >= '2019-01-01' AND MAX(SALE_DATE) <= '2019-03-31' ) S ON (P.PRODUCT_ID = S.PRODUCT_ID)",
+  "q2_validation_sql": "SELECT PRODUCT_ID, MAX(PRODUCT_NAME) PRODUCT_NAME FROM SALES LEFT JOIN PRODUCT USING(PRODUCT_ID) GROUP BY PRODUCT_ID HAVING MAX(QUARTER(SALE_DATE)) = 1"
+}

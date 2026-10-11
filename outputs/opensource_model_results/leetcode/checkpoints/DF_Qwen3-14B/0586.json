@@ -1,0 +1,39 @@
+{
+  "dbid": "607",
+  "index": "586",
+  "source_index": "335",
+  "schema_ddl": "CREATE TABLE SALESPERSON (\n    SALES_ID INT,\n    NAME VARCHAR(255),\n    SALARY INT,\n    COMMISSION_RATE INT,\n    HIRE_DATE VARCHAR(255)\n);\n\nCREATE TABLE COMPANY (\n    COM_ID INT,\n    NAME VARCHAR(255),\n    CITY VARCHAR(255)\n);\n\nCREATE TABLE ORDERS (\n    ORDER_ID INT,\n    COM_ID INT,\n    SALES_ID INT,\n    ORDER_DATE VARCHAR(255),\n    AMOUNT INT\n);",
+  "q1": "SELECT NAME FROM SALESPERSON AS S WHERE 0 = ( SELECT COUNT(*) FROM ORDERS AS O JOIN COMPANY AS C ON O.COM_ID = C.COM_ID WHERE O.SALES_ID = S.SALES_ID AND C.NAME = 'RED' )",
+  "q2": "SELECT NAME FROM SALESPERSON S WHERE NOT EXISTS ( SELECT 1 FROM ORDERS O, COMPANY C WHERE O.COM_ID = C.COM_ID AND C.NAME = 'RED' AND O.SALES_ID = S.SALES_ID )",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT NAME FROM SALESPERSON AS S WHERE 0 = ( SELECT COUNT(*) FROM ORDERS AS O JOIN COMPANY AS C ON O.COM_ID = C.COM_ID WHERE O.SALES_ID = S.SALES_ID AND C.NAME = 'RED' )",
+  "q2_prompt_sql": "SELECT NAME FROM SALESPERSON S WHERE NOT EXISTS ( SELECT 1 FROM ORDERS O, COMPANY C WHERE O.COM_ID = C.COM_ID AND C.NAME = 'RED' AND O.SALES_ID = S.SALES_ID )",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries aim to find salespersons with no orders linked to the company 'RED'. Q1 uses a COUNT(*) check for zero results, while Q2 uses NOT EXISTS. These are logically equivalent in SQL as both conditions evaluate to true when no matching rows exist in the subquery.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries aim to find salespersons with no orders linked to the company 'RED'. Q1 uses a COUNT(*) check for zero results, while Q2 uses NOT EXISTS. These are logically equivalent in SQL as both conditions evaluate to true when no matching rows exist in the subquery.\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem. I need to determine if Q1 and Q2 are semantically equivalent. Let's start by understanding each query.\n\nQ1: It selects the name of the salesperson where the count of orders related to the company named 'RED' for that salesperson is zero. The subquery joins ORDERS and COMPANY on COM_ID, filters where C.NAME is 'RED' and O.SALES_ID equals S.SALES_ID. The main query checks if this count is zero.\n\nQ2: It selects the name of the salesperson where there does not exist any order related to the company 'RED' for that salesperson. The subquery uses a JOIN (implicitly with a comma) between ORDERS and COMPANY, same conditions as Q1, but uses NOT EXISTS instead of checking count zero.\n\nNow, the logic here. In SQL, a NOT EXISTS condition checks if there are no rows returned by the subquery. Similarly, COUNT(*) = 0 would also indicate no rows. But are they exactly the same?\n\nWait, the subquery in Q1 is using a JOIN between ORDERS and COMPANY. So, for each salesperson, it's counting how many orders they have with COMPANY 'RED'. If that count is zero, then the salesperson is selected.\n\nIn Q2, the NOT EXISTS checks if there are no rows in the join of ORDERS and COMPANY where C.NAME is 'RED' and O.SALES_ID matches. So, if there are no such rows, the salesperson is selected.\n\nAt first glance, these seem equivalent. However, I need to check if there's any scenario where they differ. Let's think about possible edge cases.\n\nWhat if the subquery in Q1 returns a count of zero, but the NOT EXISTS in Q2 returns true? Or vice versa? Let's consider that COUNT(*) is zero when there are no matching rows. So, 0 = (SELECT COUNT(*)) would be true if there are no rows. Similarly, NOT EXISTS would also be true in that case. So they should be equivalent.\n\nWait, but maybe there's a case where the subquery in Q1 could return a count of zero even if there are rows, but that's not possible. Because COUNT(*) counts the number of rows returned by the subquery. If there are no rows, COUNT(*) is zero. If there are rows, it's more than zero. So the condition 0 = COUNT(*) is equivalent to checking that there are no rows. Which is exactly what NOT EXISTS does.\n\nSo, logically, Q1 and Q2 should be equivalent. Therefore, the answer would be Y.\n\nBut wait, maybe there's a difference in how the subqueries are structured. For example, in Q1, the subquery is a scalar subquery (returns a single value) and in Q2, the subquery is in the NOT EXISTS clause. However, in both cases, the subquery is checking for the existence of rows. The only difference is that Q1 uses COUNT(*) and Q2 uses EXISTS. But logically, they are the same.\n\nAnother thing to consider: if the subquery in Q1 returns more than one row, but that's not possible because the COUNT(*) would be a single value. So, the scalar comparison is okay.\n\nTherefore, the two queries should be equivalent. Hence, the answer is Y.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 459,
+    "total_tokens": 1224,
+    "completion_tokens": 765,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 691
+    },
+    "generation_seconds": 24.297
+  },
+  "started_at": "2026-10-06T15:21:55.287122+00:00",
+  "elapsed_seconds": 0.0
+}

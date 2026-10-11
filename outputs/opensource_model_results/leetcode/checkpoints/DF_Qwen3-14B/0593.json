@@ -1,0 +1,39 @@
+{
+  "dbid": "596",
+  "index": "593",
+  "source_index": "52",
+  "schema_ddl": "CREATE TABLE COURSES (\n    STUDENT VARCHAR(255),\n    CLASS VARCHAR(255),\n    PRIMARY KEY (STUDENT)\n);",
+  "q1": "SELECT CLASS FROM COURSES GROUP BY CLASS HAVING COUNT(*)>=5",
+  "q2": "SELECT CLASS FROM ( SELECT DISTINCT STUDENT, CLASS FROM COURSES ) T GROUP BY CLASS HAVING COUNT(CLASS) >= 5",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT CLASS FROM COURSES GROUP BY CLASS HAVING COUNT(*)>=5",
+  "q2_prompt_sql": "SELECT CLASS FROM ( SELECT DISTINCT STUDENT, CLASS FROM COURSES ) T GROUP BY CLASS HAVING COUNT(CLASS) >= 5",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries aim to find classes with at least 5 students. Q1 counts all rows per class, while Q2 uses a redundant DISTINCT (due to STUDENT being a primary key) and counts CLASS per group. Since CLASS is non-NULL and the DISTINCT does not affect data, both queries are equivalent.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries aim to find classes with at least 5 students. Q1 counts all rows per class, while Q2 uses a redundant DISTINCT (due to STUDENT being a primary key) and counts CLASS per group. Since CLASS is non-NULL and the DISTINCT does not affect data, both queries are equivalent.\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem. So, I need to determine if Q1 and Q2 are semantically equivalent. Let's start by understanding each query.\n\nFirst, the schema: COURSES table with STUDENT and CLASS, and STUDENT is the primary key. That means each student can only appear once in the table, right? So no duplicate students. But a student can have the same class as another, but since the primary key is on STUDENT, each student can only be in one class? Wait, no. Wait, the primary key is (STUDENT), so each student can only have one entry in the table. So each student is enrolled in exactly one class. Wait, that's how the schema is set up. So the COURSES table is a list of students and their respective classes, with each student appearing once.\n\nNow, looking at Q1: It selects CLASS from COURSES, groups by CLASS, and has a HAVING COUNT(*) >=5. So this is finding all classes that have at least 5 students enrolled. Since each student is in one class, COUNT(*) here counts the number of students in each class. So Q1 is giving classes with 5 or more students.\n\nNow Q2 is a bit different. It first selects DISTINCT STUDENT and CLASS from COURSES, then groups by CLASS with HAVING COUNT(CLASS) >=5. Wait, but since the original COURSES table already has each STUDENT unique, selecting DISTINCT STUDENT, CLASS would not change anything. Because each student is already in one class. So the subquery T would have the same data as the original COURSES table. So the DISTINCT is redundant here. Then, grouping by CLASS and counting the number of classes. Wait, but COUNT(CLASS) would be the same as COUNT(*), since every row has a CLASS. So in this case, Q2 is effectively grouping by CLASS and counting the number of students in each class, same as Q1. So why would they differ?\n\nWait, maybe there's a case where the DISTINCT is not redundant? Wait, the original table has STUDENT as primary key, so each student is unique. So for the subquery, SELECT DISTINCT STUDENT, CLASS FROM COURSES would just be the same as the original table. Because each STUDENT is unique, so there are no duplicates in STUDENT, hence DISTINCT doesn't remove any rows. Therefore, the subquery T is the same as the original COURSES table. Then Q2 is grouping by CLASS, and COUNT(CLASS) is the same as COUNT(*), so the HAVING condition is the same as Q1. Therefore, Q1 and Q2 should be equivalent.\n\nWait, but maybe there's a case where the COUNT(*) in Q1 and COUNT(CLASS) in Q2 differ? But in Q2, since the subquery T has the same data as COURSES, and COUNT(CLASS) would count the number of rows in each group, which is the same as COUNT(*). So they should be the same.\n\nBut maybe there's a mistake here. Let me think again. Suppose there are some NULL values in the CLASS column? But according to the schema, CLASS is a VARCHAR(255), but the primary key is on STUDENT. However, the problem says to make sure the test data doesn't violate the schema constraints. So in the actual data, each row must have a STUDENT and a CLASS. So CLASS can't be NULL. So COUNT(CLASS) in Q2 is same as COUNT(*). Therefore, both queries should return the same results.\n\nWait, but then why would the problem ask if they are equivalent? Maybe I'm missing something. Let me think again. What if the original COURSES table has multiple entries for the same student? But no, the primary key is on STUDENT, so each student can only appear once. So the DISTINCT in Q2's subquery is redundant, and the rest is same as Q1. Therefore, they should be equivalent. So the answer would be Y.\n\nBut maybe there's a case where the COUNT(*) in Q1 and COUNT(CLASS) in Q2 could differ? But since in Q2, the subquery T has CLASS values that are not null, COUNT(CLASS) is same as COUNT(*). Therefore, the HAVING conditions are the same. Therefore, both queries would return the same classes where the count is >=5. So the answer is equivalent. Hence, equiv is Y.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 327,
+    "total_tokens": 1328,
+    "completion_tokens": 1001,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 921
+    },
+    "generation_seconds": 31.812
+  },
+  "started_at": "2026-10-06T15:21:55.292645+00:00",
+  "elapsed_seconds": 0.0
+}

@@ -1,0 +1,51 @@
+{
+  "dbid": "12",
+  "index": "14",
+  "source_index": "15",
+  "schema_ddl": "CREATE TABLE A (X INT, YA INT, YX VARCHAR);",
+  "q1": "SELECT X.X AS AX FROM A AS X WHERE X.YX = 'HELLO'",
+  "q2": "SELECT X.X AS AX FROM A AS X WHERE X.YX = 'HELLO HI'",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "literature",
+  "q1_prompt_sql": "SELECT X.X AS AX FROM A AS X WHERE X.YX = 'HELLO'",
+  "q2_prompt_sql": "SELECT X.X AS AX FROM A AS X WHERE X.YX = 'HELLO HI'",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO A (X, YA, YX) VALUES (1, 10, 'HELLO');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent because they use different comparison values for the YX column. Q1 selects rows where YX equals 'HELLO', while Q2 selects rows where YX equals 'HELLO HI'. These are different string values, so the result sets may differ.",
+  "counterexample_dsp": "A table A with one row where YX = 'HELLO' will cause Q1 to return that row but Q2 to return nothing. This demonstrates the inequivalence.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n  \"equiv\": \"N\",\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent because they use different comparison values for the YX column. Q1 selects rows where YX equals 'HELLO', while Q2 selects rows where YX equals 'HELLO HI'. These are different string values, so the result sets may differ.\",\n  \"counterexample_dsp\": \"A table A with one row where YX = 'HELLO' will cause Q1 to return that row but Q2 to return nothing. This demonstrates the inequivalence.\",\n  \"counterexample\": \"INSERT INTO A (X, YA, YX) VALUES (1, 10, 'HELLO');\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 305,
+    "total_tokens": 460,
+    "completion_tokens": 155,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 5.156
+  },
+  "started_at": "2026-10-06T07:53:02.111603+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      1
+    ]
+  ],
+  "q2_output": [],
+  "q1_row_count": 1,
+  "q2_row_count": 0,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT X.X AS AX FROM A AS X WHERE X.YX = 'HELLO'",
+  "q2_validation_sql": "SELECT X.X AS AX FROM A AS X WHERE X.YX = 'HELLO HI'"
+}

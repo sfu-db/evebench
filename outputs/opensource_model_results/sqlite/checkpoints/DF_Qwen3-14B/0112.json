@@ -1,0 +1,55 @@
+{
+  "dbid": "financial",
+  "index": "112",
+  "source_index": "148",
+  "schema_ddl": "CREATE TABLE account\n(\n    account_id  INTEGER default 0 not null\n        primary key,\n    district_id INTEGER default 0 not null,\n    frequency   TEXT   not null,\n    date        DATE          not null,\n    foreign key (district_id) references district (district_id)\n);\n\nCREATE TABLE card\n(\n    card_id INTEGER default 0 not null\n        primary key,\n    disp_id INTEGER           not null,\n    type    TEXT    not null,\n    issued  DATE          not null,\n    foreign key (disp_id) references disp (disp_id)\n);\n\nCREATE TABLE client\n(\n    client_id   INTEGER        not null\n        primary key,\n    gender      TEXT not null,\n    birth_date  DATE       not null,\n    district_id INTEGER        not null,\n    foreign key (district_id) references district (district_id)\n);\n\nCREATE TABLE disp\n(\n    disp_id    INTEGER        not null\n        primary key,\n    client_id  INTEGER        not null,\n    account_id INTEGER        not null,\n    type      TEXT not null,\n    foreign key (account_id) references account (account_id),\n    foreign key (client_id) references client (client_id)\n);\n\nCREATE TABLE district\n(\n    district_id INTEGER default 0 not null\n        primary key,\n    A2          TEXT   not null,\n    A3          TEXT   not null,\n    A4          TEXT       not null,\n    A5          TEXT           not null,\n    A6          TEXT           not null,\n    A7          TEXT           not null,\n    A8          INTEGER        not null,\n    A9          INTEGER           not null,\n    A10         REAL not null,\n    A11         INTEGER           not null,\n    A12         REAL null,\n    A13         REAL not null,\n    A14         INTEGER           not null,\n    A15         INTEGER        null,\n    A16         INTEGER          not null\n);\n\nCREATE TABLE loan\n(\n    loan_id    INTEGER default 0 not null\n        primary key,\n    account_id INTEGER           not null,\n    date       DATE          not null,\n    amount     INTEGER           not null,\n    duration   INTEGER           not null,\n    payments   REAL not null,\n    status     TEXT    not null,\n    foreign key (account_id) references account (account_id)\n);\n\nCREATE TABLE \"order\"\n(\n    order_id   INTEGER default 0 not null\n        primary key,\n    account_id INTEGER           not null,\n    bank_to    TEXT    not null,\n    account_to INTEGER           not null,\n    amount     REAL not null,\n    k_symbol   TEXT    not null,\n    foreign key (account_id) references account (account_id)\n);\n\nCREATE TABLE trans\n(\n    trans_id   INTEGER default 0    not null\n        primary key,\n    account_id INTEGER default 0    not null,\n    date       DATE             not null,\n    type       TEXT       not null,\n    operation  TEXT      null,\n    amount     INTEGER              not null,\n    balance    INTEGER             not null,\n    k_symbol   TEXT      null,\n    bank       TEXT       null,\n    account    INTEGER          null,\n    foreign key (account_id) references account (account_id)\n);",
+  "q1": "SELECT COUNT(T1.client_id) FROM client AS T1 INNER JOIN district AS T2 ON T1.district_id = T2.district_id WHERE T1.gender = 'F' AND T2.A3 = 'south Bohemia'",
+  "q2": "SELECT COUNT(DISTINCT T1.account_id) FROM disp AS T1 INNER JOIN client AS T2 ON T1.client_id = T2.client_id INNER JOIN district AS T3 ON T2.district_id = T3.district_id WHERE T2.gender = 'F' AND T3.A3 = 'south Bohemia'",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT COUNT(T1.client_id) FROM client AS T1 INNER JOIN district AS T2 ON T1.district_id = T2.district_id WHERE T1.gender = 'F' AND T2.A3 = 'south Bohemia'",
+  "q2_prompt_sql": "SELECT COUNT(DISTINCT T1.account_id) FROM disp AS T1 INNER JOIN client AS T2 ON T1.client_id = T2.client_id INNER JOIN district AS T3 ON T2.district_id = T3.district_id WHERE T2.gender = 'F' AND T3.A3 = 'south Bohemia'",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO district (district_id, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16) VALUES (100, 'A2', 'south Bohemia', 'A4', 'A5', 'A6', 'A7', 8, 9, 10.0, 11, 12.0, 13.0, 14, 15, 16);\nINSERT INTO client (client_id, gender, birth_date, district_id) VALUES (1, 'F', '1990-01-01', 100);\nINSERT INTO account (account_id, district_id, frequency, date) VALUES (1001, 100, 'monthly', '2020-01-01');\nINSERT INTO account (account_id, district_id, frequency, date) VALUES (1002, 100, 'monthly', '2020-01-01');\nINSERT INTO disp (disp_id, client_id, account_id, type) VALUES (1, 1, 1001, 'type1');\nINSERT INTO disp (disp_id, client_id, account_id, type) VALUES (2, 1, 1002, 'type2');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 counts female clients in 'south Bohemia' district, while Q2 counts distinct accounts linked to those clients. If a client has multiple accounts, Q1 and Q2 will produce different results.",
+  "counterexample_dsp": "A female client in 'south Bohemia' with two distinct accounts.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 counts female clients in 'south Bohemia' district, while Q2 counts distinct accounts linked to those clients. If a client has multiple accounts, Q1 and Q2 will produce different results.\",\n\"counterexample_dsp\": \"A female client in 'south Bohemia' with two distinct accounts.\",\n\"counterexample\": \"INSERT INTO district (district_id, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16) VALUES (100, 'A2', 'south Bohemia', 'A4', 'A5', 'A6', 'A7', 8, 9, 10.0, 11, 12.0, 13.0, 14, 15, 16);\\nINSERT INTO client (client_id, gender, birth_date, district_id) VALUES (1, 'F', '1990-01-01', 100);\\nINSERT INTO account (account_id, district_id, frequency, date) VALUES (1001, 100, 'monthly', '2020-01-01');\\nINSERT INTO account (account_id, district_id, frequency, date) VALUES (1002, 100, 'monthly', '2020-01-01');\\nINSERT INTO disp (disp_id, client_id, account_id, type) VALUES (1, 1, 1001, 'type1');\\nINSERT INTO disp (disp_id, client_id, account_id, type) VALUES (2, 1, 1002, 'type2');\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem. So, I need to determine if Q1 and Q2 are semantically equivalent. If not, create a counterexample.\n\nFirst, I'll look at the two queries.\n\nQ1: It's selecting the count of T1.client_id from client (T1) joined with district (T2) on district_id. The conditions are T1.gender = 'F' and T2.A3 = 'south Bohemia'. So this is counting the number of female clients in the district where A3 is 'south Bohemia'.\n\nQ2: This one counts distinct T1.account_id from disp (T1) joined with client (T2) on client_id, then joined with district (T3) on T2.district_id. The conditions are T2.gender = 'F' and T3.A3 = 'south Bohemia'. So it's counting the number of distinct accounts associated with female clients in that district.\n\nWait, the main difference here is that Q1 is counting client_ids (so each client is counted once, even if they have multiple accounts?), while Q2 is counting distinct account_ids. But wait, Q1 is joining client and district, so each client is in one district. But Q2 is going through disp, which links client to account. So a client might have multiple disp entries (accounts), but Q2 counts distinct account_ids. So if a female client in south Bohemia has multiple accounts, Q2 would count each account once, but Q1 would count the client once.\n\nSo, if a client has multiple accounts, Q1 would count her once, but Q2 would count each account. Therefore, the counts could differ. For example, if a female client has two accounts in that district, Q1 would count 1, Q2 would count 2. Hence, they are not equivalent.\n\nSo, to create a counterexample, I need a scenario where a female client in south Bohemia has multiple accounts. Let's create such a case.\n\nLet's say there's a client with client_id 1, gender 'F', district_id 100. District 100 has A3 = 'south Bohemia'. Then, in the disp table, this client has two entries with different account_ids (say 1001 and 1002). Then Q1 would count 1 (client), Q2 would count 2 (distinct account_ids). \n\nBut wait, Q2 is joining disp with client. So each disp entry is linked to a client. So for each account linked to that client, it's counted. But since Q2 uses COUNT(DISTINCT T1.account_id), even if the same account is in multiple disp entries (unlikely, since account_id is primary key?), but in the schema, account_id is the primary key of account, and disp has account_id as a foreign key. So each disp entry has a unique account_id? No, because a disp is a deposit account? Wait, the disp table's structure isn't fully clear, but according to the schema, disp has account_id as a foreign key. So each disp entry is associated with an account. But a single account can have multiple disp entries? Or is account_id unique per disp? The schema doesn't say, but since account_id is a primary key in account, but in disp, it's not a primary key. So a single account can be in multiple disp entries? Not sure. But for the counterexample, let's assume that a client has multiple accounts. So, for example, the same client has two different accounts in the same district.\n\nSo, to create the counterexample:\n\n- Insert a district with A3 = 'south Bohemia'.\n- Insert a client with gender 'F' and that district.\n- Insert two accounts (with same district_id) linked to this client via disp.\n\nThen, Q1 would count 1 (the client), Q2 would count 2 (the two accounts). Hence, the results differ.\n\nNow, checking the schema constraints. The district has A3, which is a column. The client has district_id, which references district. The disp has client_id and account_id, and client_id references client. So inserting the data should be possible.\n\nSo the counterexample would involve inserting these records. Let me draft the SQL statements for that.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 1034,
+    "total_tokens": 2338,
+    "completion_tokens": 1304,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 896
+    },
+    "generation_seconds": 43.156
+  },
+  "started_at": "2026-10-06T20:20:00.657369+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      1
+    ]
+  ],
+  "q2_output": [
+    [
+      2
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT COUNT(T1.client_id) FROM client AS T1 INNER JOIN district AS T2 ON T1.district_id = T2.district_id WHERE T1.gender = 'F' AND T2.A3 = 'south Bohemia'",
+  "q2_validation_sql": "SELECT COUNT(DISTINCT T1.account_id) FROM disp AS T1 INNER JOIN client AS T2 ON T1.client_id = T2.client_id INNER JOIN district AS T3 ON T2.district_id = T3.district_id WHERE T2.gender = 'F' AND T3.A3 = 'south Bohemia'"
+}

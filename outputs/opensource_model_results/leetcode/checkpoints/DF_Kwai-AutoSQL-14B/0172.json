@@ -1,0 +1,39 @@
+{
+  "dbid": "607",
+  "index": "172",
+  "source_index": "426",
+  "schema_ddl": "CREATE TABLE SALESPERSON (\n    SALES_ID INT,\n    NAME VARCHAR(255),\n    SALARY INT,\n    COMMISSION_RATE INT,\n    HIRE_DATE VARCHAR(255)\n);\n\nCREATE TABLE COMPANY (\n    COM_ID INT,\n    NAME VARCHAR(255),\n    CITY VARCHAR(255)\n);\n\nCREATE TABLE ORDERS (\n    ORDER_ID INT,\n    COM_ID INT,\n    SALES_ID INT,\n    ORDER_DATE VARCHAR(255),\n    AMOUNT INT\n);",
+  "q1": "SELECT NAME FROM SALESPERSON AS S WHERE 0 = ( SELECT COUNT(*) FROM ORDERS AS O JOIN COMPANY AS C ON O.COM_ID = C.COM_ID WHERE O.SALES_ID = S.SALES_ID AND C.NAME = 'RED' )",
+  "q2": "SELECT P.NAME FROM SALESPERSON P WHERE P.SALES_ID NOT IN ( SELECT DISTINCT(O.SALES_ID) FROM ORDERS O INNER JOIN COMPANY C ON O.COM_ID = C.COM_ID WHERE C.NAME = 'RED')",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT NAME FROM SALESPERSON AS S WHERE 0 = ( SELECT COUNT(*) FROM ORDERS AS O JOIN COMPANY AS C ON O.COM_ID = C.COM_ID WHERE O.SALES_ID = S.SALES_ID AND C.NAME = 'RED' )",
+  "q2_prompt_sql": "SELECT P.NAME FROM SALESPERSON P WHERE P.SALES_ID NOT IN ( SELECT DISTINCT(O.SALES_ID) FROM ORDERS O INNER JOIN COMPANY C ON O.COM_ID = C.COM_ID WHERE C.NAME = 'RED')",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "generation_error",
+  "validation_error": "ValueError: DF inequivalence response requires nonempty counterexample SQL",
+  "explanation": "",
+  "counterexample_dsp": "",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"equiv\": \"N\",\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent. Q1 checks for salespersons whose count of orders from 'RED' company is 0. Q2 excludes salespersons who appear in any order associated with 'RED'. Q1 returns salespersons with zero such orders, while Q2 excludes those with at least one such order. However, Q1 uses a correlated subquery comparing count to zero, and Q2 uses NOT IN with a subquery that returns distinct SALES_IDs. The difference arises when a salesperson has multiple orders with 'RED', but Q2 still excludes them, while Q1 correctly returns them if count is zero. However, in reality, both should return the same result if the subquery in Q2 returns distinct SALES_IDs. Wait, deeper analysis shows that Q1 checks count = 0, which means the salesperson has no orders with 'RED'. Q2 checks that the salesperson's SALES_ID is not in the set of SALES_IDs that appear in orders with 'RED'. These are logically equivalent. I was mistaken earlier. Actually, both queries return salespersons who have no orders associated with the company named 'RED'. Therefore, they are semantically equivalent.\",\n  \"counterexample_dsp\": \"None, since Q1 and Q2 are logically equivalent.\",\n  \"counterexample\": \"\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 458,
+    "total_tokens": 752,
+    "completion_tokens": 294,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 9.984
+  },
+  "started_at": "2026-10-06T15:33:06.733012+00:00",
+  "elapsed_seconds": 0.0
+}

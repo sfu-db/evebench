@@ -1,0 +1,55 @@
+{
+  "dbid": "577",
+  "index": "249",
+  "source_index": "150",
+  "schema_ddl": "CREATE TABLE EMPLOYEE (\n    EMPID INT,\n    NAME VARCHAR(255),\n    SUPERVISOR INT,\n    SALARY INT,\n    PRIMARY KEY (EMPID),\n    CHECK (EMPID <> SUPERVISOR),\n    CHECK (SALARY >= 0)\n);\n\nCREATE TABLE BONUS (\n    EMPID INT,\n    BONUS INT,\n    PRIMARY KEY (EMPID),\n    FOREIGN KEY (EMPID) REFERENCES EMPLOYEE(EMPID),\n    CHECK (BONUS >= 0)\n);",
+  "q1": "SELECT EMPLOYEE.NAME, BONUS.BONUS FROM EMPLOYEE LEFT JOIN BONUS ON EMPLOYEE.EMPID = BONUS.EMPID WHERE BONUS < 1000 OR BONUS IS NULL",
+  "q2": "WITH A AS ( SELECT E.NAME , B.BONUS , IFNULL(B.BONUS,0) AS COMPARE_BONUS FROM EMPLOYEE E LEFT JOIN BONUS B ON B.EMPID = E.EMPID ) SELECT NAME , BONUS FROM A WHERE CASE WHEN COMPARE_BONUS < 1000 OR COMPARE_BONUS = 0 THEN 1 ELSE 0 END",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT EMPLOYEE.NAME, BONUS.BONUS FROM EMPLOYEE LEFT JOIN BONUS ON EMPLOYEE.EMPID = BONUS.EMPID WHERE BONUS < 1000 OR BONUS IS NULL",
+  "q2_prompt_sql": "WITH A AS ( SELECT E.NAME , B.BONUS , IFNULL(B.BONUS,0) AS COMPARE_BONUS FROM EMPLOYEE E LEFT JOIN BONUS B ON B.EMPID = E.EMPID ) SELECT NAME , BONUS FROM A WHERE CASE WHEN COMPARE_BONUS < 1000 OR COMPARE_BONUS = 0 THEN 1 ELSE 0 END",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO EMPLOYEE (EMPID, NAME, SUPERVISOR, SALARY) VALUES (1, 'Employee1', 2, 5000); INSERT INTO BONUS (EMPID, BONUS) VALUES (1, NULL);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent because Q1 uses a WHERE clause with a direct comparison to NULL, which is not the same as checking for NULL values. Q2 uses a CASE statement to handle NULL values, which can lead to different results.",
+  "counterexample_dsp": "The test data should include an employee with a NULL bonus. Q1 will not include this employee in the result, while Q2 will include it because the CASE statement treats NULL as 0 for the comparison.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent because Q1 uses a WHERE clause with a direct comparison to NULL, which is not the same as checking for NULL values. Q2 uses a CASE statement to handle NULL values, which can lead to different results.\",\n  \"counterexample_dsp\": \"The test data should include an employee with a NULL bonus. Q1 will not include this employee in the result, while Q2 will include it because the CASE statement treats NULL as 0 for the comparison.\",\n  \"counterexample\": \"INSERT INTO EMPLOYEE (EMPID, NAME, SUPERVISOR, SALARY) VALUES (1, 'Employee1', 2, 5000); INSERT INTO BONUS (EMPID, BONUS) VALUES (1, NULL);\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 446,
+    "total_tokens": 616,
+    "completion_tokens": 170,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 2.812
+  },
+  "started_at": "2026-10-06T09:50:46.385522+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "Employee1",
+      null
+    ]
+  ],
+  "q2_output": [
+    [
+      "Employee1",
+      null
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT EMPLOYEE.NAME, BONUS.BONUS FROM EMPLOYEE LEFT JOIN BONUS ON EMPLOYEE.EMPID = BONUS.EMPID WHERE BONUS < 1000 OR BONUS IS NULL",
+  "q2_validation_sql": "WITH A AS ( SELECT E.NAME , B.BONUS , IFNULL(B.BONUS,0) AS COMPARE_BONUS FROM EMPLOYEE E LEFT JOIN BONUS B ON B.EMPID = E.EMPID ) SELECT NAME , BONUS FROM A WHERE CASE WHEN COMPARE_BONUS < 1000 OR COMPARE_BONUS = 0 THEN 1 ELSE 0 END"
+}

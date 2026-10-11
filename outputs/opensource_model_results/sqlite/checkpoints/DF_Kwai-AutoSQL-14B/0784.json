@@ -1,0 +1,39 @@
+{
+  "dbid": "student_club",
+  "index": "784",
+  "source_index": "1359",
+  "schema_ddl": "CREATE TABLE event\n(\n    event_id   TEXT\n        constraint event_pk\n            primary key,\n    event_name TEXT,\n    event_date TEXT,\n    type       TEXT,\n    notes      TEXT,\n    location   TEXT,\n    status     TEXT\n);\n\nCREATE TABLE major\n(\n    major_id   TEXT\n        constraint major_pk\n            primary key,\n    major_name TEXT,\n    department TEXT,\n    college    TEXT\n);\n\nCREATE TABLE zip_code\n(\n    zip_code    INTEGER\n        constraint zip_code_pk\n            primary key,\n    type        TEXT,\n    city        TEXT,\n    county      TEXT,\n    state       TEXT,\n    short_state TEXT\n);\n\nCREATE TABLE \"attendance\"\n(\n    link_to_event  TEXT,\n    link_to_member TEXT,\n    primary key (link_to_event, link_to_member),\n    foreign key (link_to_event) references event(event_id),\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"budget\"\n(\n    budget_id     TEXT\n            primary key,\n    category      TEXT,\n    spent         REAL,\n    remaining     REAL,\n    amount        INTEGER,\n    event_status  TEXT,\n    link_to_event TEXT,\n    foreign key (link_to_event) references event(event_id)\n);\n\nCREATE TABLE \"expense\"\n(\n    expense_id          TEXT\n            primary key,\n    expense_description TEXT,\n    expense_date        TEXT,\n    cost                REAL,\n    approved            TEXT,\n    link_to_member      TEXT,\n    link_to_budget      TEXT,\n    foreign key (link_to_budget) references budget(budget_id),\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"income\"\n(\n    income_id      TEXT\n        constraint income_pk\n            primary key,\n    date_received  TEXT,\n    amount         INTEGER,\n    source         TEXT,\n    notes          TEXT,\n    link_to_member TEXT,\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"member\"\n(\n    member_id     TEXT\n        constraint member_pk\n            primary key,\n    first_name    TEXT,\n    last_name     TEXT,\n    email         TEXT,\n    position      TEXT,\n    t_shirt_size  TEXT,\n    phone         TEXT,\n    zip           INTEGER,\n    link_to_major TEXT,\n    foreign key (link_to_major) references major(major_id),\n    foreign key (zip) references zip_code(zip_code)\n);",
+  "q1": "SELECT T1.first_name, T1.last_name FROM member AS T1 INNER JOIN income AS T2 ON T1.member_id = T2.link_to_member WHERE T2.source = 'Dues' ORDER BY T2.date_received LIMIT 1",
+  "q2": "SELECT T2.first_name, T2.last_name FROM income AS T1 INNER JOIN member AS T2 ON T1.link_to_member = T2.member_id WHERE T1.source = 'Dues' ORDER BY T1.date_received ASC LIMIT 1",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT T1.first_name, T1.last_name FROM member AS T1 INNER JOIN income AS T2 ON T1.member_id = T2.link_to_member WHERE T2.source = 'Dues' ORDER BY T2.date_received LIMIT 1",
+  "q2_prompt_sql": "SELECT T2.first_name, T2.last_name FROM income AS T1 INNER JOIN member AS T2 ON T1.link_to_member = T2.member_id WHERE T1.source = 'Dues' ORDER BY T1.date_received ASC LIMIT 1",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries join member and income tables on the same condition, filter by source = 'Dues', order by date_received, and return the first row. The only difference is alias naming, which does not affect the result.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries join member and income tables on the same condition, filter by source = 'Dues', order by date_received, and return the first row. The only difference is alias naming, which does not affect the result.\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem. So, I need to determine if the two SQL queries Q1 and Q2 are semantically equivalent. If not, I have to come up with a counterexample.\n\nFirst, let me look at both queries again.\n\nQ1: SELECT T1.first_name, T1.last_name FROM member AS T1 INNER JOIN income AS T2 ON T1.member_id = T2.link_to_member WHERE T2.source = 'Dues' ORDER BY T2.date_received LIMIT 1\n\nQ2: SELECT T2.first_name, T2.last_name FROM income AS T1 INNER JOIN member AS T2 ON T1.link_to_member = T2.member_id WHERE T1.source = 'Dues' ORDER BY T1.date_received ASC LIMIT 1\n\nLooking at the tables involved, both are joining member and income. The main difference seems to be the aliases used for the tables and the ordering column. Wait, in Q1, the ORDER BY is on T2.date_received, which is the income table. In Q2, it's T1.date_received, which is also the income table since T1 is income. Wait, in Q2, the income table is T1, so T1.date_received is the same as T2.date_received in Q1. So the order by part is the same.\n\nNow, the columns selected: Q1 selects T1.first_name and T1.last_name, where T1 is member. Q2 selects T2.first_name and T2.last_name, where T2 is member. So that's the same columns, just different aliases. So the output columns are the same.\n\nThe join condition is T1.member_id = T2.link_to_member in Q1 (member to income). In Q2, it's T1.link_to_member = T2.member_id, which is the same thing. So the join condition is equivalent.\n\nThe WHERE clause is T2.source = 'Dues' in Q1 and T1.source = 'Dues' in Q2. Since T1 in Q1 is income (T2 is income), and T1 in Q2 is income. So same condition.\n\nSo the only difference is the aliases used for the tables and the order by (but they both use date_received from income, which is the same). Wait, but in Q1, the order by is T2.date_received, which is income's date_received. In Q2, it's T1.date_received, which is also income's date_received. So same ordering.\n\nTherefore, the two queries should return the same result. But wait, maybe I'm missing something. Let me check again.\n\nWait, in Q1, the member table is T1, and income is T2. So the join is member.member_id = income.link_to_member. In Q2, income is T1, member is T2. The join is T1.link_to_member = T2.member_id. Which is the same as member.member_id = income.link_to_member. So same join condition.\n\nThe ordering is on date_received from the income table, same in both cases. The WHERE is on source = 'Dues' from income. The output columns are first_name and last_name from member. So both queries are selecting the same columns from the same join, ordered the same way, limited to 1. So they should be equivalent.\n\nBut wait, maybe there's a case where the order by could be different? No, because both are ordering by the same column. So the result should be the same.\n\nTherefore, the answer should be equivalent. So the equiv is Y.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 846,
+    "total_tokens": 1653,
+    "completion_tokens": 807,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 745
+    },
+    "generation_seconds": 26.406
+  },
+  "started_at": "2026-10-06T21:37:56.334335+00:00",
+  "elapsed_seconds": 0.0
+}

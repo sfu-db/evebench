@@ -1,0 +1,53 @@
+{
+  "dbid": "beers",
+  "index": "11",
+  "source_index": "112",
+  "schema_ddl": "CREATE TABLE Bar (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Beer (\n    name VARCHAR NOT NULL,\n    brewer VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Drinker (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Frequents (\n    drinker VARCHAR NOT NULL,\n    bar VARCHAR NOT NULL,\n    times_a_week SMALLINT NOT NULL,\n    PRIMARY KEY (drinker, bar),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (bar) REFERENCES Bar(name)\n);\n\nCREATE TABLE Serves (\n    bar VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    price DECIMAL(5,2) NOT NULL,\n    PRIMARY KEY (bar, beer),\n    FOREIGN KEY (bar) REFERENCES Bar(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);\n\nCREATE TABLE Likes (\n    drinker VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    PRIMARY KEY (drinker, beer),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);",
+  "q1": "SELECT beer, MAX(price) - MIN(price) AS price_gap, AVG(price) AS avg_price FROM serves WHERE beer IN (SELECT s.beer FROM serves AS s, frequents AS f WHERE s.bar = f.bar AND f.drinker LIKE 'B%' GROUP BY s.beer HAVING COUNT(DISTINCT s.bar) >= 2) GROUP BY beer ORDER BY beer",
+  "q2": "WITH bars_frequented_by_b_drinkers AS (SELECT DISTINCT f.bar FROM frequents AS f JOIN drinker AS d ON f.drinker = d.name WHERE d.name LIKE 'B%'), beers_served_in_selected_bars AS (SELECT s.beer, s.bar, s.price FROM serves AS s JOIN bars_frequented_by_b_drinkers AS bfbb ON s.bar = bfbb.bar), beer_price_stats AS (SELECT beer, MAX(price) - MIN(price) AS price_gap, AVG(price) AS avg_price FROM beers_served_in_selected_bars GROUP BY beer) SELECT beer, price_gap, avg_price FROM beer_price_stats ORDER BY beer",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "beers",
+  "q1_prompt_sql": "SELECT beer, MAX(price) - MIN(price) AS price_gap, AVG(price) AS avg_price FROM serves WHERE beer IN (SELECT s.beer FROM serves AS s, frequents AS f WHERE s.bar = f.bar AND f.drinker LIKE 'B%' GROUP BY s.beer HAVING COUNT(DISTINCT s.bar) >= 2) GROUP BY beer ORDER BY beer",
+  "q2_prompt_sql": "WITH bars_frequented_by_b_drinkers AS (SELECT DISTINCT f.bar FROM frequents AS f JOIN drinker AS d ON f.drinker = d.name WHERE d.name LIKE 'B%'), beers_served_in_selected_bars AS (SELECT s.beer, s.bar, s.price FROM serves AS s JOIN bars_frequented_by_b_drinkers AS bfbb ON s.bar = bfbb.bar), beer_price_stats AS (SELECT beer, MAX(price) - MIN(price) AS price_gap, AVG(price) AS avg_price FROM beers_served_in_selected_bars GROUP BY beer) SELECT beer, price_gap, avg_price FROM beer_price_stats ORDER BY beer",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO Drinker (name, address) VALUES ('Bill', '123 Main');\nINSERT INTO Bar (name, address) VALUES ('BarA', '456 Oak');\nINSERT INTO Beer (name, brewer) VALUES ('BeerX', 'BrewCo');\nINSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('Bill', 'BarA', 3);\nINSERT INTO Serves (bar, beer, price) VALUES ('BarA', 'BeerX', 5.00);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 requires beers to be served in at least two bars frequented by B% drinkers, while Q2 includes all beers served in any such bar. This leads to different results when a beer is served in exactly one such bar.",
+  "counterexample_dsp": "A beer served in exactly one bar frequented by a B% drinker is included in Q2 but excluded from Q1.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 requires beers to be served in at least two bars frequented by B% drinkers, while Q2 includes all beers served in any such bar. This leads to different results when a beer is served in exactly one such bar.\",\n\"counterexample_dsp\": \"A beer served in exactly one bar frequented by a B% drinker is included in Q2 but excluded from Q1.\",\n\"counterexample\": \"INSERT INTO Drinker (name, address) VALUES ('Bill', '123 Main');\\nINSERT INTO Bar (name, address) VALUES ('BarA', '456 Oak');\\nINSERT INTO Beer (name, brewer) VALUES ('BeerX', 'BrewCo');\\nINSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('Bill', 'BarA', 3);\\nINSERT INTO Serves (bar, beer, price) VALUES ('BarA', 'BeerX', 5.00);\"\n}",
+  "reasoning": "\nOkay, let's start by understanding both queries Q1 and Q2. \n\nFirst, looking at Q1: It selects beer, the price gap (MAX - MIN price), and average price from the serves table. The WHERE clause filters beers that are in a subquery. The subquery selects beers from serves and frequents where the bar is the same as the frequents bar, and the drinker's name starts with 'B'. Then it groups by beer and requires that the count of distinct bars is at least 2. So, this subquery finds beers that are served in at least two different bars frequented by drinkers whose names start with B. \n\nQ2 uses a CTE approach. First, it finds bars frequented by B% drinkers (bars_frequented_by_b_drinkers). Then, it gets beers served in those bars (beers_served_in_selected_bars). Then, it calculates the price stats (max-min and avg) for each beer. \n\nNow, comparing the two: Q1's subquery in the WHERE clause is selecting beers that are served in at least two bars that are frequented by B% drinkers. However, in Q1, the subquery uses a JOIN between serves and frequents with s.bar = f.bar, and groups by s.beer, having count(distinct s.bar) >=2. So for each beer, it's checking if there are at least two distinct bars where that beer is served and those bars are frequented by B% drinkers. \n\nQ2's first CTE, bars_frequented_by_b_drinkers, selects all bars that are frequented by any B% drinker. Then, beers_served_in_selected_bars is all serves in those bars. Then, beer_price_stats groups by beer and computes the stats. \n\nWait, but in Q1, the subquery is grouping by s.beer and having count(distinct s.bar) >=2. So for a beer to be included, it must be served in at least two different bars that are frequented by B% drinkers. \n\nIn Q2, the beers_served_in_selected_bars includes all beers served in any of the bars frequented by B% drinkers. Then, when grouping by beer, the price stats are calculated for all serves in those bars. However, in Q2, there's no condition that the beer must be served in at least two bars. So Q2 includes all beers served in any of the bars frequented by B% drinkers, regardless of how many bars they are served in. \n\nAh, that's a key difference. Q1 requires that the beer is served in at least two bars frequented by B% drinkers. Q2 includes any beer served in any of those bars, even if it's only in one bar. \n\nSo, if there's a beer that is served in exactly one bar that is frequented by a B% drinker, then Q1 would exclude it, but Q2 would include it. \n\nTherefore, the two queries are not equivalent. \n\nTo create a counterexample, we need a scenario where a beer is served in exactly one bar frequented by a B% drinker. Let's say:\n\n- Drinker 'Bob' frequents Bar 'Bar1'.\n- Bar 'Bar1' serves Beer 'Bud' at $3.\n- There's another beer 'Miller' served in Bar 'Bar2' (which is not frequented by any B% drinker), but that's not relevant. Wait, no. Wait, for the counterexample, we need a beer that is served in exactly one bar that is frequented by a B% drinker. \n\nLet me think. Suppose:\n\n- Drinker 'Bill' frequents Bar 'BarA'.\n- Bar 'BarA' serves Beer 'BeerX' at $5.\n- There's another bar 'BarB' that is not frequented by any B% drinker. But that's not needed. \n\nIn this case, BeerX is served in BarA, which is frequented by Bill (B%). So Q2 would include BeerX in its beers_served_in_selected_bars. Then, when grouping by beer, BeerX's price gap is 0 (since only one price) and avg is 5. \n\nBut in Q1, the subquery would check for beers served in at least two bars. Since BeerX is only in one bar, it's excluded. Therefore, Q1 would not include BeerX, but Q2 would. \n\nThus, the two queries would produce different results. \n\nSo the counterexample would involve a beer served in exactly one bar frequented by a B% drinker. \n\nNow, to create the test data:\n\n- Insert a drinker named 'Bill' (starts with B).\n- Insert that drinker into frequents for BarA.\n- Insert BarA into the Bar table.\n- Insert BeerX into Beer table.\n- Insert into Serves: BarA serves BeerX at $5.\n\nThen, Q2 would include BeerX, but Q1 would not. \n\nAnother beer that's served in two bars frequented by B% drinkers would be included in both. But the presence of BeerX in Q2 but not in Q1 shows the difference.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 709,
+    "total_tokens": 2014,
+    "completion_tokens": 1305,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1087
+    },
+    "generation_seconds": 40.609
+  },
+  "started_at": "2026-10-06T09:10:10.945628+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [],
+  "q2_output": [
+    [
+      "BeerX",
+      0,
+      5.0
+    ]
+  ],
+  "q1_row_count": 0,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT beer, MAX(price) - MIN(price) AS price_gap, AVG(price) AS avg_price FROM serves WHERE beer IN (SELECT s.beer FROM serves AS s, frequents AS f WHERE s.bar = f.bar AND f.drinker LIKE 'B%' GROUP BY s.beer HAVING COUNT(DISTINCT s.bar) >= 2) GROUP BY beer ORDER BY beer",
+  "q2_validation_sql": "WITH bars_frequented_by_b_drinkers AS (SELECT DISTINCT f.bar FROM frequents AS f JOIN drinker AS d ON f.drinker = d.name WHERE d.name LIKE 'B%'), beers_served_in_selected_bars AS (SELECT s.beer, s.bar, s.price FROM serves AS s JOIN bars_frequented_by_b_drinkers AS bfbb ON s.bar = bfbb.bar), beer_price_stats AS (SELECT beer, MAX(price) - MIN(price) AS price_gap, AVG(price) AS avg_price FROM beers_served_in_selected_bars GROUP BY beer) SELECT beer, price_gap, avg_price FROM beer_price_stats ORDER BY beer"
+}

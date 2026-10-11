@@ -1,0 +1,58 @@
+{
+  "dbid": "codebase_community",
+  "index": "321",
+  "source_index": "535",
+  "schema_ddl": "CREATE TABLE badges\n(\n    Id     INTEGER          not null\n        primary key,\n    UserId INTEGER          null,\n    Name   TEXT null,\n    Date   DATETIME     null,\n        foreign key (UserId) references users (Id)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE comments\n(\n    Id              INTEGER          not null\n        primary key,\n    PostId          INTEGER          null,\n    Score           INTEGER          null,\n    Text            TEXT     null,\n    CreationDate    DATETIME     null,\n    UserId          INTEGER          null,\n    UserDisplayName TEXT null,\n        foreign key (PostId) references posts (Id)\n            on update cascade on delete cascade,\n        foreign key (UserId) references users (Id)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE postHistory\n(\n    Id                INTEGER          not null UNIQUE\n        primary key,\n    PostHistoryTypeId INTEGER          null,\n    PostId            INTEGER          null,\n    RevisionGUID      TEXT null,\n    CreationDate      DATETIME     null,\n    UserId            INTEGER          null,\n    Text              TEXT     null,\n    Comment           TEXT         null,\n    UserDisplayName   TEXT null,\n        foreign key (PostId) references posts (Id)\n            on update cascade on delete cascade,\n        foreign key (UserId) references users (Id)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE postLinks\n(\n    Id            INTEGER      not null\n        primary key,\n    CreationDate  DATETIME null,\n    PostId        INTEGER      null,\n    RelatedPostId INTEGER      null,\n    LinkTypeId    INTEGER      null,\n        foreign key (PostId) references posts (Id)\n            on update cascade on delete cascade,\n        foreign key (RelatedPostId) references posts (Id)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE posts\n(\n    Id                    INTEGER          not null UNIQUE\n        primary key,\n    PostTypeId            INTEGER          null,\n    AcceptedAnswerId      INTEGER          null,\n    CreaionDate           DATETIME     null,\n    Score                 INTEGER          null,\n    ViewCount             INTEGER          null,\n    Body                  TEXT     null,\n    OwnerUserId           INTEGER          null,\n    LasActivityDate       DATETIME     null,\n    Title                 TEXT null,\n    Tags                  TEXT null,\n    AnswerCount           INTEGER          null,\n    CommentCount          INTEGER          null,\n    FavoriteCount         INTEGER          null,\n    LastEditorUserId      INTEGER          null,\n    LastEditDate          DATETIME     null,\n    CommunityOwnedDate    DATETIME    null,\n    ParentId              INTEGER          null,\n    ClosedDate            DATETIME     null,\n    OwnerDisplayName      TEXT null,\n    LastEditorDisplayName TEXT null,\n        foreign key (LastEditorUserId) references users (Id)\n            on update cascade on delete cascade,\n        foreign key (OwnerUserId) references users (Id)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE tags\n(\n    Id            INTEGER          not null\n        primary key,\n    TagName       TEXT null,\n    Count         INTEGER          null,\n    ExcerptPostId INTEGER          null,\n    WikiPostId    INTEGER          null,\n    foreign key (ExcerptPostId) references posts (Id)\n        on update cascade on delete cascade\n);\n\nCREATE TABLE users\n(\n    Id              INTEGER          not null UNIQUE\n        primary key,\n    Reputation      INTEGER          null,\n    CreationDate    DATETIME     null,\n    DisplayName     TEXT null,\n    LastAccessDate  DATETIME     null,\n    WebsiteUrl      TEXT null,\n    Location        TEXT null,\n    AboutMe         TEXT     null,\n    Views           INTEGER          null,\n    UpVotes         INTEGER          null,\n    DownVotes       INTEGER          null,\n    AccountId       INTEGER          null,\n    Age             INTEGER          null,\n    ProfileImageUrl TEXT null\n);\n\nCREATE TABLE votes\n(\n    Id           INTEGER  not null\n        primary key,\n    PostId       INTEGER  null,\n    VoteTypeId   INTEGER  null,\n    CreationDate DATE null,\n    UserId       INTEGER  null,\n    BountyAmount INTEGER  null,\n        foreign key (PostId) references posts (Id)\n            on update cascade on delete cascade,\n        foreign key (UserId) references users (Id)\n            on update cascade on delete cascade\n);",
+  "q1": "SELECT DisplayName FROM users WHERE Views = (SELECT MAX(Views) FROM users)",
+  "q2": "SELECT DisplayName FROM users ORDER BY Views DESC LIMIT 1",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT DisplayName FROM users WHERE Views = (SELECT MAX(Views) FROM users)",
+  "q2_prompt_sql": "SELECT DisplayName FROM users ORDER BY Views DESC LIMIT 1",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO users (Id, DisplayName, Views) VALUES (1, 'Alice', 1000);\nINSERT INTO users (Id, DisplayName, Views) VALUES (2, 'Bob', 1000);\nINSERT INTO users (Id, DisplayName, Views) VALUES (3, 'Charlie', 900);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 returns all users with the maximum Views value, while Q2 returns only the first user when ordered by Views descending. When multiple users share the maximum Views, Q1 will return all of them, but Q2 will return only one (depending on the database's tie-breaking behavior).",
+  "counterexample_dsp": "Two users (Alice and Bob) have the same maximum Views (1000), and a third user (Charlie) has fewer Views (900). Q1 returns both Alice and Bob, while Q2 returns only one of them (e.g., Alice, based on primary key order).",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 returns all users with the maximum Views value, while Q2 returns only the first user when ordered by Views descending. When multiple users share the maximum Views, Q1 will return all of them, but Q2 will return only one (depending on the database's tie-breaking behavior).\",\n  \"counterexample_dsp\": \"Two users (Alice and Bob) have the same maximum Views (1000), and a third user (Charlie) has fewer Views (900). Q1 returns both Alice and Bob, while Q2 returns only one of them (e.g., Alice, based on primary key order).\",\n  \"counterexample\": [\n    \"INSERT INTO users (Id, DisplayName, Views) VALUES (1, 'Alice', 1000);\",\n    \"INSERT INTO users (Id, DisplayName, Views) VALUES (2, 'Bob', 1000);\",\n    \"INSERT INTO users (Id, DisplayName, Views) VALUES (3, 'Charlie', 900);\"\n  ]\n}",
+  "reasoning": "\nOkay, let's see. The user wants me to find a counterexample where Q1 and Q2 return different results. The two queries are:\n\nQ1: SELECT DisplayName FROM users WHERE Views = (SELECT MAX(Views) FROM users)\nQ2: SELECT DisplayName FROM users ORDER BY Views DESC LIMIT 1\n\nHmm, so Q1 is selecting users who have the maximum Views value. But if there are multiple users with the same maximum Views, Q1 would return all of them. On the other hand, Q2 orders by Views descending and takes the first one, so it would return only one user even if there are ties. \n\nSo the difference arises when there are multiple users with the same maximum Views. For example, if two users have the highest Views count, Q1 would return both, while Q2 would return just one (the first one in the ordered list, which might depend on the database's ordering if there's a tie).\n\nTherefore, to create a counterexample, I need a scenario where there are at least two users with the same maximum Views. Let's say two users, Alice and Bob, both have 1000 Views. Then Q1 would return both, and Q2 would return only one of them, depending on how the database handles the ordering when there's a tie. But wait, the ORDER BY in Q2 is only by Views. If two users have the same Views, the database might order them by another column (like primary key) if there's a tie-breaker, but since the query doesn't specify, the result could be non-deterministic. However, in practice, the LIMIT 1 would pick one of them, but which one isn't specified. But for the counterexample, we need to ensure that Q1 returns more than one row, and Q2 returns exactly one. So if there's a tie, Q1 will have multiple rows, and Q2 will have one. That's the key.\n\nSo the test data should have at least two users with the same maximum Views. Let's create three users: User1 with 1000 Views, User2 with 1000 Views, and User3 with 900 Views. Then Q1 will return User1 and User2, while Q2 will return either User1 or User2 (depending on the order, but in the example, maybe we can have them inserted in a way that the first one is selected). But the problem is that the LIMIT 1 might not necessarily pick the same one every time unless there's a secondary sort. However, the user just needs a case where the results differ. So even if the LIMIT 1 could pick either, as long as there's a possibility that Q1 returns two and Q2 returns one, that's sufficient for the counterexample.\n\nSo the explanation would be that Q1 returns all users with the maximum Views, while Q2 returns only the first one when ordered by Views. So when there's a tie, they differ.\n\nNow, the counterexample data. Let's create three users. Let's say user A has 1000, user B has 1000, and user C has 900. Then Q1 returns A and B, Q2 returns A (assuming that the primary key or insertion order is used as a tie-breaker). But the actual SQL query for Q2 doesn't have a secondary sort, so in some databases, if two rows have the same Views, the order is arbitrary. However, for the purpose of the counterexample, we can assume that the first inserted user is the one selected by LIMIT 1. But to make it concrete, maybe we can have user A with a lower ID than user B. Since in some databases, when ordering by a column and there's a tie, the primary key (which is Id) might be used as a secondary sort. For example, in PostgreSQL, if you order by Views DESC and there's a tie, it will order by the next column in the order, which might be the primary key. But if the query doesn't specify, it's not guaranteed. However, for the sake of the example, let's assume that the LIMIT 1 picks the user with the smallest Id. So if user A has Id 1, user B has Id 2, and both have 1000 Views, then Q2 would return user A. So Q1 returns both, Q2 returns one. That's the difference.\n\nSo the counterexample would be inserting three users: two with max Views and one with less. Then Q1 returns two, Q2 returns one. That's the case where they differ.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 1100,
+    "total_tokens": 2290,
+    "completion_tokens": 1190,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 964
+    },
+    "generation_seconds": 42.656
+  },
+  "started_at": "2026-10-06T16:50:20.397395+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "Alice"
+    ],
+    [
+      "Bob"
+    ]
+  ],
+  "q2_output": [
+    [
+      "Alice"
+    ]
+  ],
+  "q1_row_count": 2,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DisplayName FROM users WHERE Views = (SELECT MAX(Views) FROM users)",
+  "q2_validation_sql": "SELECT DisplayName FROM users ORDER BY Views DESC LIMIT 1"
+}

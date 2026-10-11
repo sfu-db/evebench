@@ -1,0 +1,53 @@
+{
+  "dbid": "585",
+  "index": "246",
+  "source_index": "93",
+  "schema_ddl": "CREATE TABLE INSURANCE (\n    PID INT,\n    TIV_2015 NUMERIC,\n    TIV_2016 NUMERIC,\n    LAT NUMERIC,\n    LON NUMERIC,\n    PRIMARY KEY (PID),\n    CHECK (TIV_2015 >= 0),\n    CHECK (TIV_2016 >= 0)\n);",
+  "q1": "SELECT ROUND(SUM(TIV_2016),2) TIV_2016 FROM INSURANCE WHERE TIV_2015 IN (SELECT TIV_2015 FROM INSURANCE GROUP BY TIV_2015 HAVING COUNT(*)>1) AND (LAT,LON) IN (SELECT LAT,LON FROM INSURANCE GROUP BY LAT,LON HAVING COUNT(*)=1)",
+  "q2": "WITH T1 AS ( SELECT TIV_2015, 1 AS ISSATTIV_2015 FROM INSURANCE GROUP BY TIV_2015 HAVING COUNT(PID) >= 2 ), T2 AS ( SELECT LAT, LON, 1 AS ISUNIQUELOC FROM INSURANCE GROUP BY LAT, LON HAVING COUNT(PID) = 1 ) SELECT SUM(TIV_2016) AS TIV_2016 FROM INSURANCE T3 LEFT JOIN T1 ON T3.TIV_2015 = T1.TIV_2015 LEFT JOIN T2 ON T3.LAT = T2.LAT AND T3.LON = T2.LON WHERE T1.ISSATTIV_2015 = 1 AND T2.ISUNIQUELOC = 1",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT ROUND(SUM(TIV_2016),2) TIV_2016 FROM INSURANCE WHERE TIV_2015 IN (SELECT TIV_2015 FROM INSURANCE GROUP BY TIV_2015 HAVING COUNT(*)>1) AND (LAT,LON) IN (SELECT LAT,LON FROM INSURANCE GROUP BY LAT,LON HAVING COUNT(*)=1)",
+  "q2_prompt_sql": "WITH T1 AS ( SELECT TIV_2015, 1 AS ISSATTIV_2015 FROM INSURANCE GROUP BY TIV_2015 HAVING COUNT(PID) >= 2 ), T2 AS ( SELECT LAT, LON, 1 AS ISUNIQUELOC FROM INSURANCE GROUP BY LAT, LON HAVING COUNT(PID) = 1 ) SELECT SUM(TIV_2016) AS TIV_2016 FROM INSURANCE T3 LEFT JOIN T1 ON T3.TIV_2015 = T1.TIV_2015 LEFT JOIN T2 ON T3.LAT = T2.LAT AND T3.LON = T2.LON WHERE T1.ISSATTIV_2015 = 1 AND T2.ISUNIQUELOC = 1",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO INSURANCE (PID, TIV_2015, TIV_2016, LAT, LON) VALUES (1, 1000, 500, 1.1, 2.2), (2, 1000, 500, 1.1, 2.2), (3, 2000, 1000, 3.3, 4.4);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not equivalent because they use different methods to filter the data. Q1 uses IN subqueries to filter TIV_2015 and (LAT, LON) values, while Q2 uses a common table expression (CTE) with LEFT JOINs to achieve the same filtering. The difference in the methods of filtering can lead to different results if there are NULL values in the joined columns.",
+  "counterexample_dsp": "The difference in the methods of filtering can lead to different results if there are NULL values in the joined columns.",
+  "equiv": "N",
+  "raw_response": "{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 and Q2 are not equivalent because they use different methods to filter the data. Q1 uses IN subqueries to filter TIV_2015 and (LAT, LON) values, while Q2 uses a common table expression (CTE) with LEFT JOINs to achieve the same filtering. The difference in the methods of filtering can lead to different results if there are NULL values in the joined columns.\",\n\"counterexample_dsp\": \"The difference in the methods of filtering can lead to different results if there are NULL values in the joined columns.\",\n\"counterexample\": \"INSERT INTO INSURANCE (PID, TIV_2015, TIV_2016, LAT, LON) VALUES (1, 1000, 500, 1.1, 2.2), (2, 1000, 500, 1.1, 2.2), (3, 2000, 1000, 3.3, 4.4);\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 627,
+    "total_tokens": 865,
+    "completion_tokens": 238,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 4.031
+  },
+  "started_at": "2026-10-06T14:33:24.806237+00:00",
+  "elapsed_seconds": 0.781,
+  "q1_output": [
+    [
+      null
+    ]
+  ],
+  "q2_output": [
+    [
+      null
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT ROUND(SUM(TIV_2016),2) TIV_2016 FROM INSURANCE WHERE TIV_2015 IN (SELECT TIV_2015 FROM INSURANCE GROUP BY TIV_2015 HAVING COUNT(*)>1) AND (LAT,LON) IN (SELECT LAT,LON FROM INSURANCE GROUP BY LAT,LON HAVING COUNT(*)=1)",
+  "q2_validation_sql": "WITH T1 AS ( SELECT TIV_2015, 1 AS ISSATTIV_2015 FROM INSURANCE GROUP BY TIV_2015 HAVING COUNT(PID) >= 2 ), T2 AS ( SELECT LAT, LON, 1 AS ISUNIQUELOC FROM INSURANCE GROUP BY LAT, LON HAVING COUNT(PID) = 1 ) SELECT SUM(TIV_2016) AS TIV_2016 FROM INSURANCE T3 LEFT JOIN T1 ON T3.TIV_2015 = T1.TIV_2015 LEFT JOIN T2 ON T3.LAT = T2.LAT AND T3.LON = T2.LON WHERE T1.ISSATTIV_2015 = 1 AND T2.ISUNIQUELOC = 1"
+}

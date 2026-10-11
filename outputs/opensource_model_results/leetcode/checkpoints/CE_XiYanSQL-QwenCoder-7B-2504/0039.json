@@ -1,0 +1,63 @@
+{
+  "dbid": "1113",
+  "index": "39",
+  "source_index": "278",
+  "schema_ddl": "CREATE TABLE ACTIONS (\n    USER_ID INT,\n    POST_ID INT,\n    ACTION_DATE DATE,\n    ACTION ENUM('VIEW', 'LIKE', 'REACTION', 'COMMENT', 'REPORT', 'SHARE'),\n    EXTRA VARCHAR(255),\n    CHECK (ACTION_DATE <= '2019-07-05'),\n    CHECK (ACTION IN ('VIEW', 'LIKE', 'REACTION', 'COMMENT', 'REPORT', 'SHARE'))\n);",
+  "q1": "SELECT EXTRA AS REPORT_REASON, COUNT(DISTINCT POST_ID) AS REPORT_COUNT FROM ACTIONS WHERE ACTION = 'REPORT' AND ACTION_DATE = '2019-07-04' GROUP BY EXTRA",
+  "q2": "SELECT EXTRA AS REPORT_REASON, COUNT(DISTINCT POST_ID) AS REPORT_COUNT FROM (SELECT * FROM ACTIONS WHERE ACTION='REPORT' AND ACTION_DATE='2019-07-04') T GROUP BY 1",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT EXTRA AS REPORT_REASON, COUNT(DISTINCT POST_ID) AS REPORT_COUNT FROM ACTIONS WHERE ACTION = 'REPORT' AND ACTION_DATE = '2019-07-04' GROUP BY EXTRA",
+  "q2_prompt_sql": "SELECT EXTRA AS REPORT_REASON, COUNT(DISTINCT POST_ID) AS REPORT_COUNT FROM (SELECT * FROM ACTIONS WHERE ACTION='REPORT' AND ACTION_DATE='2019-07-04') T GROUP BY 1",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO ACTIONS (USER_ID, POST_ID, ACTION_DATE, ACTION, EXTRA) VALUES (1, 101, '2019-07-04', 'REPORT', 'Spam'); INSERT INTO ACTIONS (USER_ID, POST_ID, ACTION_DATE, ACTION, EXTRA) VALUES (2, 101, '2019-07-04', 'REPORT', 'Offensive');",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent because Q1 uses GROUP BY with an alias (EXTRA AS REPORT_REASON), which is not allowed in all SQL dialects and can lead to unexpected results. Q2, on the other hand, uses GROUP BY with the column position (1), which is more portable but still can lead to issues if the column order changes. The actual difference in results would depend on the specific SQL dialect and its handling of these constructs.",
+  "counterexample_dsp": "The test data should include at least two rows with the same POST_ID and different values in the EXTRA column. The difference in results will be observed when the count of distinct POST_IDs is calculated for each REPORT_REASON.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent because Q1 uses GROUP BY with an alias (EXTRA AS REPORT_REASON), which is not allowed in all SQL dialects and can lead to unexpected results. Q2, on the other hand, uses GROUP BY with the column position (1), which is more portable but still can lead to issues if the column order changes. The actual difference in results would depend on the specific SQL dialect and its handling of these constructs.\",\n  \"counterexample_dsp\": \"The test data should include at least two rows with the same POST_ID and different values in the EXTRA column. The difference in results will be observed when the count of distinct POST_IDs is calculated for each REPORT_REASON.\",\n  \"counterexample\": \"INSERT INTO ACTIONS (USER_ID, POST_ID, ACTION_DATE, ACTION, EXTRA) VALUES (1, 101, '2019-07-04', 'REPORT', 'Spam'); INSERT INTO ACTIONS (USER_ID, POST_ID, ACTION_DATE, ACTION, EXTRA) VALUES (2, 101, '2019-07-04', 'REPORT', 'Offensive');\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 403,
+    "total_tokens": 656,
+    "completion_tokens": 253,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 4.141
+  },
+  "started_at": "2026-10-06T09:49:59.728633+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "Offensive",
+      1
+    ],
+    [
+      "Spam",
+      1
+    ]
+  ],
+  "q2_output": [
+    [
+      "Offensive",
+      1
+    ],
+    [
+      "Spam",
+      1
+    ]
+  ],
+  "q1_row_count": 2,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT EXTRA AS REPORT_REASON, COUNT(DISTINCT POST_ID) AS REPORT_COUNT FROM ACTIONS WHERE ACTION = 'REPORT' AND ACTION_DATE = '2019-07-04' GROUP BY EXTRA",
+  "q2_validation_sql": "SELECT EXTRA AS REPORT_REASON, COUNT(DISTINCT POST_ID) AS REPORT_COUNT FROM (SELECT * FROM ACTIONS WHERE ACTION='REPORT' AND ACTION_DATE='2019-07-04') T GROUP BY 1"
+}

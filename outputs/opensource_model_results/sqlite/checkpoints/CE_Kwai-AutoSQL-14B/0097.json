@@ -1,0 +1,61 @@
+{
+  "dbid": "financial",
+  "index": "97",
+  "source_index": "129",
+  "schema_ddl": "CREATE TABLE account\n(\n    account_id  INTEGER default 0 not null\n        primary key,\n    district_id INTEGER default 0 not null,\n    frequency   TEXT   not null,\n    date        DATE          not null,\n    foreign key (district_id) references district (district_id)\n);\n\nCREATE TABLE card\n(\n    card_id INTEGER default 0 not null\n        primary key,\n    disp_id INTEGER           not null,\n    type    TEXT    not null,\n    issued  DATE          not null,\n    foreign key (disp_id) references disp (disp_id)\n);\n\nCREATE TABLE client\n(\n    client_id   INTEGER        not null\n        primary key,\n    gender      TEXT not null,\n    birth_date  DATE       not null,\n    district_id INTEGER        not null,\n    foreign key (district_id) references district (district_id)\n);\n\nCREATE TABLE disp\n(\n    disp_id    INTEGER        not null\n        primary key,\n    client_id  INTEGER        not null,\n    account_id INTEGER        not null,\n    type      TEXT not null,\n    foreign key (account_id) references account (account_id),\n    foreign key (client_id) references client (client_id)\n);\n\nCREATE TABLE district\n(\n    district_id INTEGER default 0 not null\n        primary key,\n    A2          TEXT   not null,\n    A3          TEXT   not null,\n    A4          TEXT       not null,\n    A5          TEXT           not null,\n    A6          TEXT           not null,\n    A7          TEXT           not null,\n    A8          INTEGER        not null,\n    A9          INTEGER           not null,\n    A10         REAL not null,\n    A11         INTEGER           not null,\n    A12         REAL null,\n    A13         REAL not null,\n    A14         INTEGER           not null,\n    A15         INTEGER        null,\n    A16         INTEGER          not null\n);\n\nCREATE TABLE loan\n(\n    loan_id    INTEGER default 0 not null\n        primary key,\n    account_id INTEGER           not null,\n    date       DATE          not null,\n    amount     INTEGER           not null,\n    duration   INTEGER           not null,\n    payments   REAL not null,\n    status     TEXT    not null,\n    foreign key (account_id) references account (account_id)\n);\n\nCREATE TABLE \"order\"\n(\n    order_id   INTEGER default 0 not null\n        primary key,\n    account_id INTEGER           not null,\n    bank_to    TEXT    not null,\n    account_to INTEGER           not null,\n    amount     REAL not null,\n    k_symbol   TEXT    not null,\n    foreign key (account_id) references account (account_id)\n);\n\nCREATE TABLE trans\n(\n    trans_id   INTEGER default 0    not null\n        primary key,\n    account_id INTEGER default 0    not null,\n    date       DATE             not null,\n    type       TEXT       not null,\n    operation  TEXT      null,\n    amount     INTEGER              not null,\n    balance    INTEGER             not null,\n    k_symbol   TEXT      null,\n    bank       TEXT       null,\n    account    INTEGER          null,\n    foreign key (account_id) references account (account_id)\n);",
+  "q1": "SELECT T2.A2, COUNT(T1.client_id) FROM client AS T1 INNER JOIN district AS T2 ON T1.district_id = T2.district_id WHERE T1.gender = 'F' GROUP BY T2.district_id, T2.A2 ORDER BY COUNT(T1.client_id) DESC LIMIT 10",
+  "q2": "SELECT T1.A2, COUNT(T2.client_id) AS num FROM district AS T1 INNER JOIN client AS T2 ON T1.district_id = T2.district_id WHERE T2.gender = 'F' GROUP BY T1.A2 ORDER BY num DESC LIMIT 10",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT T2.A2, COUNT(T1.client_id) FROM client AS T1 INNER JOIN district AS T2 ON T1.district_id = T2.district_id WHERE T1.gender = 'F' GROUP BY T2.district_id, T2.A2 ORDER BY COUNT(T1.client_id) DESC LIMIT 10",
+  "q2_prompt_sql": "SELECT T1.A2, COUNT(T2.client_id) AS num FROM district AS T1 INNER JOIN client AS T2 ON T1.district_id = T2.district_id WHERE T2.gender = 'F' GROUP BY T1.A2 ORDER BY num DESC LIMIT 10",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO district (district_id, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16) VALUES (1, 'Urban', 'dummy', 'dummy', 'dummy', 'dummy', 'dummy', 1, 1, 1.0, 1, 1.0, 1.0, 1, 1, 1);\nINSERT INTO district (district_id, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16) VALUES (2, 'Urban', 'dummy', 'dummy', 'dummy', 'dummy', 'dummy', 1, 1, 1.0, 1, 1.0, 1.0, 1, 1, 1);\nINSERT INTO client (client_id, gender, birth_date, district_id) VALUES (1, 'F', '1990-01-01', 1);\nINSERT INTO client (client_id, gender, birth_date, district_id) VALUES (2, 'F', '1991-01-01', 1);\nINSERT INTO client (client_id, gender, birth_date, district_id) VALUES (3, 'F', '1992-01-01', 1);\nINSERT INTO client (client_id, gender, birth_date, district_id) VALUES (4, 'F', '1993-01-01', 2);\nINSERT INTO client (client_id, gender, birth_date, district_id) VALUES (5, 'F', '1994-01-01', 2);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 groups by district_id and A2 (distinct districts), while Q2 groups by A2 (aggregating across all districts sharing the same A2 value). If multiple districts share the same A2 but have different female client counts, Q1 returns separate rows per district while Q2 returns a single aggregated row per A2 value.",
+  "counterexample_dsp": "Two districts with the same A2 value ('Urban') but different numbers of female clients (3 in district 1, 2 in district 2). Q1 shows both districts separately, Q2 merges them into one row with combined count 5.",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 groups by district_id and A2 (distinct districts), while Q2 groups by A2 (aggregating across all districts sharing the same A2 value). If multiple districts share the same A2 but have different female client counts, Q1 returns separate rows per district while Q2 returns a single aggregated row per A2 value.\",\n  \"counterexample_dsp\": \"Two districts with the same A2 value ('Urban') but different numbers of female clients (3 in district 1, 2 in district 2). Q1 shows both districts separately, Q2 merges them into one row with combined count 5.\",\n  \"counterexample\": [\n    \"INSERT INTO district (district_id, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16) VALUES (1, 'Urban', 'dummy', 'dummy', 'dummy', 'dummy', 'dummy', 1, 1, 1.0, 1, 1.0, 1.0, 1, 1, 1);\",\n    \"INSERT INTO district (district_id, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16) VALUES (2, 'Urban', 'dummy', 'dummy', 'dummy', 'dummy', 'dummy', 1, 1, 1.0, 1, 1.0, 1.0, 1, 1, 1);\",\n    \"INSERT INTO client (client_id, gender, birth_date, district_id) VALUES (1, 'F', '1990-01-01', 1);\",\n    \"INSERT INTO client (client_id, gender, birth_date, district_id) VALUES (2, 'F', '1991-01-01', 1);\",\n    \"INSERT INTO client (client_id, gender, birth_date, district_id) VALUES (3, 'F', '1992-01-01', 1);\",\n    \"INSERT INTO client (client_id, gender, birth_date, district_id) VALUES (4, 'F', '1993-01-01', 2);\",\n    \"INSERT INTO client (client_id, gender, birth_date, district_id) VALUES (5, 'F', '1994-01-01', 2);\"\n  ]\n}",
+  "reasoning": "\nOkay, let's tackle this problem. The user wants me to find a counterexample where Q1 and Q2 produce different results. First, I need to understand what each query is doing.\n\nLooking at Q1: It selects T2.A2 (which is from district table) and counts client_id from client table. They join client (T1) with district (T2) on district_id, filter by gender 'F', group by T2.district_id and T2.A2, order by count descending, limit 10. The GROUP BY includes both district_id and A2. Since district_id is part of the primary key for district, A2 is functionally dependent on district_id. So grouping by district_id alone should be sufficient, but the query groups by both.\n\nQ2: Selects T1.A2 from district (T1) and counts client_id from client (T2). They join on district_id, filter by T2.gender = 'F', group by T1.A2, order by num DESC, limit 10. Here, grouping by A2 directly. Since A2 is not unique (multiple districts can have the same A2 value), grouping by A2 might aggregate across multiple districts with the same A2.\n\nThe key difference is that Q1 groups by district_id (and A2) which means each group is a unique district, while Q2 groups by A2, which could merge multiple districts that share the same A2 value. Therefore, if two districts have the same A2 value but different numbers of female clients, Q2 would sum those counts, while Q1 would list each district separately.\n\nSo, to create a counterexample, I need two districts with the same A2 value but different female client counts. Let's say District 1 has A2='X' and 3 female clients, District 2 has A2='X' and 2 female clients. Then Q1 would return both rows (each district's count), while Q2 would combine them into one row with count 5. That would make the results different.\n\nLet me structure the test data. Insert two districts with the same A2. Then insert clients into each district with gender 'F'. Then check the outputs.\n\nFor Q1, the output would have two rows (each district's count). For Q2, the output would have one row (sum of counts for A2='X'). If the counts are different, then the top 10 would differ. Since the example is small, the LIMIT 10 won't matter.\n\nNow, I need to write the INSERT statements. District table entries with same A2. Then client entries with district_id matching those districts and gender 'F'. Also, ensure that other tables don't have constraints violated. Since other tables aren't referenced in these queries, I can ignore them, but I need to insert into district and client.\n\nSo the counterexample_dsp would be two districts with same A2 but different female client counts. The explanation is that Q1 groups by district (district_id and A2), while Q2 groups by A2, leading to different aggregations when multiple districts share the same A2 value.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 990,
+    "total_tokens": 2228,
+    "completion_tokens": 1238,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 656
+    },
+    "generation_seconds": 42.094
+  },
+  "started_at": "2026-10-06T18:21:18.375929+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "Urban",
+      3
+    ],
+    [
+      "Urban",
+      2
+    ]
+  ],
+  "q2_output": [
+    [
+      "Urban",
+      5
+    ]
+  ],
+  "q1_row_count": 2,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT T2.A2, COUNT(T1.client_id) FROM client AS T1 INNER JOIN district AS T2 ON T1.district_id = T2.district_id WHERE T1.gender = 'F' GROUP BY T2.district_id, T2.A2 ORDER BY COUNT(T1.client_id) DESC LIMIT 10",
+  "q2_validation_sql": "SELECT T1.A2, COUNT(T2.client_id) AS num FROM district AS T1 INNER JOIN client AS T2 ON T1.district_id = T2.district_id WHERE T2.gender = 'F' GROUP BY T1.A2 ORDER BY num DESC LIMIT 10"
+}

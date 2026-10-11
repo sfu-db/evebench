@@ -1,0 +1,52 @@
+{
+  "dbid": "beers",
+  "index": "64",
+  "source_index": "855",
+  "schema_ddl": "CREATE TABLE Bar (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Beer (\n    name VARCHAR NOT NULL,\n    brewer VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Drinker (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Frequents (\n    drinker VARCHAR NOT NULL,\n    bar VARCHAR NOT NULL,\n    times_a_week SMALLINT NOT NULL,\n    PRIMARY KEY (drinker, bar),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (bar) REFERENCES Bar(name)\n);\n\nCREATE TABLE Serves (\n    bar VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    price DECIMAL(5,2) NOT NULL,\n    PRIMARY KEY (bar, beer),\n    FOREIGN KEY (bar) REFERENCES Bar(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);\n\nCREATE TABLE Likes (\n    drinker VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    PRIMARY KEY (drinker, beer),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);",
+  "q1": "SELECT f1.drinker, f2.drinker FROM (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f1, (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f2 WHERE f1.drinker < f2.drinker AND f1.st = f2.st",
+  "q2": "SELECT f1.drinker AS drinkerA, f2.drinker AS drinkerB FROM frequents AS f1 JOIN frequents AS f2 ON f1.bar = f2.bar AND f1.times_a_week = f2.times_a_week AND f1.drinker < f2.drinker",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "beers",
+  "q1_prompt_sql": "SELECT f1.drinker, f2.drinker FROM (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f1, (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f2 WHERE f1.drinker < f2.drinker AND f1.st = f2.st",
+  "q2_prompt_sql": "SELECT f1.drinker AS drinkerA, f2.drinker AS drinkerB FROM frequents AS f1 JOIN frequents AS f2 ON f1.bar = f2.bar AND f1.times_a_week = f2.times_a_week AND f1.drinker < f2.drinker",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO Bar (name, address) VALUES ('Bar1', '123 Main St'), ('Bar2', '456 Oak St');\nINSERT INTO Drinker (name, address) VALUES ('Alice', '789 Pine St'), ('Bob', '101 Maple St');\nINSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('Alice', 'Bar1', 2), ('Alice', 'Bar2', 2), ('Bob', 'Bar1', 3), ('Bob', 'Bar2', 1);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 compares total frequencies across all bars for pairs of drinkers, while Q2 compares individual bar visits with the same frequency. If two drinkers have equal total frequencies but no overlapping bar/frequency pairs, Q1 returns them but Q2 does not.",
+  "counterexample_dsp": "Two drinkers (Alice and Bob) have equal total frequencies (4) but no shared bar with identical times_a_week. Alice frequents Bar1 (2x) and Bar2 (2x). Bob frequents Bar1 (3x) and Bar2 (1x). Q1 pairs them, Q2 does not.",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 compares total frequencies across all bars for pairs of drinkers, while Q2 compares individual bar visits with the same frequency. If two drinkers have equal total frequencies but no overlapping bar/frequency pairs, Q1 returns them but Q2 does not.\",\n  \"counterexample_dsp\": \"Two drinkers (Alice and Bob) have equal total frequencies (4) but no shared bar with identical times_a_week. Alice frequents Bar1 (2x) and Bar2 (2x). Bob frequents Bar1 (3x) and Bar2 (1x). Q1 pairs them, Q2 does not.\",\n  \"counterexample\": [\n    \"INSERT INTO Bar (name, address) VALUES ('Bar1', '123 Main St'), ('Bar2', '456 Oak St');\",\n    \"INSERT INTO Drinker (name, address) VALUES ('Alice', '789 Pine St'), ('Bob', '101 Maple St');\",\n    \"INSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('Alice', 'Bar1', 2), ('Alice', 'Bar2', 2), ('Bob', 'Bar1', 3), ('Bob', 'Bar2', 1);\"\n  ]\n}",
+  "reasoning": "\nOkay, let's see. I need to find a counterexample where Q1 and Q2 return different results. Let me first understand what each query is doing.\n\nQ1: It's joining two subqueries f1 and f2. Both subqueries aggregate the total times_a_week per drinker. Then, it selects pairs of drinkers where f1.drinker is less than f2.drinker and their total times_a_week are equal. So, this query is finding all pairs of drinkers who have the same total frequency across all bars, and their names are in order (drinkerA < drinkerB).\n\nQ2: This query joins the Frequents table with itself on the same bar and same times_a_week, and also requires that drinkerA < drinkerB. So, it's finding pairs of drinkers who frequent the same bar at the same frequency, but different drinkers. The join is on bar and times_a_week, not on the total sum.\n\nSo the key difference is that Q1 compares the total sum across all bars, while Q2 compares individual bar visits with the same times_a_week. Therefore, if two drinkers have the same total sum but don't share any bar with the same times_a_week, Q1 would include them but Q2 wouldn't. Conversely, if two drinkers share a bar with same times_a_week but their total sums differ, Q2 would include them but Q1 wouldn't.\n\nTo create a counterexample, I need a scenario where:\n\n- There are two drinkers, say A and B, with same total times_a_week (so Q1 includes them).\n- But they don't share any bar with the same times_a_week (so Q2 doesn't include them).\n\nOr the opposite: two drinkers share a bar with same times_a_week but their total sums are different.\n\nLet me think of an example. Let's take two drinkers, Alice and Bob. Suppose:\n\n- Alice frequents Bar1 2 times/week and Bar2 2 times/week. Total is 4.\n- Bob frequents Bar1 3 times/week and Bar2 1 times/week. Total is 4.\n\nSo Q1 would pair Alice and Bob since their totals are equal. But for Q2, we need to check if they have same bar and same times_a_week. Alice and Bob both go to Bar1 and Bar2, but their times are different. So in Q2, there's no matching rows because for Bar1, Alice has 2 vs Bob's 3, and Bar2, Alice has 2 vs Bob's 1. So Q2 would not return this pair. Therefore, Q1 returns (Alice, Bob), Q2 returns nothing. That would be a counterexample.\n\nAlternatively, another case where Q2 returns something but Q1 doesn't. For example, two drinkers have same bar and same times_a_week but different total sums. Like:\n\n- Alice frequents Bar1 2 times/week. Total is 2.\n- Bob frequents Bar1 2 times/week. Total is 2. Then Q1 and Q2 would both include them. But if Bob also frequents another bar, say Bar2 1 time/week, making his total 3. Then Q2 would still have the pair (Alice, Bob) because they share Bar1 with same times, but Q1 would not because their totals are 2 vs 3. So in this case, Q2 returns the pair, Q1 doesn't.\n\nSo the first scenario where Q1 returns a pair and Q2 doesn't would be a good counterexample. Let's go with that.\n\nNow, creating the test data. Let's create two drinkers, Alice and Bob. Alice frequents Bar1 2 times and Bar2 2 times. Bob frequents Bar1 3 times and Bar2 1 time. So their totals are both 4. Then, Q1 would have (Alice, Bob) as a result. Q2 would check for same bar and same times. For Bar1, Alice has 2, Bob has 3. For Bar2, Alice has 2, Bob has 1. No matches. So Q2 returns nothing. Thus, the two queries differ.\n\nNow, I need to write the INSERT statements for this scenario. Also, need to make sure that the Bars and Drinkers exist.\n\nSo first, insert into Bar: Bar1 and Bar2. Then insert Drinkers Alice and Bob. Then insert into Frequents:\n\nFor Alice: (drinker 'Alice', bar 'Bar1', 2), (drinker 'Alice', bar 'Bar2', 2).\n\nFor Bob: (drinker 'Bob', bar 'Bar1', 3), (drinker 'Bob', bar 'Bar2', 1).\n\nThat's the setup. Then Q1 would return Alice and Bob, Q2 would return nothing. So this is the counterexample.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 581,
+    "total_tokens": 1867,
+    "completion_tokens": 1286,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1017
+    },
+    "generation_seconds": 43.109
+  },
+  "started_at": "2026-10-06T08:12:38.060148+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "Alice",
+      "Bob"
+    ]
+  ],
+  "q2_output": [],
+  "q1_row_count": 1,
+  "q2_row_count": 0,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT f1.drinker, f2.drinker FROM (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f1, (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f2 WHERE f1.drinker < f2.drinker AND f1.st = f2.st",
+  "q2_validation_sql": "SELECT f1.drinker AS drinkerA, f2.drinker AS drinkerB FROM frequents AS f1 JOIN frequents AS f2 ON f1.bar = f2.bar AND f1.times_a_week = f2.times_a_week AND f1.drinker < f2.drinker"
+}

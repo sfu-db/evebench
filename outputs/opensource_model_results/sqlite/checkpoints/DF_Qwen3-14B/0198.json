@@ -1,0 +1,58 @@
+{
+  "dbid": "toxicology",
+  "index": "198",
+  "source_index": "291",
+  "schema_ddl": "CREATE TABLE `atom` (\n  `atom_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `element` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `bond` (\n  `bond_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `bond_type` TEXT DEFAULT NULL,\n  PRIMARY KEY (`bond_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `connected` (\n  `atom_id` TEXT NOT NULL,\n  `atom_id2` TEXT NOT NULL,\n  `bond_id` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`,`atom_id2`),\n  FOREIGN KEY (`atom_id`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`atom_id2`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`bond_id`) REFERENCES `bond` (`bond_id`) ON DELETE CASCADE ON UPDATE CASCADE\n);\n\nCREATE TABLE `molecule` (\n  `molecule_id` TEXT NOT NULL,\n  `label` TEXT DEFAULT NULL,\n  PRIMARY KEY (`molecule_id`)\n);",
+  "q1": "SELECT DISTINCT T.element FROM atom AS T WHERE T.molecule_id = 'TR151'",
+  "q2": "SELECT T1.element FROM atom AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id WHERE T2.label = 'TR151' AND T1.element IN ('cl', 'br', 'f', 'i', 'pb', 'te')",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT DISTINCT T.element FROM atom AS T WHERE T.molecule_id = 'TR151'",
+  "q2_prompt_sql": "SELECT T1.element FROM atom AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id WHERE T2.label = 'TR151' AND T1.element IN ('cl', 'br', 'f', 'i', 'pb', 'te')",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO molecule (molecule_id, label) VALUES ('TR151', 'TR151');\nINSERT INTO atom (atom_id, molecule_id, element) VALUES ('a1', 'TR151', 'cl'), ('a2', 'TR151', 'o');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 retrieves all distinct elements in molecule 'TR151' without filtering, while Q2 filters elements to only those in a specific list. If any element in molecule 'TR151' is not in the list, results differ.",
+  "counterexample_dsp": "A molecule 'TR151' with atoms containing elements both in and out of Q2's IN list (e.g., 'cl' and 'o'). Q1 includes all, Q2 only the IN list.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 retrieves all distinct elements in molecule 'TR151' without filtering, while Q2 filters elements to only those in a specific list. If any element in molecule 'TR151' is not in the list, results differ.\",\n\"counterexample_dsp\": \"A molecule 'TR151' with atoms containing elements both in and out of Q2's IN list (e.g., 'cl' and 'o'). Q1 includes all, Q2 only the IN list.\",\n\"counterexample\": \"INSERT INTO molecule (molecule_id, label) VALUES ('TR151', 'TR151');\\nINSERT INTO atom (atom_id, molecule_id, element) VALUES ('a1', 'TR151', 'cl'), ('a2', 'TR151', 'o');\"\n}",
+  "reasoning": "\nOkay, let's see. I need to determine if Q1 and Q2 are semantically equivalent. Let me start by understanding each query.\n\nQ1 is selecting distinct elements from the atom table where the molecule_id is 'TR151'. So it's getting all unique elements in molecules with that ID, without any restrictions on the element values.\n\nQ2 is more complex. It's joining the atom table (T1) with the molecule table (T2) on molecule_id. Then it filters where T2.label is 'TR151' and T1.element is in a specific list of elements: cl, br, f, i, pb, te. So Q2 is getting elements from atoms that belong to a molecule labeled 'TR151' and only those elements that are in that particular list.\n\nWait, the main difference here is that Q1 doesn't filter the elements, while Q2 does. So Q2 is a subset of Q1's results, but only for those elements in the IN list. Unless all elements in molecule TR151 are in that list, which might not be the case.\n\nSo, if there's a molecule with ID 'TR151' that has elements not in the IN clause of Q2, then Q1 would include those elements, but Q2 would not. Therefore, the queries are not equivalent.\n\nFor example, if molecule 'TR151' has an element 'o' (oxygen), which is not in the list, Q1 would return 'o', but Q2 would not. So that's a counterexample.\n\nNow, I need to create a test database where this scenario occurs. Let's create a molecule with label 'TR151', and have atoms with elements both in the list and not. For instance:\n\nInsert molecule with molecule_id 'TR151' and label 'TR151'.\n\nThen insert atoms with molecule_id 'TR151', some with elements like 'cl' (which is in the list) and others like 'o' (not in the list).\n\nIn this case, Q1 would return both 'cl' and 'o', while Q2 would only return 'cl'.\n\nSo the counterexample would involve such data. Let me make sure the schema constraints are followed. The molecule_id in atom must reference the molecule's molecule_id. So inserting the molecule first is necessary.\n\nThe SQL statements would be:\n\nINSERT INTO molecule (molecule_id, label) VALUES ('TR151', 'TR151');\n\nINSERT INTO atom (atom_id, molecule_id, element) VALUES ('a1', 'TR151', 'cl'), ('a2', 'TR151', 'o');\n\nThen Q1 would return 'cl' and 'o', Q2 would return only 'cl'.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 601,
+    "total_tokens": 1372,
+    "completion_tokens": 771,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 582
+    },
+    "generation_seconds": 24.61
+  },
+  "started_at": "2026-10-06T20:24:14.249474+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "cl"
+    ],
+    [
+      "o"
+    ]
+  ],
+  "q2_output": [
+    [
+      "cl"
+    ]
+  ],
+  "q1_row_count": 2,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DISTINCT T.element FROM atom AS T WHERE T.molecule_id = 'TR151'",
+  "q2_validation_sql": "SELECT T1.element FROM atom AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id WHERE T2.label = 'TR151' AND T1.element IN ('cl', 'br', 'f', 'i', 'pb', 'te')"
+}

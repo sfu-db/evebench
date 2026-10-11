@@ -1,0 +1,64 @@
+{
+  "dbid": "student_club",
+  "index": "822",
+  "source_index": "1450",
+  "schema_ddl": "CREATE TABLE event\n(\n    event_id   TEXT\n        constraint event_pk\n            primary key,\n    event_name TEXT,\n    event_date TEXT,\n    type       TEXT,\n    notes      TEXT,\n    location   TEXT,\n    status     TEXT\n);\n\nCREATE TABLE major\n(\n    major_id   TEXT\n        constraint major_pk\n            primary key,\n    major_name TEXT,\n    department TEXT,\n    college    TEXT\n);\n\nCREATE TABLE zip_code\n(\n    zip_code    INTEGER\n        constraint zip_code_pk\n            primary key,\n    type        TEXT,\n    city        TEXT,\n    county      TEXT,\n    state       TEXT,\n    short_state TEXT\n);\n\nCREATE TABLE \"attendance\"\n(\n    link_to_event  TEXT,\n    link_to_member TEXT,\n    primary key (link_to_event, link_to_member),\n    foreign key (link_to_event) references event(event_id),\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"budget\"\n(\n    budget_id     TEXT\n            primary key,\n    category      TEXT,\n    spent         REAL,\n    remaining     REAL,\n    amount        INTEGER,\n    event_status  TEXT,\n    link_to_event TEXT,\n    foreign key (link_to_event) references event(event_id)\n);\n\nCREATE TABLE \"expense\"\n(\n    expense_id          TEXT\n            primary key,\n    expense_description TEXT,\n    expense_date        TEXT,\n    cost                REAL,\n    approved            TEXT,\n    link_to_member      TEXT,\n    link_to_budget      TEXT,\n    foreign key (link_to_budget) references budget(budget_id),\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"income\"\n(\n    income_id      TEXT\n        constraint income_pk\n            primary key,\n    date_received  TEXT,\n    amount         INTEGER,\n    source         TEXT,\n    notes          TEXT,\n    link_to_member TEXT,\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"member\"\n(\n    member_id     TEXT\n        constraint member_pk\n            primary key,\n    first_name    TEXT,\n    last_name     TEXT,\n    email         TEXT,\n    position      TEXT,\n    t_shirt_size  TEXT,\n    phone         TEXT,\n    zip           INTEGER,\n    link_to_major TEXT,\n    foreign key (link_to_major) references major(major_id),\n    foreign key (zip) references zip_code(zip_code)\n);",
+  "q1": "SELECT DISTINCT T1.first_name, T1.last_name, T2.major_name FROM member AS T1 INNER JOIN major AS T2 ON T2.major_id = T1.link_to_major INNER JOIN expense AS T3 ON T1.member_id = T3.link_to_member WHERE T3.cost > 100",
+  "q2": "SELECT T2.first_name, T2.last_name, T3.major_name FROM expense AS T1 INNER JOIN member AS T2 ON T1.link_to_member = T2.member_id INNER JOIN major AS T3 ON T2.link_to_major = T3.major_id WHERE T1.cost > 100",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT DISTINCT T1.first_name, T1.last_name, T2.major_name FROM member AS T1 INNER JOIN major AS T2 ON T2.major_id = T1.link_to_major INNER JOIN expense AS T3 ON T1.member_id = T3.link_to_member WHERE T3.cost > 100",
+  "q2_prompt_sql": "SELECT T2.first_name, T2.last_name, T3.major_name FROM expense AS T1 INNER JOIN member AS T2 ON T1.link_to_member = T2.member_id INNER JOIN major AS T3 ON T2.link_to_major = T3.major_id WHERE T1.cost > 100",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO major (major_id, major_name) VALUES ('MAJ1', 'Computer Science');\nINSERT INTO member (member_id, first_name, last_name, link_to_major) VALUES ('M1', 'John', 'Doe', 'MAJ1');\nINSERT INTO expense (expense_id, expense_description, expense_date, cost, approved, link_to_member) VALUES ('E1', 'Laptop', '2023-01-01', 150, 'Yes', 'M1');\nINSERT INTO expense (expense_id, expense_description, expense_date, cost, approved, link_to_member) VALUES ('E2', 'Software', '2023-01-02', 200, 'Yes', 'M1');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 uses DISTINCT while Q2 does not. When a member has multiple expense entries with cost > 100, Q1 returns one row per member (distinct name + major), while Q2 returns one row per expense entry.",
+  "counterexample_dsp": "A member with two expense records over 100 cost. Q1 returns one distinct row; Q2 returns two rows.",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 uses DISTINCT while Q2 does not. When a member has multiple expense entries with cost > 100, Q1 returns one row per member (distinct name + major), while Q2 returns one row per expense entry.\",\n  \"counterexample_dsp\": \"A member with two expense records over 100 cost. Q1 returns one distinct row; Q2 returns two rows.\",\n  \"counterexample\": \"INSERT INTO major (major_id, major_name) VALUES ('MAJ1', 'Computer Science');\\nINSERT INTO member (member_id, first_name, last_name, link_to_major) VALUES ('M1', 'John', 'Doe', 'MAJ1');\\nINSERT INTO expense (expense_id, expense_description, expense_date, cost, approved, link_to_member) VALUES ('E1', 'Laptop', '2023-01-01', 150, 'Yes', 'M1');\\nINSERT INTO expense (expense_id, expense_description, expense_date, cost, approved, link_to_member) VALUES ('E2', 'Software', '2023-01-02', 200, 'Yes', 'M1');\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem. I need to find a counterexample where Q1 and Q2 return different results. First, I should understand what each query is doing.\n\nLooking at Q1: It selects distinct first_name, last_name, and major_name from member (T1) joined with major (T2) on major_id = link_to_major, then joined with expense (T3) on member_id = link_to_member. The condition is T3.cost > 100. So Q1 is getting members who have expenses over 100, along with their major.\n\nQ2: Selects first_name, last_name, major_name from expense (T1) joined with member (T2) on T1.link_to_member = T2.member_id, then joined with major (T3) on T2.link_to_major = T3.major_id. The condition is T1.cost > 100. So Q2 is similar but the joins are ordered differently. Wait, but the tables are joined in different orders. Let me check the aliases. In Q2, the expense table is aliased as T1, member as T2, major as T3. The joins are expense to member on expense's link_to_member equals member's member_id, then member to major on member's link_to_major equals major's major_id. So the structure is expense -> member -> major.\n\nWait, in Q1, the joins are member -> major -> expense. But in Q2, it's expense -> member -> major. But the join conditions are the same. So why would they differ?\n\nWait, but in Q1, the expense table is T3, and the join is on T1.member_id = T3.link_to_member. So the order is member joined with expense. In Q2, the order is expense joined with member. But since both are inner joins, the result should be the same. But maybe the difference comes from the DISTINCT in Q1 versus no DISTINCT in Q2? Wait, no, Q1 has DISTINCT, Q2 doesn't. Wait, no, looking back:\n\nQ1: SELECT DISTINCT T1.first_name, T1.last_name, T2.major_name FROM member AS T1 INNER JOIN major AS T2 ON T2.major_id = T1.link_to_major INNER JOIN expense AS T3 ON T1.member_id = T3.link_to_member WHERE T3.cost > 100\n\nQ2: SELECT T2.first_name, T2.last_name, T3.major_name FROM expense AS T1 INNER JOIN member AS T2 ON T1.link_to_member = T2.member_id INNER JOIN major AS T3 ON T2.link_to_major = T3.major_id WHERE T1.cost > 100\n\nAh, so Q1 has DISTINCT, Q2 does not. Wait, no, looking again. Wait, Q1 has DISTINCT. Q2 does not. So if there are multiple expense entries for the same member with cost > 100, Q1 would return one row per member (due to DISTINCT), while Q2 would return one row per expense entry. But the question says that the two queries are not semantically equivalent. However, the problem states that the user says they are not equivalent, so there's a reason.\n\nWait, but maybe the difference isn't just DISTINCT. Let me check the columns selected. Q1 selects T1.first_name, T1.last_name, T2.major_name. Q2 selects T2.first_name, T2.last_name, T3.major_name. So the columns are the same. Wait, in Q1, the member is T1, joined with major T2. In Q2, member is T2, joined with major T3. So the same columns. So the only difference is the order of joins and the DISTINCT keyword in Q1.\n\nBut maybe the DISTINCT isn't the only issue. Let me think of a scenario where a member has multiple expenses over 100. Q1 would return one row per member (because of DISTINCT), while Q2 would return one row per expense. But in that case, Q1 and Q2 would have different results. However, the problem says the user says they are not equivalent. So that's a possible counterexample.\n\nWait, but the user says they are not equivalent, so I need to find a case where their outputs differ. Let me think of a test case where a member has two expenses over 100. Then Q1 would have one row (distinct), Q2 would have two rows. But the user's answer requires that the counterexample shows different results. So that's a possible scenario.\n\nAlternatively, maybe there's a case where a member has multiple expenses, but Q1's DISTINCT makes it different. But let me check the actual joins. Both queries are inner joins, so they should return the same set of rows if not for DISTINCT. Wait, no. Because in Q1, the joins are member to expense, and in Q2, expense to member. But since it's an inner join, the result set should be the same. However, the DISTINCT in Q1 would cause duplicates to be removed, while Q2 doesn't have DISTINCT. So if a member has multiple expenses over 100, Q1 would return one row, Q2 would return multiple rows.\n\nBut the problem says the user says they are not equivalent. So that's the key difference. So the explanation is that Q1 uses DISTINCT while Q2 does not, leading to different results when a member has multiple qualifying expenses.\n\nBut wait, looking again at Q1: it's SELECT DISTINCT on T1.first_name, T1.last_name, T2.major_name. Since T1 is member, and T2 is major, the combination of first_name, last_name, and major_name would be unique per member (assuming a member has only one major). So even if a member has multiple expenses over 100, the DISTINCT would collapse them into one row. In Q2, each expense row (each expense over 100) would produce a separate row, even if the member has multiple expenses. Therefore, the two queries would return different numbers of rows.\n\nSo the counterexample would be a member with two expense entries over 100. Let's create such a scenario.\n\nLet me create a member, say member_id 'M1', first_name 'John', last_name 'Doe', link_to_major 'MAJ1'. Major MAJ1 has major_name 'Computer Science'. Then, two expense entries for M1 with cost > 100. So Q1 would return one row (John Doe, Computer Science), Q2 would return two rows (same data each time).\n\nSo the counterexample would involve inserting a member, a major, and two expense records for that member with cost > 100.\n\nLet me structure the SQL inserts accordingly. Also, need to ensure that all foreign keys are satisfied. For example, the member's link_to_major must reference a major's major_id.\n\nSo the steps:\n\n1. Insert into major: major_id 'MAJ1', major_name 'Computer Science'.\n2. Insert into member: member_id 'M1', first_name 'John', last_name 'Doe', link_to_major 'MAJ1'.\n3. Insert into expense: two rows with link_to_member 'M1', cost 150 and 200, other fields can be filled with dummy data.\n\nThen, Q1 would return one row (DISTINCT), Q2 would return two rows (no DISTINCT).\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 816,
+    "total_tokens": 2653,
+    "completion_tokens": 1837,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1569
+    },
+    "generation_seconds": 64.219
+  },
+  "started_at": "2026-10-06T19:54:16.323200+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "John",
+      "Doe",
+      "Computer Science"
+    ]
+  ],
+  "q2_output": [
+    [
+      "John",
+      "Doe",
+      "Computer Science"
+    ],
+    [
+      "John",
+      "Doe",
+      "Computer Science"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DISTINCT T1.first_name, T1.last_name, T2.major_name FROM member AS T1 INNER JOIN major AS T2 ON T2.major_id = T1.link_to_major INNER JOIN expense AS T3 ON T1.member_id = T3.link_to_member WHERE T3.cost > 100",
+  "q2_validation_sql": "SELECT T2.first_name, T2.last_name, T3.major_name FROM expense AS T1 INNER JOIN member AS T2 ON T1.link_to_member = T2.member_id INNER JOIN major AS T3 ON T2.link_to_major = T3.major_id WHERE T1.cost > 100"
+}

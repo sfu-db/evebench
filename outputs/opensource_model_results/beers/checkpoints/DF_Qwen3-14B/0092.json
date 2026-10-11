@@ -1,0 +1,59 @@
+{
+  "dbid": "beers",
+  "index": "92",
+  "source_index": "1538",
+  "schema_ddl": "CREATE TABLE Bar (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Beer (\n    name VARCHAR NOT NULL,\n    brewer VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Drinker (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Frequents (\n    drinker VARCHAR NOT NULL,\n    bar VARCHAR NOT NULL,\n    times_a_week SMALLINT NOT NULL,\n    PRIMARY KEY (drinker, bar),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (bar) REFERENCES Bar(name)\n);\n\nCREATE TABLE Serves (\n    bar VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    price DECIMAL(5,2) NOT NULL,\n    PRIMARY KEY (bar, beer),\n    FOREIGN KEY (bar) REFERENCES Bar(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);\n\nCREATE TABLE Likes (\n    drinker VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    PRIMARY KEY (drinker, beer),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);",
+  "q1": "SELECT beer.name, min_price, bar FROM beer LEFT OUTER JOIN (SELECT beer, MIN(price) AS min_price FROM serves GROUP BY beer) AS t ON beer.name = t.beer LEFT OUTER JOIN serves ON beer.name = serves.beer AND min_price = serves.price",
+  "q2": "SELECT beer.name, MIN(serves.price) AS min_price, (SELECT serves.bar FROM serves WHERE serves.beer = beer.name LIMIT 1) AS bar FROM beer LEFT JOIN serves ON serves.beer = beer.name GROUP BY beer.name",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "beers",
+  "q1_prompt_sql": "SELECT beer.name, min_price, bar FROM beer LEFT OUTER JOIN (SELECT beer, MIN(price) AS min_price FROM serves GROUP BY beer) AS t ON beer.name = t.beer LEFT OUTER JOIN serves ON beer.name = serves.beer AND min_price = serves.price",
+  "q2_prompt_sql": "SELECT beer.name, MIN(serves.price) AS min_price, (SELECT serves.bar FROM serves WHERE serves.beer = beer.name LIMIT 1) AS bar FROM beer LEFT JOIN serves ON serves.beer = beer.name GROUP BY beer.name",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO Beer (name, brewer) VALUES ('IPA', 'BrewCo');\nINSERT INTO Bar (name, address) VALUES ('BarX', '123 Main'), ('BarY', '456 Oak');\nINSERT INTO Serves (bar, beer, price) VALUES ('BarY', 'IPA', 4.00), ('BarX', 'IPA', 3.00);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 ensures the 'bar' corresponds to the minimum price via explicit join conditions, while Q2 uses an arbitrary bar (due to LIMIT 1 without ordering) which may not match the min price. This leads to potential discrepancies in the 'bar' column.",
+  "counterexample_dsp": "A beer served at two bars: one with min price and another with higher price. Q1 picks the min-priced bar, Q2 may pick the other due to LIMIT 1.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 ensures the 'bar' corresponds to the minimum price via explicit join conditions, while Q2 uses an arbitrary bar (due to LIMIT 1 without ordering) which may not match the min price. This leads to potential discrepancies in the 'bar' column.\",\n\"counterexample_dsp\": \"A beer served at two bars: one with min price and another with higher price. Q1 picks the min-priced bar, Q2 may pick the other due to LIMIT 1.\",\n\"counterexample\": \"INSERT INTO Beer (name, brewer) VALUES ('IPA', 'BrewCo');\\nINSERT INTO Bar (name, address) VALUES ('BarX', '123 Main'), ('BarY', '456 Oak');\\nINSERT INTO Serves (bar, beer, price) VALUES ('BarY', 'IPA', 4.00), ('BarX', 'IPA', 3.00);\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem. I need to determine if Q1 and Q2 are semantically equivalent. Let's start by understanding each query's purpose.\n\nFirst, looking at Q1: It's selecting beer names, their minimum price, and the bar from a left outer join. The subquery t groups serves by beer to find the minimum price. Then, it joins beer with this subquery on beer.name = t.beer, and then joins with serves again on beer.name and min_price equals serves.price. So, for each beer, it's getting the minimum price and the corresponding bar(s) where that price is served. However, since it's a LEFT JOIN, even if there's no serve, it would still include the beer with NULLs, but the subquery t would have the min_price. But the second join with serves would only include rows where the price matches the min_price. So, for each beer, Q1 is trying to get the minimum price and the bar(s) that serve it at that price. However, if multiple bars serve the same beer at the min_price, this might return multiple rows per beer, but since it's a LEFT JOIN, maybe not? Wait, the first join is beer to t, which is grouped by beer, so each beer has one min_price. Then, the second join with serves would be on beer.name and price equals min_price. So if there are multiple bars with the same min_price, this would return multiple rows for the same beer. But the original query's SELECT includes beer.name, min_price, bar. So for each beer, there could be multiple bars if multiple bars have the same min_price.\n\nNow Q2: It's selecting beer.name, the MIN of serves.price (grouped by beer.name), and a subquery that selects the bar from serves where serves.beer = beer.name, limited to 1. The LEFT JOIN with serves on serves.beer = beer.name is part of the FROM clause, but then it's grouped by beer.name. The MIN(price) would be the minimum price for that beer. The subquery for the bar is selecting a single bar (LIMIT 1), which might not be the one with the minimum price. Wait, the subquery is (SELECT serves.bar FROM serves WHERE serves.beer = beer.name LIMIT 1). But this is not necessarily the bar that serves the beer at the minimum price. Because the LIMIT 1 could pick any bar, depending on the order, which isn't specified. However, in SQL, unless ordered, LIMIT 1 is arbitrary. So Q2's bar is not guaranteed to be the one with the min price. That seems like a problem. But the MIN(serves.price) is calculated in the main query. So Q2 might have the correct min price, but the bar is just any bar that serves that beer, not necessarily the one with the min price. That's a key difference.\n\nSo, Q1 is trying to get the bar(s) that serve the beer at the min price, while Q2 is getting the min price and any arbitrary bar (due to LIMIT 1) that serves the beer, not necessarily the one with the min price. Therefore, they are not equivalent.\n\nLet me think of a counterexample. Suppose there's a beer \"IPA\" served at two bars: Bar A at $3 and Bar B at $4. The min price is $3. Q1 would join with serves where price is $3, so Bar A. Q2's subquery for bar would pick either Bar A or Bar B (depending on the order, but since LIMIT 1 is arbitrary, maybe the first one in the table). However, if the subquery doesn't consider the price, then it's possible that the bar selected in Q2 is not the one with the min price. Wait, but the subquery is (SELECT serves.bar FROM serves WHERE serves.beer = beer.name LIMIT 1). So if there are multiple bars serving the same beer, it picks one. But the min_price is calculated in the main query. So in this case, the min_price is $3, but the bar selected in Q2 could be Bar B (if, for example, the serves table has Bar B first in the database, and the LIMIT 1 picks it). However, in reality, the subquery is not correlated with the price. So the bar selected in Q2 is not necessarily the one with the min price. Therefore, Q2's bar is not guaranteed to be the one with the min price, while Q1's bar is.\n\nSo, the counterexample would be a beer that is served at multiple bars, some with min price and others with higher prices. For example:\n\nBeer: \"IPA\" with min price $3 at Bar A and $4 at Bar B. Q1 would return Bar A. Q2 might return Bar B if the subquery picks it first, leading to different results.\n\nBut how to ensure that the subquery in Q2 picks a different bar? Since the LIMIT 1 is arbitrary, but in practice, the order is not defined. However, to create a test case where the subquery returns a different bar than the one with the min price, we need to have multiple bars serving the same beer, and the subquery's LIMIT 1 selects a bar that isn't the one with the min price.\n\nBut how can we ensure that? Since the order isn't specified, but in practice, the database might return rows in the order they were inserted. So if we insert the higher-priced bar first, then the subquery would pick it. However, in SQL, unless there's an ORDER BY, the result of a LIMIT 1 is not deterministic. However, for the purpose of the counterexample, we can create a scenario where the subquery returns a different bar than the one with the min price. For example, if there's a beer served at two bars: Bar X with price $3 (min) and Bar Y with $4. If the subquery for the bar in Q2 returns Bar Y (due to the order of insertion), then Q2's bar would be Y, while Q1's bar would be X. Thus, the results would differ.\n\nSo, the counterexample would have:\n\nBeer: \"IPA\" with min price $3 at Bar X, and $4 at Bar Y. The serves table has entries for Bar Y first, so the subquery in Q2 picks Bar Y, while Q1 picks Bar X.\n\nTherefore, the two queries are not equivalent.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 596,
+    "total_tokens": 2157,
+    "completion_tokens": 1561,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1352
+    },
+    "generation_seconds": 48.641
+  },
+  "started_at": "2026-10-06T09:14:25.260475+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "IPA",
+      3,
+      "BarX"
+    ]
+  ],
+  "q2_output": [
+    [
+      "IPA",
+      3,
+      "BarX"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT beer.name, min_price, bar FROM beer LEFT OUTER JOIN (SELECT beer, MIN(price) AS min_price FROM serves GROUP BY beer) AS t ON beer.name = t.beer LEFT OUTER JOIN serves ON beer.name = serves.beer AND min_price = serves.price",
+  "q2_validation_sql": "SELECT beer.name, MIN(serves.price) AS min_price, (SELECT serves.bar FROM serves WHERE serves.beer = beer.name LIMIT 1) AS bar FROM beer LEFT JOIN serves ON serves.beer = beer.name GROUP BY beer.name"
+}

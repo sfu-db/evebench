@@ -1,0 +1,61 @@
+{
+  "dbid": "15",
+  "index": "17",
+  "source_index": "18",
+  "schema_ddl": "CREATE TABLE R (X INT);",
+  "q1": "SELECT DISTINCT X.* FROM R AS X, R AS Y",
+  "q2": "SELECT DISTINCT X.* FROM R AS X",
+  "dialect": "sqlite",
+  "ground_truth": "EQ",
+  "source": "literature",
+  "q1_prompt_sql": "SELECT DISTINCT X.* FROM R AS X, R AS Y",
+  "q2_prompt_sql": "SELECT DISTINCT X.* FROM R AS X",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO R (X) VALUES (1); INSERT INTO R (X) VALUES (2);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 performs a self-join of table R with itself (R AS X, R AS Y), which produces the Cartesian product of R with itself. Then it selects distinct rows from X. This means that if R has n rows, Q1 will produce n^2 rows before DISTINCT, and potentially fewer after. Q2 simply selects all distinct rows from R, which is equivalent to just returning the rows of R. The two are not equivalent because Q1 can produce more or different results due to the self-join.",
+  "counterexample_dsp": "If R contains more than one row, Q1 will produce more rows than Q2 because of the Cartesian product. For example, with two rows in R, Q1 would produce 4 rows (before DISTINCT), while Q2 would produce 2 rows.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n  \"equiv\": \"N\",\n  \"explanation\": \"Q1 performs a self-join of table R with itself (R AS X, R AS Y), which produces the Cartesian product of R with itself. Then it selects distinct rows from X. This means that if R has n rows, Q1 will produce n^2 rows before DISTINCT, and potentially fewer after. Q2 simply selects all distinct rows from R, which is equivalent to just returning the rows of R. The two are not equivalent because Q1 can produce more or different results due to the self-join.\",\n  \"counterexample_dsp\": \"If R contains more than one row, Q1 will produce more rows than Q2 because of the Cartesian product. For example, with two rows in R, Q1 would produce 4 rows (before DISTINCT), while Q2 would produce 2 rows.\",\n  \"counterexample\": \"INSERT INTO R (X) VALUES (1); INSERT INTO R (X) VALUES (2);\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 283,
+    "total_tokens": 496,
+    "completion_tokens": 213,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 6.359
+  },
+  "started_at": "2026-10-06T07:53:02.114628+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      1
+    ],
+    [
+      2
+    ]
+  ],
+  "q2_output": [
+    [
+      1
+    ],
+    [
+      2
+    ]
+  ],
+  "q1_row_count": 2,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DISTINCT X.* FROM R AS X, R AS Y",
+  "q2_validation_sql": "SELECT DISTINCT X.* FROM R AS X"
+}

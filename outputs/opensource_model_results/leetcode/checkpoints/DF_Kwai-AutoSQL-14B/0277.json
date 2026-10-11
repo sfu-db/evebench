@@ -1,0 +1,39 @@
+{
+  "dbid": "619",
+  "index": "277",
+  "source_index": "262",
+  "schema_ddl": "CREATE TABLE MYNUMBERS (\n    NUM INT\n);",
+  "q1": "SELECT MAX(NUM) AS NUM FROM (SELECT NUM FROM MYNUMBERS GROUP BY NUM HAVING COUNT(NUM) = 1) AS T",
+  "q2": "SELECT IFNULL((SELECT NUM FROM MYNUMBERS GROUP BY NUM HAVING COUNT(NUM) =1 ORDER BY 1 DESC LIMIT 1), NULL) AS NUM",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT MAX(NUM) AS NUM FROM (SELECT NUM FROM MYNUMBERS GROUP BY NUM HAVING COUNT(NUM) = 1) AS T",
+  "q2_prompt_sql": "SELECT IFNULL((SELECT NUM FROM MYNUMBERS GROUP BY NUM HAVING COUNT(NUM) =1 ORDER BY 1 DESC LIMIT 1), NULL) AS NUM",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries aim to retrieve the maximum number from the MYNUMBERS table that appears exactly once. Q1 does this by grouping, filtering with HAVING COUNT(NUM) = 1, and then applying MAX on the result. Q2 achieves the same by selecting a single row using ORDER BY 1 DESC LIMIT 1 after the same GROUP BY and HAVING filter. Both are logically equivalent.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n  \"equiv\": \"Y\",\n  \"explanation\": \"Both queries aim to retrieve the maximum number from the MYNUMBERS table that appears exactly once. Q1 does this by grouping, filtering with HAVING COUNT(NUM) = 1, and then applying MAX on the result. Q2 achieves the same by selecting a single row using ORDER BY 1 DESC LIMIT 1 after the same GROUP BY and HAVING filter. Both are logically equivalent.\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 328,
+    "total_tokens": 427,
+    "completion_tokens": 99,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 3.344
+  },
+  "started_at": "2026-10-06T15:40:02.624100+00:00",
+  "elapsed_seconds": 0.0
+}

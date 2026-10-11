@@ -1,0 +1,62 @@
+{
+  "dbid": "thrombosis_prediction",
+  "index": "763",
+  "source_index": "1310",
+  "schema_ddl": "CREATE TABLE Examination\n(\n    ID                 INTEGER          null,\n    `Examination Date` DATE         null,\n    `aCL IgG`          REAL        null,\n    `aCL IgM`          REAL        null,\n    ANA                INTEGER          null,\n    `ANA Pattern`      TEXT null,\n    `aCL IgA`          INTEGER          null,\n    Diagnosis          TEXT null,\n    KCT                TEXT null,\n    RVVT              TEXT null,\n    LAC                TEXT null,\n    Symptoms           TEXT null,\n    Thrombosis         INTEGER          null,\n    foreign key (ID) references Patient (ID)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE Patient\n(\n    ID           INTEGER default 0 not null\n        primary key,\n    SEX          TEXT  null,\n    Birthday     DATE          null,\n    Description  DATE          null,\n    `First Date` DATE          null,\n    Admission    TEXT  null,\n    Diagnosis    TEXT  null\n);\n\nCREATE TABLE Laboratory\n(\n    ID        INTEGER  default 0            not null,\n    Date      DATE default '0000-00-00' not null,\n    GOT       INTEGER                       null,\n    GPT       INTEGER                        null,\n    LDH       INTEGER                        null,\n    ALP       INTEGER                        null,\n    TP        REAL             null,\n    ALB       REAL             null,\n    UA        REAL             null,\n    UN        INTEGER                       null,\n    CRE       REAL             null,\n    `T-BIL`   REAL             null,\n    `T-CHO`   INTEGER                       null,\n    TG        INTEGER                       null,\n    CPK       INTEGER                       null,\n    GLU       INTEGER                       null,\n    WBC       REAL             null,\n    RBC       REAL             null,\n    HGB       REAL             null,\n    HCT       REAL             null,\n    PLT       INTEGER                       null,\n    PT        REAL             null,\n    APTT      INTEGER                       null,\n    FG        REAL             null,\n    PIC       INTEGER                       null,\n    TAT       INTEGER                       null,\n    TAT2      INTEGER                       null,\n    `U-PRO`   TEXT              null,\n    IGG       INTEGER                       null,\n    IGA       INTEGER                       null,\n    IGM       INTEGER                       null,\n    CRP       TEXT              null,\n    RA        TEXT              null,\n    RF        TEXT              null,\n    C3        INTEGER                       null,\n    C4        INTEGER                       null,\n    RNP       TEXT              null,\n    SM        TEXT              null,\n    SC170     TEXT              null,\n    SSA       TEXT              null,\n    SSB       TEXT              null,\n    CENTROMEA TEXT              null,\n    DNA       TEXT              null,\n    `DNA-II`  INTEGER                       null,\n    primary key (ID, Date),\n        foreign key (ID) references Patient (ID)\n            on update cascade on delete cascade\n);",
+  "q1": "SELECT T2.PLT FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T1.Diagnosis = 'MCTD' AND T2.PLT BETWEEN 100 AND 400",
+  "q2": "SELECT T1.ID, T2.PLT FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T1.Diagnosis = 'MCTD' AND T2.PLT > 100 AND T2.PLT < 400",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT T2.PLT FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T1.Diagnosis = 'MCTD' AND T2.PLT BETWEEN 100 AND 400",
+  "q2_prompt_sql": "SELECT T1.ID, T2.PLT FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T1.Diagnosis = 'MCTD' AND T2.PLT > 100 AND T2.PLT < 400",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO Patient (ID, Diagnosis) VALUES (1, 'MCTD');\nINSERT INTO Patient (ID, Diagnosis) VALUES (2, 'MCTD');\nINSERT INTO Patient (ID, Diagnosis) VALUES (3, 'MCTD');\nINSERT INTO Laboratory (ID, Date, PLT) VALUES (1, '2023-01-01', 100);\nINSERT INTO Laboratory (ID, Date, PLT) VALUES (2, '2023-01-02', 400);\nINSERT INTO Laboratory (ID, Date, PLT) VALUES (3, '2023-01-03', 200);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 uses BETWEEN (inclusive of 100 and 400), while Q2 uses exclusive comparisons (> 100 AND < 400). Any PLT value exactly equal to 100 or 400 will appear in Q1's output but not in Q2's.",
+  "counterexample_dsp": "Insert 3 patients with Diagnosis 'MCTD'. Patient 1 has PLT=100 (included by Q1, excluded by Q2). Patient 2 has PLT=400 (included by Q1, excluded by Q2). Patient 3 has PLT=200 (included by both). Q1 returns 3 rows; Q2 returns 1 row.",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 uses BETWEEN (inclusive of 100 and 400), while Q2 uses exclusive comparisons (> 100 AND < 400). Any PLT value exactly equal to 100 or 400 will appear in Q1's output but not in Q2's.\",\n  \"counterexample_dsp\": \"Insert 3 patients with Diagnosis 'MCTD'. Patient 1 has PLT=100 (included by Q1, excluded by Q2). Patient 2 has PLT=400 (included by Q1, excluded by Q2). Patient 3 has PLT=200 (included by both). Q1 returns 3 rows; Q2 returns 1 row.\",\n  \"counterexample\": \"INSERT INTO Patient (ID, Diagnosis) VALUES (1, 'MCTD');\\nINSERT INTO Patient (ID, Diagnosis) VALUES (2, 'MCTD');\\nINSERT INTO Patient (ID, Diagnosis) VALUES (3, 'MCTD');\\nINSERT INTO Laboratory (ID, Date, PLT) VALUES (1, '2023-01-01', 100);\\nINSERT INTO Laboratory (ID, Date, PLT) VALUES (2, '2023-01-02', 400);\\nINSERT INTO Laboratory (ID, Date, PLT) VALUES (3, '2023-01-03', 200);\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem. I need to find a counterexample where Q1 and Q2 return different results. Let me first understand the two queries.\n\nQ1 selects T2.PLT from Patient T1 joined with Laboratory T2 on ID, where Diagnosis is 'MCTD' and T2.PLT BETWEEN 100 AND 400. The BETWEEN operator in SQL is inclusive, meaning it includes both 100 and 400.\n\nQ2 selects T1.ID and T2.PLT from the same join, with the same Diagnosis condition, but the PLT condition is T2.PLT > 100 AND T2.PLT < 400. This is exclusive; it excludes 100 and 400.\n\nSo the difference is that Q1 includes PLT values exactly equal to 100 or 400, while Q2 excludes them. Therefore, if there's a record where PLT is 100 or 400, Q1 will return it but Q2 won't. Conversely, if there's a PLT value exactly at those points, that's the trigger.\n\nNow, I need to create a test database with such a case. Let's think of inserting a patient with Diagnosis 'MCTD' and a Laboratory record where PLT is 100. Then another patient where PLT is 400. Also, maybe a patient where PLT is 200 (which both would include). \n\nWait, but the question says to make a counterexample where the two queries output different results. So if there's at least one row with PLT=100 or 400, Q1 will include it and Q2 won't. So inserting one such row would suffice.\n\nLet me outline the test data. Let's have one patient (ID=1) with Diagnosis 'MCTD', and in Laboratory table, PLT=100. Then Q1 would return 100, but Q2 would not. Also, another patient (ID=2) with PLT=400. Q1 includes that, Q2 excludes. Another patient with PLT=200 would be included by both. So in that case, the difference would be in the count or the presence of those two PLT values.\n\nSo for the counterexample, inserting three patients:\n\n- Patient 1: Diagnosis 'MCTD', Lab PLT=100\n- Patient 2: Diagnosis 'MCTD', Lab PLT=400\n- Patient 3: Diagnosis 'MCTD', Lab PLT=200\n\nThen Q1 would return PLT values 100, 400, 200. Q2 would return only 200. So the results are different.\n\nBut wait, the schema for Laboratory has PLT as INTEGER. So inserting those values is okay.\n\nNow, I need to make sure that the Patient table has the Diagnosis set to 'MCTD' for those patients, and the Laboratory table has the correct PLT values. Also, the foreign key from Laboratory to Patient is on ID, so each Laboratory entry must have an ID that exists in Patient.\n\nSo the INSERT statements would be:\n\nInsert into Patient (ID, Diagnosis) values (1, 'MCTD');\nInsert into Patient (ID, Diagnosis) values (2, 'MCTD');\nInsert into Patient (ID, Diagnosis) values (3, 'MCTD');\n\nThen into Laboratory:\n\nInsert into Laboratory (ID, Date, PLT) values (1, '2023-01-01', 100);\nInsert into Laboratory (ID, Date, PLT) values (2, '2023-01-01', 400);\nInsert into Laboratory (ID, Date, PLT) values (3, '2023-01-01', 200);\n\nWait, but the Laboratory table's primary key is (ID, Date). So each patient can have multiple lab entries on different dates. But for simplicity, I can use the same date for each, as long as they are unique. But if I use the same date for the same ID, that would be a duplicate key. So maybe use different dates for each.\n\nBut since the problem only requires one lab entry per patient, I can use distinct dates. For example:\n\nFor patient 1: Date '2023-01-01', PLT 100\nFor patient 2: Date '2023-01-02', PLT 400\nFor patient 3: Date '2023-01-03', PLT 200\n\nThat way, all primary key constraints are satisfied.\n\nSo the counterexample would have these three patients and their lab entries. Then Q1 returns three rows (PLT 100, 400, 200), and Q2 returns only the third one (PLT 200). Thus, different results.\n\nAnother thing to check: Q1 selects only T2.PLT, while Q2 selects T1.ID and T2.PLT. So even if the PLT values were the same, the number of rows could differ if there are duplicates. But in this case, since each patient has one lab entry, the count difference is clear.\n\nSo the explanation is that Q1 includes PLT values equal to 100 and 400, while Q2 excludes them. The counterexample has entries at those boundary values.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 913,
+    "total_tokens": 2425,
+    "completion_tokens": 1512,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1183
+    },
+    "generation_seconds": 52.859
+  },
+  "started_at": "2026-10-06T19:47:15.367630+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      100
+    ],
+    [
+      400
+    ],
+    [
+      200
+    ]
+  ],
+  "q2_output": [
+    [
+      3,
+      200
+    ]
+  ],
+  "q1_row_count": 3,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT T2.PLT FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T1.Diagnosis = 'MCTD' AND T2.PLT BETWEEN 100 AND 400",
+  "q2_validation_sql": "SELECT T1.ID, T2.PLT FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T1.Diagnosis = 'MCTD' AND T2.PLT > 100 AND T2.PLT < 400"
+}

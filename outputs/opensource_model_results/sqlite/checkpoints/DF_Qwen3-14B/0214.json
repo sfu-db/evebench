@@ -1,0 +1,55 @@
+{
+  "dbid": "toxicology",
+  "index": "214",
+  "source_index": "322",
+  "schema_ddl": "CREATE TABLE `atom` (\n  `atom_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `element` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `bond` (\n  `bond_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `bond_type` TEXT DEFAULT NULL,\n  PRIMARY KEY (`bond_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `connected` (\n  `atom_id` TEXT NOT NULL,\n  `atom_id2` TEXT NOT NULL,\n  `bond_id` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`,`atom_id2`),\n  FOREIGN KEY (`atom_id`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`atom_id2`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`bond_id`) REFERENCES `bond` (`bond_id`) ON DELETE CASCADE ON UPDATE CASCADE\n);\n\nCREATE TABLE `molecule` (\n  `molecule_id` TEXT NOT NULL,\n  `label` TEXT DEFAULT NULL,\n  PRIMARY KEY (`molecule_id`)\n);",
+  "q1": "SELECT T1.molecule_id FROM bond AS T1 INNER JOIN connected AS T2 ON T1.bond_id = T2.bond_id WHERE T2.atom_id = 'TR000_2' AND T2.atom_id2 = 'TR000_4'",
+  "q2": "SELECT T3.label FROM atom AS T1 INNER JOIN connected AS T2 ON T1.atom_id = T2.atom_id INNER JOIN molecule AS T3 ON T1.molecule_id = T3.molecule_id WHERE T1.atom_id = 'TR000_2' AND T2.atom_id2 = 'TR000_4'",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT T1.molecule_id FROM bond AS T1 INNER JOIN connected AS T2 ON T1.bond_id = T2.bond_id WHERE T2.atom_id = 'TR000_2' AND T2.atom_id2 = 'TR000_4'",
+  "q2_prompt_sql": "SELECT T3.label FROM atom AS T1 INNER JOIN connected AS T2 ON T1.atom_id = T2.atom_id INNER JOIN molecule AS T3 ON T1.molecule_id = T3.molecule_id WHERE T1.atom_id = 'TR000_2' AND T2.atom_id2 = 'TR000_4'",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO molecule (molecule_id, label) VALUES ('M1', 'LabelM1');\nINSERT INTO atom (atom_id, molecule_id) VALUES ('TR000_2', 'M1'), ('TR000_4', 'M1');\nINSERT INTO bond (bond_id, molecule_id) VALUES ('B1', 'M1');\nINSERT INTO connected (atom_id, atom_id2, bond_id) VALUES ('TR000_2', 'TR000_4', 'B1');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 retrieves molecule_id from the bond table, while Q2 retrieves molecule.label. These are different attributes, so results differ unless molecule_id equals label (which is not guaranteed).",
+  "counterexample_dsp": "A molecule 'M1' with label 'LabelM1' has atoms TR000_2 and TR000_4 connected via bond B1. Q1 returns 'M1', Q2 returns 'LabelM1'.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 retrieves molecule_id from the bond table, while Q2 retrieves molecule.label. These are different attributes, so results differ unless molecule_id equals label (which is not guaranteed).\",\n\"counterexample_dsp\": \"A molecule 'M1' with label 'LabelM1' has atoms TR000_2 and TR000_4 connected via bond B1. Q1 returns 'M1', Q2 returns 'LabelM1'.\",\n\"counterexample\": \"INSERT INTO molecule (molecule_id, label) VALUES ('M1', 'LabelM1');\\nINSERT INTO atom (atom_id, molecule_id) VALUES ('TR000_2', 'M1'), ('TR000_4', 'M1');\\nINSERT INTO bond (bond_id, molecule_id) VALUES ('B1', 'M1');\\nINSERT INTO connected (atom_id, atom_id2, bond_id) VALUES ('TR000_2', 'TR000_4', 'B1');\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem step by step. I need to determine if Q1 and Q2 are semantically equivalent based on the given schema. Let me start by understanding each query.\n\nFirst, looking at Q1: It selects molecule_id from bond (T1) joined with connected (T2) on bond_id. The WHERE clause filters where T2's atom_id is 'TR000_2' and atom_id2 is 'TR000_4'. So Q1 is finding bonds that connect these two atoms and then getting the molecule_id from the bond table. Wait, but the bond table's molecule_id is a foreign key to molecule. However, in Q1, the molecule_id comes from the bond table, which might be linked to the connected table's atoms. But the connected table links atoms via their atom_id and atom_id2, and each connected entry has a bond_id that references a bond.\n\nNow Q2 selects the label from molecule (T3) by joining atom (T1) with connected (T2) on T1's atom_id, then joining with molecule (T3) on T1's molecule_id. The WHERE clause is T1.atom_id = 'TR000_2' and T2.atom_id2 = 'TR000_4'. So Q2 is finding atoms with atom_id 'TR000_2', looking at their connected entries where the other atom is 'TR000_4', then getting the molecule's label from the molecule table via the atom's molecule_id.\n\nSo Q1's output is molecule_id from the bond table, while Q2's output is the label from the molecule table. The molecule table has a label, and the bond table's molecule_id is a foreign key to molecule. So if a bond is part of a molecule, then the bond's molecule_id would match the molecule's molecule_id. However, Q1 is getting the molecule_id from the bond, whereas Q2 is getting the label from the molecule table. Therefore, unless there's a one-to-one mapping between molecule_id and label (which there is, since molecule_id is the primary key and label is a column), Q1's output would be molecule_ids and Q2's would be labels. So unless the label is the same as the molecule_id, which isn't necessarily the case, they are different.\n\nWait, but the question is about whether the queries are semantically equivalent. The first query returns molecule_id from bond, the second returns label from molecule. So even if they are related, unless the label is the same as the molecule_id, which isn't stated in the schema, the results would differ. Therefore, the two queries are not equivalent. \n\nFor example, if a molecule has molecule_id 'M1' and label 'MoleculeOne', then Q1 would return 'M1' and Q2 would return 'MoleculeOne'. So the outputs are different. Hence, they are not equivalent. \n\nBut wait, maybe there's a scenario where the molecule_id and label are the same. But the problem says to generate a counterexample where they differ. So the answer is not equivalent. \n\nNow, to create a counterexample. Let's create a test database where:\n\n- There's a molecule with molecule_id 'M1' and label 'LabelM1'.\n- There's an atom with atom_id 'TR000_2' and molecule_id 'M1'.\n- Another atom with atom_id 'TR000_4' and molecule_id 'M1'.\n- The connected table has an entry with atom_id 'TR000_2', atom_id2 'TR000_4', and bond_id 'B1'.\n- The bond table has bond_id 'B1' with molecule_id 'M1'.\n\nIn this case, Q1 would return 'M1' (from bond.molecule_id), and Q2 would return 'LabelM1' (from molecule.label). So the outputs are different, proving they are not equivalent.\n\nThe SQL inserts would need to create these entries, ensuring all foreign keys are satisfied. For example, the molecule must exist, the atoms must reference it, etc.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 650,
+    "total_tokens": 1749,
+    "completion_tokens": 1099,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 867
+    },
+    "generation_seconds": 34.281
+  },
+  "started_at": "2026-10-06T20:25:28.311181+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "M1"
+    ]
+  ],
+  "q2_output": [
+    [
+      "LabelM1"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT T1.molecule_id FROM bond AS T1 INNER JOIN connected AS T2 ON T1.bond_id = T2.bond_id WHERE T2.atom_id = 'TR000_2' AND T2.atom_id2 = 'TR000_4'",
+  "q2_validation_sql": "SELECT T3.label FROM atom AS T1 INNER JOIN connected AS T2 ON T1.atom_id = T2.atom_id INNER JOIN molecule AS T3 ON T1.molecule_id = T3.molecule_id WHERE T1.atom_id = 'TR000_2' AND T2.atom_id2 = 'TR000_4'"
+}

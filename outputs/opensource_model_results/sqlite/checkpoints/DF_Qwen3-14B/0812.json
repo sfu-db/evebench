@@ -1,0 +1,39 @@
+{
+  "dbid": "student_club",
+  "index": "812",
+  "source_index": "1431",
+  "schema_ddl": "CREATE TABLE event\n(\n    event_id   TEXT\n        constraint event_pk\n            primary key,\n    event_name TEXT,\n    event_date TEXT,\n    type       TEXT,\n    notes      TEXT,\n    location   TEXT,\n    status     TEXT\n);\n\nCREATE TABLE major\n(\n    major_id   TEXT\n        constraint major_pk\n            primary key,\n    major_name TEXT,\n    department TEXT,\n    college    TEXT\n);\n\nCREATE TABLE zip_code\n(\n    zip_code    INTEGER\n        constraint zip_code_pk\n            primary key,\n    type        TEXT,\n    city        TEXT,\n    county      TEXT,\n    state       TEXT,\n    short_state TEXT\n);\n\nCREATE TABLE \"attendance\"\n(\n    link_to_event  TEXT,\n    link_to_member TEXT,\n    primary key (link_to_event, link_to_member),\n    foreign key (link_to_event) references event(event_id),\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"budget\"\n(\n    budget_id     TEXT\n            primary key,\n    category      TEXT,\n    spent         REAL,\n    remaining     REAL,\n    amount        INTEGER,\n    event_status  TEXT,\n    link_to_event TEXT,\n    foreign key (link_to_event) references event(event_id)\n);\n\nCREATE TABLE \"expense\"\n(\n    expense_id          TEXT\n            primary key,\n    expense_description TEXT,\n    expense_date        TEXT,\n    cost                REAL,\n    approved            TEXT,\n    link_to_member      TEXT,\n    link_to_budget      TEXT,\n    foreign key (link_to_budget) references budget(budget_id),\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"income\"\n(\n    income_id      TEXT\n        constraint income_pk\n            primary key,\n    date_received  TEXT,\n    amount         INTEGER,\n    source         TEXT,\n    notes          TEXT,\n    link_to_member TEXT,\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"member\"\n(\n    member_id     TEXT\n        constraint member_pk\n            primary key,\n    first_name    TEXT,\n    last_name     TEXT,\n    email         TEXT,\n    position      TEXT,\n    t_shirt_size  TEXT,\n    phone         TEXT,\n    zip           INTEGER,\n    link_to_major TEXT,\n    foreign key (link_to_major) references major(major_id),\n    foreign key (zip) references zip_code(zip_code)\n);",
+  "q1": "SELECT T1.last_name, T1.position FROM member AS T1 INNER JOIN expense AS T2 ON T1.member_id = T2.link_to_member WHERE T2.expense_date = '2019-09-10' AND T2.expense_description = 'Pizza'",
+  "q2": "SELECT T1.last_name, T1.position FROM member AS T1 INNER JOIN expense AS T2 ON T1.member_id = T2.link_to_member WHERE T2.expense_description = 'Pizza' AND T2.expense_date = '2019-09-10'",
+  "dialect": "sqlite",
+  "ground_truth": "EQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT T1.last_name, T1.position FROM member AS T1 INNER JOIN expense AS T2 ON T1.member_id = T2.link_to_member WHERE T2.expense_date = '2019-09-10' AND T2.expense_description = 'Pizza'",
+  "q2_prompt_sql": "SELECT T1.last_name, T1.position FROM member AS T1 INNER JOIN expense AS T2 ON T1.member_id = T2.link_to_member WHERE T2.expense_description = 'Pizza' AND T2.expense_date = '2019-09-10'",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries have identical JOIN conditions and WHERE clauses with the same predicates in different order. The logical AND operation is commutative, so the result sets will be identical.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries have identical JOIN conditions and WHERE clauses with the same predicates in different order. The logical AND operation is commutative, so the result sets will be identical.\"\n}",
+  "reasoning": "\nOkay, let's see. I need to determine if the two SQL queries Q1 and Q2 are semantically equivalent. Let me start by looking at both queries.\n\nQ1 is selecting last_name and position from member (T1) joined with expense (T2) on member_id equals link_to_member. The WHERE clause has two conditions: T2.expense_date is '2019-09-10' and T2.expense_description is 'Pizza'.\n\nQ2 is almost the same, except the order of the WHERE conditions is swapped. Instead of expense_date first, it's expense_description first, then expense_date. \n\nWait, the WHERE clause in SQL is a logical AND between the two conditions. The order of the conditions in the WHERE clause doesn't affect the result because AND is commutative. So, logically, both queries should return the same rows. \n\nBut maybe there's a trick here. Let me check the schema again. The tables involved are member and expense. The join is on member_id and link_to_member. The WHERE conditions are on expense_description and expense_date. \n\nSince both queries have the same join conditions and the same WHERE conditions, just in a different order, they should be equivalent. The order of the conditions in the WHERE clause doesn't change the result. \n\nSo the answer should be that they are equivalent. But maybe there's a hidden constraint or something else. Let me think again. Are there any cases where the order of conditions in WHERE affects the outcome? For example, if one condition is a filter that reduces the dataset early, but in terms of logical evaluation, the result is the same. \n\nNo, the WHERE clause is a logical conjunction. The order of the conditions doesn't matter. So Q1 and Q2 are semantically the same. Therefore, they are equivalent. \n\nSo the answer is \"equiv\": \"Y\" with a short explanation that the WHERE conditions are the same, just ordered differently, so they are equivalent.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 863,
+    "total_tokens": 1323,
+    "completion_tokens": 460,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 409
+    },
+    "generation_seconds": 15.656
+  },
+  "started_at": "2026-10-06T20:59:13.782289+00:00",
+  "elapsed_seconds": 0.0
+}

@@ -1,0 +1,67 @@
+{
+  "dbid": "student_club",
+  "index": "805",
+  "source_index": "1408",
+  "schema_ddl": "CREATE TABLE event\n(\n    event_id   TEXT\n        constraint event_pk\n            primary key,\n    event_name TEXT,\n    event_date TEXT,\n    type       TEXT,\n    notes      TEXT,\n    location   TEXT,\n    status     TEXT\n);\n\nCREATE TABLE major\n(\n    major_id   TEXT\n        constraint major_pk\n            primary key,\n    major_name TEXT,\n    department TEXT,\n    college    TEXT\n);\n\nCREATE TABLE zip_code\n(\n    zip_code    INTEGER\n        constraint zip_code_pk\n            primary key,\n    type        TEXT,\n    city        TEXT,\n    county      TEXT,\n    state       TEXT,\n    short_state TEXT\n);\n\nCREATE TABLE \"attendance\"\n(\n    link_to_event  TEXT,\n    link_to_member TEXT,\n    primary key (link_to_event, link_to_member),\n    foreign key (link_to_event) references event(event_id),\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"budget\"\n(\n    budget_id     TEXT\n            primary key,\n    category      TEXT,\n    spent         REAL,\n    remaining     REAL,\n    amount        INTEGER,\n    event_status  TEXT,\n    link_to_event TEXT,\n    foreign key (link_to_event) references event(event_id)\n);\n\nCREATE TABLE \"expense\"\n(\n    expense_id          TEXT\n            primary key,\n    expense_description TEXT,\n    expense_date        TEXT,\n    cost                REAL,\n    approved            TEXT,\n    link_to_member      TEXT,\n    link_to_budget      TEXT,\n    foreign key (link_to_budget) references budget(budget_id),\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"income\"\n(\n    income_id      TEXT\n        constraint income_pk\n            primary key,\n    date_received  TEXT,\n    amount         INTEGER,\n    source         TEXT,\n    notes          TEXT,\n    link_to_member TEXT,\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"member\"\n(\n    member_id     TEXT\n        constraint member_pk\n            primary key,\n    first_name    TEXT,\n    last_name     TEXT,\n    email         TEXT,\n    position      TEXT,\n    t_shirt_size  TEXT,\n    phone         TEXT,\n    zip           INTEGER,\n    link_to_major TEXT,\n    foreign key (link_to_major) references major(major_id),\n    foreign key (zip) references zip_code(zip_code)\n);",
+  "q1": "SELECT budget_id FROM budget WHERE category = 'Advertisement' ORDER BY amount DESC LIMIT 3",
+  "q2": "SELECT budget_id FROM budget WHERE category = 'Advertising' ORDER BY amount DESC LIMIT 3",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT budget_id FROM budget WHERE category = 'Advertisement' ORDER BY amount DESC LIMIT 3",
+  "q2_prompt_sql": "SELECT budget_id FROM budget WHERE category = 'Advertising' ORDER BY amount DESC LIMIT 3",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO event (event_id, event_name) VALUES ('E1', 'Test Event');\nINSERT INTO budget (budget_id, category, amount, link_to_event) VALUES ('B1', 'Advertisement', 300, 'E1');\nINSERT INTO budget (budget_id, category, amount, link_to_event) VALUES ('B2', 'Advertisement', 200, 'E1');\nINSERT INTO budget (budget_id, category, amount, link_to_event) VALUES ('B3', 'Advertisement', 100, 'E1');\nINSERT INTO budget (budget_id, category, amount, link_to_event) VALUES ('B4', 'Advertising', 600, 'E1');\nINSERT INTO budget (budget_id, category, amount, link_to_event) VALUES ('B5', 'Advertising', 500, 'E1');\nINSERT INTO budget (budget_id, category, amount, link_to_event) VALUES ('B6', 'Advertising', 400, 'E1');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 differ in the WHERE clause condition (category = 'Advertisement' vs. 'Advertising'). Since these are distinct string values, the queries may return different results if the budget table contains entries with these different category names.",
+  "counterexample_dsp": "A budget table with entries having categories 'Advertisement' and 'Advertising' with varying amounts. Q1 returns top 3 'Advertisement' entries, Q2 returns top 3 'Advertising' entries.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 and Q2 differ in the WHERE clause condition (category = 'Advertisement' vs. 'Advertising'). Since these are distinct string values, the queries may return different results if the budget table contains entries with these different category names.\",\n\"counterexample_dsp\": \"A budget table with entries having categories 'Advertisement' and 'Advertising' with varying amounts. Q1 returns top 3 'Advertisement' entries, Q2 returns top 3 'Advertising' entries.\",\n\"counterexample\": \"INSERT INTO event (event_id, event_name) VALUES ('E1', 'Test Event');\\nINSERT INTO budget (budget_id, category, amount, link_to_event) VALUES ('B1', 'Advertisement', 300, 'E1');\\nINSERT INTO budget (budget_id, category, amount, link_to_event) VALUES ('B2', 'Advertisement', 200, 'E1');\\nINSERT INTO budget (budget_id, category, amount, link_to_event) VALUES ('B3', 'Advertisement', 100, 'E1');\\nINSERT INTO budget (budget_id, category, amount, link_to_event) VALUES ('B4', 'Advertising', 600, 'E1');\\nINSERT INTO budget (budget_id, category, amount, link_to_event) VALUES ('B5', 'Advertising', 500, 'E1');\\nINSERT INTO budget (budget_id, category, amount, link_to_event) VALUES ('B6', 'Advertising', 400, 'E1');\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem step by step. So, the user wants to know if the two SQL queries Q1 and Q2 are semantically equivalent. Let me start by understanding what each query does.\n\nLooking at Q1: It selects budget_id from the budget table where the category is 'Advertisement', orders the results by amount in descending order, and then limits to 3 rows. Similarly, Q2 is almost the same but checks for the category 'Advertising' instead of 'Advertisement'. \n\nThe main difference here is the category name. 'Advertisement' vs. 'Advertising'—they look similar but are spelled differently. So, the first thing that comes to mind is that if there are entries in the budget table with these different category names, the queries would return different results. \n\nNow, checking the database schema. The budget table has a category column which is a TEXT type. There's no indication that the category names are case-sensitive or have any specific constraints. So, if there are rows where category is exactly 'Advertisement' and others where it's 'Advertising', Q1 and Q2 would select different sets of rows.\n\nThe next step is to determine if the two queries are equivalent. Since the WHERE clause conditions are different (checking for different strings), unless the database has a constraint that enforces these category names to be the same, they are not equivalent. \n\nBut wait, the problem says to consider the schema constraints. Looking at the schema, the budget table's category column doesn't have any unique constraints or check constraints. So, it's possible for the category to have both 'Advertisement' and 'Advertising' entries. Therefore, Q1 and Q2 could return different results based on the data.\n\nTo confirm, I need to create a counterexample. Let's imagine a scenario where there are entries with both category names. For instance, suppose there are three entries with category 'Advertisement' and three with 'Advertising'. Then, Q1 would return the top 3 'Advertisement' entries ordered by amount, while Q2 would return the top 3 'Advertising' entries. If the amounts differ between these groups, the results would vary.\n\nSo, the counterexample would involve inserting records into the budget table with different categories. Let me draft some INSERT statements. For example, insert three entries with category 'Advertisement' and amounts 100, 200, 300. Then insert three entries with 'Advertising' and amounts 400, 500, 600. Then, Q1 would return the top 3 'Advertisement' entries (300, 200, 100), while Q2 would return the top 3 'Advertising' entries (600, 500, 400). The results are different, hence the queries are not equivalent.\n\nI need to make sure that all the inserted data adheres to the schema constraints. The budget table's link_to_event must reference an existing event_id. So, I should also insert an event with an event_id that matches the link_to_event in the budget entries. But since the problem allows a small test database, maybe just one event would suffice. Let's create an event with event_id 'E1', and then have all budget entries link to it. That way, the foreign key constraint is satisfied.\n\nSo, the counterexample would include inserting an event, then inserting the budget records with different categories. Then, when running Q1 and Q2, they would return different budget_ids based on their respective categories.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 781,
+    "total_tokens": 1851,
+    "completion_tokens": 1070,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 730
+    },
+    "generation_seconds": 35.813
+  },
+  "started_at": "2026-10-06T20:59:13.776287+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "B1"
+    ],
+    [
+      "B2"
+    ],
+    [
+      "B3"
+    ]
+  ],
+  "q2_output": [
+    [
+      "B4"
+    ],
+    [
+      "B5"
+    ],
+    [
+      "B6"
+    ]
+  ],
+  "q1_row_count": 3,
+  "q2_row_count": 3,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT budget_id FROM budget WHERE category = 'Advertisement' ORDER BY amount DESC LIMIT 3",
+  "q2_validation_sql": "SELECT budget_id FROM budget WHERE category = 'Advertising' ORDER BY amount DESC LIMIT 3"
+}

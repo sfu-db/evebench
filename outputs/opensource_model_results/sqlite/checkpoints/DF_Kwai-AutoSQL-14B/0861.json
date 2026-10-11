@@ -1,0 +1,55 @@
+{
+  "dbid": "debit_card_specializing",
+  "index": "861",
+  "source_index": "1514",
+  "schema_ddl": "CREATE TABLE customers\n(\n    CustomerID INTEGER UNIQUE     not null\n        primary key,\n    Segment    TEXT null,\n    Currency   TEXT null\n);\n\nCREATE TABLE gasstations\n(\n    GasStationID INTEGER    UNIQUE   not null\n        primary key,\n    ChainID      INTEGER          null,\n    Country      TEXT null,\n    Segment      TEXT null\n);\n\nCREATE TABLE products\n(\n    ProductID   INTEGER   UNIQUE      not null\n        primary key,\n    Description TEXT null\n);\n\nCREATE TABLE \"transactions_1k\"\n(\n    TransactionID INTEGER\n        primary key autoincrement,\n    Date          DATE,\n    Time          TEXT,\n    CustomerID    INTEGER,\n    CardID        INTEGER,\n    GasStationID  INTEGER,\n    ProductID     INTEGER,\n    Amount        INTEGER,\n    Price         REAL\n);\n\nCREATE TABLE \"yearmonth\"\n(\n    CustomerID  INTEGER not null\n        references customers\n            on update cascade on delete cascade\n        references customers,\n    Date        TEXT    not null,\n    Consumption REAL,\n    primary key (Date, CustomerID)\n);",
+  "q1": "SELECT T2.Country FROM transactions_1k AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID WHERE T1.Date = '2012-08-25' ORDER BY T1.Time DESC LIMIT 1",
+  "q2": "SELECT T2.Country FROM transactions_1k AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID WHERE T1.Date = '2012-08-25' ORDER BY T1.Time ASC LIMIT 1",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT T2.Country FROM transactions_1k AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID WHERE T1.Date = '2012-08-25' ORDER BY T1.Time DESC LIMIT 1",
+  "q2_prompt_sql": "SELECT T2.Country FROM transactions_1k AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID WHERE T1.Date = '2012-08-25' ORDER BY T1.Time ASC LIMIT 1",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO gasstations (GasStationID, Country) VALUES (1, 'USA'), (2, 'Canada');\nINSERT INTO transactions_1k (TransactionID, Date, Time, GasStationID) VALUES (1, '2012-08-25', '10:00:00', 1), (2, '2012-08-25', '11:00:00', 2);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent. Q1 retrieves the Country of the gas station associated with the last (maximum Time) transaction on '2012-08-25', while Q2 retrieves the Country of the gas station associated with the first (minimum Time) transaction on '2012-08-25'. Depending on the ordering of transactions, these two queries can return different results.",
+  "counterexample_dsp": "A small test database with two transactions on the same date but different times and the same gas station (or different gas stations) will show that the ordering of Time (ASC vs DESC) leads to different results.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 and Q2 are not semantically equivalent. Q1 retrieves the Country of the gas station associated with the last (maximum Time) transaction on '2012-08-25', while Q2 retrieves the Country of the gas station associated with the first (minimum Time) transaction on '2012-08-25'. Depending on the ordering of transactions, these two queries can return different results.\",\n\"counterexample_dsp\": \"A small test database with two transactions on the same date but different times and the same gas station (or different gas stations) will show that the ordering of Time (ASC vs DESC) leads to different results.\",\n\"counterexample\": \"INSERT INTO gasstations (GasStationID, Country) VALUES (1, 'USA'), (2, 'Canada');\\nINSERT INTO transactions_1k (TransactionID, Date, Time, GasStationID) VALUES (1, '2012-08-25', '10:00:00', 1), (2, '2012-08-25', '11:00:00', 2);\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 592,
+    "total_tokens": 855,
+    "completion_tokens": 263,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 8.469
+  },
+  "started_at": "2026-10-06T21:40:51.698898+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "Canada"
+    ]
+  ],
+  "q2_output": [
+    [
+      "USA"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT T2.Country FROM transactions_1k AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID WHERE T1.Date = '2012-08-25' ORDER BY T1.Time DESC LIMIT 1",
+  "q2_validation_sql": "SELECT T2.Country FROM transactions_1k AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID WHERE T1.Date = '2012-08-25' ORDER BY T1.Time ASC LIMIT 1"
+}

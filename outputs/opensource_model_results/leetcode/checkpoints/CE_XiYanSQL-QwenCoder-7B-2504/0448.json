@@ -1,0 +1,53 @@
+{
+  "dbid": "619",
+  "index": "448",
+  "source_index": "281",
+  "schema_ddl": "CREATE TABLE MYNUMBERS (\n    NUM INT\n);",
+  "q1": "SELECT MAX(NUM) AS NUM FROM (SELECT NUM FROM MYNUMBERS GROUP BY NUM HAVING COUNT(NUM) = 1) AS T",
+  "q2": "SELECT IF(COUNT(*) =1, NUM, NULL) AS NUM FROM MYNUMBERS GROUP BY NUM ORDER BY COUNT(*), NUM DESC LIMIT 1",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT MAX(NUM) AS NUM FROM (SELECT NUM FROM MYNUMBERS GROUP BY NUM HAVING COUNT(NUM) = 1) AS T",
+  "q2_prompt_sql": "SELECT IF(COUNT(*) =1, NUM, NULL) AS NUM FROM MYNUMBERS GROUP BY NUM ORDER BY COUNT(*), NUM DESC LIMIT 1",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO MYNUMBERS (NUM) VALUES (1), (2), (3), (3);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 selects the maximum unique number, while Q2 selects the first unique number when ordered by count and number in descending order. They differ when there are multiple unique numbers with the same count.",
+  "counterexample_dsp": "Test data with two unique numbers that appear the same number of times. Q1 should return the larger number, while Q2 returns the smaller number due to the DESC order in the LIMIT clause.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 selects the maximum unique number, while Q2 selects the first unique number when ordered by count and number in descending order. They differ when there are multiple unique numbers with the same count.\",\n  \"counterexample_dsp\": \"Test data with two unique numbers that appear the same number of times. Q1 should return the larger number, while Q2 returns the smaller number due to the DESC order in the LIMIT clause.\",\n  \"counterexample\": \"INSERT INTO MYNUMBERS (NUM) VALUES (1), (2), (3), (3);\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 291,
+    "total_tokens": 414,
+    "completion_tokens": 123,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 2.078
+  },
+  "started_at": "2026-10-06T09:51:31.634669+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      2
+    ]
+  ],
+  "q2_output": [
+    [
+      2
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT MAX(NUM) AS NUM FROM (SELECT NUM FROM MYNUMBERS GROUP BY NUM HAVING COUNT(NUM) = 1) AS T",
+  "q2_validation_sql": "SELECT IF(COUNT(*) =1, NUM, NULL) AS NUM FROM MYNUMBERS GROUP BY NUM ORDER BY COUNT(*), NUM DESC LIMIT 1"
+}

@@ -1,0 +1,55 @@
+{
+  "dbid": "toxicology",
+  "index": "176",
+  "source_index": "251",
+  "schema_ddl": "CREATE TABLE `atom` (\n  `atom_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `element` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `bond` (\n  `bond_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `bond_type` TEXT DEFAULT NULL,\n  PRIMARY KEY (`bond_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `connected` (\n  `atom_id` TEXT NOT NULL,\n  `atom_id2` TEXT NOT NULL,\n  `bond_id` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`,`atom_id2`),\n  FOREIGN KEY (`atom_id`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`atom_id2`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`bond_id`) REFERENCES `bond` (`bond_id`) ON DELETE CASCADE ON UPDATE CASCADE\n);\n\nCREATE TABLE `molecule` (\n  `molecule_id` TEXT NOT NULL,\n  `label` TEXT DEFAULT NULL,\n  PRIMARY KEY (`molecule_id`)\n);",
+  "q1": "SELECT T.molecule_id FROM (SELECT T3.molecule_id, COUNT(T1.bond_type) FROM bond AS T1 INNER JOIN molecule AS T3 ON T1.molecule_id = T3.molecule_id WHERE T3.label = '+' AND T1.bond_type = '=' GROUP BY T3.molecule_id ORDER BY COUNT(T1.bond_type) DESC LIMIT 1) AS T",
+  "q2": "SELECT T1.label FROM molecule AS T1 INNER JOIN bond AS T2 ON T1.molecule_id = T2.molecule_id WHERE T1.label = '+' AND T2.bond_type = '=' GROUP BY T1.label ORDER BY COUNT(T2.bond_type) DESC LIMIT 1",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT T.molecule_id FROM (SELECT T3.molecule_id, COUNT(T1.bond_type) FROM bond AS T1 INNER JOIN molecule AS T3 ON T1.molecule_id = T3.molecule_id WHERE T3.label = '+' AND T1.bond_type = '=' GROUP BY T3.molecule_id ORDER BY COUNT(T1.bond_type) DESC LIMIT 1) AS T",
+  "q2_prompt_sql": "SELECT T1.label FROM molecule AS T1 INNER JOIN bond AS T2 ON T1.molecule_id = T2.molecule_id WHERE T1.label = '+' AND T2.bond_type = '=' GROUP BY T1.label ORDER BY COUNT(T2.bond_type) DESC LIMIT 1",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO molecule (molecule_id, label) VALUES ('M1', '+'), ('M2', '+');\nINSERT INTO bond (bond_id, molecule_id, bond_type) VALUES ('B1', 'M1', '='), ('B2', 'M1', '='), ('B3', 'M1', '='), ('B4', 'M2', '='), ('B5', 'M2', '=');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 returns the molecule_id with the maximum count of '=' bonds among '+' labeled molecules, while Q2 returns the label '+' (always the same) since all filtered rows share the same label. They differ in output type and content.",
+  "counterexample_dsp": "Two '+' labeled molecules: M1 has 3 '=' bonds, M2 has 2 '=' bonds. Q1 returns M1, Q2 returns '+'.",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 returns the molecule_id with the maximum count of '=' bonds among '+' labeled molecules, while Q2 returns the label '+' (always the same) since all filtered rows share the same label. They differ in output type and content.\",\n  \"counterexample_dsp\": \"Two '+' labeled molecules: M1 has 3 '=' bonds, M2 has 2 '=' bonds. Q1 returns M1, Q2 returns '+'.\",\n  \"counterexample\": [\n    \"INSERT INTO molecule (molecule_id, label) VALUES ('M1', '+'), ('M2', '+');\",\n    \"INSERT INTO bond (bond_id, molecule_id, bond_type) VALUES ('B1', 'M1', '='), ('B2', 'M1', '='), ('B3', 'M1', '='), ('B4', 'M2', '='), ('B5', 'M2', '=');\"\n  ]\n}",
+  "reasoning": "\nOkay, let's see. I need to find a counterexample where Q1 and Q2 return different results. Let me first understand what each query does.\n\nQ1: It selects molecule_id from a subquery. The subquery joins bond (T1) with molecule (T3) on molecule_id, filters where label is '+' and bond_type is '=', groups by molecule_id, orders by count of bond_type descending, and takes the first one. So Q1 returns the molecule_id that has the maximum count of '=' bonds among molecules labeled '+'.\n\nQ2: It selects label from molecule joined with bond on molecule_id, same filters (label '+', bond_type '='), groups by label, orders by count of bond_type descending, limit 1. So Q2 returns the label (which is always '+') since the group by is on label. But wait, the GROUP BY T1.label would have only one group since all rows in the join have label '+', so COUNT(T2.bond_type) would be the total number of '=' bonds for all '+' molecules. But since it's grouped by label, the count would be the same for all rows, so ordering by count descending would return '+' as the label. But that seems odd. Wait, maybe not. Let me think again.\n\nWait, Q2 groups by T1.label. Since all the rows in the join have T1.label = '+', the group is just '+'. Then COUNT(T2.bond_type) is the number of bonds of type '=' across all molecules with label '+'. So Q2 returns '+' as the label, but the count is the total number of such bonds. But since the ORDER BY is on that count, but there's only one group, the LIMIT 1 doesn't change anything. So Q2 would always return '+' as the label, regardless of the data.\n\nBut Q1 returns the molecule_id with the maximum count of '=' bonds. So in a scenario where there are multiple molecules with label '+', each having some '=' bonds, Q1 picks the one with the most, while Q2 always returns '+'.\n\nWait, but that would mean Q1 and Q2 are not equivalent. For example, if there are two molecules with label '+', one has 5 '=' bonds, another has 3. Then Q1 returns the molecule_id of the one with 5, and Q2 returns '+'. So their results are different. Hence, they are not equivalent.\n\nSo the counterexample needs to have multiple '+' molecules with varying counts of '=' bonds. Let me create such a scenario.\n\nLet me create two molecules: molecule1 (label '+') with 3 '=' bonds, and molecule2 (label '+') with 2 '=' bonds. Then Q1 returns molecule1's id, while Q2 returns '+'.\n\nWait, but Q2's query is grouping by label, so the result is the label '+', not the molecule_id. So Q1 returns a molecule_id, Q2 returns a label. So they are returning different data types. That's a clear difference.\n\nSo the explanation would be that Q1 returns the molecule_id with the highest count of '=' bonds among '+' molecules, while Q2 returns the label '+' (since all rows have that label), so the results are different.\n\nSo the counterexample would be inserting two molecules with label '+', each with different numbers of '=' bonds. Let me structure the test data.\n\nInsert into molecule: molecule_id 'M1', label '+', and 'M2', label '+'.\n\nThen insert into bond: for M1, three bonds with bond_type '=', and for M2, two bonds with bond_type '='.\n\nThen Q1 would return M1, and Q2 returns '+'.\n\nSo the SQL inserts would be:\n\nINSERT INTO molecule (molecule_id, label) VALUES ('M1', '+'), ('M2', '+');\nINSERT INTO bond (bond_id, molecule_id, bond_type) VALUES ('B1', 'M1', '='), ('B2', 'M1', '='), ('B3', 'M1', '='), ('B4', 'M2', '='), ('B5', 'M2', '=');\n\nWait, but M2 has two bonds? Or three? Let me check. If M2 has two bonds, then Q1's subquery groups by molecule_id, counts the bonds. M1 has 3, M2 has 2. Then Q1 returns M1. Q2 groups by label '+', counts all bonds (3+2=5), so returns '+'.\n\nYes, that would work. So the counterexample is when there are multiple molecules with the same label but different counts of bond_type '='. Then Q1 picks the one with the highest count, while Q2 returns the label '+'.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 606,
+    "total_tokens": 1784,
+    "completion_tokens": 1178,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 977
+    },
+    "generation_seconds": 40.657
+  },
+  "started_at": "2026-10-06T18:30:27.032976+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "M1"
+    ]
+  ],
+  "q2_output": [
+    [
+      "+"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT T.molecule_id FROM (SELECT T3.molecule_id, COUNT(T1.bond_type) FROM bond AS T1 INNER JOIN molecule AS T3 ON T1.molecule_id = T3.molecule_id WHERE T3.label = '+' AND T1.bond_type = '=' GROUP BY T3.molecule_id ORDER BY COUNT(T1.bond_type) DESC LIMIT 1) AS T",
+  "q2_validation_sql": "SELECT T1.label FROM molecule AS T1 INNER JOIN bond AS T2 ON T1.molecule_id = T2.molecule_id WHERE T1.label = '+' AND T2.bond_type = '=' GROUP BY T1.label ORDER BY COUNT(T2.bond_type) DESC LIMIT 1"
+}

@@ -1,0 +1,52 @@
+{
+  "dbid": "1141",
+  "index": "570",
+  "source_index": "260",
+  "schema_ddl": "CREATE TABLE ACTIVITY (\n    USER_ID INT,\n    SESSION_ID INT,\n    ACTIVITY_DATE DATE,\n    ACTIVITY_TYPE ENUM('OPEN_SESSION', 'END_SESSION', 'SCROLL_DOWN', 'SEND_MESSAGE'),\n    CHECK (ACTIVITY_TYPE IN ('OPEN_SESSION', 'END_SESSION', 'SCROLL_DOWN', 'SEND_MESSAGE'))\n);",
+  "q1": "SELECT ACTIVITY_DATE AS DAY, COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY WHERE ACTIVITY_DATE BETWEEN '2019-06-28' AND '2019-07-27' GROUP BY ACTIVITY_DATE",
+  "q2": "SELECT A.ACTIVITY_DATE AS DAY , COUNT(A.ACTIVITY_DATE) AS ACTIVE_USERS FROM ( SELECT DISTINCT USER_ID , ACTIVITY_DATE FROM ACTIVITY ) AS A WHERE A.ACTIVITY_DATE < '2019-07-27' AND A.ACTIVITY_DATE > '2019-06-27' GROUP BY ACTIVITY_DATE ORDER BY ACTIVITY_DATE ASC",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT ACTIVITY_DATE AS DAY, COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY WHERE ACTIVITY_DATE BETWEEN '2019-06-28' AND '2019-07-27' GROUP BY ACTIVITY_DATE",
+  "q2_prompt_sql": "SELECT A.ACTIVITY_DATE AS DAY , COUNT(A.ACTIVITY_DATE) AS ACTIVE_USERS FROM ( SELECT DISTINCT USER_ID , ACTIVITY_DATE FROM ACTIVITY ) AS A WHERE A.ACTIVITY_DATE < '2019-07-27' AND A.ACTIVITY_DATE > '2019-06-27' GROUP BY ACTIVITY_DATE ORDER BY ACTIVITY_DATE ASC",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO ACTIVITY (USER_ID, SESSION_ID, ACTIVITY_DATE, ACTIVITY_TYPE) VALUES (1, 1, '2019-07-27', 'OPEN_SESSION');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 includes the upper bound date '2019-07-27' in its BETWEEN clause, while Q2's WHERE condition excludes it (A.ACTIVITY_DATE < '2019-07-27'). If there are activities on '2019-07-27', Q1 will return those results but Q2 will not.",
+  "counterexample_dsp": "A single activity on '2019-07-27' triggers Q1 to include it while Q2 excludes it, creating a discrepancy in the output.",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 includes the upper bound date '2019-07-27' in its BETWEEN clause, while Q2's WHERE condition excludes it (A.ACTIVITY_DATE < '2019-07-27'). If there are activities on '2019-07-27', Q1 will return those results but Q2 will not.\",\n  \"counterexample_dsp\": \"A single activity on '2019-07-27' triggers Q1 to include it while Q2 excludes it, creating a discrepancy in the output.\",\n  \"counterexample\": [\n    \"INSERT INTO ACTIVITY (USER_ID, SESSION_ID, ACTIVITY_DATE, ACTIVITY_TYPE) VALUES (1, 1, '2019-07-27', 'OPEN_SESSION');\"\n  ]\n}",
+  "reasoning": "\nOkay, let's see. I need to find a counterexample where Q1 and Q2 give different results. Let me first understand what each query does.\n\nQ1: Selects activity_date as DAY, counts distinct user_ids as active_users from the ACTIVITY table where the activity_date is between '2019-06-28' and '2019-07-27', grouped by activity_date. So for each day in that range, it counts unique users who had any activity on that day.\n\nQ2: Selects from a subquery that first gets distinct user_id and activity_date from ACTIVITY. Then filters where activity_date is between '2019-06-28' and '2019-07-26' (since it's > '2019-06-27' and < '2019-07-27'). Then groups by activity_date and counts activity_date. Wait, COUNT(A.ACTIVITY_DATE) would count the number of rows in the grouped result. But since the subquery already has distinct user_id and activity_date, each row in the subquery is unique per user per day. So COUNT(A.ACTIVITY_DATE) would be the same as COUNT(DISTINCT USER_ID) if there's one user per day. But if there are multiple entries for the same user on the same day in the original table, the subquery removes duplicates, so Q2 counts each user once per day.\n\nWait, but Q1's date range is inclusive of 2019-07-27. Q2's condition is A.ACTIVITY_DATE < '2019-07-27' AND A.ACTIVITY_DATE > '2019-06-27', which translates to dates strictly between those two. So Q2 excludes 2019-07-27. That's a difference in date ranges. Oh! Wait, Q1's date range is BETWEEN '2019-06-28' AND '2019-07-27', which includes both dates. Q2's WHERE clause is A.ACTIVITY_DATE < '2019-07-27' AND A.ACTIVITY_DATE > '2019-06-27', which is equivalent to dates strictly greater than June 27 and strictly less than July 27. So that would exclude July 27. So the date ranges are different. That's one point of difference.\n\nBut wait, the original problem states that the user says Q1 and Q2 are not semantically equivalent. So maybe there's another difference. Let me check again.\n\nWait, Q2's date range is from June 28 to July 26 inclusive, because > '2019-06-27' means June 28 and onwards, and < '2019-07-27' means up to July 26. Whereas Q1 includes July 27. So if there are any activities on July 27, Q1 will count them, but Q2 won't. That's one difference.\n\nBut also, in Q2, the subquery is selecting distinct user_id and activity_date. Then, in the outer query, it's grouping by activity_date and counting activity_date. Since each row in the subquery has a unique user_id per date, the count would be the same as counting distinct user_ids. Wait, but COUNT(A.ACTIVITY_DATE) would count the number of rows in each group. Since each row in the subquery is unique (user_id, activity_date), grouping by activity_date would have one row per user per day. So COUNT(A.ACTIVITY_DATE) would be the same as COUNT(DISTINCT USER_ID) per day. So the difference between Q1 and Q2 would be the date range (Q1 includes July 27, Q2 doesn't) and maybe other differences?\n\nWait, but let me think again. Suppose there's a user who has multiple activities on the same day. For example, a user has two records on June 28. Q1 counts that user once (because of COUNT(DISTINCT USER_ID)). Q2's subquery removes duplicates, so that user would appear once. Then COUNT(A.ACTIVITY_DATE) would count each row in the subquery. Wait, no: the subquery is SELECT DISTINCT USER_ID, ACTIVITY_DATE, so each (user, date) pair is unique. Then when grouped by activity_date, each group has one row per user. So COUNT(A.ACTIVITY_DATE) would be the same as COUNT(USER_ID), which is the same as COUNT(DISTINCT USER_ID) per day. So the main difference is the date range.\n\nSo, if there's any activity on July 27, Q1 will count it, Q2 won't. That's one difference. Also, the date range in Q2 is exclusive on the upper bound. So if there's a date on July 27 in Q1 but not in Q2, that's a difference.\n\nSo to create a counterexample, I need a scenario where there's at least one activity on July 27. Then Q1 would have a row for July 27, but Q2 wouldn't. Also, maybe another scenario where dates are the same except for that.\n\nAlternatively, maybe there's another difference. Let me check the date conditions again.\n\nQ1: BETWEEN '2019-06-28' AND '2019-07-27' includes both dates.\n\nQ2: WHERE A.ACTIVITY_DATE < '2019-07-27' AND A.ACTIVITY_DATE > '2019-06-27'. Since '2019-06-27' is the lower bound, the dates start from June 28 (since > '2019-06-27') up to July 26 (since < '2019-07-27'). So July 27 is excluded. So Q1 includes July 27, Q2 does not. That's one difference.\n\nSo if there's a user who has activity on July 27, then Q1 will have that day's count, but Q2 won't. That would make them different.\n\nAnother possible difference: in Q2, the subquery is selecting distinct user_id and activity_date. Suppose a user has two activities on the same date (same day, same user). Then, the subquery would have one row for that user on that date. Then, when grouping by activity_date, COUNT(A.ACTIVITY_DATE) would count that as one. Q1 would count that user once (COUNT(DISTINCT USER_ID)). So same result. So that's not a difference.\n\nBut what if there's a date that's not covered by the date range? Well, the date range difference is the main one.\n\nSo the counterexample should have data on July 27. Let me create a test case where there's one user with activity on July 27. Then Q1 will have a row for that day with active_users = 1, and Q2 will not have that day. So the results differ.\n\nAnother possibility: suppose there's a date that's exactly on the edge. Wait, but Q1's date range is inclusive. So July 27 is included in Q1 but excluded in Q2.\n\nSo to create the counterexample, I can insert one activity on July 27. Then Q1 will have that day, Q2 won't. That would make their results different.\n\nLet me test with that. Let's say:\n\nInsert into ACTIVITY (USER_ID, SESSION_ID, ACTIVITY_DATE, ACTIVITY_TYPE) values (1, 1, '2019-07-27', 'OPEN_SESSION');\n\nThen Q1 will have a row for 2019-07-27 with active_users = 1. Q2's date condition excludes this date, so it's not present. Hence, the results differ.\n\nAdditionally, maybe there's another difference. Let me check the date comparison again. For example, if a date is exactly '2019-06-28', both queries include it. So that's the same.\n\nSo the main difference is the inclusion of July 27 in Q1 and exclusion in Q2. Hence, the counterexample would be any data that has activities on July 27, and no other differences.\n\nTherefore, the explanation would be that Q1 includes July 27 in its date range while Q2 does not, leading to different results if there are activities on that date.\n\nThe counterexample would be inserting a row with activity_date = '2019-07-27'. Then Q1 returns that day, Q2 does not.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 403,
+    "total_tokens": 2466,
+    "completion_tokens": 2063,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1876
+    },
+    "generation_seconds": 75.813
+  },
+  "started_at": "2026-10-06T14:25:46.561294+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "2019-07-27",
+      1
+    ]
+  ],
+  "q2_output": [],
+  "q1_row_count": 1,
+  "q2_row_count": 0,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT ACTIVITY_DATE AS DAY, COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY WHERE ACTIVITY_DATE BETWEEN '2019-06-28' AND '2019-07-27' GROUP BY ACTIVITY_DATE",
+  "q2_validation_sql": "SELECT A.ACTIVITY_DATE AS DAY , COUNT(A.ACTIVITY_DATE) AS ACTIVE_USERS FROM ( SELECT DISTINCT USER_ID , ACTIVITY_DATE FROM ACTIVITY ) AS A WHERE A.ACTIVITY_DATE < '2019-07-27' AND A.ACTIVITY_DATE > '2019-06-27' GROUP BY ACTIVITY_DATE ORDER BY ACTIVITY_DATE ASC"
+}

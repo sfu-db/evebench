@@ -1,0 +1,55 @@
+{
+  "dbid": "182",
+  "index": "110",
+  "source_index": "194",
+  "schema_ddl": "CREATE TABLE PERSON (\n    ID INT,\n    EMAIL VARCHAR(255),\n    PRIMARY KEY (ID)\n);",
+  "q1": "SELECT EMAIL AS EMAIL FROM PERSON GROUP BY EMAIL HAVING COUNT(EMAIL) >1",
+  "q2": "SELECT DISTINCT P.EMAIL FROM PERSON P LEFT JOIN (SELECT EMAIL, COUNT(EMAIL) AS COUNT_EMAIL FROM PERSON GROUP BY EMAIL) C ON P.EMAIL = C.EMAIL WHERE C.COUNT_EMAIL>1",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT EMAIL AS EMAIL FROM PERSON GROUP BY EMAIL HAVING COUNT(EMAIL) >1",
+  "q2_prompt_sql": "SELECT DISTINCT P.EMAIL FROM PERSON P LEFT JOIN (SELECT EMAIL, COUNT(EMAIL) AS COUNT_EMAIL FROM PERSON GROUP BY EMAIL) C ON P.EMAIL = C.EMAIL WHERE C.COUNT_EMAIL>1",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO PERSON (ID, EMAIL) VALUES (1, 'test@example.com');\nINSERT INTO PERSON (ID, EMAIL) VALUES (2, 'test@example.com');",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 returns distinct emails that appear more than once in the PERSON table. Q2, however, returns all rows from PERSON where the email appears more than once, not just distinct emails. Thus, Q2 may return multiple rows for the same email if there are multiple persons with the same email.",
+  "counterexample_dsp": "A test database with two persons sharing the same email. Q1 returns one row (distinct email), while Q2 returns two rows (all persons with that email).",
+  "equiv": "N",
+  "raw_response": "\n\n{\n  \"equiv\": \"N\",\n  \"explanation\": \"Q1 returns distinct emails that appear more than once in the PERSON table. Q2, however, returns all rows from PERSON where the email appears more than once, not just distinct emails. Thus, Q2 may return multiple rows for the same email if there are multiple persons with the same email.\",\n  \"counterexample_dsp\": \"A test database with two persons sharing the same email. Q1 returns one row (distinct email), while Q2 returns two rows (all persons with that email).\",\n  \"counterexample\": \"INSERT INTO PERSON (ID, EMAIL) VALUES (1, 'test@example.com');\\nINSERT INTO PERSON (ID, EMAIL) VALUES (2, 'test@example.com');\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 336,
+    "total_tokens": 501,
+    "completion_tokens": 165,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 5.25
+  },
+  "started_at": "2026-10-06T15:31:12.707631+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "test@example.com"
+    ]
+  ],
+  "q2_output": [
+    [
+      "test@example.com"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT EMAIL AS EMAIL FROM PERSON GROUP BY EMAIL HAVING COUNT(EMAIL) >1",
+  "q2_validation_sql": "SELECT DISTINCT P.EMAIL FROM PERSON P LEFT JOIN (SELECT EMAIL, COUNT(EMAIL) AS COUNT_EMAIL FROM PERSON GROUP BY EMAIL) C ON P.EMAIL = C.EMAIL WHERE C.COUNT_EMAIL>1"
+}

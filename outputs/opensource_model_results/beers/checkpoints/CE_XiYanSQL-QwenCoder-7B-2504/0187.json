@@ -1,0 +1,59 @@
+{
+  "dbid": "beers",
+  "index": "187",
+  "source_index": "4139",
+  "schema_ddl": "CREATE TABLE Bar (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Beer (\n    name VARCHAR NOT NULL,\n    brewer VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Drinker (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Frequents (\n    drinker VARCHAR NOT NULL,\n    bar VARCHAR NOT NULL,\n    times_a_week SMALLINT NOT NULL,\n    PRIMARY KEY (drinker, bar),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (bar) REFERENCES Bar(name)\n);\n\nCREATE TABLE Serves (\n    bar VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    price DECIMAL(5,2) NOT NULL,\n    PRIMARY KEY (bar, beer),\n    FOREIGN KEY (bar) REFERENCES Bar(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);\n\nCREATE TABLE Likes (\n    drinker VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    PRIMARY KEY (drinker, beer),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);",
+  "q1": "SELECT DISTINCT bar FROM Serves WHERE (beer = 'Amstel' OR beer = 'Corona') AND price > 2",
+  "q2": "SELECT Q5.name FROM (SELECT frequents2.drinker AS name, COUNT(frequents2.bar) AS NumBarFreq FROM frequents AS frequents2 GROUP BY frequents2.drinker ORDER BY frequents2.drinker ASC) AS Q5 JOIN (SELECT frequents1.drinker AS drinker, COUNT(frequents1.bar) AS NumBarFreqLike FROM frequents AS frequents1 JOIN (SELECT Q2.drinker AS drinker, Q2.bar AS bar FROM (SELECT likes2.drinker AS drinker, serves.bar AS bar, COUNT(serves.bar) AS CountBarServesBeerLiked FROM serves, likes AS likes2 WHERE likes2.beer = serves.beer GROUP BY likes2.drinker, serves.bar ORDER BY likes2.drinker ASC, serves.bar ASC) AS Q2 JOIN (SELECT likes1.drinker AS drinker, COUNT(likes1.beer) AS CountBeerLiked FROM likes AS likes1 GROUP BY likes1.drinker ORDER BY likes1.drinker ASC) AS Q1 ON Q2.drinker = Q1.drinker AND Q2.CountBarServesBeerLiked = Q1.CountBeerLiked) AS Q3 ON frequents1.drinker = Q3.drinker AND frequents1.bar = Q3.bar GROUP BY frequents1.drinker) AS Q4 ON Q5.name = Q4.drinker AND Q5.NumBarFreq = Q4.NumBarFreqLike ORDER BY Q5.name ASC",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "beers",
+  "q1_prompt_sql": "SELECT DISTINCT bar FROM Serves WHERE (beer = 'Amstel' OR beer = 'Corona') AND price > 2",
+  "q2_prompt_sql": "SELECT Q5.name FROM (SELECT frequents2.drinker AS name, COUNT(frequents2.bar) AS NumBarFreq FROM frequents AS frequents2 GROUP BY frequents2.drinker ORDER BY frequents2.drinker ASC) AS Q5 JOIN (SELECT frequents1.drinker AS drinker, COUNT(frequents1.bar) AS NumBarFreqLike FROM frequents AS frequents1 JOIN (SELECT Q2.drinker AS drinker, Q2.bar AS bar FROM (SELECT likes2.drinker AS drinker, serves.bar AS bar, COUNT(serves.bar) AS CountBarServesBeerLiked FROM serves, likes AS likes2 WHERE likes2.beer = serves.beer GROUP BY likes2.drinker, serves.bar ORDER BY likes2.drinker ASC, serves.bar ASC) AS Q2 JOIN (SELECT likes1.drinker AS drinker, COUNT(likes1.beer) AS CountBeerLiked FROM likes AS likes1 GROUP BY likes1.drinker ORDER BY likes1.drinker ASC) AS Q1 ON Q2.drinker = Q1.drinker AND Q2.CountBarServesBeerLiked = Q1.CountBeerLiked) AS Q3 ON frequents1.drinker = Q3.drinker AND frequents1.bar = Q3.bar GROUP BY frequents1.drinker) AS Q4 ON Q5.name = Q4.drinker AND Q5.NumBarFreq = Q4.NumBarFreqLike ORDER BY Q5.name ASC",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO Beer (name, brewer) VALUES ('Amstel', 'Amstel Brewery'), ('Corona', 'Corona Brewery'); INSERT INTO Bar (name, address) VALUES ('Bar1', 'Address1'), ('Bar2', 'Address2'); INSERT INTO Serves (bar, beer, price) VALUES ('Bar1', 'Amstel', 3.00), ('Bar1', 'Corona', 3.50), ('Bar2', 'Amstel', 2.50), ('Bar2', 'Corona', 3.00); INSERT INTO Drinker (name, address) VALUES ('Drinker1', 'Address1'), ('Drinker2', 'Address2'); INSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('Drinker1', 'Bar1', 2), ('Drinker1', 'Bar2', 1), ('Drinker2', 'Bar1', 1), ('Drinker2', 'Bar2', 2); INSERT INTO Likes (drinker, beer) VALUES ('Drinker1', 'Amstel'), ('Drinker1', 'Corona'), ('Drinker2', 'Amstel'), ('Drinker2', 'Corona');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent because Q1 is a straightforward SELECT DISTINCT query that retrieves the names of bars that serve specific beers (Amstel and Corona) at a price greater than 2. On the other hand, Q2 is a complex query that involves multiple JOINs, subqueries, and GROUP BY clauses. It appears to be trying to identify drinkers who frequently visit bars that serve beers they like, but the specific conditions and logic are not clear from the given query. The difference in results between Q1 and Q2 is likely due to the complexity and specific conditions of Q2, which are not present in Q1.",
+  "counterexample_dsp": "To create a counterexample, we need to insert data into the database that triggers a difference in the results of Q1 and Q2. Specifically, we need to insert data that satisfies the conditions of Q1 but not the conditions of Q2. This can be achieved by inserting data into the Serves table that serves specific beers (Amstel and Corona) at a price greater than 2, and then inserting data into the Frequents and Likes tables that does not satisfy the conditions of Q2.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent because Q1 is a straightforward SELECT DISTINCT query that retrieves the names of bars that serve specific beers (Amstel and Corona) at a price greater than 2. On the other hand, Q2 is a complex query that involves multiple JOINs, subqueries, and GROUP BY clauses. It appears to be trying to identify drinkers who frequently visit bars that serve beers they like, but the specific conditions and logic are not clear from the given query. The difference in results between Q1 and Q2 is likely due to the complexity and specific conditions of Q2, which are not present in Q1.\",\n  \"counterexample_dsp\": \"To create a counterexample, we need to insert data into the database that triggers a difference in the results of Q1 and Q2. Specifically, we need to insert data that satisfies the conditions of Q1 but not the conditions of Q2. This can be achieved by inserting data into the Serves table that serves specific beers (Amstel and Corona) at a price greater than 2, and then inserting data into the Frequents and Likes tables that does not satisfy the conditions of Q2.\",\n  \"counterexample\": \"INSERT INTO Beer (name, brewer) VALUES ('Amstel', 'Amstel Brewery'), ('Corona', 'Corona Brewery'); INSERT INTO Bar (name, address) VALUES ('Bar1', 'Address1'), ('Bar2', 'Address2'); INSERT INTO Serves (bar, beer, price) VALUES ('Bar1', 'Amstel', 3.00), ('Bar1', 'Corona', 3.50), ('Bar2', 'Amstel', 2.50), ('Bar2', 'Corona', 3.00); INSERT INTO Drinker (name, address) VALUES ('Drinker1', 'Address1'), ('Drinker2', 'Address2'); INSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('Drinker1', 'Bar1', 2), ('Drinker1', 'Bar2', 1), ('Drinker2', 'Bar1', 1), ('Drinker2', 'Bar2', 2); INSERT INTO Likes (drinker, beer) VALUES ('Drinker1', 'Amstel'), ('Drinker1', 'Corona'), ('Drinker2', 'Amstel'), ('Drinker2', 'Corona');\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 801,
+    "total_tokens": 1323,
+    "completion_tokens": 522,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 9.031
+  },
+  "started_at": "2026-10-06T08:01:27.765313+00:00",
+  "elapsed_seconds": 3.906,
+  "q1_output": [
+    [
+      "Bar1"
+    ],
+    [
+      "Bar2"
+    ]
+  ],
+  "q2_output": [
+    [
+      "Drinker1"
+    ],
+    [
+      "Drinker2"
+    ]
+  ],
+  "q1_row_count": 2,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DISTINCT bar FROM Serves WHERE (beer = 'Amstel' OR beer = 'Corona') AND price > 2",
+  "q2_validation_sql": "SELECT Q5.name FROM (SELECT frequents2.drinker AS name, COUNT(frequents2.bar) AS NumBarFreq FROM frequents AS frequents2 GROUP BY frequents2.drinker ORDER BY frequents2.drinker ASC) AS Q5 JOIN (SELECT frequents1.drinker AS drinker, COUNT(frequents1.bar) AS NumBarFreqLike FROM frequents AS frequents1 JOIN (SELECT Q2.drinker AS drinker, Q2.bar AS bar FROM (SELECT likes2.drinker AS drinker, serves.bar AS bar, COUNT(serves.bar) AS CountBarServesBeerLiked FROM serves, likes AS likes2 WHERE likes2.beer = serves.beer GROUP BY likes2.drinker, serves.bar ORDER BY likes2.drinker ASC, serves.bar ASC) AS Q2 JOIN (SELECT likes1.drinker AS drinker, COUNT(likes1.beer) AS CountBeerLiked FROM likes AS likes1 GROUP BY likes1.drinker ORDER BY likes1.drinker ASC) AS Q1 ON Q2.drinker = Q1.drinker AND Q2.CountBarServesBeerLiked = Q1.CountBeerLiked) AS Q3 ON frequents1.drinker = Q3.drinker AND frequents1.bar = Q3.bar GROUP BY frequents1.drinker) AS Q4 ON Q5.name = Q4.drinker AND Q5.NumBarFreq = Q4.NumBarFreqLike ORDER BY Q5.name ASC"
+}

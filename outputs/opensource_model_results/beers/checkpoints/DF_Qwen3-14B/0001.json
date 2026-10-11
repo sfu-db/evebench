@@ -1,0 +1,51 @@
+{
+  "dbid": "beers",
+  "index": "1",
+  "source_index": "24",
+  "schema_ddl": "CREATE TABLE Bar (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Beer (\n    name VARCHAR NOT NULL,\n    brewer VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Drinker (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Frequents (\n    drinker VARCHAR NOT NULL,\n    bar VARCHAR NOT NULL,\n    times_a_week SMALLINT NOT NULL,\n    PRIMARY KEY (drinker, bar),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (bar) REFERENCES Bar(name)\n);\n\nCREATE TABLE Serves (\n    bar VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    price DECIMAL(5,2) NOT NULL,\n    PRIMARY KEY (bar, beer),\n    FOREIGN KEY (bar) REFERENCES Bar(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);\n\nCREATE TABLE Likes (\n    drinker VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    PRIMARY KEY (drinker, beer),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);",
+  "q1": "SELECT name FROM drinker WHERE NOT EXISTS(SELECT f.bar FROM frequents AS f, serves AS s WHERE f.drinker = drinker.name AND f.bar = s.bar AND NOT s.beer IN (SELECT beer FROM likes WHERE drinker = drinker.name))",
+  "q2": "SELECT name FROM drinker WHERE EXISTS(SELECT f.bar FROM frequents AS f, serves AS s WHERE f.drinker = drinker.name AND f.bar = s.bar AND NOT s.beer IN (SELECT beer FROM likes WHERE drinker = drinker.name))",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "beers",
+  "q1_prompt_sql": "SELECT name FROM drinker WHERE NOT EXISTS(SELECT f.bar FROM frequents AS f, serves AS s WHERE f.drinker = drinker.name AND f.bar = s.bar AND NOT s.beer IN (SELECT beer FROM likes WHERE drinker = drinker.name))",
+  "q2_prompt_sql": "SELECT name FROM drinker WHERE EXISTS(SELECT f.bar FROM frequents AS f, serves AS s WHERE f.drinker = drinker.name AND f.bar = s.bar AND NOT s.beer IN (SELECT beer FROM likes WHERE drinker = drinker.name))",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO Drinker (name, address) VALUES ('Alice', '123 Main');\nINSERT INTO Bar (name, address) VALUES ('Bar1', '456 Oak');\nINSERT INTO Beer (name, brewer) VALUES ('BeerA', 'Brewer1'), ('BeerB', 'Brewer2');\nINSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('Alice', 'Bar1', 3);\nINSERT INTO Serves (bar, beer, price) VALUES ('Bar1', 'BeerA', 2.50), ('Bar1', 'BeerB', 3.00);\nINSERT INTO Likes (drinker, beer) VALUES ('Alice', 'BeerA');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are logical inverses. Q1 selects drinkers who never frequent bars serving beers they don't like, while Q2 selects those who do. They return complementary results.",
+  "counterexample_dsp": "A drinker 'Alice' frequents Bar1, which serves BeerA (liked) and BeerB (not liked). Q1 excludes her (due to BeerB), Q2 includes her.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 and Q2 are logical inverses. Q1 selects drinkers who never frequent bars serving beers they don't like, while Q2 selects those who do. They return complementary results.\",\n\"counterexample_dsp\": \"A drinker 'Alice' frequents Bar1, which serves BeerA (liked) and BeerB (not liked). Q1 excludes her (due to BeerB), Q2 includes her.\",\n\"counterexample\": \"INSERT INTO Drinker (name, address) VALUES ('Alice', '123 Main');\\nINSERT INTO Bar (name, address) VALUES ('Bar1', '456 Oak');\\nINSERT INTO Beer (name, brewer) VALUES ('BeerA', 'Brewer1'), ('BeerB', 'Brewer2');\\nINSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('Alice', 'Bar1', 3);\\nINSERT INTO Serves (bar, beer, price) VALUES ('Bar1', 'BeerA', 2.50), ('Bar1', 'BeerB', 3.00);\\nINSERT INTO Likes (drinker, beer) VALUES ('Alice', 'BeerA');\"\n}",
+  "reasoning": "\nOkay, let's try to figure out if Q1 and Q2 are semantically equivalent. \n\nFirst, I need to understand what each query is doing. Let's look at Q1 and Q2.\n\nQ1 is selecting names from the Drinker table where NOT EXISTS a certain subquery. The subquery is checking for bars that the drinker frequents (f.bar) and where the bar serves a beer (s.bar) that is not in the list of beers the drinker likes. Wait, the subquery's condition is: f.drinker = drinker.name (so the same drinker), f.bar = s.bar (so the bar they frequent serves that beer), and NOT s.beer IN (SELECT beer FROM likes WHERE drinker = drinker.name). So the subquery is looking for any bar that the drinker frequents where the bar serves a beer that the drinker does not like. \n\nThe NOT EXISTS in Q1 would mean that there are no such bars. So Q1 is selecting drinkers who do not frequent any bar that serves a beer they don't like. In other words, every bar they frequent serves only beers they like. Wait, no. Because the NOT EXISTS is checking for the absence of any such bar. So if there exists even one bar that the drinker frequents where the bar serves a beer not liked by them, then the NOT EXISTS would be false, and thus the drinker would not be selected. Therefore, Q1 selects drinkers who do not have any bar they frequent that serves a beer they don't like. So they only frequent bars that serve beers they like.\n\nNow Q2 is the same as Q1 but with EXISTS instead of NOT EXISTS. So Q2 is selecting drinkers where there exists at least one bar they frequent that serves a beer not in their likes. Therefore, Q2 selects drinkers who do have at least one bar they frequent where that bar serves a beer they don't like. \n\nSo Q1 and Q2 are selecting complementary sets. If Q1 is the set of drinkers who don't have any such bars, Q2 is those who do have at least one. Therefore, they are not equivalent. Their results should be opposites. \n\nSo the answer should be that they are not equivalent. For a counterexample, we need a case where a drinker is in one but not the other. Let's think of a simple example.\n\nSuppose there's a drinker named Alice. She frequents a bar called Bar1. Bar1 serves two beers: BeerA and BeerB. Suppose Alice likes BeerA but not BeerB. Then, in this case, the subquery in Q2 would find that Bar1 serves BeerB (which she doesn't like), so Q2 would include Alice. But Q1 would exclude her because there exists such a bar. \n\nAlternatively, if a drinker frequents a bar that serves only beers they like, then Q1 would include them, and Q2 would not. \n\nSo to create a counterexample, let's create a database with one drinker, one bar, one beer they like and another they don't. \n\nLet's make the test data:\n\nDrinker: Alice\nBar: Bar1\nBeer: BeerA (liked), BeerB (not liked)\nFrequents: Alice frequents Bar1.\nServes: Bar1 serves BeerA and BeerB.\nLikes: Alice likes BeerA.\n\nIn this case, Q1 would check if there's any bar Alice frequents (Bar1) that serves a beer not in her likes (BeerB). Since there is, the subquery exists, so NOT EXISTS is false. Therefore, Q1 would not select Alice. Q2 would select her because the subquery exists. So the two queries would return different results.\n\nAnother case: a drinker who frequents a bar that serves only beers they like. Then Q1 would select them, and Q2 would not. \n\nSo the counterexample would involve such a scenario. Let's create that. Suppose another drinker, Bob, who frequents Bar2, which serves only BeerC, and Bob likes BeerC. Then Q1 would include Bob, and Q2 would not. \n\nSo the counterexample would have both cases. But maybe the simplest is to have one drinker where Q1 and Q2 differ. Let's create that.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 598,
+    "total_tokens": 1763,
+    "completion_tokens": 1165,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 899
+    },
+    "generation_seconds": 35.922
+  },
+  "started_at": "2026-10-06T09:08:11.463663+00:00",
+  "elapsed_seconds": 35.907,
+  "q1_output": [],
+  "q2_output": [
+    [
+      "Alice"
+    ]
+  ],
+  "q1_row_count": 0,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT name FROM drinker WHERE NOT EXISTS(SELECT f.bar FROM frequents AS f, serves AS s WHERE f.drinker = drinker.name AND f.bar = s.bar AND NOT s.beer IN (SELECT beer FROM likes WHERE drinker = drinker.name))",
+  "q2_validation_sql": "SELECT name FROM drinker WHERE EXISTS(SELECT f.bar FROM frequents AS f, serves AS s WHERE f.drinker = drinker.name AND f.bar = s.bar AND NOT s.beer IN (SELECT beer FROM likes WHERE drinker = drinker.name))"
+}

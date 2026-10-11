@@ -1,0 +1,39 @@
+{
+  "dbid": "182",
+  "index": "104",
+  "source_index": "198",
+  "schema_ddl": "CREATE TABLE PERSON (\n    ID INT,\n    EMAIL VARCHAR(255),\n    PRIMARY KEY (ID)\n);",
+  "q1": "SELECT EMAIL AS EMAIL FROM PERSON GROUP BY EMAIL HAVING COUNT(EMAIL) >1",
+  "q2": "SELECT EMAIL FROM (SELECT COUNT(EMAIL) AS C,EMAIL FROM PERSON GROUP BY EMAIL) AS E WHERE E.C>1",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT EMAIL AS EMAIL FROM PERSON GROUP BY EMAIL HAVING COUNT(EMAIL) >1",
+  "q2_prompt_sql": "SELECT EMAIL FROM (SELECT COUNT(EMAIL) AS C,EMAIL FROM PERSON GROUP BY EMAIL) AS E WHERE E.C>1",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both Q1 and Q2 aim to retrieve email addresses that appear more than once in the PERSON table. Q1 uses GROUP BY and HAVING directly, while Q2 first computes the count per email in a subquery and then filters on that count. They are logically equivalent.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n  \"equiv\": \"Y\",\n  \"explanation\": \"Both Q1 and Q2 aim to retrieve email addresses that appear more than once in the PERSON table. Q1 uses GROUP BY and HAVING directly, while Q2 first computes the count per email in a subquery and then filters on that count. They are logically equivalent.\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 322,
+    "total_tokens": 398,
+    "completion_tokens": 76,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 2.563
+  },
+  "started_at": "2026-10-06T15:31:12.701631+00:00",
+  "elapsed_seconds": 0.0
+}

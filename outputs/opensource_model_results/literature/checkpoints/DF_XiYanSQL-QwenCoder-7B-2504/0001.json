@@ -1,0 +1,55 @@
+{
+  "dbid": "0",
+  "index": "1",
+  "source_index": "0",
+  "schema_ddl": "CREATE TABLE ITP (\n    ITEMN INT,\n    PONUM INT\n);\nCREATE TABLE ITM (\n    ITEMN INT,\n    TYPE INT,\n    PRIMARY KEY (ITEMN)\n);\nCREATE TABLE PUR (\n    PONUM INT,\n    ODATE INT,\n    VENDN INT\n);",
+  "q1": "SELECT ITM.ITEMN, ITPV.VENDN FROM ITM AS ITM, (SELECT DISTINCT ITP.ITEMN, PUR.VENDN FROM ITP AS ITP, PUR AS PUR WHERE ITP.PONUM = PUR.PONUM AND PUR.ODATE > 85) AS ITPV WHERE ITM.ITEMN = ITPV.ITEMN AND ITM.ITEMN > 1 AND ITM.ITEMN < 20",
+  "q2": "SELECT DISTINCT ITM.ITEMN, PUR.VENDN FROM ITM AS ITM, ITP AS ITP, PUR AS PUR WHERE ITP.PONUM = PUR.PONUM AND ITM.ITEMN = ITP.ITEMN AND PUR.ODATE > 85 AND ITM.ITEMN > 1 AND ITM.ITEMN < 20",
+  "dialect": "sqlite",
+  "ground_truth": "EQ",
+  "source": "literature",
+  "q1_prompt_sql": "SELECT ITM.ITEMN, ITPV.VENDN FROM ITM AS ITM, (SELECT DISTINCT ITP.ITEMN, PUR.VENDN FROM ITP AS ITP, PUR AS PUR WHERE ITP.PONUM = PUR.PONUM AND PUR.ODATE > 85) AS ITPV WHERE ITM.ITEMN = ITPV.ITEMN AND ITM.ITEMN > 1 AND ITM.ITEMN < 20",
+  "q2_prompt_sql": "SELECT DISTINCT ITM.ITEMN, PUR.VENDN FROM ITM AS ITM, ITP AS ITP, PUR AS PUR WHERE ITP.PONUM = PUR.PONUM AND ITM.ITEMN = ITP.ITEMN AND PUR.ODATE > 85 AND ITM.ITEMN > 1 AND ITM.ITEMN < 20",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO ITP (ITEMN, PONUM) VALUES (15, 101), (25, 102); INSERT INTO PUR (PONUM, ODATE, VENDN) VALUES (101, 86, 1001), (102, 87, 1002); INSERT INTO ITM (ITEMN, TYPE) VALUES (15, 1), (25, 2);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not equivalent because Q1 uses a subquery to first identify the vendors associated with items that have purchase orders made after a specific date, and then it selects items within a specific range. Q2, on the other hand, directly selects distinct items and their vendors where the purchase order date is after a specific date and the item number is within a specific range, without the need for a subquery.",
+  "counterexample_dsp": "The difference is triggered when there are items that have purchase orders made after a specific date but are not within the specific range of item numbers.",
+  "equiv": "N",
+  "raw_response": "{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 and Q2 are not equivalent because Q1 uses a subquery to first identify the vendors associated with items that have purchase orders made after a specific date, and then it selects items within a specific range. Q2, on the other hand, directly selects distinct items and their vendors where the purchase order date is after a specific date and the item number is within a specific range, without the need for a subquery.\",\n\"counterexample_dsp\": \"The difference is triggered when there are items that have purchase orders made after a specific date but are not within the specific range of item numbers.\",\n\"counterexample\": \"INSERT INTO ITP (ITEMN, PONUM) VALUES (15, 101), (25, 102); INSERT INTO PUR (PONUM, ODATE, VENDN) VALUES (101, 86, 1001), (102, 87, 1002); INSERT INTO ITM (ITEMN, TYPE) VALUES (15, 1), (25, 2);\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 506,
+    "total_tokens": 749,
+    "completion_tokens": 243,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 4.485
+  },
+  "started_at": "2026-10-06T07:36:43.441700+00:00",
+  "elapsed_seconds": 4.422,
+  "q1_output": [
+    [
+      15,
+      1001
+    ]
+  ],
+  "q2_output": [
+    [
+      15,
+      1001
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT ITM.ITEMN, ITPV.VENDN FROM ITM AS ITM, (SELECT DISTINCT ITP.ITEMN, PUR.VENDN FROM ITP AS ITP, PUR AS PUR WHERE ITP.PONUM = PUR.PONUM AND PUR.ODATE > 85) AS ITPV WHERE ITM.ITEMN = ITPV.ITEMN AND ITM.ITEMN > 1 AND ITM.ITEMN < 20",
+  "q2_validation_sql": "SELECT DISTINCT ITM.ITEMN, PUR.VENDN FROM ITM AS ITM, ITP AS ITP, PUR AS PUR WHERE ITP.PONUM = PUR.PONUM AND ITM.ITEMN = ITP.ITEMN AND PUR.ODATE > 85 AND ITM.ITEMN > 1 AND ITM.ITEMN < 20"
+}

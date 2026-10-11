@@ -1,0 +1,59 @@
+{
+  "dbid": "32",
+  "index": "52",
+  "source_index": "59",
+  "schema_ddl": "CREATE TABLE COURSE (COURSE_ID INT, TITLE INT, DEPT_NAME INT, CREDITS INT);\nCREATE TABLE DEPARTMENT (DEPT_NAME INT, BUILDING INT, BUDGET INT);\nCREATE TABLE INSTRUCTOR (ID INT, NAME INT, SALARY INT, DEPT_NAME INT);\nCREATE TABLE TEACHES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, SEMESTER INT, INSTRUCTOR INT);\nCREATE TABLE SECTION (COURSE_ID INT, SEC_ID INT, YEAR INT, BUILDING INT, ROOM_NUMBER INT, TIME_SLOT_ID INT);\nCREATE TABLE TAKES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, GRADE INT);\nCREATE TABLE STUDENT (ID INT, NAME INT, DEPT_NAME INT, TOT_CRED INT);",
+  "q1": "SELECT COURSE_ID, TITLE FROM COURSE",
+  "q2": "SELECT COURSE_ID, TITLE FROM COURSE WHERE CREDITS > 3",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "literature",
+  "q1_prompt_sql": "SELECT COURSE_ID, TITLE FROM COURSE",
+  "q2_prompt_sql": "SELECT COURSE_ID, TITLE FROM COURSE WHERE CREDITS > 3",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO COURSE (COURSE_ID, TITLE, DEPT_NAME, CREDITS) VALUES (1, 'Mathematics', 'Math', 2); INSERT INTO COURSE (COURSE_ID, TITLE, DEPT_NAME, CREDITS) VALUES (2, 'Physics', 'Physics', 4);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 selects all courses from the COURSE table, while Q2 selects courses from the COURSE table where the number of credits is greater than 3. Therefore, Q1 and Q2 are not semantically equivalent as they return different sets of results.",
+  "counterexample_dsp": "The test data should include courses with different credit values. The difference in results will be triggered when the credit value of a course is greater than 3 in Q2, but not in Q1.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 selects all courses from the COURSE table, while Q2 selects courses from the COURSE table where the number of credits is greater than 3. Therefore, Q1 and Q2 are not semantically equivalent as they return different sets of results.\",\n  \"counterexample_dsp\": \"The test data should include courses with different credit values. The difference in results will be triggered when the credit value of a course is greater than 3 in Q2, but not in Q1.\",\n  \"counterexample\": \"INSERT INTO COURSE (COURSE_ID, TITLE, DEPT_NAME, CREDITS) VALUES (1, 'Mathematics', 'Math', 2); INSERT INTO COURSE (COURSE_ID, TITLE, DEPT_NAME, CREDITS) VALUES (2, 'Physics', 'Physics', 4);\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 414,
+    "total_tokens": 595,
+    "completion_tokens": 181,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 2.906
+  },
+  "started_at": "2026-10-06T07:09:01.266112+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      1,
+      "Mathematics"
+    ],
+    [
+      2,
+      "Physics"
+    ]
+  ],
+  "q2_output": [
+    [
+      2,
+      "Physics"
+    ]
+  ],
+  "q1_row_count": 2,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT COURSE_ID, TITLE FROM COURSE",
+  "q2_validation_sql": "SELECT COURSE_ID, TITLE FROM COURSE WHERE CREDITS > 3"
+}

@@ -1,0 +1,39 @@
+{
+  "dbid": "1083",
+  "index": "41",
+  "source_index": "312",
+  "schema_ddl": "CREATE TABLE PRODUCT (\n    PRODUCT_ID INT,\n    PRODUCT_NAME VARCHAR(255),\n    UNIT_PRICE INT,\n    PRIMARY KEY (PRODUCT_ID),\n    CHECK (UNIT_PRICE > 0),\n    CHECK (PRODUCT_NAME IN ('S8', 'IPHONE'))\n);\n\nCREATE TABLE SALES (\n    PRODUCT_ID INT,\n    SELLER_ID INT,\n    BUYER_ID INT,\n    SALE_DATE DATE,\n    QUANTITY INT,\n    PRICE INT,\n    FOREIGN KEY (PRODUCT_ID) REFERENCES PRODUCT(PRODUCT_ID),\n    CHECK (QUANTITY > 0),\n    CHECK (PRICE > 0)\n);",
+  "q1": "SELECT DISTINCT SALES.BUYER_ID AS BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'S8' AND SALES.BUYER_ID NOT IN ( SELECT SALES.BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'IPHONE')",
+  "q2": "SELECT DISTINCT S.BUYER_ID FROM SALES S JOIN PRODUCT P USING(PRODUCT_ID) WHERE P.PRODUCT_NAME = 'S8' AND S.BUYER_ID NOT IN (SELECT S.BUYER_ID FROM SALES S JOIN PRODUCT P USING(PRODUCT_ID) WHERE P.PRODUCT_NAME = 'IPHONE')",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT DISTINCT SALES.BUYER_ID AS BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'S8' AND SALES.BUYER_ID NOT IN ( SELECT SALES.BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'IPHONE')",
+  "q2_prompt_sql": "SELECT DISTINCT S.BUYER_ID FROM SALES S JOIN PRODUCT P USING(PRODUCT_ID) WHERE P.PRODUCT_NAME = 'S8' AND S.BUYER_ID NOT IN (SELECT S.BUYER_ID FROM SALES S JOIN PRODUCT P USING(PRODUCT_ID) WHERE P.PRODUCT_NAME = 'IPHONE')",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries aim to retrieve distinct buyer IDs who purchased 'S8' but not 'IPHONE'. The join syntax (ON vs. USING) and subquery structures are logically equivalent under the given schema, leading to identical results.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries aim to retrieve distinct buyer IDs who purchased 'S8' but not 'IPHONE'. The join syntax (ON vs. USING) and subquery structures are logically equivalent under the given schema, leading to identical results.\"\n}",
+  "reasoning": "\nOkay, let's start by understanding what Q1 and Q2 are doing. Both queries aim to find distinct buyer IDs from the SALES table where the product is 'S8' and the buyer hasn't purchased 'IPHONE'. \n\nLooking at Q1: It joins PRODUCT and SALES on PRODUCT_ID, filters for PRODUCT_NAME = 'S8', and excludes buyers who are in the subquery that finds buyers of 'IPHONE'. The subquery here also joins PRODUCT and SALES, checking for 'IPHONE'.\n\nQ2 seems similar but uses JOIN ... USING(PRODUCT_ID) syntax, which is a shorthand for joining on the same column. The rest of the structure is the same: filtering for 'S8' and excluding those in the subquery for 'IPHONE'.\n\nWait, the main difference might be in the join syntax. In Q1, the INNER JOIN is specified with ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID. In Q2, it's JOIN ... USING(PRODUCT_ID). But in SQL, these are equivalent. The USING clause is just a shorthand for the ON condition when the column names are the same. So the join logic should be the same in both cases.\n\nBut maybe there's a subtle difference in how the subqueries are structured. Let me check the subqueries. Both subqueries in the NOT IN clauses are joining PRODUCT and SALES, filtering for 'IPHONE' product name. The structure here is the same in both Q1 and Q2. The only difference is the join syntax again.\n\nHmm, so if the join conditions are equivalent, and the rest of the logic is the same, then the two queries should be semantically equivalent. But maybe there's an edge case where the join syntax could lead to different results? For example, if there are multiple entries for the same PRODUCT_ID in SALES, but since the subquery is selecting BUYER_ID, which is part of SALES, and the joins are correct, I don't see a difference.\n\nWait, another thought: the subquery in Q1 uses SALES.BUYER_ID, while in Q2 it's S.BUYER_ID. But since they are aliases, that's the same. The subquery in Q1's NOT IN is selecting SALES.BUYER_ID from the joined tables, and in Q2 it's S.BUYER_ID. But since S is the alias for SALES in Q2's subquery, it's the same as SALES.BUYER_ID. So no difference there.\n\nSo, unless there's a case where the join condition in Q1 and Q2 leads to different results. But using INNER JOIN ON ... vs JOIN USING(...) should be equivalent. Therefore, the two queries should be equivalent.\n\nBut maybe the problem is that in Q1, the subquery in the NOT IN is using the same tables as the main query? Wait, no. The subquery is separate. The main query's join is with PRODUCT and SALES, and the subquery is also joining PRODUCT and SALES. But in both cases, the joins are correct. So the subqueries should return the same set of BUYER_IDs for 'IPHONE'.\n\nTherefore, the two queries should be equivalent. So the answer would be that they are equivalent. But maybe I'm missing something. Let me think again.\n\nWait, in Q1, the main query's join is PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID. The subquery in Q1's NOT IN is also PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID. So the same join condition.\n\nIn Q2, the main query uses JOIN ... USING(PRODUCT_ID), which is equivalent to the ON condition. The subquery in Q2 uses JOIN ... USING(PRODUCT_ID) as well. So again, same join condition.\n\nTherefore, the structure of both queries is the same, just using different join syntax. So they should return the same results. Hence, they are semantically equivalent. Therefore, the answer is \"equiv\": \"Y\".\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 521,
+    "total_tokens": 1423,
+    "completion_tokens": 902,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 839
+    },
+    "generation_seconds": 28.125
+  },
+  "started_at": "2026-10-06T14:41:21.865910+00:00",
+  "elapsed_seconds": 0.0
+}

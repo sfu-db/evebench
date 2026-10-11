@@ -1,0 +1,53 @@
+{
+  "dbid": "1148",
+  "index": "313",
+  "source_index": "196",
+  "schema_ddl": "CREATE TABLE VIEWS (\n    ARTICLE_ID INT,\n    AUTHOR_ID INT,\n    VIEWER_ID INT,\n    VIEW_DATE DATE\n);",
+  "q1": "SELECT DISTINCT AUTHOR_ID AS ID FROM VIEWS WHERE AUTHOR_ID = VIEWER_ID ORDER BY ID",
+  "q2": "SELECT DISTINCT V1.AUTHOR_ID AS ID FROM VIEWS AS V1, VIEWS AS V2 WHERE V1.AUTHOR_ID = V2.VIEWER_ID AND V1.ARTICLE_ID = V2.ARTICLE_ID ORDER BY V1.AUTHOR_ID",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT DISTINCT AUTHOR_ID AS ID FROM VIEWS WHERE AUTHOR_ID = VIEWER_ID ORDER BY ID",
+  "q2_prompt_sql": "SELECT DISTINCT V1.AUTHOR_ID AS ID FROM VIEWS AS V1, VIEWS AS V2 WHERE V1.AUTHOR_ID = V2.VIEWER_ID AND V1.ARTICLE_ID = V2.ARTICLE_ID ORDER BY V1.AUTHOR_ID",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO VIEWS (ARTICLE_ID, AUTHOR_ID, VIEWER_ID, VIEW_DATE) VALUES (1, 1, 1, '2023-01-01'); INSERT INTO VIEWS (ARTICLE_ID, AUTHOR_ID, VIEWER_ID, VIEW_DATE) VALUES (1, 1, 2, '2023-01-02');",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not equivalent. Q1 selects distinct author IDs where the author ID is equal to the viewer ID, while Q2 selects distinct author IDs where there exists another view record with the same article ID and a different viewer ID.",
+  "counterexample_dsp": "A test case where an author has a view from themselves and another view from a different viewer on the same article.",
+  "equiv": "N",
+  "raw_response": "{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 and Q2 are not equivalent. Q1 selects distinct author IDs where the author ID is equal to the viewer ID, while Q2 selects distinct author IDs where there exists another view record with the same article ID and a different viewer ID.\",\n\"counterexample_dsp\": \"A test case where an author has a view from themselves and another view from a different viewer on the same article.\",\n\"counterexample\": \"INSERT INTO VIEWS (ARTICLE_ID, AUTHOR_ID, VIEWER_ID, VIEW_DATE) VALUES (1, 1, 1, '2023-01-01'); INSERT INTO VIEWS (ARTICLE_ID, AUTHOR_ID, VIEWER_ID, VIEW_DATE) VALUES (1, 1, 2, '2023-01-02');\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 378,
+    "total_tokens": 560,
+    "completion_tokens": 182,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 3.172
+  },
+  "started_at": "2026-10-06T14:33:40.107875+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      1
+    ]
+  ],
+  "q2_output": [
+    [
+      1
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DISTINCT AUTHOR_ID AS ID FROM VIEWS WHERE AUTHOR_ID = VIEWER_ID ORDER BY ID",
+  "q2_validation_sql": "SELECT DISTINCT V1.AUTHOR_ID AS ID FROM VIEWS AS V1, VIEWS AS V2 WHERE V1.AUTHOR_ID = V2.VIEWER_ID AND V1.ARTICLE_ID = V2.ARTICLE_ID ORDER BY V1.AUTHOR_ID"
+}

@@ -1,0 +1,55 @@
+{
+  "dbid": "1149",
+  "index": "28",
+  "source_index": "66",
+  "schema_ddl": "CREATE TABLE VIEWS (\n    ARTICLE_ID INT,\n    AUTHOR_ID INT,\n    VIEWER_ID INT,\n    VIEW_DATE DATE\n);",
+  "q1": "SELECT DISTINCT VIEWER_ID AS ID FROM VIEWS GROUP BY VIEW_DATE, VIEWER_ID HAVING COUNT(DISTINCT ARTICLE_ID) > 1 ORDER BY ID",
+  "q2": "SELECT DISTINCT ID FROM ( SELECT VIEW_DATE, VIEWER_ID AS ID FROM VIEWS GROUP BY 1,2 HAVING COUNT(DISTINCT ARTICLE_ID) > 1 ) F ORDER BY 1",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT DISTINCT VIEWER_ID AS ID FROM VIEWS GROUP BY VIEW_DATE, VIEWER_ID HAVING COUNT(DISTINCT ARTICLE_ID) > 1 ORDER BY ID",
+  "q2_prompt_sql": "SELECT DISTINCT ID FROM ( SELECT VIEW_DATE, VIEWER_ID AS ID FROM VIEWS GROUP BY 1,2 HAVING COUNT(DISTINCT ARTICLE_ID) > 1 ) F ORDER BY 1",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO VIEWS (ARTICLE_ID, AUTHOR_ID, VIEWER_ID, VIEW_DATE) VALUES (1, 101, 1001, '2023-01-01');\nINSERT INTO VIEWS (ARTICLE_ID, AUTHOR_ID, VIEWER_ID, VIEW_DATE) VALUES (2, 101, 1001, '2023-01-01');\nINSERT INTO VIEWS (ARTICLE_ID, AUTHOR_ID, VIEWER_ID, VIEW_DATE) VALUES (3, 102, 1001, '2023-01-02');\nINSERT INTO VIEWS (ARTICLE_ID, AUTHOR_ID, VIEWER_ID, VIEW_DATE) VALUES (4, 102, 1001, '2023-01-02');",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent. The key difference lies in how the DISTINCT keyword interacts with the GROUP BY and ORDER BY clauses. In Q1, the DISTINCT applies after the GROUP BY and HAVING filtering. In Q2, the DISTINCT applies at the outer query level but the subquery already produces a single row per group. However, the ORDER BY in Q1 uses the alias ID, while in Q2, the outer query uses ORDER BY 1 which refers to the first column of the result set, which is also ID. However, the issue arises when multiple rows per group exist in the subquery before DISTINCT in Q2, which could affect the final output.",
+  "counterexample_dsp": "A scenario where a VIEWER_ID has multiple VIEW_DATEs with multiple ARTICLE_IDs. In Q1, the DISTINCT after GROUP BY ensures one row per viewer. In Q2, the subquery could return multiple rows for the same viewer if there are multiple VIEW_DATEs, but the outer DISTINCT should still collapse them. However, the issue arises if the subquery returns more than one row for the same viewer before DISTINCT, but the outer DISTINCT should still resolve it. Actually, the real difference may be subtle. Let me re-express with a clearer counterexample.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n  \"equiv\": \"N\",\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent. The key difference lies in how the DISTINCT keyword interacts with the GROUP BY and ORDER BY clauses. In Q1, the DISTINCT applies after the GROUP BY and HAVING filtering. In Q2, the DISTINCT applies at the outer query level but the subquery already produces a single row per group. However, the ORDER BY in Q1 uses the alias ID, while in Q2, the outer query uses ORDER BY 1 which refers to the first column of the result set, which is also ID. However, the issue arises when multiple rows per group exist in the subquery before DISTINCT in Q2, which could affect the final output.\",\n  \"counterexample_dsp\": \"A scenario where a VIEWER_ID has multiple VIEW_DATEs with multiple ARTICLE_IDs. In Q1, the DISTINCT after GROUP BY ensures one row per viewer. In Q2, the subquery could return multiple rows for the same viewer if there are multiple VIEW_DATEs, but the outer DISTINCT should still collapse them. However, the issue arises if the subquery returns more than one row for the same viewer before DISTINCT, but the outer DISTINCT should still resolve it. Actually, the real difference may be subtle. Let me re-express with a clearer counterexample.\",\n  \"counterexample\": \"INSERT INTO VIEWS (ARTICLE_ID, AUTHOR_ID, VIEWER_ID, VIEW_DATE) VALUES (1, 101, 1001, '2023-01-01');\\nINSERT INTO VIEWS (ARTICLE_ID, AUTHOR_ID, VIEWER_ID, VIEW_DATE) VALUES (2, 101, 1001, '2023-01-01');\\nINSERT INTO VIEWS (ARTICLE_ID, AUTHOR_ID, VIEWER_ID, VIEW_DATE) VALUES (3, 102, 1001, '2023-01-02');\\nINSERT INTO VIEWS (ARTICLE_ID, AUTHOR_ID, VIEWER_ID, VIEW_DATE) VALUES (4, 102, 1001, '2023-01-02');\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 357,
+    "total_tokens": 837,
+    "completion_tokens": 480,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 14.375
+  },
+  "started_at": "2026-10-06T15:26:37.162463+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      1001
+    ]
+  ],
+  "q2_output": [
+    [
+      1001
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DISTINCT VIEWER_ID AS ID FROM VIEWS GROUP BY VIEW_DATE, VIEWER_ID HAVING COUNT(DISTINCT ARTICLE_ID) > 1 ORDER BY ID",
+  "q2_validation_sql": "SELECT DISTINCT ID FROM ( SELECT VIEW_DATE, VIEWER_ID AS ID FROM VIEWS GROUP BY 1,2 HAVING COUNT(DISTINCT ARTICLE_ID) > 1 ) F ORDER BY 1"
+}

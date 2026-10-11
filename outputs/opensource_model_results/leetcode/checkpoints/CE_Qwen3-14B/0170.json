@@ -1,0 +1,61 @@
+{
+  "dbid": "1141",
+  "index": "170",
+  "source_index": "269",
+  "schema_ddl": "CREATE TABLE ACTIVITY (\n    USER_ID INT,\n    SESSION_ID INT,\n    ACTIVITY_DATE DATE,\n    ACTIVITY_TYPE ENUM('OPEN_SESSION', 'END_SESSION', 'SCROLL_DOWN', 'SEND_MESSAGE'),\n    CHECK (ACTIVITY_TYPE IN ('OPEN_SESSION', 'END_SESSION', 'SCROLL_DOWN', 'SEND_MESSAGE'))\n);",
+  "q1": "SELECT ACTIVITY_DATE AS DAY, COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY WHERE ACTIVITY_DATE BETWEEN '2019-06-28' AND '2019-07-27' GROUP BY ACTIVITY_DATE",
+  "q2": "SELECT ACTIVITY_DATE AS DAY , COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY GROUP BY DAY HAVING DATEDIFF('2019-07-27', ACTIVITY_DATE) < 30",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT ACTIVITY_DATE AS DAY, COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY WHERE ACTIVITY_DATE BETWEEN '2019-06-28' AND '2019-07-27' GROUP BY ACTIVITY_DATE",
+  "q2_prompt_sql": "SELECT ACTIVITY_DATE AS DAY , COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY GROUP BY DAY HAVING DATEDIFF('2019-07-27', ACTIVITY_DATE) < 30",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO ACTIVITY (USER_ID, SESSION_ID, ACTIVITY_DATE, ACTIVITY_TYPE) VALUES (1, 1, '2019-06-28', 'OPEN_SESSION');\nINSERT INTO ACTIVITY (USER_ID, SESSION_ID, ACTIVITY_DATE, ACTIVITY_TYPE) VALUES (2, 2, '2019-08-01', 'OPEN_SESSION');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 filters dates between '2019-06-28' and '2019-07-27' inclusive, while Q2 includes dates from '2019-06-28' up to 29 days after '2019-07-27' (e.g., '2019-08-01'). Q2's HAVING clause allows dates beyond Q1's upper bound, leading to different results when such dates exist.",
+  "counterexample_dsp": "Include an activity on '2019-08-01' (within 30 days of '2019-07-27') and one on '2019-06-28'. Q1 excludes the '2019-08-01' date, while Q2 includes it.",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 filters dates between '2019-06-28' and '2019-07-27' inclusive, while Q2 includes dates from '2019-06-28' up to 29 days after '2019-07-27' (e.g., '2019-08-01'). Q2's HAVING clause allows dates beyond Q1's upper bound, leading to different results when such dates exist.\",\n  \"counterexample_dsp\": \"Include an activity on '2019-08-01' (within 30 days of '2019-07-27') and one on '2019-06-28'. Q1 excludes the '2019-08-01' date, while Q2 includes it.\",\n  \"counterexample\": [\n    \"INSERT INTO ACTIVITY (USER_ID, SESSION_ID, ACTIVITY_DATE, ACTIVITY_TYPE) VALUES (1, 1, '2019-06-28', 'OPEN_SESSION');\",\n    \"INSERT INTO ACTIVITY (USER_ID, SESSION_ID, ACTIVITY_DATE, ACTIVITY_TYPE) VALUES (2, 2, '2019-08-01', 'OPEN_SESSION');\"\n  ]\n}",
+  "reasoning": "\nOkay, let's see. I need to find a counterexample where Q1 and Q2 return different results. Let me first understand what each query is doing.\n\nQ1 selects activity dates between '2019-06-28' and '2019-07-27', inclusive, and groups by activity date, counting distinct users each day. So it's looking at all dates in that specific range.\n\nQ2 groups by activity date (using DAY, which I assume is the same as ACTIVITY_DATE here since it's grouped by DAY, but maybe the HAVING clause uses DATEDIFF. The HAVING condition is DATEDIFF('2019-07-27', ACTIVITY_DATE) < 30. The DATEDIFF function gives the number of days between two dates. So if the difference is less than 30, that means ACTIVITY_DATE is after '2019-07-27' - 30 days. Let me calculate that date. 30 days before 2019-07-27 is 2019-06-27 (since July has 31 days, subtracting 30 days from July 27 would take us to June 27). So the HAVING condition is equivalent to ACTIVITY_DATE being between '2019-06-28' and '2019-07-27', inclusive? Wait, because DATEDIFF('2019-07-27', ACTIVITY_DATE) is the number of days from ACTIVITY_DATE to '2019-07-27'. If that's less than 30, then ACTIVITY_DATE must be after '2019-07-27' minus 29 days. Let's calculate that. 2019-07-27 minus 29 days is 2019-06-28. So the HAVING condition would include dates from 2019-06-28 up to 2019-07-27 (since 2019-07-27 minus 29 days is 2019-06-28, so dates on or after that date would have a DATEDIFF of less than 30 days. Wait, no. Let me think again. DATEDIFF('2019-07-27', ACTIVITY_DATE) is the number of days between ACTIVITY_DATE and '2019-07-27'. If ACTIVITY_DATE is '2019-06-28', then DATEDIFF would be 29 days (since June has 30 days, 28 to 30 is 2 days, then July 1 to 27 is 27 days, total 29). So if the HAVING condition is <30, then dates from 2019-06-28 to 2019-07-27 inclusive would satisfy this. Because if ACTIVITY_DATE is 2019-07-27, DATEDIFF is 0, which is less than 30. If ACTIVITY_DATE is 2019-06-27, DATEDIFF would be 30 days (since June 27 to June 28 is 1 day, then July 1-27 is 27 days, total 28 days? Wait, maybe I'm miscalculating. Wait, DATEDIFF in SQL usually returns the difference in days, so for example, DATEDIFF('2019-07-27', '2019-06-28') would be 29 days. So if the HAVING condition is DATEDIFF(...) < 30, then dates from '2019-06-28' (29 days difference) up to '2019-07-27' (0 days difference) would be included. So that's the same as Q1's WHERE clause. Wait, but then why are they not equivalent?\n\nWait, but Q1 uses a WHERE clause to filter dates between '2019-06-28' and '2019-07-27'. Q2 uses HAVING DATEDIFF('2019-07-27', ACTIVITY_DATE) < 30. But according to my calculation, that's the same set of dates. So why are they not equivalent? There must be something wrong here. Maybe the HAVING clause is applied after grouping, but the WHERE clause is applied before. Wait, but in Q2, the GROUP BY is on DAY (which is ACTIVITY_DATE, since the SELECT is ACTIVITY_DATE AS DAY). So the HAVING is applied after grouping. But the dates that are included in Q2's result are the same as Q1's. Unless there's a case where the HAVING condition includes dates outside that range. Wait, maybe the DATEDIFF function's behavior is different. Let me check. If the ACTIVITY_DATE is '2019-07-28', then DATEDIFF('2019-07-27', '2019-07-28') is -1, which is less than 30. So that would be included in Q2's result. But Q1's WHERE clause would not include that date. So in that case, Q2 would include dates after '2019-07-27', which Q1 does not. Therefore, the difference is that Q2 includes dates after '2019-07-27' if the DATEDIFF is less than 30. Wait, but DATEDIFF('2019-07-27', ACTIVITY_DATE) is negative if ACTIVITY_DATE is after '2019-07-27', right? So for example, ACTIVITY_DATE is '2019-07-28', DATEDIFF is -1. So -1 < 30 is true. Therefore, Q2 would include all dates from '2019-06-28' (since 29 days difference) up to any date after '2019-07-27', as long as the DATEDIFF is less than 30. So if there's an activity date on '2019-08-06', then DATEDIFF('2019-07-27', '2019-08-06') is 10 days, which is less than 30. So that date would be included in Q2's results, but not in Q1's. Therefore, Q1 and Q2 are not equivalent because Q2 includes dates beyond the upper bound of Q1's WHERE clause. \n\nSo to create a counterexample, we need to have some dates in the ACTIVITY table that are after '2019-07-27' but within 30 days of it. For example, let's say there's a date on '2019-08-01'. Then Q2 would include that date (DATEDIFF is 10 days), but Q1's WHERE clause would not. Therefore, if there are users active on that date, Q2 would count them, but Q1 would not. \n\nSo the counterexample would be to have a record with ACTIVITY_DATE = '2019-08-01' and another with '2019-06-28' (which is included in both). Then Q1 would have the '2019-06-28' date, but not the '2019-08-01', while Q2 would have both. Therefore, the results would differ.\n\nAlternatively, maybe there's a date that is before '2019-06-28' but within 30 days of '2019-07-27'. Let's see: 2019-07-27 minus 30 days is 2019-06-27. So dates before '2019-06-28' would be excluded from Q1's WHERE clause, but if ACTIVITY_DATE is '2019-06-27', then DATEDIFF is 30 days (2019-07-27 - 2019-06-27 is 30 days?), but the HAVING condition is <30, so that would not be included. So Q2 would not include dates before '2019-06-28'. Therefore, the only difference is that Q2 includes dates after '2019-07-27' that are within 30 days. \n\nTherefore, the counterexample should have some data in the ACTIVITY table with dates after '2019-07-27' (but within 30 days) and some within the Q1 range. For example, inserting a user with activity on '2019-08-01' (which is 10 days after '2019-07-27'). Then Q2 would include that date, but Q1 would not. \n\nSo the test data would have entries for '2019-06-28' (included in both) and '2019-08-01' (included only in Q2). Then Q1 would have the count for '2019-06-28' but not for '2019-08-01', while Q2 would have both. Therefore, the results would differ.\n\nSo the explanation is that Q1 filters dates between 2019-06-28 and 2019-07-27 inclusive, while Q2 includes dates from 2019-06-28 up to 2019-08-26 (since 30 days before 2019-07-27 is 2019-06-27, so dates after that up to 2019-07-27 + 29 days would be included). Therefore, any activity dates beyond 2019-07-27 would be included in Q2 but not in Q1.\n\nNow, to create the counterexample. Let's create two entries: one on '2019-06-28' with user 1, and one on '2019-08-01' with user 2. Then Q1 would have a row for 2019-06-28 with active_users 1, and Q2 would have rows for both dates, each with active_users 1. So the results would differ.\n\nAlternatively, maybe even simpler: have a date that is exactly 30 days after '2019-07-27'? Wait, no, because the HAVING is <30. So if the date is 30 days after, DATEDIFF would be 30, which is not less than 30. So that would not be included. But dates up to 29 days after would be included. So '2019-08-01' is 10 days after, which is included.\n\nSo the counterexample would have:\n\nINSERT INTO ACTIVITY (USER_ID, SESSION_ID, ACTIVITY_DATE, ACTIVITY_TYPE) VALUES (1, 1, '2019-06-28', 'OPEN_SESSION');\nINSERT INTO ACTIVITY (USER_ID, SESSION_ID, ACTIVITY_DATE, ACTIVITY_TYPE) VALUES (2, 2, '2019-08-01', 'OPEN_SESSION');\n\nThen, Q1 would return one row (2019-06-28, 1), while Q2 would return two rows (2019-06-28, 1) and (2019-08-01, 1). Hence, different results.\n\nAlternatively, if there's a date that is exactly 30 days before, but that's not in the Q1 range. But I think the example above works.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 371,
+    "total_tokens": 3366,
+    "completion_tokens": 2995,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 2694
+    },
+    "generation_seconds": 103.656
+  },
+  "started_at": "2026-10-06T10:36:28.230262+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "2019-06-28",
+      1
+    ]
+  ],
+  "q2_output": [
+    [
+      "2019-06-28",
+      1
+    ],
+    [
+      "2019-08-01",
+      1
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT ACTIVITY_DATE AS DAY, COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY WHERE ACTIVITY_DATE BETWEEN '2019-06-28' AND '2019-07-27' GROUP BY ACTIVITY_DATE",
+  "q2_validation_sql": "SELECT ACTIVITY_DATE AS DAY , COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY GROUP BY DAY HAVING DATEDIFF('2019-07-27', ACTIVITY_DATE) < 30"
+}

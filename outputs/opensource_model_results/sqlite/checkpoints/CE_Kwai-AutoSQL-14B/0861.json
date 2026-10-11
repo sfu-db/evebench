@@ -1,0 +1,55 @@
+{
+  "dbid": "debit_card_specializing",
+  "index": "861",
+  "source_index": "1514",
+  "schema_ddl": "CREATE TABLE customers\n(\n    CustomerID INTEGER UNIQUE     not null\n        primary key,\n    Segment    TEXT null,\n    Currency   TEXT null\n);\n\nCREATE TABLE gasstations\n(\n    GasStationID INTEGER    UNIQUE   not null\n        primary key,\n    ChainID      INTEGER          null,\n    Country      TEXT null,\n    Segment      TEXT null\n);\n\nCREATE TABLE products\n(\n    ProductID   INTEGER   UNIQUE      not null\n        primary key,\n    Description TEXT null\n);\n\nCREATE TABLE \"transactions_1k\"\n(\n    TransactionID INTEGER\n        primary key autoincrement,\n    Date          DATE,\n    Time          TEXT,\n    CustomerID    INTEGER,\n    CardID        INTEGER,\n    GasStationID  INTEGER,\n    ProductID     INTEGER,\n    Amount        INTEGER,\n    Price         REAL\n);\n\nCREATE TABLE \"yearmonth\"\n(\n    CustomerID  INTEGER not null\n        references customers\n            on update cascade on delete cascade\n        references customers,\n    Date        TEXT    not null,\n    Consumption REAL,\n    primary key (Date, CustomerID)\n);",
+  "q1": "SELECT T2.Country FROM transactions_1k AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID WHERE T1.Date = '2012-08-25' ORDER BY T1.Time DESC LIMIT 1",
+  "q2": "SELECT T2.Country FROM transactions_1k AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID WHERE T1.Date = '2012-08-25' ORDER BY T1.Time ASC LIMIT 1",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT T2.Country FROM transactions_1k AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID WHERE T1.Date = '2012-08-25' ORDER BY T1.Time DESC LIMIT 1",
+  "q2_prompt_sql": "SELECT T2.Country FROM transactions_1k AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID WHERE T1.Date = '2012-08-25' ORDER BY T1.Time ASC LIMIT 1",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO gasstations (GasStationID, Country) VALUES (1, 'France');\nINSERT INTO gasstations (GasStationID, Country) VALUES (2, 'Germany');\nINSERT INTO transactions_1k (Date, Time, GasStationID) VALUES ('2012-08-25', '10:00:00', 1);\nINSERT INTO transactions_1k (Date, Time, GasStationID) VALUES ('2012-08-25', '14:00:00', 2);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 returns the Country of the last transaction (ORDER BY Time DESC) on 2012-08-25, while Q2 returns the Country of the first transaction (ORDER BY Time ASC) on the same date. If there are at least two transactions on that date with different GasStationIDs (and thus different Countries), the queries will return different results.",
+  "counterexample_dsp": "Two transactions on 2012-08-25: one at 10:00:00 at a gas station in France (GasStationID=1), and one at 14:00:00 at a gas station in Germany (GasStationID=2). Q1 returns Germany (latest time), Q2 returns France (earliest time).",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 returns the Country of the last transaction (ORDER BY Time DESC) on 2012-08-25, while Q2 returns the Country of the first transaction (ORDER BY Time ASC) on the same date. If there are at least two transactions on that date with different GasStationIDs (and thus different Countries), the queries will return different results.\",\n  \"counterexample_dsp\": \"Two transactions on 2012-08-25: one at 10:00:00 at a gas station in France (GasStationID=1), and one at 14:00:00 at a gas station in Germany (GasStationID=2). Q1 returns Germany (latest time), Q2 returns France (earliest time).\",\n  \"counterexample\": [\n    \"INSERT INTO gasstations (GasStationID, Country) VALUES (1, 'France');\",\n    \"INSERT INTO gasstations (GasStationID, Country) VALUES (2, 'Germany');\",\n    \"INSERT INTO transactions_1k (Date, Time, GasStationID) VALUES ('2012-08-25', '10:00:00', 1);\",\n    \"INSERT INTO transactions_1k (Date, Time, GasStationID) VALUES ('2012-08-25', '14:00:00', 2);\"\n  ]\n}",
+  "reasoning": "\nOkay, let's see. I need to find a counterexample where Q1 and Q2 return different results. Let me first understand what each query does.\n\nQ1 selects the Country from gasstations by joining with transactions_1k where the date is '2012-08-25'. It orders by Time DESC and takes the first result. So, this would give the transaction with the latest time on that day.\n\nQ2 does the same join and filter, but orders by Time ASC and takes the first result. That would give the transaction with the earliest time on that day.\n\nSo, the difference between them is that Q1 gets the last transaction's country, and Q2 gets the first transaction's country. If there are multiple transactions on the same date but different times, and the earliest and latest times have different countries, then the two queries would return different results.\n\nTherefore, to create a counterexample, I need to set up two transactions on the same date (2012-08-25) but with different times, each associated with different gas stations (and thus different countries). For example, one transaction at 10:00 AM at a gas station in France, and another at 2:00 PM at a gas station in Germany. Then Q1 would return Germany (the last time) and Q2 would return France (the first time).\n\nLet me make sure that the Time column is stored as TEXT. The schema says Time is TEXT, so the format could be 'HH:MM:SS' or similar. So ordering by Time as TEXT in ascending order would work correctly if the times are in a comparable format. For example, '10:00:00' comes before '14:00:00' as strings.\n\nNow, I need to insert into gasstations two entries with different Country values. Then, insert two transactions on the same date but different times and different GasStationIDs.\n\nLet me outline the steps:\n\n1. Insert two gas stations: one in France (GasStationID 1) and one in Germany (GasStationID 2).\n2. Insert two transactions into transactions_1k. Both have Date '2012-08-25', but different Time values. For example, one with Time '10:00:00' and GasStationID 1, another with Time '14:00:00' and GasStationID 2.\n3. The rest of the tables (customers, products, yearmonth) don't need data since they aren't referenced in the queries.\n\nTesting this setup: Q1 orders by Time DESC, so the latest time (14:00:00) comes first, returns Germany. Q2 orders by Time ASC, so earliest (10:00:00) comes first, returns France. Thus, different results.\n\nI need to make sure that the GasStationIDs in transactions_1k match those in gasstations. Also, check that the Time format is correct. Also, ensure that the Date is stored correctly as '2012-08-25' (the Date type in transactions_1k is DATE, so inserting as that should be okay).\n\nNow, writing the INSERT statements. Let's use GasStationID 1 and 2 for the gasstations table. For transactions_1k, two rows with GasStationID 1 and 2 respectively, same Date, different Times.\n\nYes, that should work. Let me structure the JSON response accordingly.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 536,
+    "total_tokens": 1592,
+    "completion_tokens": 1056,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 739
+    },
+    "generation_seconds": 34.218
+  },
+  "started_at": "2026-10-06T19:57:45.862100+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "Germany"
+    ]
+  ],
+  "q2_output": [
+    [
+      "France"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT T2.Country FROM transactions_1k AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID WHERE T1.Date = '2012-08-25' ORDER BY T1.Time DESC LIMIT 1",
+  "q2_validation_sql": "SELECT T2.Country FROM transactions_1k AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID WHERE T1.Date = '2012-08-25' ORDER BY T1.Time ASC LIMIT 1"
+}

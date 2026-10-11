@@ -1,0 +1,39 @@
+{
+  "dbid": "577",
+  "index": "358",
+  "source_index": "128",
+  "schema_ddl": "CREATE TABLE EMPLOYEE (\n    EMPID INT,\n    NAME VARCHAR(255),\n    SUPERVISOR INT,\n    SALARY INT,\n    PRIMARY KEY (EMPID),\n    CHECK (EMPID <> SUPERVISOR),\n    CHECK (SALARY >= 0)\n);\n\nCREATE TABLE BONUS (\n    EMPID INT,\n    BONUS INT,\n    PRIMARY KEY (EMPID),\n    FOREIGN KEY (EMPID) REFERENCES EMPLOYEE(EMPID),\n    CHECK (BONUS >= 0)\n);",
+  "q1": "SELECT EMPLOYEE.NAME, BONUS.BONUS FROM EMPLOYEE LEFT JOIN BONUS ON EMPLOYEE.EMPID = BONUS.EMPID WHERE BONUS < 1000 OR BONUS IS NULL",
+  "q2": "SELECT NAME, BONUS FROM (SELECT NAME, BONUS FROM EMPLOYEE E LEFT JOIN BONUS B ON E.EMPID=B.EMPID) A WHERE BONUS<1000 OR BONUS IS NULL",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT EMPLOYEE.NAME, BONUS.BONUS FROM EMPLOYEE LEFT JOIN BONUS ON EMPLOYEE.EMPID = BONUS.EMPID WHERE BONUS < 1000 OR BONUS IS NULL",
+  "q2_prompt_sql": "SELECT NAME, BONUS FROM (SELECT NAME, BONUS FROM EMPLOYEE E LEFT JOIN BONUS B ON E.EMPID=B.EMPID) A WHERE BONUS<1000 OR BONUS IS NULL",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are semantically equivalent. Both perform a LEFT JOIN between EMPLOYEE and BONUS on EMPID and then filter rows where BONUS < 1000 or BONUS IS NULL. The subquery in Q2 does not change the logic of the filter; it simply wraps the same join and filter in a derived table. Both queries will produce identical results under the same data.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n  \"equiv\": \"N\",\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent. Q1 applies the filter `BONUS < 1000 OR BONUS IS NULL` directly on the join result, which includes NULLs from the LEFT JOIN. Q2 performs the LEFT JOIN first and then applies the same filter on the result set. However, the difference arises in how `BONUS IS NULL` is interpreted. In Q1, `BONUS < 1000` is only evaluated when `BONUS IS NOT NULL`, whereas in Q2, the `BONUS` from the subquery may behave differently based on SQL dialects, but logically they should be the same. However, in practice, both should be equivalent. Wait, let me correct that. Actually, both queries should be semantically equivalent. I made a mistake in my analysis.\",\n  \"explanation\": \"Q1 and Q2 are semantically equivalent. Both queries perform a LEFT JOIN between EMPLOYEE and BONUS on EMPID, then filter rows where BONUS < 1000 or BONUS is NULL. The subquery in Q2 does not change the logic of the filter; it simply wraps the same join and filter in a derived table. Both queries will produce identical results under the same data.\",\n  \"equiv\": \"Y\",\n  \"explanation\": \"Q1 and Q2 are semantically equivalent. Both perform a LEFT JOIN between EMPLOYEE and BONUS on EMPID and then filter rows where BONUS < 1000 or BONUS IS NULL. The subquery in Q2 does not change the logic of the filter; it simply wraps the same join and filter in a derived table. Both queries will produce identical results under the same data.\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 446,
+    "total_tokens": 821,
+    "completion_tokens": 375,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 11.907
+  },
+  "started_at": "2026-10-06T15:42:17.721810+00:00",
+  "elapsed_seconds": 0.0
+}

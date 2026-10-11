@@ -1,0 +1,55 @@
+{
+  "dbid": "thrombosis_prediction",
+  "index": "745",
+  "source_index": "1290",
+  "schema_ddl": "CREATE TABLE Examination\n(\n    ID                 INTEGER          null,\n    `Examination Date` DATE         null,\n    `aCL IgG`          REAL        null,\n    `aCL IgM`          REAL        null,\n    ANA                INTEGER          null,\n    `ANA Pattern`      TEXT null,\n    `aCL IgA`          INTEGER          null,\n    Diagnosis          TEXT null,\n    KCT                TEXT null,\n    RVVT              TEXT null,\n    LAC                TEXT null,\n    Symptoms           TEXT null,\n    Thrombosis         INTEGER          null,\n    foreign key (ID) references Patient (ID)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE Patient\n(\n    ID           INTEGER default 0 not null\n        primary key,\n    SEX          TEXT  null,\n    Birthday     DATE          null,\n    Description  DATE          null,\n    `First Date` DATE          null,\n    Admission    TEXT  null,\n    Diagnosis    TEXT  null\n);\n\nCREATE TABLE Laboratory\n(\n    ID        INTEGER  default 0            not null,\n    Date      DATE default '0000-00-00' not null,\n    GOT       INTEGER                       null,\n    GPT       INTEGER                        null,\n    LDH       INTEGER                        null,\n    ALP       INTEGER                        null,\n    TP        REAL             null,\n    ALB       REAL             null,\n    UA        REAL             null,\n    UN        INTEGER                       null,\n    CRE       REAL             null,\n    `T-BIL`   REAL             null,\n    `T-CHO`   INTEGER                       null,\n    TG        INTEGER                       null,\n    CPK       INTEGER                       null,\n    GLU       INTEGER                       null,\n    WBC       REAL             null,\n    RBC       REAL             null,\n    HGB       REAL             null,\n    HCT       REAL             null,\n    PLT       INTEGER                       null,\n    PT        REAL             null,\n    APTT      INTEGER                       null,\n    FG        REAL             null,\n    PIC       INTEGER                       null,\n    TAT       INTEGER                       null,\n    TAT2      INTEGER                       null,\n    `U-PRO`   TEXT              null,\n    IGG       INTEGER                       null,\n    IGA       INTEGER                       null,\n    IGM       INTEGER                       null,\n    CRP       TEXT              null,\n    RA        TEXT              null,\n    RF        TEXT              null,\n    C3        INTEGER                       null,\n    C4        INTEGER                       null,\n    RNP       TEXT              null,\n    SM        TEXT              null,\n    SC170     TEXT              null,\n    SSA       TEXT              null,\n    SSB       TEXT              null,\n    CENTROMEA TEXT              null,\n    DNA       TEXT              null,\n    `DNA-II`  INTEGER                       null,\n    primary key (ID, Date),\n        foreign key (ID) references Patient (ID)\n            on update cascade on delete cascade\n);",
+  "q1": "SELECT COUNT(T1.ID) FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T1.Diagnosis = 'SJS' AND T2.TP > 6.0 AND T2.TP < 8.5",
+  "q2": "SELECT COUNT(DISTINCT T1.ID) FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T1.Diagnosis = 'SJS' AND T2.TP > 6.0 AND T2.TP < 8.5",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT COUNT(T1.ID) FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T1.Diagnosis = 'SJS' AND T2.TP > 6.0 AND T2.TP < 8.5",
+  "q2_prompt_sql": "SELECT COUNT(DISTINCT T1.ID) FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T1.Diagnosis = 'SJS' AND T2.TP > 6.0 AND T2.TP < 8.5",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO Patient (ID, Diagnosis) VALUES (1, 'SJS');\nINSERT INTO Laboratory (ID, Date, TP) VALUES (1, '2023-01-01', 7.0);\nINSERT INTO Laboratory (ID, Date, TP) VALUES (1, '2023-01-02', 7.5);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 counts all rows resulting from the join, while Q2 counts distinct patient IDs. If a patient has multiple laboratory records satisfying the TP condition, Q1 will return a higher count than Q2.",
+  "counterexample_dsp": "A patient with Diagnosis 'SJS' has 2 laboratory records with TP values between 6.0 and 8.5. Q1 counts both rows (2), Q2 counts distinct IDs (1).",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 counts all rows resulting from the join, while Q2 counts distinct patient IDs. If a patient has multiple laboratory records satisfying the TP condition, Q1 will return a higher count than Q2.\",\n  \"counterexample_dsp\": \"A patient with Diagnosis 'SJS' has 2 laboratory records with TP values between 6.0 and 8.5. Q1 counts both rows (2), Q2 counts distinct IDs (1).\",\n  \"counterexample\": [\n    \"INSERT INTO Patient (ID, Diagnosis) VALUES (1, 'SJS');\",\n    \"INSERT INTO Laboratory (ID, Date, TP) VALUES (1, '2023-01-01', 7.0);\",\n    \"INSERT INTO Laboratory (ID, Date, TP) VALUES (1, '2023-01-02', 7.5);\"\n  ]\n}",
+  "reasoning": "\nOkay, let's tackle this problem. The user wants a counterexample where Q1 and Q2 return different results. Let me first understand what the two queries are doing.\n\nQ1 is a COUNT on T1.ID from Patient joined with Laboratory, with conditions on Diagnosis being 'SJS' and TP between 6.0 and 8.5. Q2 is the same but with COUNT(DISTINCT T1.ID). \n\nThe difference here is that Q1 counts all rows resulting from the join, while Q2 counts distinct patient IDs. So if there are multiple rows in the Laboratory table for the same patient ID that meet the TP condition, Q1 would count each occurrence, whereas Q2 would count the patient once.\n\nThe schema shows that Laboratory has a composite primary key of (ID, Date). So a patient can have multiple laboratory entries on different dates. Therefore, if a patient has more than one lab record meeting the TP criteria, Q1's count would be higher than Q2's.\n\nSo to create a counterexample, I need a patient with Diagnosis 'SJS' who has two lab records with TP values between 6.0 and 8.5. Then Q1 would return 2 (counting each row) and Q2 would return 1 (distinct ID).\n\nLet me check the schema again. The Patient table has Diagnosis, and Laboratory has TP. The join is on ID. So inserting a patient with ID 1, Diagnosis 'SJS', and two lab entries for that ID with TP values in the range would work.\n\nSo the test data would be:\n\nPatient: ID=1, Diagnosis='SJS'\n\nLaboratory: two rows for ID=1, same ID but different dates, TP=7.0 and TP=7.5 (both within 6.0 and 8.5).\n\nThen Q1 would count 2 rows, Q2 would count 1 distinct ID.\n\nThat should make them different. Let me make sure that the other conditions don't interfere. The Examination table isn't involved in the queries, so I can ignore it for the counterexample. Just need to insert into Patient and Laboratory.\n\nNow, writing the INSERT statements. Patient table needs ID, and other fields can be filled with dummy data. Laboratory needs ID and Date (unique per ID per date). So for the two lab entries, use different dates.\n\nYes, that should do it.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 917,
+    "total_tokens": 1611,
+    "completion_tokens": 694,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 494
+    },
+    "generation_seconds": 24.468
+  },
+  "started_at": "2026-10-06T19:44:53.723732+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      2
+    ]
+  ],
+  "q2_output": [
+    [
+      1
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT COUNT(T1.ID) FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T1.Diagnosis = 'SJS' AND T2.TP > 6.0 AND T2.TP < 8.5",
+  "q2_validation_sql": "SELECT COUNT(DISTINCT T1.ID) FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T1.Diagnosis = 'SJS' AND T2.TP > 6.0 AND T2.TP < 8.5"
+}

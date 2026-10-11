@@ -1,0 +1,53 @@
+{
+  "dbid": "debit_card_specializing",
+  "index": "873",
+  "source_index": "1528",
+  "schema_ddl": "CREATE TABLE customers\n(\n    CustomerID INTEGER UNIQUE     not null\n        primary key,\n    Segment    TEXT null,\n    Currency   TEXT null\n);\n\nCREATE TABLE gasstations\n(\n    GasStationID INTEGER    UNIQUE   not null\n        primary key,\n    ChainID      INTEGER          null,\n    Country      TEXT null,\n    Segment      TEXT null\n);\n\nCREATE TABLE products\n(\n    ProductID   INTEGER   UNIQUE      not null\n        primary key,\n    Description TEXT null\n);\n\nCREATE TABLE \"transactions_1k\"\n(\n    TransactionID INTEGER\n        primary key autoincrement,\n    Date          DATE,\n    Time          TEXT,\n    CustomerID    INTEGER,\n    CardID        INTEGER,\n    GasStationID  INTEGER,\n    ProductID     INTEGER,\n    Amount        INTEGER,\n    Price         REAL\n);\n\nCREATE TABLE \"yearmonth\"\n(\n    CustomerID  INTEGER not null\n        references customers\n            on update cascade on delete cascade\n        references customers,\n    Date        TEXT    not null,\n    Consumption REAL,\n    primary key (Date, CustomerID)\n);",
+  "q1": "SELECT GasStationID FROM transactions_1k GROUP BY GasStationID ORDER BY SUM(Price) DESC LIMIT 1",
+  "q2": "SELECT GasStationID FROM transactions_1k GROUP BY GasStationID ORDER BY SUM(Price * Amount) DESC LIMIT 1",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT GasStationID FROM transactions_1k GROUP BY GasStationID ORDER BY SUM(Price) DESC LIMIT 1",
+  "q2_prompt_sql": "SELECT GasStationID FROM transactions_1k GROUP BY GasStationID ORDER BY SUM(Price * Amount) DESC LIMIT 1",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO gasstations (GasStationID) VALUES (1); INSERT INTO transactions_1k (TransactionID, GasStationID, Price, Amount) VALUES (1, 1, 100.0, 1); INSERT INTO transactions_1k (TransactionID, GasStationID, Price, Amount) VALUES (2, 1, 50.0, 2);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not equivalent because they order the gas stations based on different criteria. Q1 orders by the total price of transactions, while Q2 orders by the total revenue (price multiplied by amount).",
+  "counterexample_dsp": "A gas station with a single transaction that has a high price but a low amount will rank higher in Q1 than in Q2, and vice versa for a transaction with a low price but a high amount.",
+  "equiv": "N",
+  "raw_response": "{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 and Q2 are not equivalent because they order the gas stations based on different criteria. Q1 orders by the total price of transactions, while Q2 orders by the total revenue (price multiplied by amount).\",\n\"counterexample_dsp\": \"A gas station with a single transaction that has a high price but a low amount will rank higher in Q1 than in Q2, and vice versa for a transaction with a low price but a high amount.\",\n\"counterexample\": \"INSERT INTO gasstations (GasStationID) VALUES (1); INSERT INTO transactions_1k (TransactionID, GasStationID, Price, Amount) VALUES (1, 1, 100.0, 1); INSERT INTO transactions_1k (TransactionID, GasStationID, Price, Amount) VALUES (2, 1, 50.0, 2);\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 545,
+    "total_tokens": 740,
+    "completion_tokens": 195,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 3.593
+  },
+  "started_at": "2026-10-06T20:10:23.361140+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      1
+    ]
+  ],
+  "q2_output": [
+    [
+      1
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT GasStationID FROM transactions_1k GROUP BY GasStationID ORDER BY SUM(Price) DESC LIMIT 1",
+  "q2_validation_sql": "SELECT GasStationID FROM transactions_1k GROUP BY GasStationID ORDER BY SUM(Price * Amount) DESC LIMIT 1"
+}

@@ -1,0 +1,52 @@
+{
+  "dbid": "1141",
+  "index": "355",
+  "source_index": "342",
+  "schema_ddl": "CREATE TABLE ACTIVITY (\n    USER_ID INT,\n    SESSION_ID INT,\n    ACTIVITY_DATE DATE,\n    ACTIVITY_TYPE ENUM('OPEN_SESSION', 'END_SESSION', 'SCROLL_DOWN', 'SEND_MESSAGE'),\n    CHECK (ACTIVITY_TYPE IN ('OPEN_SESSION', 'END_SESSION', 'SCROLL_DOWN', 'SEND_MESSAGE'))\n);",
+  "q1": "SELECT ACTIVITY_DATE AS DAY, COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY WHERE ACTIVITY_DATE BETWEEN '2019-06-28' AND '2019-07-27' GROUP BY ACTIVITY_DATE",
+  "q2": "SELECT ACTIVITY_DATE AS DAY, COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY WHERE DATEDIFF(ACTIVITY_DATE,'2019-07-27')<29 AND DATEDIFF(ACTIVITY_DATE,'2019-07-27')>-30 GROUP BY ACTIVITY_DATE",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT ACTIVITY_DATE AS DAY, COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY WHERE ACTIVITY_DATE BETWEEN '2019-06-28' AND '2019-07-27' GROUP BY ACTIVITY_DATE",
+  "q2_prompt_sql": "SELECT ACTIVITY_DATE AS DAY, COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY WHERE DATEDIFF(ACTIVITY_DATE,'2019-07-27')<29 AND DATEDIFF(ACTIVITY_DATE,'2019-07-27')>-30 GROUP BY ACTIVITY_DATE",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO ACTIVITY (USER_ID, SESSION_ID, ACTIVITY_DATE, ACTIVITY_TYPE) VALUES (1, 1, '2019-07-28', 'OPEN_SESSION');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 filters dates between '2019-06-28' and '2019-07-27' inclusive. Q2 uses DATEDIFF to include dates from '2019-06-28' up to 28 days after '2019-07-27' (i.e., '2019-08-24'), which extends beyond Q1's upper bound.",
+  "counterexample_dsp": "A test case with an activity on '2019-07-28' (included in Q2 but not Q1) and no other entries.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 filters dates between '2019-06-28' and '2019-07-27' inclusive. Q2 uses DATEDIFF to include dates from '2019-06-28' up to 28 days after '2019-07-27' (i.e., '2019-08-24'), which extends beyond Q1's upper bound.\",\n\"counterexample_dsp\": \"A test case with an activity on '2019-07-28' (included in Q2 but not Q1) and no other entries.\",\n\"counterexample\": \"INSERT INTO ACTIVITY (USER_ID, SESSION_ID, ACTIVITY_DATE, ACTIVITY_TYPE) VALUES (1, 1, '2019-07-28', 'OPEN_SESSION');\"\n}",
+  "reasoning": "\nOkay, let's see. I need to determine if Q1 and Q2 are semantically equivalent. Let me start by understanding what each query does.\n\nQ1 selects the activity date as DAY and counts distinct user IDs where the activity date is between '2019-06-28' and '2019-07-27', inclusive. Then it groups by the activity date. So it's counting the number of unique users each day in that date range.\n\nQ2 uses the DATEDIFF function. The condition is DATEDIFF(ACTIVITY_DATE, '2019-07-27') < 29 and DATEDIFF(ACTIVITY_DATE, '2019-07-27') > -30. Let me think about what that means. DATEDIFF returns the difference in days. So for a date that's earlier than '2019-07-27', the difference is negative. Let's break down the conditions:\n\nDATEDIFF(date, '2019-07-27') < 29: This includes all dates up to 28 days before '2019-07-27' plus the date itself. Because if the date is '2019-07-27', the difference is 0, which is less than 29. If the date is '2019-07-28', the difference is 1, which is still less than 29. Wait, no, wait. Wait, DATEDIFF(date1, date2) gives the number of days between date1 and date2. So if the date is after '2019-07-27', the difference is positive. For example, '2019-07-28' would be 1 day after, so DATEDIFF would be 1. But the condition is <29, so dates up to 28 days after '2019-07-27' would be included. Wait, but that's not matching Q1's upper bound. Q1's upper bound is '2019-07-27', which is inclusive. So Q1 includes dates from 2019-06-28 up to and including 2019-07-27. But Q2's condition is DATEDIFF(date, '2019-07-27') < 29. Let me compute the dates. If the date is '2019-07-27', DATEDIFF is 0. If the date is '2019-07-28', DATEDIFF is 1. So the first condition (DATEDIFF <29) would include dates up to 28 days after '2019-07-27', which is '2019-08-24' (since 27 + 28 days is 24th August). But Q1's upper bound is '2019-07-27', so Q2's condition here includes dates beyond that. That's a problem. \n\nThen the other part of Q2's condition is DATEDIFF(date, '2019-07-27') > -30. So DATEDIFF(date, '2019-07-27') is negative when the date is before '2019-07-27'. For example, '2019-06-27' would be -1 day. So the condition > -30 would include dates that are 29 days before '2019-07-27' up to the date itself. Let's calculate: -30 is the lower bound. So dates where DATEDIFF is greater than -30 would be dates from '2019-06-28' (since 2019-07-27 minus 29 days is 2019-06-28, right? Because July has 31 days, so July 27 minus 29 days is June 28. Wait, 27 - 29 = -2 days. Wait, maybe I should do actual date calculations. Let's take 2019-07-27. Subtracting 30 days would be 2019-06-27 (since June has 30 days). So DATEDIFF(date, '2019-07-27') > -30 would be dates where the difference is greater than -30. So that's dates from '2019-06-27' + 1 day (since -30 is the lower bound, so the dates must be after '2019-06-27' (because DATEDIFF(date, '2019-07-27') is -30 when date is '2019-06-27'). So the condition > -30 would include dates starting from '2019-06-28' (since DATEDIFF would be -29, which is greater than -30) up to '2019-07-27' (DATEDIFF 0). \n\nSo combining both conditions: the dates must be between '2019-06-28' and '2019-07-27' (inclusive) plus dates up to 28 days after '2019-07-27' (since DATEDIFF <29). Wait, that's not matching. The first part of the condition is DATEDIFF(date, '2019-07-27') <29, which includes dates from '2019-07-27' (0) up to 28 days after. The second part is DATEDIFF(date, '2019-07-27') > -30, which includes dates from 29 days before up to '2019-07-27'. So the combined condition is dates that are between '2019-06-28' (29 days before) and '2019-08-24' (28 days after). Therefore, Q2's WHERE clause includes dates from 2019-06-28 to 2019-08-24. But Q1's WHERE is between 2019-06-28 and 2019-07-27. So Q2 includes dates beyond Q1's upper bound. Therefore, the two queries are not equivalent. \n\nSo the main difference is that Q1 includes dates up to 2019-07-27, while Q2 includes dates up to 28 days after that date (2019-08-24). Therefore, if there are any activity dates in Q2's range that are after 2019-07-27, Q2 would include them, but Q1 would not. \n\nTo create a counterexample, I need a test database with data in the range that Q2 includes but Q1 doesn't. For example, inserting a record with ACTIVITY_DATE = '2019-07-28' (which is 1 day after 2019-07-27). Then Q2 would count this date, but Q1 would not. Let's check:\n\nFor Q1: between '2019-06-28' and '2019-07-27' includes up to July 27. So July 28 is excluded. Q2's condition: DATEDIFF('2019-07-28', '2019-07-27') is 1, which is <29 and >-30. So it's included. So if there's a record on July 28, Q2 would count it, but Q1 would not. Therefore, the two queries would have different results for that date. \n\nSo the counterexample would have a row with activity_date = '2019-07-28', and maybe another row with a date before June 28, but the second part of the condition ensures that. Wait, the Q2's lower bound is DATEDIFF >-30, which is dates from June 28 onwards. So the test data needs to have a date in the range that Q2 includes but Q1 doesn't. So adding a row with ACTIVITY_DATE = '2019-07-28' would be sufficient. Then Q2 would include that date, but Q1 would not. \n\nTherefore, the two queries are not equivalent. The explanation is that Q2 includes dates up to 28 days after '2019-07-27', while Q1 stops at '2019-07-27'.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 450,
+    "total_tokens": 2631,
+    "completion_tokens": 2181,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1977
+    },
+    "generation_seconds": 70.61
+  },
+  "started_at": "2026-10-06T15:03:17.971332+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [],
+  "q2_output": [
+    [
+      "2019-07-28",
+      1
+    ]
+  ],
+  "q1_row_count": 0,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT ACTIVITY_DATE AS DAY, COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY WHERE ACTIVITY_DATE BETWEEN '2019-06-28' AND '2019-07-27' GROUP BY ACTIVITY_DATE",
+  "q2_validation_sql": "SELECT ACTIVITY_DATE AS DAY, COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY WHERE DATEDIFF(ACTIVITY_DATE,'2019-07-27')<29 AND DATEDIFF(ACTIVITY_DATE,'2019-07-27')>-30 GROUP BY ACTIVITY_DATE"
+}

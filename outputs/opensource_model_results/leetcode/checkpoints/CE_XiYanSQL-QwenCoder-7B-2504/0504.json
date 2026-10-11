@@ -1,0 +1,63 @@
+{
+  "dbid": "1050",
+  "index": "504",
+  "source_index": "131",
+  "schema_ddl": "CREATE TABLE ACTORDIRECTOR (\n    TIMESTAMP INT,\n    ACTOR_ID INT,\n    DIRECTOR_ID INT,\n    PRIMARY KEY (TIMESTAMP)\n);",
+  "q1": "SELECT ACTOR_ID,DIRECTOR_ID FROM ACTORDIRECTOR GROUP BY ACTOR_ID,DIRECTOR_ID HAVING COUNT(*)>=3",
+  "q2": "SELECT DISTINCT ACTOR_ID ,DIRECTOR_ID FROM(SELECT ACTOR_ID, DIRECTOR_ID, COUNT(ACTOR_ID) AS CNT FROM ACTORDIRECTOR GROUP BY DIRECTOR_ID, ACTOR_ID) AS INN WHERE CNT > 2",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT ACTOR_ID,DIRECTOR_ID FROM ACTORDIRECTOR GROUP BY ACTOR_ID,DIRECTOR_ID HAVING COUNT(*)>=3",
+  "q2_prompt_sql": "SELECT DISTINCT ACTOR_ID ,DIRECTOR_ID FROM(SELECT ACTOR_ID, DIRECTOR_ID, COUNT(ACTOR_ID) AS CNT FROM ACTORDIRECTOR GROUP BY DIRECTOR_ID, ACTOR_ID) AS INN WHERE CNT > 2",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO ACTORDIRECTOR (TIMESTAMP, ACTOR_ID, DIRECTOR_ID) VALUES (1, 1, 1), (2, 1, 1), (3, 1, 1), (4, 2, 2), (5, 2, 2), (6, 3, 3), (7, 3, 3), (8, 3, 3), (9, 3, 3);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent because Q1 groups by ACTOR_ID and DIRECTOR_ID and then filters for groups where the count is >= 3, while Q2 groups by DIRECTOR_ID and ACTOR_ID and then filters for groups where the count is > 2. The difference lies in the order of the GROUP BY clause, which affects the results due to the way SQL handles NULL values and the specific distribution of data.",
+  "counterexample_dsp": "The test data should have at least one actor-director pair that appears exactly 3 times, triggering a difference between the two queries due to the GROUP BY order.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent because Q1 groups by ACTOR_ID and DIRECTOR_ID and then filters for groups where the count is >= 3, while Q2 groups by DIRECTOR_ID and ACTOR_ID and then filters for groups where the count is > 2. The difference lies in the order of the GROUP BY clause, which affects the results due to the way SQL handles NULL values and the specific distribution of data.\",\n  \"counterexample_dsp\": \"The test data should have at least one actor-director pair that appears exactly 3 times, triggering a difference between the two queries due to the GROUP BY order.\",\n  \"counterexample\": \"INSERT INTO ACTORDIRECTOR (TIMESTAMP, ACTOR_ID, DIRECTOR_ID) VALUES (1, 1, 1), (2, 1, 1), (3, 1, 1), (4, 2, 2), (5, 2, 2), (6, 3, 3), (7, 3, 3), (8, 3, 3), (9, 3, 3);\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 331,
+    "total_tokens": 579,
+    "completion_tokens": 248,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 4.109
+  },
+  "started_at": "2026-10-06T09:55:37.112107+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      1,
+      1
+    ],
+    [
+      3,
+      3
+    ]
+  ],
+  "q2_output": [
+    [
+      1,
+      1
+    ],
+    [
+      3,
+      3
+    ]
+  ],
+  "q1_row_count": 2,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT ACTOR_ID,DIRECTOR_ID FROM ACTORDIRECTOR GROUP BY ACTOR_ID,DIRECTOR_ID HAVING COUNT(*)>=3",
+  "q2_validation_sql": "SELECT DISTINCT ACTOR_ID ,DIRECTOR_ID FROM(SELECT ACTOR_ID, DIRECTOR_ID, COUNT(ACTOR_ID) AS CNT FROM ACTORDIRECTOR GROUP BY DIRECTOR_ID, ACTOR_ID) AS INN WHERE CNT > 2"
+}

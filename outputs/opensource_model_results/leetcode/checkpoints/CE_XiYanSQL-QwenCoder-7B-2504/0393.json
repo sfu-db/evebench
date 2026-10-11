@@ -1,0 +1,53 @@
+{
+  "dbid": "550",
+  "index": "393",
+  "source_index": "223",
+  "schema_ddl": "CREATE TABLE ACTIVITY (\n    PLAYER_ID INT,\n    EVENT_DATE DATE,\n    DEVICE_ID INT,\n    GAMES_PLAYED INT,\n    PRIMARY KEY (PLAYER_ID, EVENT_DATE),\n    CHECK (GAMES_PLAYED >= 0)\n);",
+  "q1": "SELECT ROUND((SUM(CASE WHEN (TEMP.MIN_DATE + 1) = A.EVENT_DATE THEN 1 ELSE 0 END) / COUNT(DISTINCT TEMP.PLAYER_ID)), 2) AS FRACTION FROM (SELECT PLAYER_ID, MIN(EVENT_DATE) AS MIN_DATE FROM ACTIVITY GROUP BY PLAYER_ID) AS TEMP JOIN ACTIVITY AS A ON TEMP.PLAYER_ID = A.PLAYER_ID",
+  "q2": "SELECT ROUND(SUM(CASE WHEN TEMP.MINDATE+1=A.EVENT_DATE THEN 1 ELSE 0 END)/COUNT(DISTINCT A.PLAYER_ID),2) AS FRACTION FROM (SELECT PLAYER_ID,MIN(EVENT_DATE) AS MINDATE FROM ACTIVITY GROUP BY PLAYER_ID) AS TEMP JOIN ACTIVITY A ON A.PLAYER_ID = TEMP.PLAYER_ID",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT ROUND((SUM(CASE WHEN (TEMP.MIN_DATE + 1) = A.EVENT_DATE THEN 1 ELSE 0 END) / COUNT(DISTINCT TEMP.PLAYER_ID)), 2) AS FRACTION FROM (SELECT PLAYER_ID, MIN(EVENT_DATE) AS MIN_DATE FROM ACTIVITY GROUP BY PLAYER_ID) AS TEMP JOIN ACTIVITY AS A ON TEMP.PLAYER_ID = A.PLAYER_ID",
+  "q2_prompt_sql": "SELECT ROUND(SUM(CASE WHEN TEMP.MINDATE+1=A.EVENT_DATE THEN 1 ELSE 0 END)/COUNT(DISTINCT A.PLAYER_ID),2) AS FRACTION FROM (SELECT PLAYER_ID,MIN(EVENT_DATE) AS MINDATE FROM ACTIVITY GROUP BY PLAYER_ID) AS TEMP JOIN ACTIVITY A ON A.PLAYER_ID = TEMP.PLAYER_ID",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO ACTIVITY (PLAYER_ID, EVENT_DATE, DEVICE_ID, GAMES_PLAYED) VALUES (1, '2023-01-01', 101, 5), (1, '2023-01-02', 102, 3), (2, '2023-01-03', 103, 2);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent because in Q1, the COUNT(DISTINCT TEMP.PLAYER_ID) is used in the denominator of the division, which counts the number of unique players who have at least one event. In Q2, the COUNT(DISTINCT A.PLAYER_ID) is used, which counts the number of unique players who have events, including those who might not have events on the day after their minimum event date.",
+  "counterexample_dsp": "The difference is triggered when a player has events on two consecutive days, and the second day is the minimum event date for that player. In this case, Q1 will count this player as part of the denominator, while Q2 will not.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent because in Q1, the COUNT(DISTINCT TEMP.PLAYER_ID) is used in the denominator of the division, which counts the number of unique players who have at least one event. In Q2, the COUNT(DISTINCT A.PLAYER_ID) is used, which counts the number of unique players who have events, including those who might not have events on the day after their minimum event date.\",\n  \"counterexample_dsp\": \"The difference is triggered when a player has events on two consecutive days, and the second day is the minimum event date for that player. In this case, Q1 will count this player as part of the denominator, while Q2 will not.\",\n  \"counterexample\": \"INSERT INTO ACTIVITY (PLAYER_ID, EVENT_DATE, DEVICE_ID, GAMES_PLAYED) VALUES (1, '2023-01-01', 101, 5), (1, '2023-01-02', 102, 3), (2, '2023-01-03', 103, 2);\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 429,
+    "total_tokens": 683,
+    "completion_tokens": 254,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 4.141
+  },
+  "started_at": "2026-10-06T09:51:19.609426+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "0.50"
+    ]
+  ],
+  "q2_output": [
+    [
+      "0.50"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT ROUND((SUM(CASE WHEN (TEMP.MIN_DATE + 1) = A.EVENT_DATE THEN 1 ELSE 0 END) / COUNT(DISTINCT TEMP.PLAYER_ID)), 2) AS FRACTION FROM (SELECT PLAYER_ID, MIN(EVENT_DATE) AS MIN_DATE FROM ACTIVITY GROUP BY PLAYER_ID) AS TEMP JOIN ACTIVITY AS A ON TEMP.PLAYER_ID = A.PLAYER_ID",
+  "q2_validation_sql": "SELECT ROUND(SUM(CASE WHEN TEMP.MINDATE+1=A.EVENT_DATE THEN 1 ELSE 0 END)/COUNT(DISTINCT A.PLAYER_ID),2) AS FRACTION FROM (SELECT PLAYER_ID,MIN(EVENT_DATE) AS MINDATE FROM ACTIVITY GROUP BY PLAYER_ID) AS TEMP JOIN ACTIVITY A ON A.PLAYER_ID = TEMP.PLAYER_ID"
+}

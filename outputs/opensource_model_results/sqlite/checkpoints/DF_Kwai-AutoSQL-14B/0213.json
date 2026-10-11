@@ -1,0 +1,39 @@
+{
+  "dbid": "toxicology",
+  "index": "213",
+  "source_index": "321",
+  "schema_ddl": "CREATE TABLE `atom` (\n  `atom_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `element` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `bond` (\n  `bond_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `bond_type` TEXT DEFAULT NULL,\n  PRIMARY KEY (`bond_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `connected` (\n  `atom_id` TEXT NOT NULL,\n  `atom_id2` TEXT NOT NULL,\n  `bond_id` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`,`atom_id2`),\n  FOREIGN KEY (`atom_id`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`atom_id2`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`bond_id`) REFERENCES `bond` (`bond_id`) ON DELETE CASCADE ON UPDATE CASCADE\n);\n\nCREATE TABLE `molecule` (\n  `molecule_id` TEXT NOT NULL,\n  `label` TEXT DEFAULT NULL,\n  PRIMARY KEY (`molecule_id`)\n);",
+  "q1": "SELECT T1.bond_type FROM bond AS T1 INNER JOIN connected AS T2 ON T1.bond_id = T2.bond_id WHERE T2.atom_id = 'TR000_1' AND T2.atom_id2 = 'TR000_2'",
+  "q2": "SELECT T2.bond_type FROM connected AS T1 INNER JOIN bond AS T2 ON T1.bond_id = T2.bond_id WHERE T1.atom_id = 'TR000_1' AND T1.atom_id2 = 'TR000_2'",
+  "dialect": "sqlite",
+  "ground_truth": "EQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT T1.bond_type FROM bond AS T1 INNER JOIN connected AS T2 ON T1.bond_id = T2.bond_id WHERE T2.atom_id = 'TR000_1' AND T2.atom_id2 = 'TR000_2'",
+  "q2_prompt_sql": "SELECT T2.bond_type FROM connected AS T1 INNER JOIN bond AS T2 ON T1.bond_id = T2.bond_id WHERE T1.atom_id = 'TR000_1' AND T1.atom_id2 = 'TR000_2'",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries retrieve bond_type from the bond table by joining with the connected table on bond_id, filtering on the same atom pair. The difference in table aliases does not affect the result.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries retrieve bond_type from the bond table by joining with the connected table on bond_id, filtering on the same atom pair. The difference in table aliases does not affect the result.\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem step by step. First, I need to understand what each query is doing. \n\nLooking at Q1: It selects T1.bond_type from bond (T1) joined with connected (T2) on bond_id. The WHERE clause filters T2.atom_id to 'TR000_1' and T2.atom_id2 to 'TR000_2'. So, it's looking for bonds that connect those two atoms in the connected table.\n\nQ2: Selects T2.bond_type from connected (T1) joined with bond (T2) on bond_id. The WHERE clause here is on T1.atom_id and T1.atom_id2 with the same values. The structure seems similar but the tables are swapped in the FROM clause. \n\nWait, in Q1, the connected table is T2, and the bond is T1. In Q2, connected is T1 and bond is T2. The join condition is the same: T1.bond_id = T2.bond_id. The WHERE conditions are on the connected table's columns. So the difference is just the aliasing of the tables. The connected table's columns are being used in the WHERE clause, so the actual data being filtered is the same. The bond_type is selected from the bond table in both cases. \n\nWait, but in Q1, T1 is bond, so T1.bond_type is the bond's type. In Q2, T2 is bond, so T2.bond_type is the same. So both queries should return the same result. Because the join condition is the same, the WHERE is on the connected table's columns (atom_id and atom_id2), and the bond_type comes from the bond table. The aliases are just different, but the logic is the same. \n\nHmm, but maybe there's a case where the connected table has multiple entries with the same bond_id? Wait, the connected table's primary key is (atom_id, atom_id2), so each pair is unique. But a bond could be connected between multiple atom pairs. However, the WHERE clause is specific to a single pair. \n\nWait, perhaps there's a scenario where the connected table has different entries. Let me think. Suppose there's a bond that connects atom1 and atom2 (TR000_1 and TR000_2), and another bond that connects atom2 and atom1. But since the primary key of connected is (atom_id, atom_id2), the pair (TR000_1, TR000_2) and (TR000_2, TR000_1) are both allowed. However, the WHERE clause in both queries is checking for T2.atom_id = 'TR000_1' AND T2.atom_id2 = 'TR000_2' (for Q1) or T1.atom_id = 'TR000_1' AND T1.atom_id2 = 'TR000_2' (for Q2). So the same condition, same result. \n\nWait, but in both queries, the connected table's atom_id and atom_id2 are checked for those specific values. Since the join is on bond_id, the bond_type comes from the bond table. Since the join is between the same two tables with the same condition, the result should be the same. \n\nBut maybe there's a case where the connected table has a bond_id that points to a bond in the bond table, but the WHERE condition is on the connected table. So regardless of the alias, the result should be the same. \n\nWait, I think they are equivalent. The only difference is the alias names. So the answer should be Y. But maybe I'm missing something. Let me check again. \n\nIn Q1, the connected table is T2. The WHERE is T2.atom_id = 'TR000_1' AND T2.atom_id2 = 'TR000_2'. In Q2, connected is T1, so WHERE T1.atom_id = same. The join condition is the same. So the result should be the same. \n\nTherefore, the queries are semantically equivalent. So the answer is Y.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 636,
+    "total_tokens": 1573,
+    "completion_tokens": 937,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 883
+    },
+    "generation_seconds": 29.547
+  },
+  "started_at": "2026-10-06T21:15:23.739134+00:00",
+  "elapsed_seconds": 0.0
+}

@@ -1,0 +1,55 @@
+{
+  "dbid": "card_games",
+  "index": "239",
+  "source_index": "371",
+  "schema_ddl": "CREATE TABLE \"cards\"\n(\n    id                      INTEGER           not null\n        primary key autoincrement,\n    artist                  TEXT,\n    asciiName               TEXT,\n    availability            TEXT,\n    borderColor             TEXT,\n    cardKingdomFoilId       TEXT,\n    cardKingdomId           TEXT,\n    colorIdentity           TEXT,\n    colorIndicator          TEXT,\n    colors                  TEXT,\n    convertedManaCost       REAL,\n    duelDeck                TEXT,\n    edhrecRank              INTEGER,\n    faceConvertedManaCost   REAL,\n    faceName                TEXT,\n    flavorName              TEXT,\n    flavorText              TEXT,\n    frameEffects            TEXT,\n    frameVersion            TEXT,\n    hand                    TEXT,\n    hasAlternativeDeckLimit INTEGER default 0 not null,\n    hasContentWarning       INTEGER default 0 not null,\n    hasFoil                 INTEGER default 0 not null,\n    hasNonFoil              INTEGER default 0 not null,\n    isAlternative           INTEGER default 0 not null,\n    isFullArt               INTEGER default 0 not null,\n    isOnlineOnly            INTEGER default 0 not null,\n    isOversized             INTEGER default 0 not null,\n    isPromo                 INTEGER default 0 not null,\n    isReprint               INTEGER default 0 not null,\n    isReserved              INTEGER default 0 not null,\n    isStarter               INTEGER default 0 not null,\n    isStorySpotlight        INTEGER default 0 not null,\n    isTextless              INTEGER default 0 not null,\n    isTimeshifted           INTEGER default 0 not null,\n    keywords                TEXT,\n    layout                  TEXT,\n    leadershipSkills        TEXT,\n    life                    TEXT,\n    loyalty                 TEXT,\n    manaCost                TEXT,\n    mcmId                   TEXT,\n    mcmMetaId               TEXT,\n    mtgArenaId              TEXT,\n    mtgjsonV4Id             TEXT,\n    mtgoFoilId              TEXT,\n    mtgoId                  TEXT,\n    multiverseId            TEXT,\n    name                    TEXT,\n    number                  TEXT,\n    originalReleaseDate     TEXT,\n    originalText            TEXT,\n    originalType            TEXT,\n    otherFaceIds            TEXT,\n    power                   TEXT,\n    printings               TEXT,\n    promoTypes              TEXT,\n    purchaseUrls            TEXT,\n    rarity                  TEXT,\n    scryfallId              TEXT,\n    scryfallIllustrationId  TEXT,\n    scryfallOracleId        TEXT,\n    setCode                 TEXT,\n    side                    TEXT,\n    subtypes                TEXT,\n    supertypes              TEXT,\n    tcgplayerProductId      TEXT,\n    text                    TEXT,\n    toughness               TEXT,\n    type                    TEXT,\n    types                   TEXT,\n    uuid                    TEXT              not null\n        unique,\n    variations              TEXT,\n    watermark               TEXT\n);\n\nCREATE TABLE \"foreign_data\"\n(\n    id           INTEGER not null\n        primary key autoincrement,\n    flavorText   TEXT,\n    language     TEXT,\n    multiverseid INTEGER,\n    name         TEXT,\n    text         TEXT,\n    type         TEXT,\n    uuid         TEXT\n        references cards (uuid)\n);\n\nCREATE TABLE \"legalities\"\n(\n    id     INTEGER not null\n        primary key autoincrement,\n    format TEXT,\n    status TEXT,\n    uuid   TEXT\n        references cards (uuid)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE \"sets\"\n(\n    id               INTEGER           not null\n        primary key autoincrement,\n    baseSetSize      INTEGER,\n    block            TEXT,\n    booster          TEXT,\n    code             TEXT              not null\n        unique,\n    isFoilOnly       INTEGER default 0 not null,\n    isForeignOnly    INTEGER default 0 not null,\n    isNonFoilOnly    INTEGER default 0 not null,\n    isOnlineOnly     INTEGER default 0 not null,\n    isPartialPreview INTEGER default 0 not null,\n    keyruneCode      TEXT,\n    mcmId            INTEGER,\n    mcmIdExtras      INTEGER,\n    mcmName          TEXT,\n    mtgoCode         TEXT,\n    name             TEXT,\n    parentCode       TEXT,\n    releaseDate      DATE,\n    tcgplayerGroupId INTEGER,\n    totalSetSize     INTEGER,\n    type             TEXT\n);\n\nCREATE TABLE \"set_translations\"\n(\n    id          INTEGER not null\n        primary key autoincrement,\n    language    TEXT,\n    setCode     TEXT\n        references sets (code)\n            on update cascade on delete cascade,\n    translation TEXT\n);\n\nCREATE TABLE \"rulings\"\n(\n    id   INTEGER not null\n        primary key autoincrement,\n    date DATE,\n    text TEXT,\n    uuid TEXT\n        references cards (uuid)\n            on update cascade on delete cascade\n);",
+  "q1": "SELECT COUNT(T1.id) FROM cards AS T1 INNER JOIN foreign_data AS T2 ON T1.uuid = T2.uuid WHERE T1.borderColor = 'borderless' AND T2.language = 'Russian'",
+  "q2": "SELECT COUNT(DISTINCT T1.id) FROM cards AS T1 INNER JOIN foreign_data AS T2 ON T1.uuid = T2.uuid WHERE T1.borderColor = 'borderless' AND T2.language = 'Russian'",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT COUNT(T1.id) FROM cards AS T1 INNER JOIN foreign_data AS T2 ON T1.uuid = T2.uuid WHERE T1.borderColor = 'borderless' AND T2.language = 'Russian'",
+  "q2_prompt_sql": "SELECT COUNT(DISTINCT T1.id) FROM cards AS T1 INNER JOIN foreign_data AS T2 ON T1.uuid = T2.uuid WHERE T1.borderColor = 'borderless' AND T2.language = 'Russian'",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO cards (id, uuid, borderColor) VALUES (1, 'abc123', 'borderless');\nINSERT INTO foreign_data (id, uuid, language) VALUES (1, 'abc123', 'Russian');\nINSERT INTO foreign_data (id, uuid, language) VALUES (2, 'abc123', 'Russian');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 counts all matching rows (including duplicates), while Q2 counts distinct card IDs. If a card has multiple foreign_data entries with Russian language, Q1 returns a higher count.",
+  "counterexample_dsp": "A card with uuid 'abc123' and borderless borderColor has two foreign_data entries with Russian language. Q1 counts 2 rows, Q2 counts 1 distinct card.",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 counts all matching rows (including duplicates), while Q2 counts distinct card IDs. If a card has multiple foreign_data entries with Russian language, Q1 returns a higher count.\",\n  \"counterexample_dsp\": \"A card with uuid 'abc123' and borderless borderColor has two foreign_data entries with Russian language. Q1 counts 2 rows, Q2 counts 1 distinct card.\",\n  \"counterexample\": [\n    \"INSERT INTO cards (id, uuid, borderColor) VALUES (1, 'abc123', 'borderless');\",\n    \"INSERT INTO foreign_data (id, uuid, language) VALUES (1, 'abc123', 'Russian');\",\n    \"INSERT INTO foreign_data (id, uuid, language) VALUES (2, 'abc123', 'Russian');\"\n  ]\n}",
+  "reasoning": "\nOkay, let's see. The user wants a counterexample where Q1 and Q2 return different results. The two queries are:\n\nQ1: SELECT COUNT(T1.id) FROM cards AS T1 INNER JOIN foreign_data AS T2 ON T1.uuid = T2.uuid WHERE T1.borderColor = 'borderless' AND T2.language = 'Russian'\n\nQ2: SELECT COUNT(DISTINCT T1.id) FROM cards AS T1 INNER JOIN foreign_data AS T2 ON T1.uuid = T2.uuid WHERE T1.borderColor = 'borderless' AND T2.language = 'Russian'\n\nSo, the difference between them is that Q1 counts all rows, including duplicates, while Q2 counts distinct T1.id values. Therefore, if there are multiple entries in foreign_data for the same card (same uuid) with language Russian, Q1 would count each occurrence, whereas Q2 would count each card once.\n\nThe explanation is that Q1 counts all matching rows, which could include multiple entries for the same card, while Q2 counts unique cards. So, if a card has multiple entries in foreign_data with Russian language, Q1's count would be higher.\n\nFor the counterexample, I need to create a scenario where a card (T1) with borderless borderColor has multiple entries in foreign_data (T2) with language Russian. Let's say one card has two entries in foreign_data. Then Q1 would return 2, and Q2 would return 1.\n\nSo, create two entries in foreign_data for the same uuid (same card) with language Russian. The cards table should have one entry with borderless. Then, Q1 counts two, Q2 counts one.\n\nLet me check the schema constraints. The foreign_data's uuid references cards.uuid, which is unique. So, each entry in foreign_data must have a uuid that exists in cards. So, inserting two rows into foreign_data with the same uuid is allowed as long as that uuid exists in cards.\n\nSo, the test data would be:\n\nInsert into cards a card with uuid 'abc123', borderColor 'borderless'.\n\nInsert into foreign_data two rows with uuid 'abc123' and language 'Russian'.\n\nThen, Q1 would count 2, Q2 would count 1. That's the difference.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 1253,
+    "total_tokens": 1908,
+    "completion_tokens": 655,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 471
+    },
+    "generation_seconds": 22.812
+  },
+  "started_at": "2026-10-06T16:40:57.360676+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      2
+    ]
+  ],
+  "q2_output": [
+    [
+      1
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT COUNT(T1.id) FROM cards AS T1 INNER JOIN foreign_data AS T2 ON T1.uuid = T2.uuid WHERE T1.borderColor = 'borderless' AND T2.language = 'Russian'",
+  "q2_validation_sql": "SELECT COUNT(DISTINCT T1.id) FROM cards AS T1 INNER JOIN foreign_data AS T2 ON T1.uuid = T2.uuid WHERE T1.borderColor = 'borderless' AND T2.language = 'Russian'"
+}

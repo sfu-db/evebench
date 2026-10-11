@@ -1,0 +1,59 @@
+{
+  "dbid": "student_club",
+  "index": "825",
+  "source_index": "1454",
+  "schema_ddl": "CREATE TABLE event\n(\n    event_id   TEXT\n        constraint event_pk\n            primary key,\n    event_name TEXT,\n    event_date TEXT,\n    type       TEXT,\n    notes      TEXT,\n    location   TEXT,\n    status     TEXT\n);\n\nCREATE TABLE major\n(\n    major_id   TEXT\n        constraint major_pk\n            primary key,\n    major_name TEXT,\n    department TEXT,\n    college    TEXT\n);\n\nCREATE TABLE zip_code\n(\n    zip_code    INTEGER\n        constraint zip_code_pk\n            primary key,\n    type        TEXT,\n    city        TEXT,\n    county      TEXT,\n    state       TEXT,\n    short_state TEXT\n);\n\nCREATE TABLE \"attendance\"\n(\n    link_to_event  TEXT,\n    link_to_member TEXT,\n    primary key (link_to_event, link_to_member),\n    foreign key (link_to_event) references event(event_id),\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"budget\"\n(\n    budget_id     TEXT\n            primary key,\n    category      TEXT,\n    spent         REAL,\n    remaining     REAL,\n    amount        INTEGER,\n    event_status  TEXT,\n    link_to_event TEXT,\n    foreign key (link_to_event) references event(event_id)\n);\n\nCREATE TABLE \"expense\"\n(\n    expense_id          TEXT\n            primary key,\n    expense_description TEXT,\n    expense_date        TEXT,\n    cost                REAL,\n    approved            TEXT,\n    link_to_member      TEXT,\n    link_to_budget      TEXT,\n    foreign key (link_to_budget) references budget(budget_id),\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"income\"\n(\n    income_id      TEXT\n        constraint income_pk\n            primary key,\n    date_received  TEXT,\n    amount         INTEGER,\n    source         TEXT,\n    notes          TEXT,\n    link_to_member TEXT,\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"member\"\n(\n    member_id     TEXT\n        constraint member_pk\n            primary key,\n    first_name    TEXT,\n    last_name     TEXT,\n    email         TEXT,\n    position      TEXT,\n    t_shirt_size  TEXT,\n    phone         TEXT,\n    zip           INTEGER,\n    link_to_major TEXT,\n    foreign key (link_to_major) references major(major_id),\n    foreign key (zip) references zip_code(zip_code)\n);",
+  "q1": "SELECT T1.event_name FROM event AS T1 INNER JOIN budget AS T2 ON T1.event_id = T2.link_to_event INNER JOIN expense AS T3 ON T2.budget_id = T3.link_to_budget WHERE T2.category = 'Parking' AND T3.cost < (SELECT AVG(cost) FROM expense)",
+  "q2": "SELECT T1.event_name FROM event AS T1 INNER JOIN budget AS T2 ON T1.event_id = T2.link_to_event INNER JOIN expense AS T3 ON T2.budget_id = T3.link_to_budget WHERE T2.category = 'Parking' AND T3.cost < (SELECT AVG(T3.cost) FROM budget AS T2 INNER JOIN expense AS T3 ON T2.budget_id = T3.link_to_budget WHERE T2.category = 'Parking')",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT T1.event_name FROM event AS T1 INNER JOIN budget AS T2 ON T1.event_id = T2.link_to_event INNER JOIN expense AS T3 ON T2.budget_id = T3.link_to_budget WHERE T2.category = 'Parking' AND T3.cost < (SELECT AVG(cost) FROM expense)",
+  "q2_prompt_sql": "SELECT T1.event_name FROM event AS T1 INNER JOIN budget AS T2 ON T1.event_id = T2.link_to_event INNER JOIN expense AS T3 ON T2.budget_id = T3.link_to_budget WHERE T2.category = 'Parking' AND T3.cost < (SELECT AVG(T3.cost) FROM budget AS T2 INNER JOIN expense AS T3 ON T2.budget_id = T3.link_to_budget WHERE T2.category = 'Parking')",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO event (event_id, event_name) VALUES ('e1', 'Event 1'), ('e2', 'Event 2'); INSERT INTO budget (budget_id, category, link_to_event) VALUES ('b1', 'Parking', 'e1'), ('b2', 'Food', 'e1'), ('b3', 'Parking', 'e2'); INSERT INTO expense (expense_id, cost, link_to_budget) VALUES ('ex1', 100, 'b1'), ('ex2', 200, 'b1'), ('ex3', 150, 'b2'), ('ex4', 50, 'b3');",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 calculates the average cost of all expenses, while Q2 calculates the average cost of expenses related to the 'Parking' category. This difference in the subquery's scope leads to potentially different results.",
+  "counterexample_dsp": "Create events with expenses, some of which are categorized as 'Parking', and ensure that the average cost of all expenses is different from the average cost of 'Parking' expenses.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 calculates the average cost of all expenses, while Q2 calculates the average cost of expenses related to the 'Parking' category. This difference in the subquery's scope leads to potentially different results.\",\n  \"counterexample_dsp\": \"Create events with expenses, some of which are categorized as 'Parking', and ensure that the average cost of all expenses is different from the average cost of 'Parking' expenses.\",\n  \"counterexample\": \"INSERT INTO event (event_id, event_name) VALUES ('e1', 'Event 1'), ('e2', 'Event 2'); INSERT INTO budget (budget_id, category, link_to_event) VALUES ('b1', 'Parking', 'e1'), ('b2', 'Food', 'e1'), ('b3', 'Parking', 'e2'); INSERT INTO expense (expense_id, cost, link_to_budget) VALUES ('ex1', 100, 'b1'), ('ex2', 200, 'b1'), ('ex3', 150, 'b2'), ('ex4', 50, 'b3');\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 870,
+    "total_tokens": 1111,
+    "completion_tokens": 241,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 4.672
+  },
+  "started_at": "2026-10-06T16:07:11.350696+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "Event 1"
+    ],
+    [
+      "Event 2"
+    ]
+  ],
+  "q2_output": [
+    [
+      "Event 1"
+    ],
+    [
+      "Event 2"
+    ]
+  ],
+  "q1_row_count": 2,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT T1.event_name FROM event AS T1 INNER JOIN budget AS T2 ON T1.event_id = T2.link_to_event INNER JOIN expense AS T3 ON T2.budget_id = T3.link_to_budget WHERE T2.category = 'Parking' AND T3.cost < (SELECT AVG(cost) FROM expense)",
+  "q2_validation_sql": "SELECT T1.event_name FROM event AS T1 INNER JOIN budget AS T2 ON T1.event_id = T2.link_to_event INNER JOIN expense AS T3 ON T2.budget_id = T3.link_to_budget WHERE T2.category = 'Parking' AND T3.cost < (SELECT AVG(T3.cost) FROM budget AS T2 INNER JOIN expense AS T3 ON T2.budget_id = T3.link_to_budget WHERE T2.category = 'Parking')"
+}

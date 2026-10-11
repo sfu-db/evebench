@@ -1,0 +1,58 @@
+{
+  "dbid": "beers",
+  "index": "116",
+  "source_index": "1954",
+  "schema_ddl": "CREATE TABLE Bar (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Beer (\n    name VARCHAR NOT NULL,\n    brewer VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Drinker (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Frequents (\n    drinker VARCHAR NOT NULL,\n    bar VARCHAR NOT NULL,\n    times_a_week SMALLINT NOT NULL,\n    PRIMARY KEY (drinker, bar),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (bar) REFERENCES Bar(name)\n);\n\nCREATE TABLE Serves (\n    bar VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    price DECIMAL(5,2) NOT NULL,\n    PRIMARY KEY (bar, beer),\n    FOREIGN KEY (bar) REFERENCES Bar(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);\n\nCREATE TABLE Likes (\n    drinker VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    PRIMARY KEY (drinker, beer),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);",
+  "q1": "SELECT DISTINCT bar FROM Serves WHERE (beer = 'Amstel' OR beer = 'Corona') AND price > 2",
+  "q2": "SELECT bar FROM serves WHERE price > 2",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "beers",
+  "q1_prompt_sql": "SELECT DISTINCT bar FROM Serves WHERE (beer = 'Amstel' OR beer = 'Corona') AND price > 2",
+  "q2_prompt_sql": "SELECT bar FROM serves WHERE price > 2",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO Bar (name, address) VALUES ('Bar1', 'Addr1'), ('Bar2', 'Addr2');\nINSERT INTO Beer (name, brewer) VALUES ('Amstel', 'BrewerA'), ('Heineken', 'BrewerB');\nINSERT INTO Serves (bar, beer, price) VALUES ('Bar1', 'Amstel', 2.50), ('Bar2', 'Heineken', 3.00);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 filters bars serving only 'Amstel' or 'Corona' with price >2, while Q2 includes all bars with any beer priced >2. They differ when bars serve non-Amstel/Corona beers at prices >2.",
+  "counterexample_dsp": "A bar serving 'Heineken' at $3.00 (included in Q2 but not Q1), and another bar serving 'Amstel' at $2.50 (included in Q1 but not Q2).",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 filters bars serving only 'Amstel' or 'Corona' with price >2, while Q2 includes all bars with any beer priced >2. They differ when bars serve non-Amstel/Corona beers at prices >2.\",\n\"counterexample_dsp\": \"A bar serving 'Heineken' at $3.00 (included in Q2 but not Q1), and another bar serving 'Amstel' at $2.50 (included in Q1 but not Q2).\",\n\"counterexample\": \"INSERT INTO Bar (name, address) VALUES ('Bar1', 'Addr1'), ('Bar2', 'Addr2');\\nINSERT INTO Beer (name, brewer) VALUES ('Amstel', 'BrewerA'), ('Heineken', 'BrewerB');\\nINSERT INTO Serves (bar, beer, price) VALUES ('Bar1', 'Amstel', 2.50), ('Bar2', 'Heineken', 3.00);\"\n}",
+  "reasoning": "\nOkay, let's see. I need to determine if Q1 and Q2 are semantically equivalent. Let me start by understanding what each query does.\n\nQ1 is selecting distinct bars from the Serves table where the beer is either 'Amstel' or 'Corona' and the price is greater than 2. So it's filtering on both beer names and price.\n\nQ2 is selecting bars from the Serves table where the price is greater than 2, without any restriction on the beer. So it's just looking at all beers that have a price over 2, regardless of which ones.\n\nSo the main difference is that Q1 is only considering specific beers (Amstel and Corona) while Q2 includes any beer with price > 2. That means Q1's result is a subset of Q2's, but only if there are bars serving Amstel or Corona at prices above 2. If there are bars serving other beers with prices above 2, Q2 will include them, but Q1 won't.\n\nTherefore, they are not equivalent. For a counterexample, I need a scenario where a bar serves a beer other than Amstel or Corona with price >2. Then Q2 would include that bar, but Q1 wouldn't. Alternatively, if there's a bar serving Amstel at price 3, then both would include it. But if there's a bar serving, say, 'Heineken' at price 3, Q2 would include it but Q1 would not.\n\nSo to create a counterexample, I can have a bar that serves 'Heineken' at 3.00. Then Q2 would list that bar, but Q1 wouldn't. Also, ensure that there are bars serving Amstel or Corona with price >2. Let's say another bar serves Amstel at 2.50, which would be included in Q1 but not Q2 (since price is not >2). Wait, no, price has to be >2. So if the Amstel is 2.50, then Q1 includes it, but Q2 also includes it because price is >2. Wait, 2.50 is more than 2, so both queries would include that bar. But if there's a bar serving a beer that's not Amstel or Corona with price >2, then Q2 includes it and Q1 doesn't.\n\nSo the counterexample needs at least one bar that serves a non-Amstel/Corona beer with price >2, and maybe some others serving Amstel/Corona with price >2. Let's create two bars:\n\nBar1 serves Amstel at 3.00 (so included in Q1 and Q2).\n\nBar2 serves Heineken at 3.00 (included in Q2 but not Q1).\n\nIn this case, Q1 would return Bar1, and Q2 would return Bar1 and Bar2. So the results differ. Therefore, the queries are not equivalent.\n\nNow, I need to make sure the test data adheres to the schema. The Serves table requires bar and beer, and price. So inserting into Serves:\n\nINSERT INTO Serves (bar, beer, price) VALUES ('Bar1', 'Amstel', 3.00);\nINSERT INTO Serves (bar, beer, price) VALUES ('Bar2', 'Heineken', 3.00);\n\nAlso, the Bar table needs entries for Bar1 and Bar2. So:\n\nINSERT INTO Bar (name, address) VALUES ('Bar1', 'Address1');\nINSERT INTO Bar (name, address) VALUES ('Bar2', 'Address2');\n\nAnd the Beer table needs entries for Amstel and Heineken:\n\nINSERT INTO Beer (name, brewer) VALUES ('Amstel', 'BrewerA');\nINSERT INTO Beer (name, brewer) VALUES ('Heineken', 'BrewerB');\n\nBut wait, the Beer table's primary key is name, so inserting those would be okay. Also, the Serves table's foreign keys reference Bar and Beer names, so these inserts should be valid.\n\nSo the counterexample would have Q1 returning Bar1, and Q2 returning both Bar1 and Bar2. Hence, the queries are not equivalent.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 529,
+    "total_tokens": 1661,
+    "completion_tokens": 1132,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 897
+    },
+    "generation_seconds": 36.281
+  },
+  "started_at": "2026-10-06T09:16:03.022970+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "Bar1"
+    ]
+  ],
+  "q2_output": [
+    [
+      "Bar1"
+    ],
+    [
+      "Bar2"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DISTINCT bar FROM Serves WHERE (beer = 'Amstel' OR beer = 'Corona') AND price > 2",
+  "q2_validation_sql": "SELECT bar FROM serves WHERE price > 2"
+}

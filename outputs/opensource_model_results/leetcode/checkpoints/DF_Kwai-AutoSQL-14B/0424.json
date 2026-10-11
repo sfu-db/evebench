@@ -1,0 +1,39 @@
+{
+  "dbid": "1149",
+  "index": "424",
+  "source_index": "187",
+  "schema_ddl": "CREATE TABLE VIEWS (\n    ARTICLE_ID INT,\n    AUTHOR_ID INT,\n    VIEWER_ID INT,\n    VIEW_DATE DATE\n);",
+  "q1": "SELECT DISTINCT VIEWER_ID AS ID FROM VIEWS GROUP BY VIEW_DATE, VIEWER_ID HAVING COUNT(DISTINCT ARTICLE_ID) > 1 ORDER BY ID",
+  "q2": "SELECT DISTINCT VIEWER_ID AS ID FROM VIEWS GROUP BY ID,VIEW_DATE HAVING COUNT(DISTINCT ARTICLE_ID) > 1 ORDER BY ID",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT DISTINCT VIEWER_ID AS ID FROM VIEWS GROUP BY VIEW_DATE, VIEWER_ID HAVING COUNT(DISTINCT ARTICLE_ID) > 1 ORDER BY ID",
+  "q2_prompt_sql": "SELECT DISTINCT VIEWER_ID AS ID FROM VIEWS GROUP BY ID,VIEW_DATE HAVING COUNT(DISTINCT ARTICLE_ID) > 1 ORDER BY ID",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are semantically equivalent. Both group by VIEW_DATE and VIEWER_ID (or ID, which is an alias for VIEWER_ID), count distinct ARTICLE_ID, and return distinct VIEWER_IDs where the count exceeds 1. The only difference is the aliasing of VIEWER_ID as ID in the GROUP BY clause of Q2, but since GROUP BY can use column aliases in some SQL dialects, this doesn't change the grouping behavior. Both queries achieve the same result.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n  \"equiv\": \"Y\",\n  \"explanation\": \"Q1 and Q2 are semantically equivalent. Both group by VIEW_DATE and VIEWER_ID (or ID, which is an alias for VIEWER_ID), count distinct ARTICLE_ID, and return distinct VIEWER_IDs where the count exceeds 1. The only difference is the aliasing of VIEWER_ID as ID in the GROUP BY clause of Q2, but since GROUP BY can use column aliases in some SQL dialects, this doesn't change the grouping behavior. Both queries achieve the same result.\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 347,
+    "total_tokens": 469,
+    "completion_tokens": 122,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 3.906
+  },
+  "started_at": "2026-10-06T15:45:07.647064+00:00",
+  "elapsed_seconds": 0.0
+}

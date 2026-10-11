@@ -1,0 +1,53 @@
+{
+  "dbid": "607",
+  "index": "4",
+  "source_index": "280",
+  "schema_ddl": "CREATE TABLE SALESPERSON (\n    SALES_ID INT,\n    NAME VARCHAR(255),\n    SALARY INT,\n    COMMISSION_RATE INT,\n    HIRE_DATE VARCHAR(255)\n);\n\nCREATE TABLE COMPANY (\n    COM_ID INT,\n    NAME VARCHAR(255),\n    CITY VARCHAR(255)\n);\n\nCREATE TABLE ORDERS (\n    ORDER_ID INT,\n    COM_ID INT,\n    SALES_ID INT,\n    ORDER_DATE VARCHAR(255),\n    AMOUNT INT\n);",
+  "q1": "SELECT NAME FROM SALESPERSON AS S WHERE 0 = ( SELECT COUNT(*) FROM ORDERS AS O JOIN COMPANY AS C ON O.COM_ID = C.COM_ID WHERE O.SALES_ID = S.SALES_ID AND C.NAME = 'RED' )",
+  "q2": "WITH CTE AS ( SELECT SALES_ID FROM ORDERS WHERE ORDERS.COM_ID IN (SELECT COMPANY.COM_ID FROM COMPANY LEFT JOIN ORDERS ON COMPANY.COM_ID = ORDERS.COM_ID WHERE NAME = 'RED' ) ) SELECT NAME FROM SALESPERSON WHERE SALES_ID NOT IN (SELECT SALES_ID FROM CTE)",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT NAME FROM SALESPERSON AS S WHERE 0 = ( SELECT COUNT(*) FROM ORDERS AS O JOIN COMPANY AS C ON O.COM_ID = C.COM_ID WHERE O.SALES_ID = S.SALES_ID AND C.NAME = 'RED' )",
+  "q2_prompt_sql": "WITH CTE AS ( SELECT SALES_ID FROM ORDERS WHERE ORDERS.COM_ID IN (SELECT COMPANY.COM_ID FROM COMPANY LEFT JOIN ORDERS ON COMPANY.COM_ID = ORDERS.COM_ID WHERE NAME = 'RED' ) ) SELECT NAME FROM SALESPERSON WHERE SALES_ID NOT IN (SELECT SALES_ID FROM CTE)",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO COMPANY (COM_ID, NAME, CITY) VALUES (1, 'RED', 'New York'); INSERT INTO SALESPERSON (SALES_ID, NAME, SALARY, COMMISSION_RATE, HIRE_DATE) VALUES (1, 'Salesperson A', 50000, 10, '2020-01-01'); INSERT INTO ORDERS (ORDER_ID, COM_ID, SALES_ID, ORDER_DATE, AMOUNT) VALUES (1, 1, 2, '2021-01-01', 1000);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not equivalent because Q1 checks for the absence of any order from the 'RED' company for each salesperson, while Q2 checks for the absence of any order from the 'RED' company by any salesperson. The difference lies in the scope of the 'RED' company's orders being checked.",
+  "counterexample_dsp": "The test data should have at least one salesperson, one 'RED' company, and one order from the 'RED' company. The salesperson should not have any orders from the 'RED' company, but other salespeople can have orders from the 'RED' company.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 and Q2 are not equivalent because Q1 checks for the absence of any order from the 'RED' company for each salesperson, while Q2 checks for the absence of any order from the 'RED' company by any salesperson. The difference lies in the scope of the 'RED' company's orders being checked.\",\n  \"counterexample_dsp\": \"The test data should have at least one salesperson, one 'RED' company, and one order from the 'RED' company. The salesperson should not have any orders from the 'RED' company, but other salespeople can have orders from the 'RED' company.\",\n  \"counterexample\": \"INSERT INTO COMPANY (COM_ID, NAME, CITY) VALUES (1, 'RED', 'New York'); INSERT INTO SALESPERSON (SALES_ID, NAME, SALARY, COMMISSION_RATE, HIRE_DATE) VALUES (1, 'Salesperson A', 50000, 10, '2020-01-01'); INSERT INTO ORDERS (ORDER_ID, COM_ID, SALES_ID, ORDER_DATE, AMOUNT) VALUES (1, 1, 2, '2021-01-01', 1000);\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 444,
+    "total_tokens": 718,
+    "completion_tokens": 274,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 4.875
+  },
+  "started_at": "2026-10-06T09:49:47.855934+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "Salesperson A"
+    ]
+  ],
+  "q2_output": [
+    [
+      "Salesperson A"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT NAME FROM SALESPERSON AS S WHERE 0 = ( SELECT COUNT(*) FROM ORDERS AS O JOIN COMPANY AS C ON O.COM_ID = C.COM_ID WHERE O.SALES_ID = S.SALES_ID AND C.NAME = 'RED' )",
+  "q2_validation_sql": "WITH CTE AS ( SELECT SALES_ID FROM ORDERS WHERE ORDERS.COM_ID IN (SELECT COMPANY.COM_ID FROM COMPANY LEFT JOIN ORDERS ON COMPANY.COM_ID = ORDERS.COM_ID WHERE NAME = 'RED' ) ) SELECT NAME FROM SALESPERSON WHERE SALES_ID NOT IN (SELECT SALES_ID FROM CTE)"
+}

@@ -1,0 +1,55 @@
+{
+  "dbid": "thrombosis_prediction",
+  "index": "687",
+  "source_index": "1206",
+  "schema_ddl": "CREATE TABLE Examination\n(\n    ID                 INTEGER          null,\n    `Examination Date` DATE         null,\n    `aCL IgG`          REAL        null,\n    `aCL IgM`          REAL        null,\n    ANA                INTEGER          null,\n    `ANA Pattern`      TEXT null,\n    `aCL IgA`          INTEGER          null,\n    Diagnosis          TEXT null,\n    KCT                TEXT null,\n    RVVT              TEXT null,\n    LAC                TEXT null,\n    Symptoms           TEXT null,\n    Thrombosis         INTEGER          null,\n    foreign key (ID) references Patient (ID)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE Patient\n(\n    ID           INTEGER default 0 not null\n        primary key,\n    SEX          TEXT  null,\n    Birthday     DATE          null,\n    Description  DATE          null,\n    `First Date` DATE          null,\n    Admission    TEXT  null,\n    Diagnosis    TEXT  null\n);\n\nCREATE TABLE Laboratory\n(\n    ID        INTEGER  default 0            not null,\n    Date      DATE default '0000-00-00' not null,\n    GOT       INTEGER                       null,\n    GPT       INTEGER                        null,\n    LDH       INTEGER                        null,\n    ALP       INTEGER                        null,\n    TP        REAL             null,\n    ALB       REAL             null,\n    UA        REAL             null,\n    UN        INTEGER                       null,\n    CRE       REAL             null,\n    `T-BIL`   REAL             null,\n    `T-CHO`   INTEGER                       null,\n    TG        INTEGER                       null,\n    CPK       INTEGER                       null,\n    GLU       INTEGER                       null,\n    WBC       REAL             null,\n    RBC       REAL             null,\n    HGB       REAL             null,\n    HCT       REAL             null,\n    PLT       INTEGER                       null,\n    PT        REAL             null,\n    APTT      INTEGER                       null,\n    FG        REAL             null,\n    PIC       INTEGER                       null,\n    TAT       INTEGER                       null,\n    TAT2      INTEGER                       null,\n    `U-PRO`   TEXT              null,\n    IGG       INTEGER                       null,\n    IGA       INTEGER                       null,\n    IGM       INTEGER                       null,\n    CRP       TEXT              null,\n    RA        TEXT              null,\n    RF        TEXT              null,\n    C3        INTEGER                       null,\n    C4        INTEGER                       null,\n    RNP       TEXT              null,\n    SM        TEXT              null,\n    SC170     TEXT              null,\n    SSA       TEXT              null,\n    SSB       TEXT              null,\n    CENTROMEA TEXT              null,\n    DNA       TEXT              null,\n    `DNA-II`  INTEGER                       null,\n    primary key (ID, Date),\n        foreign key (ID) references Patient (ID)\n            on update cascade on delete cascade\n);",
+  "q1": "SELECT CASE WHEN (T1.SEX = 'F' AND T2.UA > 6.5) OR (T1.SEX = 'M' AND T2.UA < 8.0) THEN TRUE ELSE FALSE END FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T1.ID = 57266",
+  "q2": "SELECT CASE WHEN T1.SEX = 'M' AND T2.UA > 8.0 THEN 'Yes' WHEN T1.SEX = 'F' AND T2.UA > 6.5 THEN 'Yes' ELSE 'No' END AS \"Is_Uric_Acid_Normal\" FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T1.ID = 57266",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT CASE WHEN (T1.SEX = 'F' AND T2.UA > 6.5) OR (T1.SEX = 'M' AND T2.UA < 8.0) THEN TRUE ELSE FALSE END FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T1.ID = 57266",
+  "q2_prompt_sql": "SELECT CASE WHEN T1.SEX = 'M' AND T2.UA > 8.0 THEN 'Yes' WHEN T1.SEX = 'F' AND T2.UA > 6.5 THEN 'Yes' ELSE 'No' END AS \"Is_Uric_Acid_Normal\" FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T1.ID = 57266",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO Patient (ID, SEX) VALUES (57266, 'M');\nINSERT INTO Laboratory (ID, Date, UA) VALUES (57266, '2023-01-01', 7.0);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 returns TRUE when (SEX='F' AND UA>6.5) OR (SEX='M' AND UA<8.0), while Q2 returns 'Yes' when (SEX='M' AND UA>8.0) OR (SEX='F' AND UA>6.5). For a male patient with UA=7.0, Q1 evaluates TRUE (since 7<8) but Q2 evaluates 'No' (since 7 is not >8).",
+  "counterexample_dsp": "A male patient (ID=57266) with UA=7.0. Q1 returns TRUE, Q2 returns 'No'.",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 returns TRUE when (SEX='F' AND UA>6.5) OR (SEX='M' AND UA<8.0), while Q2 returns 'Yes' when (SEX='M' AND UA>8.0) OR (SEX='F' AND UA>6.5). For a male patient with UA=7.0, Q1 evaluates TRUE (since 7<8) but Q2 evaluates 'No' (since 7 is not >8).\",\n  \"counterexample_dsp\": \"A male patient (ID=57266) with UA=7.0. Q1 returns TRUE, Q2 returns 'No'.\",\n  \"counterexample\": \"INSERT INTO Patient (ID, SEX) VALUES (57266, 'M');\\nINSERT INTO Laboratory (ID, Date, UA) VALUES (57266, '2023-01-01', 7.0);\"\n}",
+  "reasoning": "\nOkay, let's see. I need to find a counterexample where Q1 and Q2 return different results. Let me first understand what each query is doing.\n\nLooking at Q1: It selects a CASE expression that returns TRUE if either (SEX is 'F' and UA > 6.5) OR (SEX is 'M' and UA < 8.0), else FALSE. The WHERE clause is T1.ID = 57266. So for the patient with ID 57266, it checks those conditions.\n\nQ2: It selects a CASE expression that returns 'Yes' if (SEX is 'M' and UA > 8.0) or (SEX is 'F' and UA > 6.5), else 'No'. Again, same patient ID.\n\nWait, the conditions here are different. Let me compare them.\n\nQ1's condition is (F and UA>6.5) OR (M and UA <8.0). So for a female with UA >6.5, it returns TRUE. For a male with UA <8, returns TRUE. Else FALSE.\n\nQ2's condition is (M and UA>8) gives 'Yes'; (F and UA>6.5) gives 'Yes'; else 'No'.\n\nSo the key difference is that Q1's male condition is UA <8 (which would be TRUE for male with UA <8), while Q2's male condition is UA >8 (which would be 'Yes' only when UA>8). Also, Q1 returns a boolean (TRUE/FALSE) while Q2 returns 'Yes'/'No'.\n\nWait, but the actual comparison is between the two CASE expressions. Let me think of a scenario where they differ.\n\nLet's take a male patient with UA = 7.0. For Q1: (SEX='M' and UA <8) → TRUE. So Q1 returns TRUE. For Q2: the first condition is M and UA>8 (7 is not >8), so check next condition F and UA>6.5. Since it's male, that's false. So returns 'No'. So here Q1 would be TRUE and Q2 would be 'No', which are different.\n\nAnother case: male with UA=9. Q1: (SEX=M and UA <8) → 9 <8 is false. So Q1 returns FALSE. Q2: first condition is M and UA>8 → yes, returns 'Yes'. So different again.\n\nAnother case: female with UA=6.0. Q1: (F and UA>6.5) → 6>6.5? No. So Q1 returns FALSE. Q2: (F and UA>6.5 → 6>6.5? No. So returns 'No'. Same result here.\n\nAnother case: female with UA=7. Q1: (F and 7>6.5 → yes) → TRUE. Q2: same condition → 'Yes'. So same result.\n\nSo the difference occurs when the patient is male and UA is between 6.5 and 8, or male with UA less than 8. Wait, for male with UA=7 (which is less than 8), Q1 returns TRUE, but Q2 returns 'No'.\n\nSo if I have a male patient with ID 57266 and UA=7, then Q1 returns TRUE and Q2 returns 'No'. Therefore, they are not equivalent.\n\nSo the counterexample would be inserting a patient with ID 57266, SEX 'M', and in Laboratory table, UA=7.0.\n\nSo the test data would be:\n\nIn Patient table: ID 57266, SEX 'M'.\n\nIn Laboratory table: ID 57266, Date some date, UA=7.0.\n\nThen Q1 returns TRUE, Q2 returns 'No'.\n\nAnother case: male with UA=8.0. Q1: (M and UA <8 → 8 <8 is false. So returns FALSE. Q2: first condition is M and UA>8 → 8>8 is false. So check F condition (no). So returns 'No'. So both would return FALSE and 'No'? Wait, Q1 returns FALSE, Q2 returns 'No'. So in that case, they are same? But the output types are different (boolean vs text), but the question says the outputs should differ. So in this case, if Q1 returns FALSE and Q2 returns 'No', which are different in terms of values. But maybe the user considers them different because they are different data types. However, the problem says that the queries are not semantically equivalent, so even if they return different types, but the logic is different, that's acceptable.\n\nBut the main case where they differ is when the male has UA between 6.5 and 8. So UA=7.0.\n\nSo creating that test data would make Q1 and Q2 return different results.\n\nSo the counterexample would be:\n\nInsert into Patient (ID, SEX) values (57266, 'M');\n\nInsert into Laboratory (ID, Date, UA) values (57266, '2023-01-01', 7.0);\n\nThen Q1 returns TRUE, Q2 returns 'No'.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 975,
+    "total_tokens": 2309,
+    "completion_tokens": 1334,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1118
+    },
+    "generation_seconds": 45.547
+  },
+  "started_at": "2026-10-06T19:36:40.021859+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      1
+    ]
+  ],
+  "q2_output": [
+    [
+      "No"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT CASE WHEN (T1.SEX = 'F' AND T2.UA > 6.5) OR (T1.SEX = 'M' AND T2.UA < 8.0) THEN TRUE ELSE FALSE END FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T1.ID = 57266",
+  "q2_validation_sql": "SELECT CASE WHEN T1.SEX = 'M' AND T2.UA > 8.0 THEN 'Yes' WHEN T1.SEX = 'F' AND T2.UA > 6.5 THEN 'Yes' ELSE 'No' END AS \"Is_Uric_Acid_Normal\" FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T1.ID = 57266"
+}

@@ -1,0 +1,53 @@
+{
+  "dbid": "585",
+  "index": "265",
+  "source_index": "112",
+  "schema_ddl": "CREATE TABLE INSURANCE (\n    PID INT,\n    TIV_2015 NUMERIC,\n    TIV_2016 NUMERIC,\n    LAT NUMERIC,\n    LON NUMERIC,\n    PRIMARY KEY (PID),\n    CHECK (TIV_2015 >= 0),\n    CHECK (TIV_2016 >= 0)\n);",
+  "q1": "SELECT ROUND(SUM(TIV_2016),2) TIV_2016 FROM INSURANCE WHERE TIV_2015 IN (SELECT TIV_2015 FROM INSURANCE GROUP BY TIV_2015 HAVING COUNT(*)>1) AND (LAT,LON) IN (SELECT LAT,LON FROM INSURANCE GROUP BY LAT,LON HAVING COUNT(*)=1)",
+  "q2": "SELECT ROUND(SUM(TIV_2016), 2) AS TIV_2016 FROM INSURANCE WHERE TIV_2015 IN (SELECT TIV_2015 FROM INSURANCE GROUP BY TIV_2015 HAVING COUNT(*)>1 ) AND (LAT, LON) NOT IN (SELECT LAT, LON FROM INSURANCE GROUP BY LAT, LON HAVING COUNT(*)>1)",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT ROUND(SUM(TIV_2016),2) TIV_2016 FROM INSURANCE WHERE TIV_2015 IN (SELECT TIV_2015 FROM INSURANCE GROUP BY TIV_2015 HAVING COUNT(*)>1) AND (LAT,LON) IN (SELECT LAT,LON FROM INSURANCE GROUP BY LAT,LON HAVING COUNT(*)=1)",
+  "q2_prompt_sql": "SELECT ROUND(SUM(TIV_2016), 2) AS TIV_2016 FROM INSURANCE WHERE TIV_2015 IN (SELECT TIV_2015 FROM INSURANCE GROUP BY TIV_2015 HAVING COUNT(*)>1 ) AND (LAT, LON) NOT IN (SELECT LAT, LON FROM INSURANCE GROUP BY LAT, LON HAVING COUNT(*)>1)",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO INSURANCE (PID, TIV_2015, TIV_2016, LAT, LON) VALUES (1, 1000, 1500, 40.7128, -74.0060); INSERT INTO INSURANCE (PID, TIV_2015, TIV_2016, LAT, LON) VALUES (2, 1000, 1200, 34.0522, -118.2437); INSERT INTO INSURANCE (PID, TIV_2015, TIV_2016, LAT, LON) VALUES (3, 1200, 1800, 40.7128, -74.0060);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 selects policies that have the same TIV_2015 value as at least one other policy AND are located at a unique latitude and longitude. Q2 selects policies that have the same TIV_2015 value as at least one other policy AND are NOT located at a latitude and longitude that is shared by at least two policies.",
+  "counterexample_dsp": "A test database with 3 policies, where policy 1 and policy 2 share the same TIV_2015 value and are located at unique latitude and longitude, while policy 3 has a different TIV_2015 value and is located at the same latitude and longitude as policy 1.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 selects policies that have the same TIV_2015 value as at least one other policy AND are located at a unique latitude and longitude. Q2 selects policies that have the same TIV_2015 value as at least one other policy AND are NOT located at a latitude and longitude that is shared by at least two policies.\",\n  \"counterexample_dsp\": \"A test database with 3 policies, where policy 1 and policy 2 share the same TIV_2015 value and are located at unique latitude and longitude, while policy 3 has a different TIV_2015 value and is located at the same latitude and longitude as policy 1.\",\n  \"counterexample\": \"INSERT INTO INSURANCE (PID, TIV_2015, TIV_2016, LAT, LON) VALUES (1, 1000, 1500, 40.7128, -74.0060); INSERT INTO INSURANCE (PID, TIV_2015, TIV_2016, LAT, LON) VALUES (2, 1000, 1200, 34.0522, -118.2437); INSERT INTO INSURANCE (PID, TIV_2015, TIV_2016, LAT, LON) VALUES (3, 1200, 1800, 40.7128, -74.0060);\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 485,
+    "total_tokens": 836,
+    "completion_tokens": 351,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 5.844
+  },
+  "started_at": "2026-10-06T09:50:48.335283+00:00",
+  "elapsed_seconds": 3.032,
+  "q1_output": [
+    [
+      "1200"
+    ]
+  ],
+  "q2_output": [
+    [
+      "1200"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT ROUND(SUM(TIV_2016),2) TIV_2016 FROM INSURANCE WHERE TIV_2015 IN (SELECT TIV_2015 FROM INSURANCE GROUP BY TIV_2015 HAVING COUNT(*)>1) AND (LAT,LON) IN (SELECT LAT,LON FROM INSURANCE GROUP BY LAT,LON HAVING COUNT(*)=1)",
+  "q2_validation_sql": "SELECT ROUND(SUM(TIV_2016), 2) AS TIV_2016 FROM INSURANCE WHERE TIV_2015 IN (SELECT TIV_2015 FROM INSURANCE GROUP BY TIV_2015 HAVING COUNT(*)>1 ) AND (LAT, LON) NOT IN (SELECT LAT, LON FROM INSURANCE GROUP BY LAT, LON HAVING COUNT(*)>1)"
+}

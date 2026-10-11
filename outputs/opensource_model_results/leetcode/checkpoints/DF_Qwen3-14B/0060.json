@@ -1,0 +1,39 @@
+{
+  "dbid": "577",
+  "index": "60",
+  "source_index": "239",
+  "schema_ddl": "CREATE TABLE EMPLOYEE (\n    EMPID INT,\n    NAME VARCHAR(255),\n    SUPERVISOR INT,\n    SALARY INT,\n    PRIMARY KEY (EMPID),\n    CHECK (EMPID <> SUPERVISOR),\n    CHECK (SALARY >= 0)\n);\n\nCREATE TABLE BONUS (\n    EMPID INT,\n    BONUS INT,\n    PRIMARY KEY (EMPID),\n    FOREIGN KEY (EMPID) REFERENCES EMPLOYEE(EMPID),\n    CHECK (BONUS >= 0)\n);",
+  "q1": "SELECT EMPLOYEE.NAME, BONUS.BONUS FROM EMPLOYEE LEFT JOIN BONUS ON EMPLOYEE.EMPID = BONUS.EMPID WHERE BONUS < 1000 OR BONUS IS NULL",
+  "q2": "SELECT EMPLOYEE.NAME, BONUS.BONUS FROM EMPLOYEE LEFT JOIN BONUS ON EMPLOYEE.EMPID = BONUS.EMPID WHERE COALESCE(BONUS,0) <1000",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT EMPLOYEE.NAME, BONUS.BONUS FROM EMPLOYEE LEFT JOIN BONUS ON EMPLOYEE.EMPID = BONUS.EMPID WHERE BONUS < 1000 OR BONUS IS NULL",
+  "q2_prompt_sql": "SELECT EMPLOYEE.NAME, BONUS.BONUS FROM EMPLOYEE LEFT JOIN BONUS ON EMPLOYEE.EMPID = BONUS.EMPID WHERE COALESCE(BONUS,0) <1000",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries select employees with a bonus less than 1000 or no bonus. Q1 uses OR BONUS IS NULL to include employees without bonuses, while Q2 uses COALESCE(BONUS,0) < 1000 which implicitly includes NULLs as 0. Both conditions yield the same result set under the schema constraints.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries select employees with a bonus less than 1000 or no bonus. Q1 uses OR BONUS IS NULL to include employees without bonuses, while Q2 uses COALESCE(BONUS,0) < 1000 which implicitly includes NULLs as 0. Both conditions yield the same result set under the schema constraints.\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem step by step. The user wants to know if the two SQL queries, Q1 and Q2, are semantically equivalent. If not, they need a counterexample.\n\nFirst, I need to understand what each query does. Let's look at Q1: It's a LEFT JOIN between EMPLOYEE and BONUS on EMPID. The WHERE clause says BONUS < 1000 OR BONUS IS NULL. Wait, but in a LEFT JOIN, even if there's no matching BONUS, BONUS would be NULL. So the condition here is checking if either the BONUS is less than 1000 or it's NULL. However, in SQL, when you have a LEFT JOIN and then a WHERE condition on the right table's column, that can effectively turn it into an INNER JOIN if the condition is not met. Wait, but in this case, the WHERE is including BONUS IS NULL. Hmm, maybe that's not the case here.\n\nWait, the LEFT JOIN ensures that all employees are included, even if they don't have a bonus. The WHERE clause here is BONUS < 1000 OR BONUS IS NULL. Let me think: For employees without a bonus (BONUS is NULL), the condition BONUS IS NULL is true, so they would be included. For those with a bonus, if it's less than 1000, they are included. But if the bonus is >=1000, they are excluded. So Q1 is selecting all employees who either have a bonus less than 1000 or no bonus at all.\n\nNow Q2: Same LEFT JOIN. The WHERE clause is COALESCE(BONUS, 0) < 1000. COALESCE replaces NULL with 0. So for employees without a bonus, BONUS is treated as 0. So the condition is that the bonus (or 0 if null) is less than 1000. That would include all employees with a bonus less than 1000, and those with no bonus (since 0 < 1000). Wait, that seems similar to Q1. But wait, in Q1, the condition is BONUS < 1000 OR BONUS IS NULL. Which would include employees with no bonus (BONUS IS NULL) and those with bonus less than 1000. In Q2, COALESCE(BONUS,0) < 1000 would include all employees where either their bonus is less than 1000 (including those with bonus NULL, which becomes 0, which is less than 1000). So, isn't that the same as Q1?\n\nWait, but let's think again. For an employee with a bonus of 1000 or more, Q1 would exclude them because BONUS < 1000 is false and BONUS IS NULL is also false (since they have a bonus). So Q1 excludes them. Q2 would check COALESCE(BONUS, 0) < 1000. If the bonus is 1000 or more, then COALESCE would be 1000 or higher, which is not less than 1000, so they are excluded. So for those with bonus >=1000, both queries exclude them. For those with bonus <1000, both include them. For those with no bonus (BONUS is NULL), Q1 includes them because BONUS IS NULL is true, and Q2 includes them because COALESCE makes it 0 <1000. So in that case, they should be equivalent. Wait, but maybe there's a case where BONUS is NULL in the join. Wait, but in the LEFT JOIN, if there's no matching BONUS record, then BONUS.BONUS would be NULL. So in both queries, the condition would include those employees. So why would they not be equivalent?\n\nWait, perhaps there's a scenario where BONUS is NULL but the WHERE clause in Q1 is not matching? No, because Q1's WHERE is BONUS < 1000 OR BONUS IS NULL. For a row where BONUS is NULL, the second condition is true, so it's included. In Q2, COALESCE(BONUS, 0) would be 0, which is less than 1000, so it's included. So in all cases, the same rows would be selected. Therefore, the queries are equivalent. So the answer would be Y.\n\nBut wait, maybe I'm missing something. Let me think again. Suppose there's an employee with a bonus of 0. In Q1, BONUS < 1000 is true (since 0 < 1000), so included. In Q2, COALESCE(BONUS,0) is 0, which is also less than 1000. So same result. What if BONUS is 1000? Then Q1's condition is false (BONUS <1000 is false, and BONUS is not NULL), so excluded. Q2's condition would be 1000 <1000? No, so excluded. Same result. What about BONUS is NULL? Both include. So seems same.\n\nWait, but maybe the LEFT JOIN in Q1 could have BONUS as NULL, but in the WHERE clause, if BONUS is NULL, then BONUS < 1000 would be false (since NULL compared to 1000 is unknown), but the OR BONUS IS NULL makes it true. So in Q1, the WHERE clause is effectively (BONUS < 1000) OR (BONUS IS NULL). In Q2, it's COALESCE(BONUS, 0) < 1000, which for BONUS IS NULL, becomes 0 < 1000, which is true. So in all cases, the same rows would be selected. Therefore, the queries are equivalent. So the answer would be Y.\n\nBut wait, maybe there's a case where BONUS is NULL, but the WHERE clause in Q1 would include it. But in Q2, same. So no difference. Therefore, they are equivalent. So the answer is Y.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 443,
+    "total_tokens": 1863,
+    "completion_tokens": 1420,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1332
+    },
+    "generation_seconds": 45.203
+  },
+  "started_at": "2026-10-06T14:41:53.381927+00:00",
+  "elapsed_seconds": 0.0
+}

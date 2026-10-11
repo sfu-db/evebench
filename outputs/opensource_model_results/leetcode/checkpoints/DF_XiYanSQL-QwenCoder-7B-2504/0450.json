@@ -1,0 +1,53 @@
+{
+  "dbid": "607",
+  "index": "450",
+  "source_index": "132",
+  "schema_ddl": "CREATE TABLE SALESPERSON (\n    SALES_ID INT,\n    NAME VARCHAR(255),\n    SALARY INT,\n    COMMISSION_RATE INT,\n    HIRE_DATE VARCHAR(255)\n);\n\nCREATE TABLE COMPANY (\n    COM_ID INT,\n    NAME VARCHAR(255),\n    CITY VARCHAR(255)\n);\n\nCREATE TABLE ORDERS (\n    ORDER_ID INT,\n    COM_ID INT,\n    SALES_ID INT,\n    ORDER_DATE VARCHAR(255),\n    AMOUNT INT\n);",
+  "q1": "SELECT NAME FROM SALESPERSON AS S WHERE 0 = ( SELECT COUNT(*) FROM ORDERS AS O JOIN COMPANY AS C ON O.COM_ID = C.COM_ID WHERE O.SALES_ID = S.SALES_ID AND C.NAME = 'RED' )",
+  "q2": "SELECT DISTINCT S.NAME FROM SALESPERSON AS S WHERE S.NAME NOT IN (SELECT DISTINCT S.NAME AS PERSONNAME FROM SALESPERSON AS S LEFT JOIN ORDERS AS O ON S.SALES_ID=O.SALES_ID LEFT JOIN COMPANY AS C ON C.COM_ID=O.COM_ID WHERE C.NAME='RED')",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT NAME FROM SALESPERSON AS S WHERE 0 = ( SELECT COUNT(*) FROM ORDERS AS O JOIN COMPANY AS C ON O.COM_ID = C.COM_ID WHERE O.SALES_ID = S.SALES_ID AND C.NAME = 'RED' )",
+  "q2_prompt_sql": "SELECT DISTINCT S.NAME FROM SALESPERSON AS S WHERE S.NAME NOT IN (SELECT DISTINCT S.NAME AS PERSONNAME FROM SALESPERSON AS S LEFT JOIN ORDERS AS O ON S.SALES_ID=O.SALES_ID LEFT JOIN COMPANY AS C ON C.COM_ID=O.COM_ID WHERE C.NAME='RED')",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO SALESPERSON (SALES_ID, NAME, SALARY, COMMISSION_RATE, HIRE_DATE) VALUES (1, 'Salesperson1', 50000, 10, '2010-01-01'); INSERT INTO SALESPERSON (SALES_ID, NAME, SALARY, COMMISSION_RATE, HIRE_DATE) VALUES (2, 'Salesperson2', 60000, 12, '2012-05-15'); INSERT INTO SALESPERSON (SALES_ID, NAME, SALARY, COMMISSION_RATE, HIRE_DATE) VALUES (3, 'Salesperson3', 55000, 11, '2015-03-20'); INSERT INTO COMPANY (COM_ID, NAME, CITY) VALUES (1, 'RED', 'New York'); INSERT INTO ORDERS (ORDER_ID, COM_ID, SALES_ID, ORDER_DATE, AMOUNT) VALUES (1, 1, 2, '2021-01-15', 1000); INSERT INTO ORDERS (ORDER_ID, COM_ID, SALES_ID, ORDER_DATE, AMOUNT) VALUES (2, 1, 3, '2021-02-20', 1500);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not equivalent. Q1 checks if there are no orders for the 'RED' company made by a salesperson, while Q2 checks if a salesperson has not made any orders for the 'RED' company. The difference lies in the direction of the check: Q1 is about the absence of orders, and Q2 is about the absence of a salesperson in the list of people who made orders for the 'RED' company.",
+  "counterexample_dsp": "A salesperson who has not made any orders for the 'RED' company, but there are other salespeople who have made orders for the 'RED' company.",
+  "equiv": "N",
+  "raw_response": "{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 and Q2 are not equivalent. Q1 checks if there are no orders for the 'RED' company made by a salesperson, while Q2 checks if a salesperson has not made any orders for the 'RED' company. The difference lies in the direction of the check: Q1 is about the absence of orders, and Q2 is about the absence of a salesperson in the list of people who made orders for the 'RED' company.\",\n\"counterexample_dsp\": \"A salesperson who has not made any orders for the 'RED' company, but there are other salespeople who have made orders for the 'RED' company.\",\n\"counterexample\": \"INSERT INTO SALESPERSON (SALES_ID, NAME, SALARY, COMMISSION_RATE, HIRE_DATE) VALUES (1, 'Salesperson1', 50000, 10, '2010-01-01'); INSERT INTO SALESPERSON (SALES_ID, NAME, SALARY, COMMISSION_RATE, HIRE_DATE) VALUES (2, 'Salesperson2', 60000, 12, '2012-05-15'); INSERT INTO SALESPERSON (SALES_ID, NAME, SALARY, COMMISSION_RATE, HIRE_DATE) VALUES (3, 'Salesperson3', 55000, 11, '2015-03-20'); INSERT INTO COMPANY (COM_ID, NAME, CITY) VALUES (1, 'RED', 'New York'); INSERT INTO ORDERS (ORDER_ID, COM_ID, SALES_ID, ORDER_DATE, AMOUNT) VALUES (1, 1, 2, '2021-01-15', 1000); INSERT INTO ORDERS (ORDER_ID, COM_ID, SALES_ID, ORDER_DATE, AMOUNT) VALUES (2, 1, 3, '2021-02-20', 1500);\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 498,
+    "total_tokens": 940,
+    "completion_tokens": 442,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 7.781
+  },
+  "started_at": "2026-10-06T14:34:04.187747+00:00",
+  "elapsed_seconds": 4.625,
+  "q1_output": [
+    [
+      "Salesperson1"
+    ]
+  ],
+  "q2_output": [
+    [
+      "Salesperson1"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT NAME FROM SALESPERSON AS S WHERE 0 = ( SELECT COUNT(*) FROM ORDERS AS O JOIN COMPANY AS C ON O.COM_ID = C.COM_ID WHERE O.SALES_ID = S.SALES_ID AND C.NAME = 'RED' )",
+  "q2_validation_sql": "SELECT DISTINCT S.NAME FROM SALESPERSON AS S WHERE S.NAME NOT IN (SELECT DISTINCT S.NAME AS PERSONNAME FROM SALESPERSON AS S LEFT JOIN ORDERS AS O ON S.SALES_ID=O.SALES_ID LEFT JOIN COMPANY AS C ON C.COM_ID=O.COM_ID WHERE C.NAME='RED')"
+}

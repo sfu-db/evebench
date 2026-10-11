@@ -1,0 +1,59 @@
+{
+  "dbid": "610",
+  "index": "434",
+  "source_index": "51",
+  "schema_ddl": "CREATE TABLE TRIANGLE (\n    X INT,\n    Y INT,\n    Z INT,\n    PRIMARY KEY (X, Y, Z),\n    CHECK (X > 0),\n    CHECK (Y > 0),\n    CHECK (Z > 0)\n);",
+  "q1": "SELECT X, Y, Z, IF(X+Y>Z AND X+Z>Y AND Y+Z>X, 'YES', 'NO') AS TRIANGLE FROM TRIANGLE",
+  "q2": "SELECT X,Y,Z, IF(X+Y>Z AND Z+Y>X AND Z+X>Y, 'YES','NO') AS TRIANGLE FROM TRIANGLE",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT X, Y, Z, IF(X+Y>Z AND X+Z>Y AND Y+Z>X, 'YES', 'NO') AS TRIANGLE FROM TRIANGLE",
+  "q2_prompt_sql": "SELECT X,Y,Z, IF(X+Y>Z AND Z+Y>X AND Z+X>Y, 'YES','NO') AS TRIANGLE FROM TRIANGLE",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO TRIANGLE (X, Y, Z) VALUES (1, 1, 2);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not equivalent because they use different conditions to determine if a triangle can be formed. Q1 checks if X+Y>Z AND X+Z>Y AND Y+Z>X, while Q2 checks if X+Y>Z AND Z+Y>X AND Z+X>Y. These conditions are not the same, and thus, the results of Q1 and Q2 can be different.",
+  "counterexample_dsp": "The difference is in the conditions for forming a triangle. Q1 and Q2 use different combinations of sides in their conditions. A counterexample can be found where the conditions are met differently.",
+  "equiv": "N",
+  "raw_response": "{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 and Q2 are not equivalent because they use different conditions to determine if a triangle can be formed. Q1 checks if X+Y>Z AND X+Z>Y AND Y+Z>X, while Q2 checks if X+Y>Z AND Z+Y>X AND Z+X>Y. These conditions are not the same, and thus, the results of Q1 and Q2 can be different.\",\n\"counterexample_dsp\": \"The difference is in the conditions for forming a triangle. Q1 and Q2 use different combinations of sides in their conditions. A counterexample can be found where the conditions are met differently.\",\n\"counterexample\": \"INSERT INTO TRIANGLE (X, Y, Z) VALUES (1, 1, 2);\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 398,
+    "total_tokens": 569,
+    "completion_tokens": 171,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 3.031
+  },
+  "started_at": "2026-10-06T14:34:01.680839+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      1,
+      1,
+      2,
+      "NO"
+    ]
+  ],
+  "q2_output": [
+    [
+      1,
+      1,
+      2,
+      "NO"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT X, Y, Z, IF(X+Y>Z AND X+Z>Y AND Y+Z>X, 'YES', 'NO') AS TRIANGLE FROM TRIANGLE",
+  "q2_validation_sql": "SELECT X,Y,Z, IF(X+Y>Z AND Z+Y>X AND Z+X>Y, 'YES','NO') AS TRIANGLE FROM TRIANGLE"
+}

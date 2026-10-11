@@ -1,0 +1,55 @@
+{
+  "dbid": "card_games",
+  "index": "269",
+  "source_index": "428",
+  "schema_ddl": "CREATE TABLE \"cards\"\n(\n    id                      INTEGER           not null\n        primary key autoincrement,\n    artist                  TEXT,\n    asciiName               TEXT,\n    availability            TEXT,\n    borderColor             TEXT,\n    cardKingdomFoilId       TEXT,\n    cardKingdomId           TEXT,\n    colorIdentity           TEXT,\n    colorIndicator          TEXT,\n    colors                  TEXT,\n    convertedManaCost       REAL,\n    duelDeck                TEXT,\n    edhrecRank              INTEGER,\n    faceConvertedManaCost   REAL,\n    faceName                TEXT,\n    flavorName              TEXT,\n    flavorText              TEXT,\n    frameEffects            TEXT,\n    frameVersion            TEXT,\n    hand                    TEXT,\n    hasAlternativeDeckLimit INTEGER default 0 not null,\n    hasContentWarning       INTEGER default 0 not null,\n    hasFoil                 INTEGER default 0 not null,\n    hasNonFoil              INTEGER default 0 not null,\n    isAlternative           INTEGER default 0 not null,\n    isFullArt               INTEGER default 0 not null,\n    isOnlineOnly            INTEGER default 0 not null,\n    isOversized             INTEGER default 0 not null,\n    isPromo                 INTEGER default 0 not null,\n    isReprint               INTEGER default 0 not null,\n    isReserved              INTEGER default 0 not null,\n    isStarter               INTEGER default 0 not null,\n    isStorySpotlight        INTEGER default 0 not null,\n    isTextless              INTEGER default 0 not null,\n    isTimeshifted           INTEGER default 0 not null,\n    keywords                TEXT,\n    layout                  TEXT,\n    leadershipSkills        TEXT,\n    life                    TEXT,\n    loyalty                 TEXT,\n    manaCost                TEXT,\n    mcmId                   TEXT,\n    mcmMetaId               TEXT,\n    mtgArenaId              TEXT,\n    mtgjsonV4Id             TEXT,\n    mtgoFoilId              TEXT,\n    mtgoId                  TEXT,\n    multiverseId            TEXT,\n    name                    TEXT,\n    number                  TEXT,\n    originalReleaseDate     TEXT,\n    originalText            TEXT,\n    originalType            TEXT,\n    otherFaceIds            TEXT,\n    power                   TEXT,\n    printings               TEXT,\n    promoTypes              TEXT,\n    purchaseUrls            TEXT,\n    rarity                  TEXT,\n    scryfallId              TEXT,\n    scryfallIllustrationId  TEXT,\n    scryfallOracleId        TEXT,\n    setCode                 TEXT,\n    side                    TEXT,\n    subtypes                TEXT,\n    supertypes              TEXT,\n    tcgplayerProductId      TEXT,\n    text                    TEXT,\n    toughness               TEXT,\n    type                    TEXT,\n    types                   TEXT,\n    uuid                    TEXT              not null\n        unique,\n    variations              TEXT,\n    watermark               TEXT\n);\n\nCREATE TABLE \"foreign_data\"\n(\n    id           INTEGER not null\n        primary key autoincrement,\n    flavorText   TEXT,\n    language     TEXT,\n    multiverseid INTEGER,\n    name         TEXT,\n    text         TEXT,\n    type         TEXT,\n    uuid         TEXT\n        references cards (uuid)\n);\n\nCREATE TABLE \"legalities\"\n(\n    id     INTEGER not null\n        primary key autoincrement,\n    format TEXT,\n    status TEXT,\n    uuid   TEXT\n        references cards (uuid)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE \"sets\"\n(\n    id               INTEGER           not null\n        primary key autoincrement,\n    baseSetSize      INTEGER,\n    block            TEXT,\n    booster          TEXT,\n    code             TEXT              not null\n        unique,\n    isFoilOnly       INTEGER default 0 not null,\n    isForeignOnly    INTEGER default 0 not null,\n    isNonFoilOnly    INTEGER default 0 not null,\n    isOnlineOnly     INTEGER default 0 not null,\n    isPartialPreview INTEGER default 0 not null,\n    keyruneCode      TEXT,\n    mcmId            INTEGER,\n    mcmIdExtras      INTEGER,\n    mcmName          TEXT,\n    mtgoCode         TEXT,\n    name             TEXT,\n    parentCode       TEXT,\n    releaseDate      DATE,\n    tcgplayerGroupId INTEGER,\n    totalSetSize     INTEGER,\n    type             TEXT\n);\n\nCREATE TABLE \"set_translations\"\n(\n    id          INTEGER not null\n        primary key autoincrement,\n    language    TEXT,\n    setCode     TEXT\n        references sets (code)\n            on update cascade on delete cascade,\n    translation TEXT\n);\n\nCREATE TABLE \"rulings\"\n(\n    id   INTEGER not null\n        primary key autoincrement,\n    date DATE,\n    text TEXT,\n    uuid TEXT\n        references cards (uuid)\n            on update cascade on delete cascade\n);",
+  "q1": "SELECT T2.language FROM sets AS T1 INNER JOIN set_translations AS T2 ON T1.code = T2.setCode WHERE T1.mcmName = 'Archenemy' AND T2.setCode = 'ARC'",
+  "q2": "SELECT language FROM set_translations WHERE setCode = (SELECT code FROM sets WHERE mcmName = 'Archenemy' AND code = 'ARC')",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT T2.language FROM sets AS T1 INNER JOIN set_translations AS T2 ON T1.code = T2.setCode WHERE T1.mcmName = 'Archenemy' AND T2.setCode = 'ARC'",
+  "q2_prompt_sql": "SELECT language FROM set_translations WHERE setCode = (SELECT code FROM sets WHERE mcmName = 'Archenemy' AND code = 'ARC')",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO sets (code, mcmName) VALUES ('ARC', 'Archenemy');\nINSERT INTO sets (code, mcmName) VALUES ('ABC', 'SomeOtherSet');\nINSERT INTO set_translations (setCode, language) VALUES ('ARC', 'English');\nINSERT INTO set_translations (setCode, language) VALUES ('ABC', 'French');",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent. Q1 joins sets with set_translations on code = setCode and filters on T1.mcmName = 'Archenemy' AND T2.setCode = 'ARC'. Q2 uses a subquery to get the code from sets where mcmName = 'Archenemy' AND code = 'ARC', and then filters set_translations on that code. Q1 filters on T2.setCode = 'ARC', which is redundant since it comes from the join with sets where code = 'ARC'. Q2 explicitly filters on setCode = 'ARC' but the subquery also has code = 'ARC', so both queries should return the same result in this specific case. However, the difference may arise if the subquery in Q2 returns multiple values, but in this case, the WHERE clause restricts it to one row. The main difference is that Q1 uses an INNER JOIN while Q2 uses a subquery, but in this specific case, they should be equivalent. I will provide a counterexample to confirm.",
+  "counterexample_dsp": "I will create a scenario where the subquery in Q2 returns a different setCode than the join in Q1, but given the WHERE clause, it should not. I will use a different value for mcmName to show that Q1 and Q2 behave differently when the conditions are not met.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 and Q2 are not semantically equivalent. Q1 joins sets with set_translations on code = setCode and filters on T1.mcmName = 'Archenemy' AND T2.setCode = 'ARC'. Q2 uses a subquery to get the code from sets where mcmName = 'Archenemy' AND code = 'ARC', and then filters set_translations on that code. Q1 filters on T2.setCode = 'ARC', which is redundant since it comes from the join with sets where code = 'ARC'. Q2 explicitly filters on setCode = 'ARC' but the subquery also has code = 'ARC', so both queries should return the same result in this specific case. However, the difference may arise if the subquery in Q2 returns multiple values, but in this case, the WHERE clause restricts it to one row. The main difference is that Q1 uses an INNER JOIN while Q2 uses a subquery, but in this specific case, they should be equivalent. I will provide a counterexample to confirm.\",\n\"counterexample_dsp\": \"I will create a scenario where the subquery in Q2 returns a different setCode than the join in Q1, but given the WHERE clause, it should not. I will use a different value for mcmName to show that Q1 and Q2 behave differently when the conditions are not met.\",\n\"counterexample\": \"INSERT INTO sets (code, mcmName) VALUES ('ARC', 'Archenemy');\\nINSERT INTO sets (code, mcmName) VALUES ('ABC', 'SomeOtherSet');\\nINSERT INTO set_translations (setCode, language) VALUES ('ARC', 'English');\\nINSERT INTO set_translations (setCode, language) VALUES ('ABC', 'French');\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 1296,
+    "total_tokens": 1686,
+    "completion_tokens": 390,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 13.093
+  },
+  "started_at": "2026-10-06T21:16:59.144146+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "English"
+    ]
+  ],
+  "q2_output": [
+    [
+      "English"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT T2.language FROM sets AS T1 INNER JOIN set_translations AS T2 ON T1.code = T2.setCode WHERE T1.mcmName = 'Archenemy' AND T2.setCode = 'ARC'",
+  "q2_validation_sql": "SELECT language FROM set_translations WHERE setCode = (SELECT code FROM sets WHERE mcmName = 'Archenemy' AND code = 'ARC')"
+}

@@ -1,0 +1,39 @@
+{
+  "dbid": "619",
+  "index": "309",
+  "source_index": "279",
+  "schema_ddl": "CREATE TABLE MYNUMBERS (\n    NUM INT\n);",
+  "q1": "SELECT MAX(NUM) AS NUM FROM (SELECT NUM FROM MYNUMBERS GROUP BY NUM HAVING COUNT(NUM) = 1) AS T",
+  "q2": "SELECT MAX(NUM) AS NUM FROM ( SELECT NUM FROM MYNUMBERS GROUP BY NUM HAVING COUNT(NUM) = 1 ORDER BY NUM DESC) AS MAX_T",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT MAX(NUM) AS NUM FROM (SELECT NUM FROM MYNUMBERS GROUP BY NUM HAVING COUNT(NUM) = 1) AS T",
+  "q2_prompt_sql": "SELECT MAX(NUM) AS NUM FROM ( SELECT NUM FROM MYNUMBERS GROUP BY NUM HAVING COUNT(NUM) = 1 ORDER BY NUM DESC) AS MAX_T",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are semantically equivalent. Both queries aim to find the maximum unique number from the MYNUMBERS table. Q1 groups by NUM, filters for uniqueness with HAVING COUNT(NUM) = 1, and then applies MAX. Q2 does the same but includes an ORDER BY NUM DESC in the subquery, which does not affect the result of MAX(NUM) since the outer query still computes the maximum of the grouped unique values.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n  \"equiv\": \"N\",\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent. Q1 retrieves the maximum number among unique numbers in MYNUMBERS. Q2 also retrieves the maximum number among unique numbers, but the ORDER BY NUM DESC inside the subquery is unnecessary and does not change the result of MAX(NUM). However, in some SQL implementations, the presence of ORDER BY in a derived table used with aggregate functions may lead to different behavior or optimization paths, potentially affecting the result if there are multiple rows. But logically, they should be equivalent. Upon re-evaluation, I realize they are actually equivalent. Let me correct that.\",\n  \"equiv\": \"Y\",\n  \"explanation\": \"Q1 and Q2 are semantically equivalent. Both queries aim to find the maximum unique number from the MYNUMBERS table. Q1 groups by NUM, filters for uniqueness with HAVING COUNT(NUM) = 1, and then applies MAX. Q2 does the same but includes an ORDER BY NUM DESC in the subquery, which does not affect the result of MAX(NUM) since the outer query still computes the maximum of the grouped unique values.\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 328,
+    "total_tokens": 574,
+    "completion_tokens": 246,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 8.203
+  },
+  "started_at": "2026-10-06T15:41:00.246866+00:00",
+  "elapsed_seconds": 0.0
+}

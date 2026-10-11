@@ -1,0 +1,63 @@
+{
+  "dbid": "1075",
+  "index": "151",
+  "source_index": "211",
+  "schema_ddl": "CREATE TABLE EMPLOYEE (\n    EMPLOYEE_ID INT,\n    NAME VARCHAR(255),\n    EXPERIENCE_YEARS INT,\n    PRIMARY KEY (EMPLOYEE_ID),\n    CHECK (EXPERIENCE_YEARS >= 0)\n);\nCREATE TABLE PROJECT (\n    PROJECT_ID INT,\n    EMPLOYEE_ID INT,\n    PRIMARY KEY (PROJECT_ID, EMPLOYEE_ID),\n    FOREIGN KEY (EMPLOYEE_ID) REFERENCES EMPLOYEE(EMPLOYEE_ID)\n);",
+  "q1": "SELECT A.PROJECT_ID, ROUND(AVG(B.EXPERIENCE_YEARS), 2) AS AVERAGE_YEARS FROM PROJECT AS A INNER JOIN EMPLOYEE AS B ON A.EMPLOYEE_ID = B.EMPLOYEE_ID GROUP BY A.PROJECT_ID",
+  "q2": "SELECT P.PROJECT_ID, ROUND(AVG(EXPERIENCE_YEARS),2) AS AVERAGE_YEARS FROM PROJECT P JOIN EMPLOYEE E ON P.EMPLOYEE_ID=E.EMPLOYEE_ID GROUP BY 1",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT A.PROJECT_ID, ROUND(AVG(B.EXPERIENCE_YEARS), 2) AS AVERAGE_YEARS FROM PROJECT AS A INNER JOIN EMPLOYEE AS B ON A.EMPLOYEE_ID = B.EMPLOYEE_ID GROUP BY A.PROJECT_ID",
+  "q2_prompt_sql": "SELECT P.PROJECT_ID, ROUND(AVG(EXPERIENCE_YEARS),2) AS AVERAGE_YEARS FROM PROJECT P JOIN EMPLOYEE E ON P.EMPLOYEE_ID=E.EMPLOYEE_ID GROUP BY 1",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO EMPLOYEE (EMPLOYEE_ID, NAME, EXPERIENCE_YEARS) VALUES (1, 'Employee1', 5), (2, 'Employee2', 10); INSERT INTO PROJECT (PROJECT_ID, EMPLOYEE_ID) VALUES (1, 1), (2, 2);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent because Q1 refers to the EXPERIENCE_YEARS column from the EMPLOYEE table as B.EXPERIENCE_YEARS, while Q2 refers to the same column as EXPERIENCE_YEARS without an alias. In SQL, when a column name is used without an alias, it refers to the first table in the FROM clause that contains the column. In this case, both queries refer to the EMPLOYEE table, so the difference lies in the JOIN syntax. Q1 uses INNER JOIN, while Q2 uses JOIN (which is equivalent to INNER JOIN in this context). The difference in JOIN syntax does not affect the outcome in this specific case, but it is a good practice to use INNER JOIN for clarity.",
+  "counterexample_dsp": "The test data should include at least two projects and two employees, with different experience years. The difference in JOIN syntax should not affect the outcome in this specific case, but it is a good practice to use INNER JOIN for clarity.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent because Q1 refers to the EXPERIENCE_YEARS column from the EMPLOYEE table as B.EXPERIENCE_YEARS, while Q2 refers to the same column as EXPERIENCE_YEARS without an alias. In SQL, when a column name is used without an alias, it refers to the first table in the FROM clause that contains the column. In this case, both queries refer to the EMPLOYEE table, so the difference lies in the JOIN syntax. Q1 uses INNER JOIN, while Q2 uses JOIN (which is equivalent to INNER JOIN in this context). The difference in JOIN syntax does not affect the outcome in this specific case, but it is a good practice to use INNER JOIN for clarity.\",\n  \"counterexample_dsp\": \"The test data should include at least two projects and two employees, with different experience years. The difference in JOIN syntax should not affect the outcome in this specific case, but it is a good practice to use INNER JOIN for clarity.\",\n  \"counterexample\": \"INSERT INTO EMPLOYEE (EMPLOYEE_ID, NAME, EXPERIENCE_YEARS) VALUES (1, 'Employee1', 5), (2, 'Employee2', 10); INSERT INTO PROJECT (PROJECT_ID, EMPLOYEE_ID) VALUES (1, 1), (2, 2);\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 413,
+    "total_tokens": 700,
+    "completion_tokens": 287,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 4.734
+  },
+  "started_at": "2026-10-06T09:50:21.480507+00:00",
+  "elapsed_seconds": 0.656,
+  "q1_output": [
+    [
+      1,
+      "5.00"
+    ],
+    [
+      2,
+      "10.00"
+    ]
+  ],
+  "q2_output": [
+    [
+      1,
+      "5.00"
+    ],
+    [
+      2,
+      "10.00"
+    ]
+  ],
+  "q1_row_count": 2,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT A.PROJECT_ID, ROUND(AVG(B.EXPERIENCE_YEARS), 2) AS AVERAGE_YEARS FROM PROJECT AS A INNER JOIN EMPLOYEE AS B ON A.EMPLOYEE_ID = B.EMPLOYEE_ID GROUP BY A.PROJECT_ID",
+  "q2_validation_sql": "SELECT P.PROJECT_ID, ROUND(AVG(EXPERIENCE_YEARS),2) AS AVERAGE_YEARS FROM PROJECT P JOIN EMPLOYEE E ON P.EMPLOYEE_ID=E.EMPLOYEE_ID GROUP BY 1"
+}

@@ -1,0 +1,53 @@
+{
+  "dbid": "debit_card_specializing",
+  "index": "858",
+  "source_index": "1508",
+  "schema_ddl": "CREATE TABLE customers\n(\n    CustomerID INTEGER UNIQUE     not null\n        primary key,\n    Segment    TEXT null,\n    Currency   TEXT null\n);\n\nCREATE TABLE gasstations\n(\n    GasStationID INTEGER    UNIQUE   not null\n        primary key,\n    ChainID      INTEGER          null,\n    Country      TEXT null,\n    Segment      TEXT null\n);\n\nCREATE TABLE products\n(\n    ProductID   INTEGER   UNIQUE      not null\n        primary key,\n    Description TEXT null\n);\n\nCREATE TABLE \"transactions_1k\"\n(\n    TransactionID INTEGER\n        primary key autoincrement,\n    Date          DATE,\n    Time          TEXT,\n    CustomerID    INTEGER,\n    CardID        INTEGER,\n    GasStationID  INTEGER,\n    ProductID     INTEGER,\n    Amount        INTEGER,\n    Price         REAL\n);\n\nCREATE TABLE \"yearmonth\"\n(\n    CustomerID  INTEGER not null\n        references customers\n            on update cascade on delete cascade\n        references customers,\n    Date        TEXT    not null,\n    Consumption REAL,\n    primary key (Date, CustomerID)\n);",
+  "q1": "SELECT DISTINCT T1.Time FROM transactions_1k AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID WHERE T2.ChainID = 11",
+  "q2": "SELECT DISTINCT T2.Time FROM gasstations AS T1 INNER JOIN transactions_1k AS T2 ON T1.GasStationID = T2.GasStationID WHERE T1.ChainID = 11",
+  "dialect": "sqlite",
+  "ground_truth": "EQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT DISTINCT T1.Time FROM transactions_1k AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID WHERE T2.ChainID = 11",
+  "q2_prompt_sql": "SELECT DISTINCT T2.Time FROM gasstations AS T1 INNER JOIN transactions_1k AS T2 ON T1.GasStationID = T2.GasStationID WHERE T1.ChainID = 11",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO customers (CustomerID, Segment, Currency) VALUES (1, 'A', 'USD'), (2, 'B', 'USD'); INSERT INTO gasstations (GasStationID, ChainID, Country, Segment) VALUES (1, 11, 'USA', 'Regular'), (2, 12, 'USA', 'Premium'); INSERT INTO products (ProductID, Description) VALUES (1, 'Regular Gasoline'); INSERT INTO transactions_1k (TransactionID, Date, Time, CustomerID, CardID, GasStationID, ProductID, Amount, Price) VALUES (1, '2023-01-01', '10:00:00', 1, 101, 1, 1, 10, 3.5), (2, '2023-01-01', '11:00:00', 2, 102, 2, 1, 15, 4.0);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent because they join the 'gasstations' table with the 'transactions_1k' table in different orders. Q1 joins 'transactions_1k' as T1 and 'gasstations' as T2, while Q2 joins 'gasstations' as T1 and 'transactions_1k' as T2. This difference in join order can lead to different results if the tables have overlapping column names or if the join conditions are not symmetric.",
+  "counterexample_dsp": "The test data should have at least one gas station with ChainID 11 and one transaction that involves this gas station. The transaction time in Q1 should be different from the transaction time in Q2 to ensure that the queries return different results.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent because they join the 'gasstations' table with the 'transactions_1k' table in different orders. Q1 joins 'transactions_1k' as T1 and 'gasstations' as T2, while Q2 joins 'gasstations' as T1 and 'transactions_1k' as T2. This difference in join order can lead to different results if the tables have overlapping column names or if the join conditions are not symmetric.\",\n  \"counterexample_dsp\": \"The test data should have at least one gas station with ChainID 11 and one transaction that involves this gas station. The transaction time in Q1 should be different from the transaction time in Q2 to ensure that the queries return different results.\",\n  \"counterexample\": \"INSERT INTO customers (CustomerID, Segment, Currency) VALUES (1, 'A', 'USD'), (2, 'B', 'USD'); INSERT INTO gasstations (GasStationID, ChainID, Country, Segment) VALUES (1, 11, 'USA', 'Regular'), (2, 12, 'USA', 'Premium'); INSERT INTO products (ProductID, Description) VALUES (1, 'Regular Gasoline'); INSERT INTO transactions_1k (TransactionID, Date, Time, CustomerID, CardID, GasStationID, ProductID, Amount, Price) VALUES (1, '2023-01-01', '10:00:00', 1, 101, 1, 1, 10, 3.5), (2, '2023-01-01', '11:00:00', 2, 102, 2, 1, 15, 4.0);\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 525,
+    "total_tokens": 919,
+    "completion_tokens": 394,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 7.422
+  },
+  "started_at": "2026-10-06T16:07:11.382690+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "10:00:00"
+    ]
+  ],
+  "q2_output": [
+    [
+      "10:00:00"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DISTINCT T1.Time FROM transactions_1k AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID WHERE T2.ChainID = 11",
+  "q2_validation_sql": "SELECT DISTINCT T2.Time FROM gasstations AS T1 INNER JOIN transactions_1k AS T2 ON T1.GasStationID = T2.GasStationID WHERE T1.ChainID = 11"
+}

@@ -1,0 +1,55 @@
+{
+  "dbid": "thrombosis_prediction",
+  "index": "672",
+  "source_index": "1186",
+  "schema_ddl": "CREATE TABLE Examination\n(\n    ID                 INTEGER          null,\n    `Examination Date` DATE         null,\n    `aCL IgG`          REAL        null,\n    `aCL IgM`          REAL        null,\n    ANA                INTEGER          null,\n    `ANA Pattern`      TEXT null,\n    `aCL IgA`          INTEGER          null,\n    Diagnosis          TEXT null,\n    KCT                TEXT null,\n    RVVT              TEXT null,\n    LAC                TEXT null,\n    Symptoms           TEXT null,\n    Thrombosis         INTEGER          null,\n    foreign key (ID) references Patient (ID)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE Patient\n(\n    ID           INTEGER default 0 not null\n        primary key,\n    SEX          TEXT  null,\n    Birthday     DATE          null,\n    Description  DATE          null,\n    `First Date` DATE          null,\n    Admission    TEXT  null,\n    Diagnosis    TEXT  null\n);\n\nCREATE TABLE Laboratory\n(\n    ID        INTEGER  default 0            not null,\n    Date      DATE default '0000-00-00' not null,\n    GOT       INTEGER                       null,\n    GPT       INTEGER                        null,\n    LDH       INTEGER                        null,\n    ALP       INTEGER                        null,\n    TP        REAL             null,\n    ALB       REAL             null,\n    UA        REAL             null,\n    UN        INTEGER                       null,\n    CRE       REAL             null,\n    `T-BIL`   REAL             null,\n    `T-CHO`   INTEGER                       null,\n    TG        INTEGER                       null,\n    CPK       INTEGER                       null,\n    GLU       INTEGER                       null,\n    WBC       REAL             null,\n    RBC       REAL             null,\n    HGB       REAL             null,\n    HCT       REAL             null,\n    PLT       INTEGER                       null,\n    PT        REAL             null,\n    APTT      INTEGER                       null,\n    FG        REAL             null,\n    PIC       INTEGER                       null,\n    TAT       INTEGER                       null,\n    TAT2      INTEGER                       null,\n    `U-PRO`   TEXT              null,\n    IGG       INTEGER                       null,\n    IGA       INTEGER                       null,\n    IGM       INTEGER                       null,\n    CRP       TEXT              null,\n    RA        TEXT              null,\n    RF        TEXT              null,\n    C3        INTEGER                       null,\n    C4        INTEGER                       null,\n    RNP       TEXT              null,\n    SM        TEXT              null,\n    SC170     TEXT              null,\n    SSA       TEXT              null,\n    SSB       TEXT              null,\n    CENTROMEA TEXT              null,\n    DNA       TEXT              null,\n    `DNA-II`  INTEGER                       null,\n    primary key (ID, Date),\n        foreign key (ID) references Patient (ID)\n            on update cascade on delete cascade\n);",
+  "q1": "SELECT CAST((SUM(CASE WHEN T2.Date LIKE '1981-11-%' THEN T2.\"T-CHO\" ELSE 0 END) - SUM(CASE WHEN T2.Date LIKE '1981-12-%' THEN T2.\"T-CHO\" ELSE 0 END)) AS REAL) / SUM(CASE WHEN T2.Date LIKE '1981-12-%' THEN T2.\"T-CHO\" ELSE 0 END) FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T1.Birthday = '1959-02-18'",
+  "q2": "SELECT CAST((SUM(CASE WHEN T2.Date LIKE '1981-11-%' THEN T2.\"T-CHO\" ELSE 0 END) - SUM(CASE WHEN T2.Date LIKE '1981-12-%' THEN T2.\"T-CHO\" ELSE 0 END)) AS REAL) * 100 / SUM(CASE WHEN T2.Date LIKE '1981-11-%' THEN T2.\"T-CHO\" ELSE 0 END) FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T1.Birthday = '1959-02-18'",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT CAST((SUM(CASE WHEN T2.Date LIKE '1981-11-%' THEN T2.\"T-CHO\" ELSE 0 END) - SUM(CASE WHEN T2.Date LIKE '1981-12-%' THEN T2.\"T-CHO\" ELSE 0 END)) AS REAL) / SUM(CASE WHEN T2.Date LIKE '1981-12-%' THEN T2.\"T-CHO\" ELSE 0 END) FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T1.Birthday = '1959-02-18'",
+  "q2_prompt_sql": "SELECT CAST((SUM(CASE WHEN T2.Date LIKE '1981-11-%' THEN T2.\"T-CHO\" ELSE 0 END) - SUM(CASE WHEN T2.Date LIKE '1981-12-%' THEN T2.\"T-CHO\" ELSE 0 END)) AS REAL) * 100 / SUM(CASE WHEN T2.Date LIKE '1981-11-%' THEN T2.\"T-CHO\" ELSE 0 END) FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T1.Birthday = '1959-02-18'",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO Patient (ID, Birthday) VALUES (1, '1959-02-18');\nINSERT INTO Laboratory (ID, Date, `T-CHO`) VALUES (1, '1981-11-01', 100);\nINSERT INTO Laboratory (ID, Date, `T-CHO`) VALUES (1, '1981-12-01', 50);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 computes (Nov - Dec) / Dec, representing relative change from Dec to Nov. Q2 computes (Nov - Dec) * 100 / Nov, representing percentage decrease from Nov to Dec. These formulas yield different results for the same inputs.",
+  "counterexample_dsp": "A patient with Birthday '1959-02-18' has one lab record in November (T-CHO=100) and one in December (T-CHO=50). Q1 returns 1.0, Q2 returns 50.0.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n  \"equiv\": \"N\",\n  \"explanation\": \"Q1 computes (Nov - Dec) / Dec, representing relative change from Dec to Nov. Q2 computes (Nov - Dec) * 100 / Nov, representing percentage decrease from Nov to Dec. These formulas yield different results for the same inputs.\",\n  \"counterexample_dsp\": \"A patient with Birthday '1959-02-18' has one lab record in November (T-CHO=100) and one in December (T-CHO=50). Q1 returns 1.0, Q2 returns 50.0.\",\n  \"counterexample\": [\n    \"INSERT INTO Patient (ID, Birthday) VALUES (1, '1959-02-18');\",\n    \"INSERT INTO Laboratory (ID, Date, `T-CHO`) VALUES (1, '1981-11-01', 100);\",\n    \"INSERT INTO Laboratory (ID, Date, `T-CHO`) VALUES (1, '1981-12-01', 50);\"\n  ]\n}",
+  "reasoning": "\nOkay, let's tackle this problem step by step. First, I need to understand what each query is doing. \n\nLooking at Q1 and Q2, both are selecting a calculation involving sums of the \"T-CHO\" column from the Laboratory table, joined with Patient on ID. The WHERE condition is on Patient.Birthday = '1959-02-18'. The main difference is in the denominator of the division part.\n\nQ1's formula is (SUM for November minus SUM for December) divided by SUM for December. Then cast as REAL. That seems like a percentage difference relative to December's value.\n\nQ2's formula is the same numerator but divides by the SUM for November, then multiplies by 100. Wait, no, looking again: Q2's denominator is the SUM for November. Wait, let me check:\n\nQ1: (sum_11 - sum_12) / sum_12\nQ2: (sum_11 - sum_12) * 100 / sum_11\n\nWait, no. Let me parse Q2 again. The denominator in Q2 is the SUM for November. Because the denominator in Q2 is the same as the first SUM in the numerator. Let me re-express both:\n\nQ1: [sum_11 - sum_12] / sum_12 → which is (sum_11 / sum_12) - 1. That's like the ratio of November to December minus one, which could be a relative change (like percentage change if multiplied by 100).\n\nQ2: [sum_11 - sum_12] * 100 / sum_11 → that's equivalent to (sum_11 - sum_12)/sum_11 * 100, which is (1 - sum_12/sum_11)*100. So that's the percentage decrease from November to December values.\n\nSo the two are different. For example, if sum_11 is 100 and sum_12 is 50:\n\nQ1: (100-50)/50 = 1 → 100% increase from Dec to Nov? Wait, no. Wait, the formula (sum_11 - sum_12) / sum_12 is the percentage change from sum_12 to sum_11. So if sum_11 is 100 and sum_12 is 50, that's (100-50)/50 = 1 → 100% increase from Dec to Nov. \n\nBut Q2 would be (100-50)*100 / 100 = 50 → which is 50% decrease from Nov to Dec. So they are different calculations.\n\nSo the two queries are not equivalent. Therefore, I need to create a counterexample where the results differ.\n\nFor the counterexample, I need a Patient with Birthday '1959-02-18' and two Laboratory records. Let's say one in November (Date like '1981-11-01') with T-CHO = 100, and one in December (Date like '1981-12-01') with T-CHO = 50.\n\nThen Q1 would compute (100 - 50)/50 = 1 → 1.0 as REAL.\n\nQ2 would compute (100-50)*100 / 100 = 50 → 50.0.\n\nSo clearly different results. Therefore, the queries are not equivalent.\n\nNow, I need to write the INSERT statements for the Patient and Laboratory tables. The Patient table has ID, SEX, Birthday, etc. The Laboratory has ID, Date, T-CHO, etc.\n\nSo for the Patient, insert ID 1, Birthday '1959-02-18'. Then Laboratory entries for ID 1 with Date '1981-11-01' and T-CHO 100, and another entry for ID 1 with Date '1981-12-01' and T-CHO 50.\n\nThat should suffice. Let me make sure the dates match the LIKE patterns in the queries. The first LIKE is '1981-11-%' which matches November dates. The second is '1981-12-%' for December. The dates I chose are 1981-11-01 and 1981-12-01, which fit.\n\nSo the counterexample would produce different outputs between Q1 and Q2.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 1139,
+    "total_tokens": 2395,
+    "completion_tokens": 1256,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1008
+    },
+    "generation_seconds": 42.407
+  },
+  "started_at": "2026-10-06T21:33:22.762351+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      1.0
+    ]
+  ],
+  "q2_output": [
+    [
+      50.0
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT CAST((SUM(CASE WHEN T2.Date LIKE '1981-11-%' THEN T2.\"T-CHO\" ELSE 0 END) - SUM(CASE WHEN T2.Date LIKE '1981-12-%' THEN T2.\"T-CHO\" ELSE 0 END)) AS REAL) / SUM(CASE WHEN T2.Date LIKE '1981-12-%' THEN T2.\"T-CHO\" ELSE 0 END) FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T1.Birthday = '1959-02-18'",
+  "q2_validation_sql": "SELECT CAST((SUM(CASE WHEN T2.Date LIKE '1981-11-%' THEN T2.\"T-CHO\" ELSE 0 END) - SUM(CASE WHEN T2.Date LIKE '1981-12-%' THEN T2.\"T-CHO\" ELSE 0 END)) AS REAL) * 100 / SUM(CASE WHEN T2.Date LIKE '1981-11-%' THEN T2.\"T-CHO\" ELSE 0 END) FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T1.Birthday = '1959-02-18'"
+}

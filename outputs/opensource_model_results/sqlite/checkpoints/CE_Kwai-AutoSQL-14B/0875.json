@@ -1,0 +1,73 @@
+{
+  "dbid": "debit_card_specializing",
+  "index": "875",
+  "source_index": "1531",
+  "schema_ddl": "CREATE TABLE customers\n(\n    CustomerID INTEGER UNIQUE     not null\n        primary key,\n    Segment    TEXT null,\n    Currency   TEXT null\n);\n\nCREATE TABLE gasstations\n(\n    GasStationID INTEGER    UNIQUE   not null\n        primary key,\n    ChainID      INTEGER          null,\n    Country      TEXT null,\n    Segment      TEXT null\n);\n\nCREATE TABLE products\n(\n    ProductID   INTEGER   UNIQUE      not null\n        primary key,\n    Description TEXT null\n);\n\nCREATE TABLE \"transactions_1k\"\n(\n    TransactionID INTEGER\n        primary key autoincrement,\n    Date          DATE,\n    Time          TEXT,\n    CustomerID    INTEGER,\n    CardID        INTEGER,\n    GasStationID  INTEGER,\n    ProductID     INTEGER,\n    Amount        INTEGER,\n    Price         REAL\n);\n\nCREATE TABLE \"yearmonth\"\n(\n    CustomerID  INTEGER not null\n        references customers\n            on update cascade on delete cascade\n        references customers,\n    Date        TEXT    not null,\n    Consumption REAL,\n    primary key (Date, CustomerID)\n);",
+  "q1": "SELECT T2.Description FROM transactions_1k AS T1 INNER JOIN products AS T2 ON T1.ProductID = T2.ProductID ORDER BY T1.Amount DESC LIMIT 5",
+  "q2": "SELECT p.Description FROM products AS p INNER JOIN \"transactions_1k\" AS t ON p.ProductID = t.ProductID GROUP BY p.ProductID ORDER BY SUM(t.Amount) DESC LIMIT 5",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT T2.Description FROM transactions_1k AS T1 INNER JOIN products AS T2 ON T1.ProductID = T2.ProductID ORDER BY T1.Amount DESC LIMIT 5",
+  "q2_prompt_sql": "SELECT p.Description FROM products AS p INNER JOIN \"transactions_1k\" AS t ON p.ProductID = t.ProductID GROUP BY p.ProductID ORDER BY SUM(t.Amount) DESC LIMIT 5",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO products (ProductID, Description) VALUES (1, 'A'), (2, 'B'), (3, 'C');\nINSERT INTO transactions_1k (TransactionID, Date, Time, CustomerID, CardID, GasStationID, ProductID, Amount, Price) VALUES\n(1, '2023-01-01', '10:00', 1, 100, 1, 1, 100, 10.0),\n(2, '2023-01-02', '11:00', 2, 200, 2, 2, 60, 5.0),\n(3, '2023-01-03', '12:00', 3, 300, 3, 2, 60, 5.0),\n(4, '2023-01-04', '13:00', 4, 400, 4, 3, 30, 3.0),\n(5, '2023-01-05', '14:00', 5, 500, 5, 3, 30, 3.0),\n(6, '2023-01-06', '15:00', 6, 600, 6, 3, 30, 3.0);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 returns the top 5 individual transactions ordered by Amount DESC, while Q2 returns the top 5 products ordered by total SUM(Amount) DESC. When products have multiple transactions, their individual amounts may not align with their aggregated sums, leading to different results.",
+  "counterexample_dsp": "Three products with varying transaction patterns: Product A has one high-amount transaction, Product B has two medium-amount transactions, Product C has three low-amount transactions. Q1 picks individual transaction amounts, while Q2 sums all amounts per product.",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 returns the top 5 individual transactions ordered by Amount DESC, while Q2 returns the top 5 products ordered by total SUM(Amount) DESC. When products have multiple transactions, their individual amounts may not align with their aggregated sums, leading to different results.\",\n  \"counterexample_dsp\": \"Three products with varying transaction patterns: Product A has one high-amount transaction, Product B has two medium-amount transactions, Product C has three low-amount transactions. Q1 picks individual transaction amounts, while Q2 sums all amounts per product.\",\n  \"counterexample\": \"INSERT INTO products (ProductID, Description) VALUES (1, 'A'), (2, 'B'), (3, 'C');\\nINSERT INTO transactions_1k (TransactionID, Date, Time, CustomerID, CardID, GasStationID, ProductID, Amount, Price) VALUES\\n(1, '2023-01-01', '10:00', 1, 100, 1, 1, 100, 10.0),\\n(2, '2023-01-02', '11:00', 2, 200, 2, 2, 60, 5.0),\\n(3, '2023-01-03', '12:00', 3, 300, 3, 2, 60, 5.0),\\n(4, '2023-01-04', '13:00', 4, 400, 4, 3, 30, 3.0),\\n(5, '2023-01-05', '14:00', 5, 500, 5, 3, 30, 3.0),\\n(6, '2023-01-06', '15:00', 6, 600, 6, 3, 30, 3.0);\"\n}",
+  "reasoning": "\nOkay, let me try to figure out why Q1 and Q2 are not equivalent. So, looking at the two queries:\n\nQ1 does an INNER JOIN between transactions_1k (T1) and products (T2) on ProductID, then orders by T1.Amount DESC and takes the top 5. So this gives me the 5 transactions with the highest individual amounts, along with the product descriptions.\n\nQ2 does a similar join but groups by product and orders by SUM(t.Amount) DESC, then takes the top 5. This sums up all amounts per product and ranks them. \n\nSo the difference is that Q1 is about individual transaction amounts, while Q2 is about total amounts per product. So if a product has multiple transactions, Q1 might pick one of them (the highest single amount), while Q2 would rank the product based on total. \n\nTo create a counterexample, I need a scenario where the top 5 transactions by individual amount differ from the top 5 products by total amount. \n\nLet me think of an example. Suppose there's a product A with one transaction of amount 100. Another product B has two transactions of 50 each. In Q1, product A's transaction would be first, while in Q2, product B's total is 100, same as product A, but maybe they tie. Wait, but maybe with more transactions. Let me think of more distinct cases.\n\nAlternatively, product C has one transaction of 100, product D has three transactions of 30 each. Then Q1 would show C first, while Q2 would show D with sum 90, then C with 100. Wait, no, that's not right. Wait, in Q2, ordering by SUM(Amount) DESC would have product C with 100 first, product D with 90 next. So same as Q1 in that case. Hmm.\n\nWait, maybe if product E has a single transaction of 50, and product F has two transactions of 30 each. Then Q1 would take E's 50 first, but Q2 would take F's 60. So in that case, the first result would be different. So if I have two products with varying individual and summed amounts.\n\nLet me design a simple example. Let's say:\n\nProduct 1: one transaction of amount 100.\nProduct 2: two transactions of 60 each.\nProduct 3: three transactions of 30 each.\n\nIn Q1, ordering by Amount DESC would list Product 1's transaction first (100), then Product 2's two transactions (each 60), then Product 3's three transactions (each 30). So the top 5 would be Product1, Product2, Product2, Product3, Product3.\n\nIn Q2, grouping by product and summing amounts: Product1 has 100, Product2 has 120, Product3 has 90. Ordered by sum DESC, Product2 is first, Product1 second, Product3 third. So the top 5 would be Product2, Product1, Product3.\n\nSo the results differ. Thus, the counterexample needs to have products with varying individual transaction amounts versus sum of amounts. \n\nSo I need to create a few products and transactions that cause this difference. Let's pick three products:\n\nProduct A (Description 'A') with one transaction of 100.\nProduct B (Description 'B') with two transactions of 60 each.\nProduct C (Description 'C') with three transactions of 30 each.\n\nThen Q1 would return the transactions ordered by Amount DESC: A's 100, B's 60, B's 60, C's 30, C's 30 (so top 5 would be A, B, B, C, C). The descriptions would be A, B, B, C, C.\n\nQ2 would group by product, sum amounts: B has 120, A has 100, C has 90. So ordered by sum DESC, the top 5 would be B, A, C. So the descriptions are B, A, C. \n\nThus, the two queries return different results. \n\nNow, I need to create the test data with these transactions. I need to insert into products and transactions_1k.\n\nProducts:\nProductID 1, Description 'A'\nProductID 2, Description 'B'\nProductID 3, Description 'C'\n\nTransactions_1k entries:\n\nFor product 1: TransactionID 1, Amount 100.\nFor product 2: TransactionID 2, Amount 60; TransactionID 3, Amount 60.\nFor product 3: TransactionID 4, Amount 30; TransactionID 5, Amount 30; TransactionID 6, Amount 30.\n\nOther columns (Date, Time, CustomerID, CardID, GasStationID) can be filled with dummy values since they are not part of the join or ordering. \n\nSo the counterexample would have these inserts. Let me check the schema constraints. The transactions_1k table has Date, Time, CustomerID, CardID, GasStationID, ProductID, Amount, Price. All except TransactionID are required? Well, the schema says TransactionID is the primary key with autoincrement. The other columns have no NOT NULL constraints except TransactionID. But to be safe, I can fill in some dummy values.\n\nSo for example:\n\nINSERT INTO products (ProductID, Description) VALUES (1, 'A'), (2, 'B'), (3, 'C');\n\nINSERT INTO transactions_1k (TransactionID, Date, Time, CustomerID, CardID, GasStationID, ProductID, Amount, Price) VALUES\n(1, '2023-01-01', '10:00', 1, 100, 1, 1, 100, 10.0),\n(2, '2023-01-02', '11:00', 2, 200, 2, 2, 60, 5.0),\n(3, '2023-01-03', '12:00', 3, 300, 3, 2, 60, 5.0),\n(4, '2023-01-04', '13:00', 4, 400, 4, 3, 30, 3.0),\n(5, '2023-01-05', '14:00', 5, 500, 5, 3, 30, 3.0),\n(6, '2023-01-06', '15:00', 6, 600, 6, 3, 30, 3.0);\n\nThis should set up the data correctly. Then Q1 would return A, B, B, C, C (the first five rows ordered by Amount DESC), while Q2 would return B (sum 120), A (sum 100), C (sum 90). So the first query's output has two Bs and two Cs in the top 5, whereas the second query's top 5 would be B, A, C, and then two more if there are others, but with only three products, the limit 5 would just have those three.\n\nTherefore, this setup should create a counterexample where the two queries return different results.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 495,
+    "total_tokens": 2606,
+    "completion_tokens": 2111,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1635
+    },
+    "generation_seconds": 69.968
+  },
+  "started_at": "2026-10-06T20:00:40.331447+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "A"
+    ],
+    [
+      "B"
+    ],
+    [
+      "B"
+    ],
+    [
+      "C"
+    ],
+    [
+      "C"
+    ]
+  ],
+  "q2_output": [
+    [
+      "B"
+    ],
+    [
+      "A"
+    ],
+    [
+      "C"
+    ]
+  ],
+  "q1_row_count": 5,
+  "q2_row_count": 3,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT T2.Description FROM transactions_1k AS T1 INNER JOIN products AS T2 ON T1.ProductID = T2.ProductID ORDER BY T1.Amount DESC LIMIT 5",
+  "q2_validation_sql": "SELECT p.Description FROM products AS p INNER JOIN \"transactions_1k\" AS t ON p.ProductID = t.ProductID GROUP BY p.ProductID ORDER BY SUM(t.Amount) DESC LIMIT 5"
+}

@@ -1,0 +1,53 @@
+{
+  "dbid": "182",
+  "index": "390",
+  "source_index": "18",
+  "schema_ddl": "CREATE TABLE PERSON (\n    ID INT,\n    EMAIL VARCHAR(255),\n    PRIMARY KEY (ID)\n);",
+  "q1": "SELECT EMAIL AS EMAIL FROM PERSON GROUP BY EMAIL HAVING COUNT(EMAIL) >1",
+  "q2": "SELECT DISTINCT(EMAIL) FROM PERSON GROUP BY EMAIL HAVING COUNT(*) > 1",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT EMAIL AS EMAIL FROM PERSON GROUP BY EMAIL HAVING COUNT(EMAIL) >1",
+  "q2_prompt_sql": "SELECT DISTINCT(EMAIL) FROM PERSON GROUP BY EMAIL HAVING COUNT(*) > 1",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO PERSON (ID, EMAIL) VALUES (1, 'test@example.com'); INSERT INTO PERSON (ID, EMAIL) VALUES (2, 'test@example.com');",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent because Q1 uses the GROUP BY clause on the EMAIL column and the HAVING clause to filter out emails that appear more than once, but it does not use the DISTINCT keyword. On the other hand, Q2 uses the GROUP BY clause on the EMAIL column and the HAVING clause to filter out emails that appear more than once, but it uses the DISTINCT keyword to return unique emails. The DISTINCT keyword in Q2 ensures that the output contains no duplicate emails, while Q1 does not guarantee this.",
+  "counterexample_dsp": "The test data should contain at least two rows with the same email address. Q1 should return this email address, while Q2 should not, as it uses the DISTINCT keyword.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent because Q1 uses the GROUP BY clause on the EMAIL column and the HAVING clause to filter out emails that appear more than once, but it does not use the DISTINCT keyword. On the other hand, Q2 uses the GROUP BY clause on the EMAIL column and the HAVING clause to filter out emails that appear more than once, but it uses the DISTINCT keyword to return unique emails. The DISTINCT keyword in Q2 ensures that the output contains no duplicate emails, while Q1 does not guarantee this.\",\n  \"counterexample_dsp\": \"The test data should contain at least two rows with the same email address. Q1 should return this email address, while Q2 should not, as it uses the DISTINCT keyword.\",\n  \"counterexample\": \"INSERT INTO PERSON (ID, EMAIL) VALUES (1, 'test@example.com'); INSERT INTO PERSON (ID, EMAIL) VALUES (2, 'test@example.com');\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 278,
+    "total_tokens": 483,
+    "completion_tokens": 205,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 3.36
+  },
+  "started_at": "2026-10-06T09:51:17.126114+00:00",
+  "elapsed_seconds": 0.625,
+  "q1_output": [
+    [
+      "test@example.com"
+    ]
+  ],
+  "q2_output": [
+    [
+      "test@example.com"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT EMAIL AS EMAIL FROM PERSON GROUP BY EMAIL HAVING COUNT(EMAIL) >1",
+  "q2_validation_sql": "SELECT DISTINCT(EMAIL) FROM PERSON GROUP BY EMAIL HAVING COUNT(*) > 1"
+}

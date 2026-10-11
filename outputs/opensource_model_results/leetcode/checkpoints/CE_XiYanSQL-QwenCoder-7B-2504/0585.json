@@ -1,0 +1,55 @@
+{
+  "dbid": "1141",
+  "index": "585",
+  "source_index": "139",
+  "schema_ddl": "CREATE TABLE ACTIVITY (\n    USER_ID INT,\n    SESSION_ID INT,\n    ACTIVITY_DATE DATE,\n    ACTIVITY_TYPE ENUM('OPEN_SESSION', 'END_SESSION', 'SCROLL_DOWN', 'SEND_MESSAGE'),\n    CHECK (ACTIVITY_TYPE IN ('OPEN_SESSION', 'END_SESSION', 'SCROLL_DOWN', 'SEND_MESSAGE'))\n);",
+  "q1": "SELECT ACTIVITY_DATE AS DAY, COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY WHERE ACTIVITY_DATE BETWEEN '2019-06-28' AND '2019-07-27' GROUP BY ACTIVITY_DATE",
+  "q2": "SELECT DAY,SUM(ACTIVE_USERS) AS ACTIVE_USERS FROM ( SELECT ACTIVITY_DATE AS DAY,USER_ID,COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY WHERE ACTIVITY_DATE>='2019-06-28' GROUP BY ACTIVITY_DATE,USER_ID) AS OTR GROUP BY DAY",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT ACTIVITY_DATE AS DAY, COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY WHERE ACTIVITY_DATE BETWEEN '2019-06-28' AND '2019-07-27' GROUP BY ACTIVITY_DATE",
+  "q2_prompt_sql": "SELECT DAY,SUM(ACTIVE_USERS) AS ACTIVE_USERS FROM ( SELECT ACTIVITY_DATE AS DAY,USER_ID,COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY WHERE ACTIVITY_DATE>='2019-06-28' GROUP BY ACTIVITY_DATE,USER_ID) AS OTR GROUP BY DAY",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO ACTIVITY (USER_ID, SESSION_ID, ACTIVITY_DATE, ACTIVITY_TYPE) VALUES (1, 101, '2019-06-28', 'OPEN_SESSION'); INSERT INTO ACTIVITY (USER_ID, SESSION_ID, ACTIVITY_DATE, ACTIVITY_TYPE) VALUES (2, 102, '2019-06-28', 'OPEN_SESSION'); INSERT INTO ACTIVITY (USER_ID, SESSION_ID, ACTIVITY_DATE, ACTIVITY_TYPE) VALUES (1, 101, '2019-06-28', 'SCROLL_DOWN');",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 calculates the number of unique active users per day between '2019-06-28' and '2019-07-27', while Q2 incorrectly attempts to sum the active users for each day, which does not make sense in this context as it does not account for the cumulative nature of active users over time.",
+  "counterexample_dsp": "The test data should include multiple activities on the same day to demonstrate the difference in results between Q1 and Q2. Q1 will return the count of unique users on that day, while Q2 will sum the user counts, which is incorrect.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 calculates the number of unique active users per day between '2019-06-28' and '2019-07-27', while Q2 incorrectly attempts to sum the active users for each day, which does not make sense in this context as it does not account for the cumulative nature of active users over time.\",\n  \"counterexample_dsp\": \"The test data should include multiple activities on the same day to demonstrate the difference in results between Q1 and Q2. Q1 will return the count of unique users on that day, while Q2 will sum the user counts, which is incorrect.\",\n  \"counterexample\": \"INSERT INTO ACTIVITY (USER_ID, SESSION_ID, ACTIVITY_DATE, ACTIVITY_TYPE) VALUES (1, 101, '2019-06-28', 'OPEN_SESSION'); INSERT INTO ACTIVITY (USER_ID, SESSION_ID, ACTIVITY_DATE, ACTIVITY_TYPE) VALUES (2, 102, '2019-06-28', 'OPEN_SESSION'); INSERT INTO ACTIVITY (USER_ID, SESSION_ID, ACTIVITY_DATE, ACTIVITY_TYPE) VALUES (1, 101, '2019-06-28', 'SCROLL_DOWN');\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 413,
+    "total_tokens": 694,
+    "completion_tokens": 281,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 4.594
+  },
+  "started_at": "2026-10-06T09:55:37.188744+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "2019-06-28",
+      2
+    ]
+  ],
+  "q2_output": [
+    [
+      "2019-06-28",
+      "2"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT ACTIVITY_DATE AS DAY, COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY WHERE ACTIVITY_DATE BETWEEN '2019-06-28' AND '2019-07-27' GROUP BY ACTIVITY_DATE",
+  "q2_validation_sql": "SELECT DAY,SUM(ACTIVE_USERS) AS ACTIVE_USERS FROM ( SELECT ACTIVITY_DATE AS DAY,USER_ID,COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY WHERE ACTIVITY_DATE>='2019-06-28' GROUP BY ACTIVITY_DATE,USER_ID) AS OTR GROUP BY DAY"
+}

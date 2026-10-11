@@ -1,0 +1,39 @@
+{
+  "dbid": "1083",
+  "index": "503",
+  "source_index": "511",
+  "schema_ddl": "CREATE TABLE PRODUCT (\n    PRODUCT_ID INT,\n    PRODUCT_NAME VARCHAR(255),\n    UNIT_PRICE INT,\n    PRIMARY KEY (PRODUCT_ID),\n    CHECK (UNIT_PRICE > 0),\n    CHECK (PRODUCT_NAME IN ('S8', 'IPHONE'))\n);\n\nCREATE TABLE SALES (\n    PRODUCT_ID INT,\n    SELLER_ID INT,\n    BUYER_ID INT,\n    SALE_DATE DATE,\n    QUANTITY INT,\n    PRICE INT,\n    FOREIGN KEY (PRODUCT_ID) REFERENCES PRODUCT(PRODUCT_ID),\n    CHECK (QUANTITY > 0),\n    CHECK (PRICE > 0)\n);",
+  "q1": "SELECT DISTINCT SALES.BUYER_ID AS BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'S8' AND SALES.BUYER_ID NOT IN ( SELECT SALES.BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'IPHONE')",
+  "q2": "WITH S8 AS (SELECT BUYER_ID FROM PRODUCT P JOIN SALES S ON P.PRODUCT_ID = S.PRODUCT_ID WHERE PRODUCT_NAME = 'S8') SELECT DISTINCT BUYER_ID FROM S8 WHERE S8.BUYER_ID NOT IN(SELECT BUYER_ID FROM PRODUCT P JOIN SALES S ON P.PRODUCT_ID = S.PRODUCT_ID WHERE PRODUCT_NAME = 'IPHONE')",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT DISTINCT SALES.BUYER_ID AS BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'S8' AND SALES.BUYER_ID NOT IN ( SELECT SALES.BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'IPHONE')",
+  "q2_prompt_sql": "WITH S8 AS (SELECT BUYER_ID FROM PRODUCT P JOIN SALES S ON P.PRODUCT_ID = S.PRODUCT_ID WHERE PRODUCT_NAME = 'S8') SELECT DISTINCT BUYER_ID FROM S8 WHERE S8.BUYER_ID NOT IN(SELECT BUYER_ID FROM PRODUCT P JOIN SALES S ON P.PRODUCT_ID = S.PRODUCT_ID WHERE PRODUCT_NAME = 'IPHONE')",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries aim to find buyers of 'S8' who did not buy 'IPHONE'. Q1 uses a subquery directly in the main query, while Q2 uses a CTE. However, the CTE in Q2 is functionally identical to the main query part of Q1, and both use the same subquery for exclusion. The DISTINCT clause ensures the same result set.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries aim to find buyers of 'S8' who did not buy 'IPHONE'. Q1 uses a subquery directly in the main query, while Q2 uses a CTE. However, the CTE in Q2 is functionally identical to the main query part of Q1, and both use the same subquery for exclusion. The DISTINCT clause ensures the same result set.\"\n}",
+  "reasoning": "\nOkay, let's see. I need to determine if Q1 and Q2 are semantically equivalent. Let me start by understanding both queries.\n\nFirst, Q1: It selects distinct BUYER_ID from SALES where the product is 'S8' and the BUYER_ID is not in the subquery that gets buyers who bought 'IPHONE'. The subquery joins PRODUCT and SALES on PRODUCT_ID and filters for 'IPHONE'.\n\nQ2 uses a CTE called S8 which selects BUYER_ID from the same join for 'S8'. Then it selects distinct BUYER_ID from S8 where they are not in the same subquery as Q1 for 'IPHONE'.\n\nWait, the main difference I see is that Q1 uses the alias SALES in the subquery, but Q2 uses the CTE. Wait, no. Let me check again.\n\nWait, in Q1, the subquery is SELECT SALES.BUYER_ID FROM PRODUCT INNER JOIN SALES ON ... So the subquery is getting BUYER_ID from SALES where product is 'IPHONE'.\n\nIn Q2, the subquery is SELECT BUYER_ID FROM PRODUCT P JOIN SALES S ON ... same condition. So the subquery in both cases is selecting BUYER_ID for 'IPHONE' from the same join.\n\nThe main part of Q1 is selecting from SALES, joining with PRODUCT on PRODUCT_ID, filtering for 'S8', and excluding those in the subquery. The Q2 is selecting from the CTE S8 (which is the same as the part of Q1's main query) and then excluding the same subquery.\n\nWait, but in Q1, the main query is from PRODUCT INNER JOIN SALES ON ... So the main query's SALES table is joined with PRODUCT, and then they select SALES.BUYER_ID. But in Q2, the CTE S8 is selecting BUYER_ID from the same join. So the main part of Q1 is selecting SALES.BUYER_ID from the join, but Q2's main query is selecting BUYER_ID from the CTE S8, which is the same as the SALES.BUYER_ID from that join.\n\nSo the main difference is that Q1 uses the SALES table directly in the main query, while Q2 uses the CTE. But since the CTE is just selecting the BUYER_ID from the same join as Q1's main query, the result of the main query in Q1 would be the same as the CTE in Q2. So then, the rest of the query is the same: excluding those in the subquery.\n\nWait, but Q1's main query is using the SALES table, but the CTE S8 is selecting BUYER_ID from the same join. So the distinct BUYER_ID in Q1's main query would be the same as the CTE S8, right? Because the CTE is just the same as the part of the main query in Q1. So the only difference is that Q1 is using the SALES table directly in the main query, while Q2 is using the CTE. But since the CTE is the same as the main part of Q1, the DISTINCT would be the same.\n\nWait, but in Q1, the main query is selecting from PRODUCT INNER JOIN SALES ON ... So the SALES table is part of the join. Then, the SELECT DISTINCT SALES.BUYER_ID. But in Q2, the CTE is selecting BUYER_ID from the same join, and then Q2 selects distinct BUYER_ID from S8. So the result of the main part of Q1 is the same as the CTE S8 in Q2. Therefore, the rest of the query is the same: excluding the subquery. So the two queries should be equivalent.\n\nBut maybe there's a difference in the way the joins are done? Let me think. Are there any cases where the join might produce different results? For example, if there are multiple entries in SALES for the same BUYER_ID and PRODUCT_ID. But since both queries use SELECT DISTINCT, duplicates would be removed.\n\nWait, but in Q1, the main query is selecting from the join, which could have multiple rows per BUYER_ID (if a buyer bought multiple times), but then they use DISTINCT. The CTE S8 in Q2 is also selecting BUYER_ID from the same join and then using DISTINCT in the outer query. So the result should be the same.\n\nAnother thing to check: the subquery in both cases is the same. Both are selecting BUYER_ID from the same join where PRODUCT_NAME is 'IPHONE'. So the exclusion list is the same.\n\nTherefore, Q1 and Q2 should be equivalent. So the answer would be \"Y\".\n\nBut wait, maybe there's a case where the join in the main query of Q1 includes some BUYER_ID that are not in the CTE? No, because the CTE is exactly the same as the main query's join. So the CTE S8 is the same as the SALES.BUYER_ID from the join in Q1's main query. Therefore, selecting DISTINCT BUYER_ID from S8 is the same as selecting DISTINCT SALES.BUYER_ID from the join in Q1.\n\nTherefore, the two queries are equivalent. So the answer is Y.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 535,
+    "total_tokens": 1736,
+    "completion_tokens": 1201,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1105
+    },
+    "generation_seconds": 37.968
+  },
+  "started_at": "2026-10-06T15:14:29.462967+00:00",
+  "elapsed_seconds": 0.0
+}

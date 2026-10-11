@@ -1,0 +1,61 @@
+{
+  "dbid": "1084",
+  "index": "505",
+  "source_index": "481",
+  "schema_ddl": "CREATE TABLE PRODUCT (\n    PRODUCT_ID INT,\n    PRODUCT_NAME VARCHAR(255),\n    UNIT_PRICE INT,\n    PRIMARY KEY (PRODUCT_ID),\n    CHECK (UNIT_PRICE > 0)\n);\n\nCREATE TABLE SALES (\n    PRODUCT_ID INT,\n    SELLER_ID INT,\n    BUYER_ID INT,\n    SALE_DATE DATE,\n    QUANTITY INT,\n    PRICE INT,\n    FOREIGN KEY (PRODUCT_ID) REFERENCES PRODUCT(PRODUCT_ID),\n    CHECK (QUANTITY > 0),\n    CHECK (PRICE > 0)\n);",
+  "q1": "SELECT P.PRODUCT_ID, P.PRODUCT_NAME FROM PRODUCT P INNER JOIN ( SELECT PRODUCT_ID FROM SALES GROUP BY PRODUCT_ID HAVING MIN(SALE_DATE) >= '2019-01-01' AND MAX(SALE_DATE) <= '2019-03-31' ) S ON (P.PRODUCT_ID = S.PRODUCT_ID)",
+  "q2": "SELECT PRODUCT_ID, MAX(PRODUCT_NAME) PRODUCT_NAME FROM SALES LEFT JOIN PRODUCT USING(PRODUCT_ID) GROUP BY PRODUCT_ID HAVING MAX(QUARTER(SALE_DATE)) = 1",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT P.PRODUCT_ID, P.PRODUCT_NAME FROM PRODUCT P INNER JOIN ( SELECT PRODUCT_ID FROM SALES GROUP BY PRODUCT_ID HAVING MIN(SALE_DATE) >= '2019-01-01' AND MAX(SALE_DATE) <= '2019-03-31' ) S ON (P.PRODUCT_ID = S.PRODUCT_ID)",
+  "q2_prompt_sql": "SELECT PRODUCT_ID, MAX(PRODUCT_NAME) PRODUCT_NAME FROM SALES LEFT JOIN PRODUCT USING(PRODUCT_ID) GROUP BY PRODUCT_ID HAVING MAX(QUARTER(SALE_DATE)) = 1",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO PRODUCT (PRODUCT_ID, PRODUCT_NAME, UNIT_PRICE) VALUES (1, 'Product A', 10);\nINSERT INTO PRODUCT (PRODUCT_ID, PRODUCT_NAME, UNIT_PRICE) VALUES (2, 'Product B', 20);\nINSERT INTO SALES (PRODUCT_ID, SELLER_ID, BUYER_ID, SALE_DATE, QUANTITY, PRICE) VALUES (1, 1, 1, '2018-03-31', 1, 10);\nINSERT INTO SALES (PRODUCT_ID, SELLER_ID, BUYER_ID, SALE_DATE, QUANTITY, PRICE) VALUES (1, 1, 1, '2019-03-31', 1, 10);\nINSERT INTO SALES (PRODUCT_ID, SELLER_ID, BUYER_ID, SALE_DATE, QUANTITY, PRICE) VALUES (2, 2, 2, '2019-02-01', 1, 20);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 requires all sales dates for a product to be strictly within 2019-01-01 to 2019-03-31. Q2 allows sales in any year's Q1 (Jan-Mar). A product with sales in Q1 2018 and Q1 2019 will appear in Q2's result (MAX(QUARTER) = 1) but not in Q1's result (MIN(SALE_DATE) < '2019-01-01').",
+  "counterexample_dsp": "Product A has sales on 2018-03-31 and 2019-03-31. Product B has sales only on 2019-02-01. Q1 returns Product B; Q2 returns both.",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 requires all sales dates for a product to be strictly within 2019-01-01 to 2019-03-31. Q2 allows sales in any year's Q1 (Jan-Mar). A product with sales in Q1 2018 and Q1 2019 will appear in Q2's result (MAX(QUARTER) = 1) but not in Q1's result (MIN(SALE_DATE) < '2019-01-01').\",\n  \"counterexample_dsp\": \"Product A has sales on 2018-03-31 and 2019-03-31. Product B has sales only on 2019-02-01. Q1 returns Product B; Q2 returns both.\",\n  \"counterexample\": [\n    \"INSERT INTO PRODUCT (PRODUCT_ID, PRODUCT_NAME, UNIT_PRICE) VALUES (1, 'Product A', 10);\",\n    \"INSERT INTO PRODUCT (PRODUCT_ID, PRODUCT_NAME, UNIT_PRICE) VALUES (2, 'Product B', 20);\",\n    \"INSERT INTO SALES (PRODUCT_ID, SELLER_ID, BUYER_ID, SALE_DATE, QUANTITY, PRICE) VALUES (1, 1, 1, '2018-03-31', 1, 10);\",\n    \"INSERT INTO SALES (PRODUCT_ID, SELLER_ID, BUYER_ID, SALE_DATE, QUANTITY, PRICE) VALUES (1, 1, 1, '2019-03-31', 1, 10);\",\n    \"INSERT INTO SALES (PRODUCT_ID, SELLER_ID, BUYER_ID, SALE_DATE, QUANTITY, PRICE) VALUES (2, 2, 2, '2019-02-01', 1, 20);\"\n  ]\n}",
+  "reasoning": "\nOkay, I need to find a counterexample where Q1 and Q2 return different results. Let me start by understanding both queries.\n\nQ1: It selects products that have all their sales dates between '2019-01-01' and '2019-03-31'. The subquery groups SALES by PRODUCT_ID and checks that the minimum and maximum sale dates are within that range. So any product that has even one sale outside that date range would be excluded.\n\nQ2: It does a LEFT JOIN from SALES to PRODUCT on PRODUCT_ID, groups by PRODUCT_ID, and uses HAVING MAX(QUARTER(SALE_DATE)) = 1. Since QUARTER 1 is Jan-Mar, this means that all sale dates for the product must be in Q1. Wait, but MAX(QUARTER(...)) would be 1 only if all sale dates are in quarter 1. Because if there's a sale in quarter 2, the MAX would be 2, which doesn't equal 1. So Q2 also requires all sales dates for a product to be in Q1. So why aren't they equivalent?\n\nWait, but Q1 uses MIN(SALE_DATE) >= '2019-01-01' AND MAX(SALE_DATE) <= '2019-03-31'. That's exactly the same as all sale dates being in Q1. So why the difference?\n\nWait, maybe the date range in Q1 is specific to 2019. Suppose there's a product with all sales in Q1 2019. Then both queries would include it. But if a product has a sale date in Q1 2018, then MAX(QUARTER(SALE_DATE)) would still be 1. Wait, no, because QUARTER is based on the date's quarter. For example, 2018-03-31 is Q1. 2019-01-01 is Q1. So MAX(QUARTER(...)) = 1 would allow any sale dates in any year's Q1. But Q1's condition is that MIN(SALE_DATE) >= '2019-01-01' and MAX(SALE_DATE) <= '2019-03-31'. So Q1 is strictly for sales dates in that specific date range, not any Q1. So if a product has a sale in Q1 2018, Q1's subquery would have MIN(SALE_DATE) as 2018-01-01 which is less than '2019-01-01', so it's excluded. But Q2 would include it because MAX(QUARTER(SALE_DATE)) = 1.\n\nSo the difference arises when a product has sales in Q1 of a year before 2019. Then Q1 would exclude it, but Q2 would include it. That's a case where they differ.\n\nSo to create a counterexample, I need a product that has sales in Q1 2018 (so Q2 includes it) but also has sales in 2019 Q1. Wait, no. Wait, Q2's HAVING is MAX(QUARTER(SALE_DATE)) = 1. So if a product has any sale date in Q1 of any year, MAX(quarter) would be 1. But Q1 requires that all sales are between '2019-01-01' and '2019-03-31'. So if a product has a sale in Q1 2018 (say 2018-03-31) and another in 2019-03-31, then Q1 would check MIN(SALE_DATE) is 2018-03-31 which is less than 2019-01-01, so the product is excluded by Q1. But Q2 would have MAX(quarter) = 1 (since both dates are in Q1), so it would include it. So that product would be in Q2's result but not in Q1's. That's a difference.\n\nAlternatively, a product with sales only in Q1 2018 would be in Q2's result but not in Q1's. Another scenario: a product has sales in Q1 2019 and also in Q2 2019. Then Q1's HAVING would have MAX(SALE_DATE) > '2019-03-31', so it's excluded. Q2 would have MAX(QUARTER(SALE_DATE)) = 2, so it's excluded. So that product would be excluded by both. So not a counterexample.\n\nSo the key is a product that has all sales in Q1 (any year) but not all in the specific date range of 2019 Q1. So Q1 excludes, Q2 includes.\n\nLet me create such a test case. Let's have product A with sales on 2018-03-31 (Q1) and 2019-03-31 (Q1). Then Q1's subquery: MIN(SALE_DATE) is 2018-03-31 < '2019-01-01' → excluded. Q2: MAX(QUARTER(SALE_DATE)) is 1 → included. So product A would be in Q2's result but not in Q1's. That's a difference.\n\nAnother product B with sales only in 2019 Q1 would be in both results. So that's not a counterexample. But product A is the one causing the difference.\n\nSo the counterexample needs:\n\n- Product A (ID 1, name 'A') with sales on 2018-03-31 and 2019-03-31.\n\n- Product B (ID 2, name 'B') with sales only in 2019 Q1 (say 2019-02-01).\n\nThen Q1 would return product B (all sales in 2019 Q1), but product A would be excluded by Q1's date check. Q2 would return both products A and B because their MAX(quarter) is 1. Wait, but product A's sale dates are in Q1 of 2018 and 2019. So MAX(quarter) is 1. So Q2 would include both. But Q1 would include product B but not product A. So the difference is that Q1 returns product B, and Q2 returns both A and B. So the results differ.\n\nWait, but the question says that the counterexample should have Q1 and Q2 returning different results. So if in the test data, Q1 returns product B and Q2 returns product A and B, then they are different. That's a valid counterexample.\n\nAlternatively, maybe I can have a product that is in Q2 but not in Q1. So if I have product A (sales in 2018 Q1) and product B (sales in 2019 Q1). Then Q1 returns product B, Q2 returns both A and B. So their results differ.\n\nSo in this case, the counterexample would have two products. Let me create that.\n\nNow, I need to write the INSERT statements for the PRODUCT and SALES tables.\n\nFor PRODUCT table:\n\nINSERT INTO PRODUCT (PRODUCT_ID, PRODUCT_NAME, UNIT_PRICE) VALUES (1, 'Product A', 10);\nINSERT INTO PRODUCT (PRODUCT_ID, PRODUCT_NAME, UNIT_PRICE) VALUES (2, 'Product B', 20);\n\nFor SALES table:\n\nFor product 1, sales on 2018-03-31 and 2019-03-31.\n\nINSERT INTO SALES (PRODUCT_ID, SELLER_ID, BUYER_ID, SALE_DATE, QUANTITY, PRICE) VALUES (1, 1, 1, '2018-03-31', 1, 10);\nINSERT INTO SALES (PRODUCT_ID, SELLER_ID, BUYER_ID, SALE_DATE, QUANTITY, PRICE) VALUES (1, 1, 1, '2019-03-31', 1, 10);\n\nFor product 2, sales on 2019-02-01.\n\nINSERT INTO SALES (PRODUCT_ID, SELLER_ID, BUYER_ID, SALE_DATE, QUANTITY, PRICE) VALUES (2, 2, 2, '2019-02-01', 1, 20);\n\nNow, Q1's subquery for product 1: MIN(SALE_DATE) is 2018-03-31 which is less than '2019-01-01' → excluded. Product 2's MIN and MAX are within the date range → included. So Q1 returns product 2.\n\nQ2 for product 1: MAX(QUARTER(SALE_DATE)) is 1 (both dates are Q1). So included. Product 2 also has MAX(quarter) = 1. So Q2 returns both products 1 and 2. So the results are different.\n\nYes, that works. So the explanation is that Q1 requires all sales to be within the specific date range (2019 Q1), while Q2 allows sales in any year's Q1. Hence, a product with sales in Q1 2018 and 2019 Q1 is included in Q2 but excluded from Q1.\n\nAnother possible case: a product with a sale date in Q1 2019 and another in Q2 2019. Then Q1's MAX(SALE_DATE) would be > '2019-03-31', so excluded. Q2's MAX(QUARTER(SALE_DATE)) would be 2, so excluded. So not a counterexample.\n\nBut the example I have with product 1 (sales in 2018 and 2019 Q1) is a valid counterexample.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 426,
+    "total_tokens": 3052,
+    "completion_tokens": 2626,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 2197
+    },
+    "generation_seconds": 92.453
+  },
+  "started_at": "2026-10-06T14:08:43.604762+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      2,
+      "Product B"
+    ]
+  ],
+  "q2_output": [
+    [
+      1,
+      "Product A"
+    ],
+    [
+      2,
+      "Product B"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT P.PRODUCT_ID, P.PRODUCT_NAME FROM PRODUCT P INNER JOIN ( SELECT PRODUCT_ID FROM SALES GROUP BY PRODUCT_ID HAVING MIN(SALE_DATE) >= '2019-01-01' AND MAX(SALE_DATE) <= '2019-03-31' ) S ON (P.PRODUCT_ID = S.PRODUCT_ID)",
+  "q2_validation_sql": "SELECT PRODUCT_ID, MAX(PRODUCT_NAME) PRODUCT_NAME FROM SALES LEFT JOIN PRODUCT USING(PRODUCT_ID) GROUP BY PRODUCT_ID HAVING MAX(QUARTER(SALE_DATE)) = 1"
+}

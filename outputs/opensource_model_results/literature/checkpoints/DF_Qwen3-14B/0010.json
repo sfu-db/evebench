@@ -1,0 +1,53 @@
+{
+  "dbid": "8",
+  "index": "10",
+  "source_index": "9",
+  "schema_ddl": "CREATE TABLE USER (UID INT, UNAME INT, CITY INT);\nCREATE TABLE PICTURE (UID INT, SIZE INT);",
+  "q1": "SELECT P.UID, P.UNAME, COALESCE(Q.CNT, 0) AS CNT FROM (SELECT X.UID, X.UNAME FROM USER AS X WHERE X.CITY = 3) AS P LEFT JOIN (SELECT Y.UID, COUNT(*) AS CNT FROM PICTURE AS Y WHERE Y.SIZE > 1000000 GROUP BY Y.UID) AS Q USING (UID)",
+  "q2": "SELECT X.UID AS UID, X.UNAME AS UNAME, COUNT(*) AS CNT FROM USER AS X, PICTURE AS Y WHERE X.UID = Y.UID AND Y.SIZE > 1000000 AND X.CITY = 3 GROUP BY X.UID, X.UNAME",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "literature",
+  "q1_prompt_sql": "SELECT P.UID, P.UNAME, COALESCE(Q.CNT, 0) AS CNT FROM (SELECT X.UID, X.UNAME FROM USER AS X WHERE X.CITY = 3) AS P LEFT JOIN (SELECT Y.UID, COUNT(*) AS CNT FROM PICTURE AS Y WHERE Y.SIZE > 1000000 GROUP BY Y.UID) AS Q USING (UID)",
+  "q2_prompt_sql": "SELECT X.UID AS UID, X.UNAME AS UNAME, COUNT(*) AS CNT FROM USER AS X, PICTURE AS Y WHERE X.UID = Y.UID AND Y.SIZE > 1000000 AND X.CITY = 3 GROUP BY X.UID, X.UNAME",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO USER (UID, UNAME, CITY) VALUES (1, 1, 3); INSERT INTO PICTURE (UID, SIZE) VALUES (2, 2000000);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 uses LEFT JOIN and COALESCE to include users with zero pictures, while Q2 uses INNER JOIN and excludes them. This leads to different results when users in CITY 3 have no qualifying pictures.",
+  "counterexample_dsp": "A user in CITY 3 with no pictures larger than 1MB. Q1 includes them with CNT=0, Q2 excludes them.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 uses LEFT JOIN and COALESCE to include users with zero pictures, while Q2 uses INNER JOIN and excludes them. This leads to different results when users in CITY 3 have no qualifying pictures.\",\n\"counterexample_dsp\": \"A user in CITY 3 with no pictures larger than 1MB. Q1 includes them with CNT=0, Q2 excludes them.\",\n\"counterexample\": \"INSERT INTO USER (UID, UNAME, CITY) VALUES (1, 1, 3); INSERT INTO PICTURE (UID, SIZE) VALUES (2, 2000000);\"\n}",
+  "reasoning": "\nOkay, let's see. I need to determine if Q1 and Q2 are semantically equivalent. Let's start by understanding what each query does.\n\nQ1: It starts by selecting users from the USER table where CITY is 3. Then, it does a LEFT JOIN with a subquery Q that counts the number of pictures each user has with SIZE over 1,000,000. The COALESCE ensures that if there are no matching pictures, the count is 0. So, for each user in CITY 3, it gives their UID, UNAME, and the count of large pictures they have, or 0 if none.\n\nQ2: This query does an INNER JOIN between USER and PICTURE tables where X.UID = Y.UID, and filters for Y.SIZE > 1,000,000 and X.CITY = 3. Then it groups by UID and UNAME, counting the number of rows. Since it's an INNER JOIN, only users who have at least one such picture are included, and their count is the number of large pictures. Users without any large pictures won't appear in the result because INNER JOIN excludes them.\n\nWait, so Q1 uses a LEFT JOIN, so even if a user has no large pictures, they'll still be in the result with CNT=0. But Q2 uses an INNER JOIN, so those users without any large pictures would be excluded. That's a key difference. So in cases where a user in CITY 3 has no large pictures, Q1 would include them with CNT 0, while Q2 would not include them at all. Therefore, the two queries are not equivalent.\n\nTo create a counterexample, I need a user in CITY 3 with no large pictures. Let's say:\n\nUSER table has (UID=1, UNAME=1, CITY=3), and no entries in PICTURE for UID=1. Then Q1 would return this user with CNT 0. Q2 would not return this user at all. That's the difference.\n\nSo the counterexample would involve inserting such a user and ensuring no pictures for them. Let me structure the SQL inserts accordingly.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 432,
+    "total_tokens": 1030,
+    "completion_tokens": 598,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 453
+    },
+    "generation_seconds": 17.844
+  },
+  "started_at": "2026-10-06T07:45:50.501368+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      1,
+      1,
+      0
+    ]
+  ],
+  "q2_output": [],
+  "q1_row_count": 1,
+  "q2_row_count": 0,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT P.UID, P.UNAME, COALESCE(Q.CNT, 0) AS CNT FROM (SELECT X.UID, X.UNAME FROM USER AS X WHERE X.CITY = 3) AS P LEFT JOIN (SELECT Y.UID, COUNT(*) AS CNT FROM PICTURE AS Y WHERE Y.SIZE > 1000000 GROUP BY Y.UID) AS Q USING (UID)",
+  "q2_validation_sql": "SELECT X.UID AS UID, X.UNAME AS UNAME, COUNT(*) AS CNT FROM USER AS X, PICTURE AS Y WHERE X.UID = Y.UID AND Y.SIZE > 1000000 AND X.CITY = 3 GROUP BY X.UID, X.UNAME"
+}

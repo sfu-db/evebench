@@ -1,0 +1,69 @@
+{
+  "dbid": "beers",
+  "index": "199",
+  "source_index": "4788",
+  "schema_ddl": "CREATE TABLE Bar (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Beer (\n    name VARCHAR NOT NULL,\n    brewer VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Drinker (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Frequents (\n    drinker VARCHAR NOT NULL,\n    bar VARCHAR NOT NULL,\n    times_a_week SMALLINT NOT NULL,\n    PRIMARY KEY (drinker, bar),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (bar) REFERENCES Bar(name)\n);\n\nCREATE TABLE Serves (\n    bar VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    price DECIMAL(5,2) NOT NULL,\n    PRIMARY KEY (bar, beer),\n    FOREIGN KEY (bar) REFERENCES Bar(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);\n\nCREATE TABLE Likes (\n    drinker VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    PRIMARY KEY (drinker, beer),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);",
+  "q1": "SELECT beer.name, min_price, bar FROM beer LEFT OUTER JOIN (SELECT beer, MIN(price) AS min_price FROM serves GROUP BY beer) AS t ON beer.name = t.beer LEFT OUTER JOIN serves ON beer.name = serves.beer AND min_price = serves.price",
+  "q2": "SELECT DISTINCT s1.beer, s1.price, s1.bar FROM serves AS s1 JOIN serves AS s2 ON s1.bar = s2.bar GROUP BY s1.bar, s1.price, s1.beer HAVING s1.price = MIN(s2.price)",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "beers",
+  "q1_prompt_sql": "SELECT beer.name, min_price, bar FROM beer LEFT OUTER JOIN (SELECT beer, MIN(price) AS min_price FROM serves GROUP BY beer) AS t ON beer.name = t.beer LEFT OUTER JOIN serves ON beer.name = serves.beer AND min_price = serves.price",
+  "q2_prompt_sql": "SELECT DISTINCT s1.beer, s1.price, s1.bar FROM serves AS s1 JOIN serves AS s2 ON s1.bar = s2.bar GROUP BY s1.bar, s1.price, s1.beer HAVING s1.price = MIN(s2.price)",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO Beer (name, brewer) VALUES ('A', 'Brewer1');\nINSERT INTO Bar (name, address) VALUES ('Bar1', 'Addr1'), ('Bar2', 'Addr2'), ('Bar3', 'Addr3');\nINSERT INTO Serves (bar, beer, price) VALUES ('Bar1', 'A', 3), ('Bar2', 'A', 2), ('Bar3', 'A', 3);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 finds the global minimum price per beer and lists bars serving it at that price. Q2 finds the minimum price per beer in each bar and lists all such occurrences. When a beer has multiple bars with the same price (which is not the global minimum), Q2 returns more rows than Q1.",
+  "counterexample_dsp": "Beer 'A' is served at $3 in Bar1 and Bar3, and at $2 (global min) in Bar2. Q1 returns only Bar2 (global min), while Q2 returns all three bars since each has the minimum price for 'A' in their respective bar.",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 finds the global minimum price per beer and lists bars serving it at that price. Q2 finds the minimum price per beer in each bar and lists all such occurrences. When a beer has multiple bars with the same price (which is not the global minimum), Q2 returns more rows than Q1.\",\n  \"counterexample_dsp\": \"Beer 'A' is served at $3 in Bar1 and Bar3, and at $2 (global min) in Bar2. Q1 returns only Bar2 (global min), while Q2 returns all three bars since each has the minimum price for 'A' in their respective bar.\",\n  \"counterexample\": [\n    \"INSERT INTO Beer (name, brewer) VALUES ('A', 'Brewer1');\",\n    \"INSERT INTO Bar (name, address) VALUES ('Bar1', 'Addr1'), ('Bar2', 'Addr2'), ('Bar3', 'Addr3');\",\n    \"INSERT INTO Serves (bar, beer, price) VALUES ('Bar1', 'A', 3), ('Bar2', 'A', 2), ('Bar3', 'A', 3);\"\n  ]\n}",
+  "reasoning": "\nOkay, let's see. I need to find a counterexample where Q1 and Q2 return different results. First, I need to understand what each query is doing.\n\nStarting with Q1. It's a LEFT OUTER JOIN between Beer and a subquery that finds the minimum price per beer from Serves. Then it joins again with Serves on beer name and min_price equals serves.price. So for each beer, it's getting the minimum price and then joining with the serves table to find which bars serve that beer at that minimum price. But since it's a LEFT JOIN, even if there are no matching serves, it would still include the beer with NULLs. However, the subquery groups by beer, so each beer has one min_price. Then the second join would find all serves entries that match that beer and price. But if a beer isn't served anywhere, the min_price would be NULL, and the second join would not find any rows, so the result would have beer name, NULL, and NULL for bar.\n\nNow Q2: It's a self-join on Serves, grouping by s1.bar, s1.price, s1.beer, and having s1.price equal to the MIN of s2.price. Wait, but the HAVING clause is s1.price = MIN(s2.price). But since the grouping is by s1.bar, s1.price, s1.beer, the MIN(s2.price) would be the minimum price in the same bar for that beer. Wait, but the JOIN is on s1.bar = s2.bar. So for each s1 entry, it's joining with all s2 entries in the same bar. Then, the HAVING clause checks if s1's price is the minimum in that bar for that beer. But the GROUP BY is on s1.bar, s1.price, s1.beer. So for each combination of bar, price, and beer, it's checking if that price is the minimum for that bar and beer. But since s1 and s2 are from the same bar, the MIN(s2.price) would be the minimum price of that beer in that bar. So Q2 is selecting all serves entries where the price is the minimum for that beer in that bar. However, since it's a JOIN, it might have duplicates if there are multiple entries with the same price. Then using DISTINCT would remove duplicates. But the GROUP BY and HAVING might not capture all cases. Wait, maybe the HAVING condition is s1.price = MIN(s2.price), which for each group (s1.bar, s1.beer, s1.price), the MIN of s2.price would be the minimum price for that beer in that bar. So the HAVING clause would only include those s1 entries where their price is the minimum. So Q2 is selecting all serves entries that are the minimum price for their beer in their bar, and then using DISTINCT to avoid duplicates.\n\nSo the difference between Q1 and Q2 might be in cases where a beer is served in multiple bars, each with different prices. Let's think of an example.\n\nSuppose there's a beer 'Bud' that is served in Bar1 at $3, Bar2 at $3, and Bar3 at $2. Then Q1 would find the minimum price for Bud, which is $2, and then join with serves where price is $2. So the result would be Bud, $2, Bar3. However, Q2 would look for each serve entry where that price is the minimum in that bar. For Bar1, Bud is served at $3, and if that's the minimum in Bar1 for Bud, then it would be included. Similarly for Bar2. But Bar3's price is $2, which is the minimum. So Q2 would return Bud, $3, Bar1; Bud, $3, Bar2; Bud, $2, Bar3. But Q1 would return only Bud, $2, Bar3. So in this case, Q1 and Q2 would have different results.\n\nWait, but in Q1, the first join gives the minimum price per beer. Then the second join is with serves where the price equals that min_price. So for each beer, it's getting all bars where that beer is served at the min price. So in the example, Bud has min price $2, so only Bar3 would be included. But Q2 would return all serves where the price is the minimum for that bar and beer. So in Bar1 and Bar2, if Bud is the only beer served there, then their prices are the minimum. But if there are other beers in the same bar with lower prices, then it would not be included. But in this example, let's assume that in Bar1 and Bar2, Bud is the only beer served. Then Q2 would return all three entries (Bar1, Bar2, Bar3). But Q1 would return only Bar3. So that's a difference.\n\nSo to create a counterexample, we need a beer that is served in multiple bars, with varying prices, and in some bars, the price is the minimum for that beer (but not the global minimum), and in another bar, the price is the global minimum.\n\nLet me think of a specific example. Let's create Beer 'A' with two bars: Bar1 serves it at $3, Bar2 serves it at $2, and Bar3 serves it at $3. Then Q1 would find the min price for Beer A as $2, and join with serves where price is $2, so only Bar2. Q2 would look for each serve entry where the price is the minimum in that bar for Beer A. In Bar1, if Beer A is the only beer served there, then $3 is the minimum. Similarly in Bar2, $2 is the minimum. In Bar3, same as Bar1. So Q2 would return all three entries. Thus, Q1 and Q2 would differ here.\n\nSo the test data should have a beer served in multiple bars with different prices, and in some bars, the price is the minimum for that beer (but not the overall min), and in another bar, the price is the overall min. Then Q1 would return only the bar with the overall min, while Q2 would return all bars where the price is the min for that bar and beer.\n\nNow, I need to make sure that the schema constraints are followed. For example, the Serves table has a primary key (bar, beer), so each bar and beer combination must be unique. So inserting multiple entries for the same beer in different bars is allowed.\n\nSo the counterexample would involve inserting:\n\n- Beer 'A' into Beer table.\n- Bars 'Bar1', 'Bar2', 'Bar3' into Bar table.\n- Serves entries: (Bar1, A, 3), (Bar2, A, 2), (Bar3, A, 3).\n\nThen, Q1 would return A, 2, Bar2. Q2 would return (A, 3, Bar1), (A, 2, Bar2), (A, 3, Bar3). So the results are different.\n\nBut wait, in Q2, the HAVING clause is s1.price = MIN(s2.price). Let's think about how that works. The JOIN is on s1.bar = s2.bar. The GROUP BY is on s1.bar, s1.price, s1.beer. So for each group (bar, price, beer), the HAVING clause checks if s1.price is the minimum price in that bar for that beer. For example, in Bar1, for beer A, the price is 3. The MIN(s2.price) for s2 in Bar1 where beer is A would be 3 (since it's the only entry). So the HAVING condition holds, so s1 (Bar1, A, 3) is included. Similarly for Bar3. But for Bar2, the price is 2, which is the minimum. So all three entries are included in Q2. But Q1 only includes the bar where the price is the global minimum for the beer.\n\nSo that's a valid counterexample. Now, I need to make sure that the test data doesn't violate constraints. For example, all bars and beers must exist in their respective tables.\n\nSo the INSERT statements would be:\n\nINSERT INTO Beer (name, brewer) VALUES ('A', 'Brewer1');\nINSERT INTO Bar (name, address) VALUES ('Bar1', 'Addr1'), ('Bar2', 'Addr2'), ('Bar3', 'Addr3');\nINSERT INTO Serves (bar, beer, price) VALUES ('Bar1', 'A', 3), ('Bar2', 'A', 2), ('Bar3', 'A', 3);\n\nThat's the minimal data. Now, when Q1 runs, it will take the min_price for Beer A as 2, and then join with serves where price is 2, which is Bar2. So the result is one row. Q2 will return three rows (Bar1, Bar2, Bar3) with their respective prices. Hence, the difference.\n\nAnother possible case: if a beer is not served in any bar. Then Q1 would return the beer name, NULL min_price, and NULL bar. Q2 would not return anything for that beer because there are no serves entries. So that's another case, but maybe the example with existing serves is easier.\n\nBut the example I have with the three bars is sufficient.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 548,
+    "total_tokens": 2789,
+    "completion_tokens": 2241,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1988
+    },
+    "generation_seconds": 76.156
+  },
+  "started_at": "2026-10-06T08:26:08.500538+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "A",
+      2,
+      "Bar2"
+    ]
+  ],
+  "q2_output": [
+    [
+      "A",
+      3,
+      "Bar1"
+    ],
+    [
+      "A",
+      2,
+      "Bar2"
+    ],
+    [
+      "A",
+      3,
+      "Bar3"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 3,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT beer.name, min_price, bar FROM beer LEFT OUTER JOIN (SELECT beer, MIN(price) AS min_price FROM serves GROUP BY beer) AS t ON beer.name = t.beer LEFT OUTER JOIN serves ON beer.name = serves.beer AND min_price = serves.price",
+  "q2_validation_sql": "SELECT DISTINCT s1.beer, s1.price, s1.bar FROM serves AS s1 JOIN serves AS s2 ON s1.bar = s2.bar GROUP BY s1.bar, s1.price, s1.beer HAVING s1.price = MIN(s2.price)"
+}

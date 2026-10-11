@@ -1,0 +1,39 @@
+{
+  "dbid": "1141",
+  "index": "359",
+  "source_index": "65",
+  "schema_ddl": "CREATE TABLE ACTIVITY (\n    USER_ID INT,\n    SESSION_ID INT,\n    ACTIVITY_DATE DATE,\n    ACTIVITY_TYPE ENUM('OPEN_SESSION', 'END_SESSION', 'SCROLL_DOWN', 'SEND_MESSAGE'),\n    CHECK (ACTIVITY_TYPE IN ('OPEN_SESSION', 'END_SESSION', 'SCROLL_DOWN', 'SEND_MESSAGE'))\n);",
+  "q1": "SELECT ACTIVITY_DATE AS DAY, COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY WHERE ACTIVITY_DATE BETWEEN '2019-06-28' AND '2019-07-27' GROUP BY ACTIVITY_DATE",
+  "q2": "SELECT ACTIVITY_DATE AS DAY,IFNULL(COUNT(DISTINCT USER_ID),0) AS ACTIVE_USERS FROM ACTIVITY WHERE ACTIVITY_DATE BETWEEN SUBDATE('2019-07-27',INTERVAL 29 DAY) AND '2019-07-27' GROUP BY ACTIVITY_DATE",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT ACTIVITY_DATE AS DAY, COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY WHERE ACTIVITY_DATE BETWEEN '2019-06-28' AND '2019-07-27' GROUP BY ACTIVITY_DATE",
+  "q2_prompt_sql": "SELECT ACTIVITY_DATE AS DAY,IFNULL(COUNT(DISTINCT USER_ID),0) AS ACTIVE_USERS FROM ACTIVITY WHERE ACTIVITY_DATE BETWEEN SUBDATE('2019-07-27',INTERVAL 29 DAY) AND '2019-07-27' GROUP BY ACTIVITY_DATE",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries calculate active users per day between the same date range (June 28 to July 27, 2019). The date range in Q2 is computed via SUBDATE('2019-07-27', INTERVAL 29 DAY), which equals '2019-06-28'. The IFNULL in Q2 is redundant since COUNT(DISTINCT USER_ID) returns 0 when no rows exist, making the queries semantically identical.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries calculate active users per day between the same date range (June 28 to July 27, 2019). The date range in Q2 is computed via SUBDATE('2019-07-27', INTERVAL 29 DAY), which equals '2019-06-28'. The IFNULL in Q2 is redundant since COUNT(DISTINCT USER_ID) returns 0 when no rows exist, making the queries semantically identical.\"\n}",
+  "reasoning": "\nOkay, let's see. I need to figure out if Q1 and Q2 are semantically equivalent. Let me start by understanding each query.\n\nQ1 selects the activity date as DAY and counts the distinct user IDs as active users. The WHERE clause uses BETWEEN '2019-06-28' AND '2019-07-27'. So that's a date range from June 28 to July 27, inclusive. It groups by activity date.\n\nQ2 is similar but the date range is different. The start date is calculated using SUBDATE('2019-07-27', INTERVAL 29 DAY). Let me calculate that. July 27 minus 29 days. July has 31 days, so July 27 minus 29 days would be June 28. Because July 27 minus 27 days is June 30, then minus 2 more days is June 28. So the start date is June 28, same as Q1. So the date range is from June 28 to July 27. Wait, so the date ranges are the same? Then why would the queries differ?\n\nWait, but in Q2, the END_SESSION might be different? Wait, no, the date ranges are the same. So the WHERE clause in both queries is effectively the same. But wait, the SUBDATE calculation might be different if the dates are not correct. Let me check again.\n\nIf the end date is '2019-07-27', and the start date is SUBDATE('2019-07-27', INTERVAL 29 DAY). Let me compute that. 29 days before July 27, 2019. Let's count:\n\nJuly 27 minus 29 days. Let's go back 29 days. July has 31 days, so July 27 minus 27 days is June 30. Then subtract 2 more days: June 28. So yes, the start date is June 28. So the date range is between June 28 and July 27. So both queries have the same date range. Therefore, their WHERE clauses are the same. Then why would the results differ?\n\nWait, but Q2 uses IFNULL(COUNT(DISTINCT USER_ID),0). Q1 uses COUNT(DISTINCT USER_ID) directly. However, COUNT(DISTINCT) can't be NULL, because if there are no rows, COUNT(DISTINCT) returns 0. So the IFNULL is redundant here. So maybe the only difference is that Q2 uses IFNULL, but since COUNT(DISTINCT) can't be NULL, the IFNULL doesn't change the result. So the two queries should be equivalent.\n\nWait, but what if there are no rows for a particular activity date? For example, if a date in the range has no activity, then COUNT(DISTINCT USER_ID) would be 0, and IFNULL would still return 0. So in that case, both queries would return the same value. So maybe they are equivalent.\n\nBut wait, the GROUP BY is on ACTIVITY_DATE. So for each date in the range, they count the distinct users. Since the date ranges are the same, and the only difference is the IFNULL, which is redundant, then the queries are equivalent. Therefore, the answer should be Y.\n\nWait, but maybe I made a mistake in the date calculation. Let me check again. The original Q1 uses BETWEEN '2019-06-28' AND '2019-07-27'. Q2 uses BETWEEN SUBDATE('2019-07-27', INTERVAL 29 DAY) AND '2019-07-27'. If the start date is indeed June 28, then the ranges are the same. But what if there's a leap year or something? Wait, 2019 is not a leap year. So June has 30 days. So July 27 minus 29 days: 29 days before July 27 is June 28. So yes, the dates are the same. Therefore, the WHERE clauses are equivalent.\n\nSo the only difference is the IFNULL, which is redundant. Therefore, the queries are equivalent. So the answer is Y.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 448,
+    "total_tokens": 1500,
+    "completion_tokens": 1052,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 932
+    },
+    "generation_seconds": 34.156
+  },
+  "started_at": "2026-10-06T15:03:17.975339+00:00",
+  "elapsed_seconds": 0.0
+}

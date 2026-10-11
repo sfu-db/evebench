@@ -1,0 +1,39 @@
+{
+  "dbid": "511",
+  "index": "187",
+  "source_index": "20",
+  "schema_ddl": "CREATE TABLE ACTIVITY (\n    PLAYER_ID INT,\n    EVENT_DATE DATE,\n    DEVICE_ID INT,\n    GAMES_PLAYED INT,\n    PRIMARY KEY (PLAYER_ID, EVENT_DATE),\n    CHECK (GAMES_PLAYED >= 0)\n);",
+  "q1": "SELECT PLAYER_ID,MIN(EVENT_DATE) AS FIRST_LOGIN FROM ACTIVITY GROUP BY PLAYER_ID",
+  "q2": "SELECT PLAYER_ID, MIN(EVENT_DATE) AS FIRST_LOGIN FROM ACTIVITY GROUP BY PLAYER_ID ORDER BY PLAYER_ID ASC",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT PLAYER_ID,MIN(EVENT_DATE) AS FIRST_LOGIN FROM ACTIVITY GROUP BY PLAYER_ID",
+  "q2_prompt_sql": "SELECT PLAYER_ID, MIN(EVENT_DATE) AS FIRST_LOGIN FROM ACTIVITY GROUP BY PLAYER_ID ORDER BY PLAYER_ID ASC",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are semantically equivalent. Both queries group the ACTIVITY table by PLAYER_ID and return the minimum EVENT_DATE for each player. The only difference is that Q2 adds an ORDER BY PLAYER_ID ASC clause, which affects the order of the output rows but not the content of the result set. Since the question is about semantic equivalence (i.e., the same rows returned, regardless of order), the two queries are equivalent.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n  \"equiv\": \"Y\",\n  \"explanation\": \"Q1 and Q2 are semantically equivalent. Both queries group the ACTIVITY table by PLAYER_ID and return the minimum EVENT_DATE for each player. The only difference is that Q2 adds an ORDER BY PLAYER_ID ASC clause, which affects the order of the output rows but not the content of the result set. Since the question is about semantic equivalence (i.e., the same rows returned, regardless of order), the two queries are equivalent.\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 346,
+    "total_tokens": 455,
+    "completion_tokens": 109,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 3.532
+  },
+  "started_at": "2026-10-06T15:33:06.748011+00:00",
+  "elapsed_seconds": 0.0
+}

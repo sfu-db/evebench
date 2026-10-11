@@ -1,0 +1,53 @@
+{
+  "dbid": "182",
+  "index": "133",
+  "source_index": "52",
+  "schema_ddl": "CREATE TABLE PERSON (\n    ID INT,\n    EMAIL VARCHAR(255),\n    PRIMARY KEY (ID)\n);",
+  "q1": "SELECT EMAIL AS EMAIL FROM PERSON GROUP BY EMAIL HAVING COUNT(EMAIL) >1",
+  "q2": "SELECT A.EMAIL AS EMAIL FROM (SELECT EMAIL, COUNT(ID) AS COUNTT FROM PERSON GROUP BY EMAIL) AS A WHERE A.COUNTT > 1",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT EMAIL AS EMAIL FROM PERSON GROUP BY EMAIL HAVING COUNT(EMAIL) >1",
+  "q2_prompt_sql": "SELECT A.EMAIL AS EMAIL FROM (SELECT EMAIL, COUNT(ID) AS COUNTT FROM PERSON GROUP BY EMAIL) AS A WHERE A.COUNTT > 1",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO PERSON (ID, EMAIL) VALUES (1, 'email1@example.com'), (2, 'email1@example.com'), (3, 'email2@example.com');",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent because Q1 does not filter the count of emails, while Q2 filters the count of emails to be greater than 1. Q1 will return all emails that appear more than once in the table, regardless of the count, while Q2 will only return emails that appear more than once and have a count greater than 1.",
+  "counterexample_dsp": "The test data should have at least two emails, one that appears more than once and another that appears only once. The email that appears more than once should have a count greater than 1 in Q2, while the email that appears only once should not be returned by either query.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent because Q1 does not filter the count of emails, while Q2 filters the count of emails to be greater than 1. Q1 will return all emails that appear more than once in the table, regardless of the count, while Q2 will only return emails that appear more than once and have a count greater than 1.\",\n  \"counterexample_dsp\": \"The test data should have at least two emails, one that appears more than once and another that appears only once. The email that appears more than once should have a count greater than 1 in Q2, while the email that appears only once should not be returned by either query.\",\n  \"counterexample\": \"INSERT INTO PERSON (ID, EMAIL) VALUES (1, 'email1@example.com'), (2, 'email1@example.com'), (3, 'email2@example.com');\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 293,
+    "total_tokens": 487,
+    "completion_tokens": 194,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 3.172
+  },
+  "started_at": "2026-10-06T09:50:20.349329+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "email1@example.com"
+    ]
+  ],
+  "q2_output": [
+    [
+      "email1@example.com"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT EMAIL AS EMAIL FROM PERSON GROUP BY EMAIL HAVING COUNT(EMAIL) >1",
+  "q2_validation_sql": "SELECT A.EMAIL AS EMAIL FROM (SELECT EMAIL, COUNT(ID) AS COUNTT FROM PERSON GROUP BY EMAIL) AS A WHERE A.COUNTT > 1"
+}

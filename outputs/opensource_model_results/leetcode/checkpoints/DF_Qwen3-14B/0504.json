@@ -1,0 +1,39 @@
+{
+  "dbid": "1050",
+  "index": "504",
+  "source_index": "131",
+  "schema_ddl": "CREATE TABLE ACTORDIRECTOR (\n    TIMESTAMP INT,\n    ACTOR_ID INT,\n    DIRECTOR_ID INT,\n    PRIMARY KEY (TIMESTAMP)\n);",
+  "q1": "SELECT ACTOR_ID,DIRECTOR_ID FROM ACTORDIRECTOR GROUP BY ACTOR_ID,DIRECTOR_ID HAVING COUNT(*)>=3",
+  "q2": "SELECT DISTINCT ACTOR_ID ,DIRECTOR_ID FROM(SELECT ACTOR_ID, DIRECTOR_ID, COUNT(ACTOR_ID) AS CNT FROM ACTORDIRECTOR GROUP BY DIRECTOR_ID, ACTOR_ID) AS INN WHERE CNT > 2",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT ACTOR_ID,DIRECTOR_ID FROM ACTORDIRECTOR GROUP BY ACTOR_ID,DIRECTOR_ID HAVING COUNT(*)>=3",
+  "q2_prompt_sql": "SELECT DISTINCT ACTOR_ID ,DIRECTOR_ID FROM(SELECT ACTOR_ID, DIRECTOR_ID, COUNT(ACTOR_ID) AS CNT FROM ACTORDIRECTOR GROUP BY DIRECTOR_ID, ACTOR_ID) AS INN WHERE CNT > 2",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries aim to find (ACTOR_ID, DIRECTOR_ID) pairs that appear at least three times. Q1 uses COUNT(*) >=3 in HAVING, while Q2 uses COUNT(ACTOR_ID) > 2 in WHERE. Since COUNT(*) and COUNT(ACTOR_ID) are equivalent in this context (grouped by both columns), the results are identical.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries aim to find (ACTOR_ID, DIRECTOR_ID) pairs that appear at least three times. Q1 uses COUNT(*) >=3 in HAVING, while Q2 uses COUNT(ACTOR_ID) > 2 in WHERE. Since COUNT(*) and COUNT(ACTOR_ID) are equivalent in this context (grouped by both columns), the results are identical.\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem. So, I need to figure out if the two SQL queries Q1 and Q2 are semantically equivalent. If not, I have to come up with a counterexample.\n\nFirst, let's understand what each query does. \n\nStarting with Q1: It selects ACTOR_ID and DIRECTOR_ID from the ACTORDIRECTOR table, groups by both columns, and uses HAVING COUNT(*) >= 3. That means it's looking for pairs of actor and director that appear at least three times in the table. Since the primary key is TIMESTAMP, each row is unique, so COUNT(*) counts how many times the same (actor, director) pair exists. So Q1 returns all pairs that have three or more entries.\n\nNow Q2: It's a bit more complex. It has a subquery where it groups by DIRECTOR_ID and ACTOR_ID, counts the actor_id (though since it's grouped by both, COUNT(ACTOR_ID) would be the same as COUNT(*) here), and aliases that count as CNT. Then, the outer query selects distinct actor and director IDs from this subquery where CNT > 2. So Q2 is also looking for pairs where the count is more than 2, which is the same as >=3. \n\nWait, but the HAVING clause in Q1 is COUNT(*) >=3, and Q2's WHERE is CNT>2. Since COUNT(*) would be the same as CNT here, because in the subquery, grouping by both ACTOR_ID and DIRECTOR_ID, the count of ACTOR_ID per group is the same as the number of rows in that group. So COUNT(*) and COUNT(ACTOR_ID) would be the same here. Therefore, both queries are looking for pairs that appear three or more times. \n\nBut wait, Q2 uses SELECT DISTINCT. However, the subquery's result would have each (ACTOR_ID, DIRECTOR_ID) pair once per group, so the DISTINCT in the outer query might be redundant. But since the subquery already groups by both columns, the inner query would have unique pairs. So the DISTINCT in Q2 doesn't change the result. \n\nSo, both queries are trying to find pairs that appear at least three times. Therefore, they should be equivalent. \n\nBut wait, maybe there's a difference in how the COUNT is done. Let me check again. \n\nIn Q1, the COUNT(*) counts the number of rows in each group. In Q2, the COUNT(ACTOR_ID) in the subquery would count the number of ACTOR_IDs in each group. Since the grouping is by both ACTOR_ID and DIRECTOR_ID, each group has the same ACTOR_ID and DIRECTOR_ID, so COUNT(ACTOR_ID) would be the same as COUNT(*) for each group. So the CNT is the same as the count in Q1. \n\nTherefore, the HAVING COUNT(*) >=3 in Q1 is equivalent to WHERE CNT>2 in Q2. Since 3 is greater than 2, the conditions are the same. \n\nSo, both queries should return the same results. Therefore, they are semantically equivalent. \n\nBut wait, maybe there's a case where the COUNT in Q2 is different? Let me think of a test case. Suppose there are three entries for a pair. Then COUNT(*) is 3, which meets Q1's condition. In Q2, the subquery would have CNT=3, and WHERE CNT>2 would include it. So same result. \n\nAnother case: if a pair has exactly two entries. Q1 would not include it, and Q2 would not either. \n\nSo, I can't think of a scenario where they differ. Therefore, they are equivalent. \n\nBut why does Q2 have the DISTINCT? Because the inner query groups by both columns, so each row in the inner query is unique. So the outer SELECT DISTINCT is redundant. But even if it's there, it doesn't affect the result. \n\nTherefore, the answer should be that they are equivalent.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 366,
+    "total_tokens": 1297,
+    "completion_tokens": 931,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 840
+    },
+    "generation_seconds": 29.531
+  },
+  "started_at": "2026-10-06T15:14:29.464956+00:00",
+  "elapsed_seconds": 0.0
+}

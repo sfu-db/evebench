@@ -1,0 +1,39 @@
+{
+  "dbid": "607",
+  "index": "233",
+  "source_index": "57",
+  "schema_ddl": "CREATE TABLE SALESPERSON (\n    SALES_ID INT,\n    NAME VARCHAR(255),\n    SALARY INT,\n    COMMISSION_RATE INT,\n    HIRE_DATE VARCHAR(255)\n);\n\nCREATE TABLE COMPANY (\n    COM_ID INT,\n    NAME VARCHAR(255),\n    CITY VARCHAR(255)\n);\n\nCREATE TABLE ORDERS (\n    ORDER_ID INT,\n    COM_ID INT,\n    SALES_ID INT,\n    ORDER_DATE VARCHAR(255),\n    AMOUNT INT\n);",
+  "q1": "SELECT NAME FROM SALESPERSON AS S WHERE 0 = ( SELECT COUNT(*) FROM ORDERS AS O JOIN COMPANY AS C ON O.COM_ID = C.COM_ID WHERE O.SALES_ID = S.SALES_ID AND C.NAME = 'RED' )",
+  "q2": "SELECT NAME FROM SALESPERSON WHERE SALES_ID NOT IN (SELECT O.SALES_ID FROM ORDERS AS O JOIN COMPANY AS C ON C.COM_ID=O.COM_ID AND C.NAME='RED' )",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT NAME FROM SALESPERSON AS S WHERE 0 = ( SELECT COUNT(*) FROM ORDERS AS O JOIN COMPANY AS C ON O.COM_ID = C.COM_ID WHERE O.SALES_ID = S.SALES_ID AND C.NAME = 'RED' )",
+  "q2_prompt_sql": "SELECT NAME FROM SALESPERSON WHERE SALES_ID NOT IN (SELECT O.SALES_ID FROM ORDERS AS O JOIN COMPANY AS C ON C.COM_ID=O.COM_ID AND C.NAME='RED' )",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries aim to select salespersons with no orders linked to the 'RED' company. Q1 uses a correlated subquery to check for zero matching orders, while Q2 uses a NOT IN clause with a subquery that lists all salespersons with at least one order for 'RED'. These approaches are logically equivalent under the given schema.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries aim to select salespersons with no orders linked to the 'RED' company. Q1 uses a correlated subquery to check for zero matching orders, while Q2 uses a NOT IN clause with a subquery that lists all salespersons with at least one order for 'RED'. These approaches are logically equivalent under the given schema.\"\n}",
+  "reasoning": "\nOkay, let's see. I need to determine if Q1 and Q2 are semantically equivalent. Let me start by understanding what each query does.\n\nQ1 selects the name of salespeople where the count of orders related to the company named 'RED' is zero. So, for each salesperson, it checks if there are no orders linked to 'RED' company. That would mean the salesperson has never sold to RED.\n\nQ2 uses a NOT IN clause. It selects salespeople whose SALES_ID is not in the list of SALES_IDs from orders that are joined with the RED company. So, it's excluding any salesperson who has at least one order with RED.\n\nWait, but what if there are multiple entries for the same SALES_ID in the subquery? The NOT IN would exclude any SALES_ID that appears even once in the subquery. Similarly, Q1's count is zero, which would be true if there are no such orders for that salesperson. So, both queries should return salespeople who have no orders with RED. Are they equivalent?\n\nWait, but what about NULL values? If the subquery in Q2 returns NULLs, then NOT IN might behave differently. But in the schema, all the columns are integers except NAME and other strings. Let me check the tables.\n\nIn the ORDERS table, SALES_ID is an INT. The subquery in Q2 is selecting O.SALES_ID from orders joined with company where C.NAME is 'RED'. So, the subquery would return SALES_IDs that have at least one order with RED. The NOT IN would exclude those SALES_IDs. So Q2 is selecting salespeople whose SALES_ID is not in that list. That should be equivalent to Q1's condition where the count is zero.\n\nBut wait, what if a salesperson has no orders at all? Then, the count in Q1 would be zero, so they would be included. In Q2, if the subquery returns no rows, then the NOT IN would be true for all SALES_IDs, because NOT IN (empty set) is true. So that case is handled correctly.\n\nAnother edge case: if a salesperson has orders but none with RED. Then Q1 would have count zero, so included. Q2 would check if their SALES_ID is not in the list of SALES_IDs that have orders with RED. Since they are not in that list, they are included. So that's the same.\n\nWait, but what if the subquery in Q2 returns NULLs? For example, if there's an order where the join to COMPANY results in a NULL COM_ID? But the schema defines COM_ID as INT in both ORDERS and COMPANY. However, in the JOIN condition, O.COM_ID = C.COM_ID. If there's an order with COM_ID that doesn't exist in COMPANY, then the join would not find a match. But the subquery in Q2 is joining on C.COM_ID = O.COM_ID and C.NAME = 'RED'. So if there's an order with COM_ID that doesn't exist in COMPANY, then that row would not be included in the subquery. So the subquery would only include SALES_IDs that have at least one order linked to a company named RED.\n\nTherefore, in normal cases, Q1 and Q2 should be equivalent. But maybe there's a case where the count is zero but the subquery in Q2 is empty. Wait, if a salesperson has no orders with RED, then the subquery in Q2 would not include their SALES_ID. So NOT IN would include them. Which matches Q1's condition. So they should be equivalent.\n\nWait, but maybe there's a case where the subquery in Q2 returns no rows, but the salesperson has orders with other companies. For example, a salesperson has orders with company 'BLUE' but not with 'RED'. Then Q1 would count zero for 'RED' and include them. Q2 would check if their SALES_ID is not in the list of those with RED orders. Since they are not in the list, they are included. So same result.\n\nHmm, maybe they are equivalent. But why would the user think they are not? Wait, perhaps the difference is in the handling of NULLs. For example, if the subquery in Q2 returns a NULL value. But in this scenario, the SALES_ID is an INT, and the subquery would only return SALES_IDs that have a matching COM_ID and C.NAME='RED'. So if the join is correct, then the subquery would not have NULLs. Unless there's an order with COM_ID that's not in COMPANY, but then the join would not include those rows. Therefore, the subquery would return only valid SALES_IDs.\n\nAlternatively, if the subquery in Q2 returns no rows, then the NOT IN condition is true for all SALES_IDs. Which is correct, because that would mean that the salesperson has no orders with RED. Which is the same as Q1's condition.\n\nSo maybe they are equivalent. Therefore, the answer would be Y.\n\nBut wait, let me think again. Suppose a salesperson has no orders at all. Then, the count in Q1 is zero, so they are included. In Q2, the subquery would return no rows. So the NOT IN condition is true. So they are included. So same result.\n\nAnother case: a salesperson has orders with RED, but the count is zero? No, that's not possible. If they have orders with RED, then the count would be at least one.\n\nWait, perhaps the difference is that Q1 checks for exactly zero, while Q2 checks that the SALES_ID is not in the list. But they are logically the same. So maybe they are equivalent.\n\nTherefore, the answer is Y.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 454,
+    "total_tokens": 1755,
+    "completion_tokens": 1301,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1216
+    },
+    "generation_seconds": 39.969
+  },
+  "started_at": "2026-10-06T14:56:20.601964+00:00",
+  "elapsed_seconds": 0.0
+}

@@ -1,0 +1,58 @@
+{
+  "dbid": "toxicology",
+  "index": "152",
+  "source_index": "213",
+  "schema_ddl": "CREATE TABLE `atom` (\n  `atom_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `element` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `bond` (\n  `bond_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `bond_type` TEXT DEFAULT NULL,\n  PRIMARY KEY (`bond_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `connected` (\n  `atom_id` TEXT NOT NULL,\n  `atom_id2` TEXT NOT NULL,\n  `bond_id` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`,`atom_id2`),\n  FOREIGN KEY (`atom_id`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`atom_id2`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`bond_id`) REFERENCES `bond` (`bond_id`) ON DELETE CASCADE ON UPDATE CASCADE\n);\n\nCREATE TABLE `molecule` (\n  `molecule_id` TEXT NOT NULL,\n  `label` TEXT DEFAULT NULL,\n  PRIMARY KEY (`molecule_id`)\n);",
+  "q1": "SELECT T.element FROM (SELECT T1.element, COUNT(DISTINCT T1.molecule_id) FROM atom AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id WHERE T2.label = '-' GROUP BY T1.element ORDER BY COUNT(DISTINCT T1.molecule_id) ASC LIMIT 4) AS t",
+  "q2": "SELECT T1.element FROM atom AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id WHERE T2.label = '-' GROUP BY T1.element ORDER BY COUNT(T1.element) ASC LIMIT 1",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT T.element FROM (SELECT T1.element, COUNT(DISTINCT T1.molecule_id) FROM atom AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id WHERE T2.label = '-' GROUP BY T1.element ORDER BY COUNT(DISTINCT T1.molecule_id) ASC LIMIT 4) AS t",
+  "q2_prompt_sql": "SELECT T1.element FROM atom AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id WHERE T2.label = '-' GROUP BY T1.element ORDER BY COUNT(T1.element) ASC LIMIT 1",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO molecule (molecule_id, label) VALUES ('m1', '-'), ('m2', '-'), ('m3', '-');\nINSERT INTO atom (atom_id, molecule_id, element) VALUES ('a1', 'm1', 'A'), ('a2', 'm2', 'A'), ('a3', 'm3', 'B'), ('a4', 'm3', 'B'), ('a5', 'm3', 'B');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 counts distinct molecules per element and orders by that count, then takes top 4. Q2 counts atoms per element and orders by that count, taking top 1. These differ in aggregation and ordering criteria.",
+  "counterexample_dsp": "Two elements with different molecule/atom counts: Element A in 2 molecules (2 atoms total), Element B in 1 molecule (3 atoms). Q1 picks B first (lower distinct molecule count), Q2 picks A first (lower atom count).",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 counts distinct molecules per element and orders by that count, then takes top 4. Q2 counts atoms per element and orders by that count, taking top 1. These differ in aggregation and ordering criteria.\",\n\"counterexample_dsp\": \"Two elements with different molecule/atom counts: Element A in 2 molecules (2 atoms total), Element B in 1 molecule (3 atoms). Q1 picks B first (lower distinct molecule count), Q2 picks A first (lower atom count).\",\n\"counterexample\": \"INSERT INTO molecule (molecule_id, label) VALUES ('m1', '-'), ('m2', '-'), ('m3', '-');\\nINSERT INTO atom (atom_id, molecule_id, element) VALUES ('a1', 'm1', 'A'), ('a2', 'm2', 'A'), ('a3', 'm3', 'B'), ('a4', 'm3', 'B'), ('a5', 'm3', 'B');\"\n}",
+  "reasoning": "\nOkay, let's see. I need to determine if Q1 and Q2 are semantically equivalent. Let's start by understanding each query.\n\nFirst, Q1: It's a subquery that selects element from atom joined with molecule where the molecule's label is '-', groups by element, counts distinct molecule_id, orders by that count ascending, and takes the top 4. Then the outer query selects element from that subquery. Wait, but the outer query just selects the element from the subquery, which already has the same element. So Q1 is getting the top 4 elements with the least distinct molecules, ordered by count.\n\nQ2: It's selecting element from atom joined with molecule where label is '-', groups by element, orders by count of element ascending, and limits to 1. So Q2 is getting the element with the smallest count of elements (but wait, COUNT(T1.element) would be the same as COUNT(*) since it's grouped by element. Unless there are multiple entries per element in the group. Wait, when you group by element, each group has multiple rows with the same element. So COUNT(T1.element) would count the number of rows in each group. But in Q1, the count is COUNT(DISTINCT T1.molecule_id), which counts how many different molecules each element is in.\n\nSo the main difference is that Q1 counts distinct molecule_ids per element, while Q2 counts the number of atoms per element. Also, Q1 takes the top 4, while Q2 takes the top 1.\n\nSo they are not equivalent. For example, imagine an element that appears in many atoms but in few molecules. Q1 would count the molecules, Q2 would count the atoms. So if element A is in 10 atoms but 2 molecules, and element B is in 5 atoms but 3 molecules. Then Q1 would order by 2 and 3, so A comes first. Q2 would order by 10 and 5, so B comes first. So their orderings are different.\n\nSo to create a counterexample, I need a scenario where the counts differ. Let's create a small database where:\n\n- Molecule1 (label '-') has two atoms of element 'A' (same molecule_id).\n- Molecule2 (label '-') has three atoms of element 'B' (same molecule_id).\n- Molecule3 (label '-') has one atom of element 'C'.\n\nThen:\n\nFor Q1:\n- A: COUNT(DISTINCT molecule_id) = 1 (only molecule1)\n- B: COUNT(DISTINCT) = 1 (molecule2)\n- C: 1 (molecule3)\nSo ordering by count ascending, all are 1. But since LIMIT 4, all would be included. But the order might be arbitrary. Wait, but if they are same, then the order is undefined. But in the example, maybe the actual data would have different counts.\n\nWait, maybe a better example. Let's say:\n\nMolecule1 (label '-') has two atoms of element A (same molecule_id). So for Q1, A's count is 1 (distinct molecule_id).\n\nMolecule2 (label '-') has three atoms of element B (same molecule_id). B's count is 1.\n\nMolecule3 (label '-') has one atom of element C. C's count is 1.\n\nNow, Q1 would have all three elements with count 1, and order by ascending (so same), but LIMIT 4 would return all. Q2 counts the number of atoms per element. So A has 2, B has 3, C has 1. So Q2 would order by count (1, 2, 3), so C comes first, then A, then B. So Q2 would return C (LIMIT 1). But Q1 would return all three, but ordered by count (all same), so maybe the order is arbitrary. But in the original Q1, the subquery is ordered by count ascending, and then LIMIT 4. But if all counts are same, the order is undefined. However, in the example, if the count is same, the order may depend on the database's sorting. But in the counterexample, perhaps we need to make sure that the order differs between Q1 and Q2.\n\nAlternatively, let's make a case where the count in Q1 is different. For example:\n\nElement A is in 2 molecules, each with 1 atom. So Q1 count is 2. Q2 count is 2 (since two atoms).\n\nElement B is in 1 molecule, with 3 atoms. Q1 count is 1, Q2 count is 3.\n\nSo Q1 would order B first (count 1), then A (count 2). Q2 would order B (count 3) after A (count 2). Wait, no. Q2 orders by COUNT(T1.element) ASC. For element B, COUNT is 3, A is 2. So Q2 would order A (2) first, then B (3). So Q2 would return A (LIMIT 1). Q1 would return B (count 1) first. So the results would be different.\n\nSo in this case, Q1 returns B, Q2 returns A. Therefore, they are not equivalent.\n\nSo the counterexample would be:\n\n- Molecule1 (label '-') has 1 atom of element A.\n- Molecule2 (label '-') has 1 atom of element A.\n- Molecule3 (label '-') has 3 atoms of element B.\n\nSo for Q1:\n- A has COUNT(DISTINCT molecule_id) = 2 (molecule1 and 2)\n- B has COUNT(DISTINCT) = 1 (molecule3)\nSo Q1 would order B (1) first, then A (2), and take top 4. So B is first.\n\nFor Q2:\n- A has COUNT(T1.element) = 2 (two atoms)\n- B has COUNT = 3 (three atoms)\nOrder by count ascending: A (2) comes before B (3). So Q2 returns A as the first result.\n\nThus, the results are different. Therefore, the queries are not equivalent.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 644,
+    "total_tokens": 2165,
+    "completion_tokens": 1521,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1296
+    },
+    "generation_seconds": 49.515
+  },
+  "started_at": "2026-10-06T20:22:26.130116+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "B"
+    ],
+    [
+      "A"
+    ]
+  ],
+  "q2_output": [
+    [
+      "A"
+    ]
+  ],
+  "q1_row_count": 2,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT T.element FROM (SELECT T1.element, COUNT(DISTINCT T1.molecule_id) FROM atom AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id WHERE T2.label = '-' GROUP BY T1.element ORDER BY COUNT(DISTINCT T1.molecule_id) ASC LIMIT 4) AS t",
+  "q2_validation_sql": "SELECT T1.element FROM atom AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id WHERE T2.label = '-' GROUP BY T1.element ORDER BY COUNT(T1.element) ASC LIMIT 1"
+}

@@ -1,0 +1,96 @@
+[
+  {
+    "model": "Kwai-AutoSQL-14B",
+    "prompt": "CE",
+    "pairs": 254,
+    "validation_policy": "bag_original_queries_v1",
+    "generated_counterexamples": 253,
+    "declared_equivalent": 0,
+    "valid": 164,
+    "valid_rate_all_pairs": 0.6456692913385826,
+    "status_counts": {
+      "valid": 164,
+      "error": 85,
+      "generation_error": 1,
+      "same_output": 4
+    }
+  },
+  {
+    "model": "Qwen3-14B",
+    "prompt": "CE",
+    "pairs": 254,
+    "validation_policy": "bag_original_queries_v1",
+    "generated_counterexamples": 254,
+    "declared_equivalent": 0,
+    "valid": 162,
+    "valid_rate_all_pairs": 0.6377952755905512,
+    "status_counts": {
+      "error": 85,
+      "valid": 162,
+      "same_output": 7
+    }
+  },
+  {
+    "model": "XiYanSQL-QwenCoder-7B-2504",
+    "prompt": "CE",
+    "pairs": 254,
+    "validation_policy": "bag_original_queries_v1",
+    "generated_counterexamples": 254,
+    "declared_equivalent": 0,
+    "valid": 99,
+    "valid_rate_all_pairs": 0.38976377952755903,
+    "status_counts": {
+      "error": 115,
+      "same_output": 40,
+      "valid": 99
+    }
+  },
+  {
+    "model": "Kwai-AutoSQL-14B",
+    "prompt": "DF",
+    "pairs": 254,
+    "validation_policy": "bag_original_queries_v1",
+    "generated_counterexamples": 237,
+    "declared_equivalent": 17,
+    "valid": 100,
+    "valid_rate_all_pairs": 0.3937007874015748,
+    "status_counts": {
+      "declared_equivalent": 17,
+      "error": 133,
+      "same_output": 4,
+      "valid": 100
+    }
+  },
+  {
+    "model": "Qwen3-14B",
+    "prompt": "DF",
+    "pairs": 254,
+    "validation_policy": "bag_original_queries_v1",
+    "generated_counterexamples": 241,
+    "declared_equivalent": 13,
+    "valid": 114,
+    "valid_rate_all_pairs": 0.44881889763779526,
+    "status_counts": {
+      "valid": 114,
+      "declared_equivalent": 13,
+      "error": 122,
+      "same_output": 5
+    }
+  },
+  {
+    "model": "XiYanSQL-QwenCoder-7B-2504",
+    "prompt": "DF",
+    "pairs": 254,
+    "validation_policy": "bag_original_queries_v1",
+    "generated_counterexamples": 251,
+    "declared_equivalent": 3,
+    "valid": 89,
+    "valid_rate_all_pairs": 0.35039370078740156,
+    "status_counts": {
+      "declared_equivalent": 3,
+      "error": 124,
+      "valid": 89,
+      "same_output": 38
+    }
+  }
+]

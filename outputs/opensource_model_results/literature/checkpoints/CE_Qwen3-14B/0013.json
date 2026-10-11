@@ -1,0 +1,58 @@
+{
+  "dbid": "11",
+  "index": "13",
+  "source_index": "14",
+  "schema_ddl": "CREATE TABLE A (X INT, YA INT);\nCREATE TABLE B (YB INT);",
+  "q1": "SELECT DISTINCT X.X AS AX FROM A AS X, B AS Y WHERE X.YA = Y.YB",
+  "q2": "SELECT X.X AS AX FROM A AS X, A AS Y, B AS Z WHERE X.X = Y.X AND X.YA = Z.YB UNION ALL SELECT 1 AS AX FROM A AS X WHERE 1 = 0",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "literature",
+  "q1_prompt_sql": "SELECT DISTINCT X.X AS AX FROM A AS X, B AS Y WHERE X.YA = Y.YB",
+  "q2_prompt_sql": "SELECT X.X AS AX FROM A AS X, A AS Y, B AS Z WHERE X.X = Y.X AND X.YA = Z.YB UNION ALL SELECT 1 AS AX FROM A AS X WHERE 1 = 0",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO A (X, YA) VALUES (1, 5);\nINSERT INTO B (YB) VALUES (5);\nINSERT INTO B (YB) VALUES (5);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 uses DISTINCT, ensuring unique X values from A where YA exists in B. Q2's first part (the only active part) returns all X values from A where YA exists in B, including duplicates if multiple B entries match. Thus, when B has duplicate YB values, Q1 and Q2 differ.",
+  "counterexample_dsp": "A has (1,5), B has two entries (5). Q1 returns [1] (distinct), Q2 returns [1,1] (duplicates).",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 uses DISTINCT, ensuring unique X values from A where YA exists in B. Q2's first part (the only active part) returns all X values from A where YA exists in B, including duplicates if multiple B entries match. Thus, when B has duplicate YB values, Q1 and Q2 differ.\",\n  \"counterexample_dsp\": \"A has (1,5), B has two entries (5). Q1 returns [1] (distinct), Q2 returns [1,1] (duplicates).\",\n  \"counterexample\": [\n    \"INSERT INTO A (X, YA) VALUES (1, 5);\",\n    \"INSERT INTO B (YB) VALUES (5);\",\n    \"INSERT INTO B (YB) VALUES (5);\"\n  ]\n}",
+  "reasoning": "\nOkay, let's see. I need to find a counterexample where Q1 and Q2 return different results. Let me first understand what each query does.\n\nQ1 is selecting distinct X.X from tables A and B where X.YA equals Y.YB. So it's joining A and B on YA = YB and then taking distinct X values.\n\nQ2 is a bit more complex. It has a UNION ALL between two parts. The first part selects X.X from A, joining with another A (Y) and B (Z) where X.X = Y.X and X.YA = Z.YB. The second part is a SELECT 1 FROM A where 1=0, which is a trick to add nothing because 1=0 is false. So the second part doesn't contribute anything. But the first part of Q2 is joining A with itself on X.X = Y.X and then joining with B on X.YA = Z.YB. Wait, but why join A with itself on X.X = Y.X? That would mean that for each row in A, we're pairing it with another row in A that has the same X value. But since X is part of the A table, maybe that's redundant. However, the join with B is on X.YA = Z.YB, same as Q1. \n\nWait, but in Q1, it's joining A with B directly. In Q2, the first part of the union is joining A with A (on X.X = Y.X) and then with B. But since X and Y are both from A, and X.X = Y.X, that would imply that for each row in A, we have Y being the same as X. So maybe the join with A is redundant here. But maybe there's a difference in how duplicates are handled.\n\nWait, the first part of Q2's select is X.X from A as X, A as Y, B as Z where X.X = Y.X and X.YA = Z.YB. So, for each X in A, if there's a Y in A with the same X value, and a Z in B with YB equal to X.YA, then X.X is selected. But since Y is from A, and X.X = Y.X, that's just a self-join on X. However, in this case, the Y table isn't used in the WHERE clause except for the equality with X. So effectively, this is equivalent to selecting X.X from A where there exists a Z in B such that X.YA = Z.YB. Because Y is just another copy of X, so the join with Y doesn't add any new condition except that X is in A. Wait, but if Y is from A, and X.X = Y.X, then Y is just another row in A with the same X value. But if there's at least one such Y (which would be X itself), then the condition is satisfied. So the first part of Q2's select is effectively selecting all X from A where X.YA exists in B.YB. Because for each X in A, there's Y (which is X itself) and Z in B where X.YA = Z.YB. Therefore, the first part of the union is equivalent to selecting all X from A where X.YA is present in B.YB. Then the second part is a select 1 where 1=0, which adds nothing. So Q2 is equivalent to selecting all X from A where X.YA is in B.YB. However, Q1 is selecting distinct X.X from A and B where X.YA = Y.YB, which is the same as selecting X.X from A where X.YA is in B.YB. But Q1 uses DISTINCT, but if the join between A and B could produce multiple rows with the same X.X, then Q1 would return distinct values. However, Q2's first part is selecting X.X from A (without distinct) where X.YA is in B.YB. Wait, but in Q2's first part, the select is X.X from A, A, B with those conditions. But since Y is just another copy of A, and the join condition is X.X = Y.X, that's redundant. So the first part of Q2's select is equivalent to selecting all X.X from A where there exists a Z in B with X.YA = Z.YB. So the first part of Q2's select would return all such X.X, possibly with duplicates if multiple Z's exist. However, the original Q1 uses SELECT DISTINCT, so if there are multiple Z's in B for the same X.YA, Q1 would return the same X once, whereas Q2's first part would return multiple copies. But the problem says that Q2 uses UNION ALL with the second part (which is empty). So the result of Q2 is the same as the first part of the union, which is all X.X from A where X.YA exists in B.YB, possibly with duplicates. But Q1 is selecting distinct values. Therefore, if there are multiple entries in B.YB that match the same X.YA, then Q1 would return one X, but Q2 would return multiple entries. However, in the problem statement, Q2 is written with a UNION ALL, but the second part is a select 1 where 1=0. So the first part of the union is the main part. \n\nWait, but in Q2, the first part is a select from A, A, B. Let's think of an example. Suppose A has a row (1, 5), and B has (5). Then Q1 would select 1 once. Q2's first part would select 1 once (since X and Y are both (1,5), and Z is (5)), so the first part returns 1 once. But if B has multiple rows with YB=5, like (5) and (5), then Q1 would still return 1 once, but Q2's first part would return 1 once? Wait, no. Because the join between A and B would produce multiple rows. For example, if A has (1,5), and B has two rows with YB=5, then in Q1, joining A and B on YA=YB would produce two rows (same X.X=1), and then DISTINCT would make it one. In Q2's first part, the join between A, A, B would be: for each row in A, join with A (same X), then join with B. So if B has two rows, then for each of those, the same X would be selected. So the first part of Q2 would return two rows of 1, and the second part adds nothing. So Q2 would return two rows of 1, while Q1 returns one. Therefore, in this case, the queries would return different results. \n\nSo the key is that Q1 uses DISTINCT, whereas Q2 does not. Therefore, if there are multiple entries in B with the same YB, then Q1 would return distinct X.X, but Q2 would return multiple instances. Therefore, if the test data has such a case, then Q1 and Q2 would differ. \n\nSo the counterexample would be when there's an X in A with YA value that exists in multiple rows in B. For example, A has (1,5), and B has (5), (5). Then Q1 would return {1}, and Q2 would return two rows of 1. Therefore, the results are different. \n\nBut wait, in Q2, the first part of the union is selecting X.X from A, A, B where X.X = Y.X and X.YA = Z.YB. So for each Z in B where Z.YB = X.YA, and for each Y in A where Y.X = X.X (which is always true if Y is X itself), then X.X is selected. So the number of times X.X appears in Q2's result is equal to the number of Z in B that match X.YA multiplied by the number of Y in A that match X.X. But since Y is from A and X.X = Y.X, for each X in A, there's at least one Y (the same X), so the count would be the number of Z in B with YB = X.YA. Therefore, if there are two Z's in B, then Q2 would return two copies of X.X. \n\nTherefore, to create a counterexample, we need:\n\n- A table A with at least one row (X, YA)\n- Table B with multiple rows where YB equals that YA.\n\nFor example:\n\nA has (1, 5)\nB has (5), (5)\n\nThen Q1 would return [1] (distinct), and Q2 would return [1, 1], so different results.\n\nBut the problem says that Q2 uses UNION ALL with a second part that's a select 1 where 1=0. But that part adds nothing, so the result of Q2 is the same as the first part. Therefore, in this case, Q2 returns two rows, and Q1 returns one. Hence, different results.\n\nSo the counterexample would be inserting those values. Let me check the schema constraints. The schema allows multiple entries in B with same YB. So that's acceptable.\n\nAnother example: if A has (1,5), and B has (5). Then Q1 returns [1], and Q2 returns [1]. So same. But if B has two entries, then different. So the counterexample needs to have B with multiple entries.\n\nTherefore, the test data would be:\n\nINSERT INTO A (X, YA) VALUES (1, 5);\nINSERT INTO B (YB) VALUES (5), (5);\n\nIn this case, Q1 returns {1}, and Q2 returns two 1s. So the results are different.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 288,
+    "total_tokens": 2546,
+    "completion_tokens": 2258,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 2083
+    },
+    "generation_seconds": 68.391
+  },
+  "started_at": "2026-10-06T07:16:34.534681+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      1
+    ]
+  ],
+  "q2_output": [
+    [
+      1
+    ],
+    [
+      1
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DISTINCT X.X AS AX FROM A AS X, B AS Y WHERE X.YA = Y.YB",
+  "q2_validation_sql": "SELECT X.X AS AX FROM A AS X, A AS Y, B AS Z WHERE X.X = Y.X AND X.YA = Z.YB UNION ALL SELECT 1 AS AX FROM A AS X WHERE 1 = 0"
+}

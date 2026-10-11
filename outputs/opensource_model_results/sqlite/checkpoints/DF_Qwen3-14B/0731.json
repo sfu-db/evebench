@@ -1,0 +1,55 @@
+{
+  "dbid": "thrombosis_prediction",
+  "index": "731",
+  "source_index": "1272",
+  "schema_ddl": "CREATE TABLE Examination\n(\n    ID                 INTEGER          null,\n    `Examination Date` DATE         null,\n    `aCL IgG`          REAL        null,\n    `aCL IgM`          REAL        null,\n    ANA                INTEGER          null,\n    `ANA Pattern`      TEXT null,\n    `aCL IgA`          INTEGER          null,\n    Diagnosis          TEXT null,\n    KCT                TEXT null,\n    RVVT              TEXT null,\n    LAC                TEXT null,\n    Symptoms           TEXT null,\n    Thrombosis         INTEGER          null,\n    foreign key (ID) references Patient (ID)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE Patient\n(\n    ID           INTEGER default 0 not null\n        primary key,\n    SEX          TEXT  null,\n    Birthday     DATE          null,\n    Description  DATE          null,\n    `First Date` DATE          null,\n    Admission    TEXT  null,\n    Diagnosis    TEXT  null\n);\n\nCREATE TABLE Laboratory\n(\n    ID        INTEGER  default 0            not null,\n    Date      DATE default '0000-00-00' not null,\n    GOT       INTEGER                       null,\n    GPT       INTEGER                        null,\n    LDH       INTEGER                        null,\n    ALP       INTEGER                        null,\n    TP        REAL             null,\n    ALB       REAL             null,\n    UA        REAL             null,\n    UN        INTEGER                       null,\n    CRE       REAL             null,\n    `T-BIL`   REAL             null,\n    `T-CHO`   INTEGER                       null,\n    TG        INTEGER                       null,\n    CPK       INTEGER                       null,\n    GLU       INTEGER                       null,\n    WBC       REAL             null,\n    RBC       REAL             null,\n    HGB       REAL             null,\n    HCT       REAL             null,\n    PLT       INTEGER                       null,\n    PT        REAL             null,\n    APTT      INTEGER                       null,\n    FG        REAL             null,\n    PIC       INTEGER                       null,\n    TAT       INTEGER                       null,\n    TAT2      INTEGER                       null,\n    `U-PRO`   TEXT              null,\n    IGG       INTEGER                       null,\n    IGA       INTEGER                       null,\n    IGM       INTEGER                       null,\n    CRP       TEXT              null,\n    RA        TEXT              null,\n    RF        TEXT              null,\n    C3        INTEGER                       null,\n    C4        INTEGER                       null,\n    RNP       TEXT              null,\n    SM        TEXT              null,\n    SC170     TEXT              null,\n    SSA       TEXT              null,\n    SSB       TEXT              null,\n    CENTROMEA TEXT              null,\n    DNA       TEXT              null,\n    `DNA-II`  INTEGER                       null,\n    primary key (ID, Date),\n        foreign key (ID) references Patient (ID)\n            on update cascade on delete cascade\n);",
+  "q1": "SELECT COUNT(DISTINCT T1.ID) FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T2.SSA IN ('negative', '0') AND STRFTIME('%Y', T2.Date) < '1990'",
+  "q2": "SELECT COUNT(DISTINCT T1.ID) FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T2.SSA IN ('-', '+-') AND STRFTIME('%Y', T1.\"First Date\") < '1990'",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT COUNT(DISTINCT T1.ID) FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T2.SSA IN ('negative', '0') AND STRFTIME('%Y', T2.Date) < '1990'",
+  "q2_prompt_sql": "SELECT COUNT(DISTINCT T1.ID) FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T2.SSA IN ('-', '+-') AND STRFTIME('%Y', T1.\"First Date\") < '1990'",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO Patient (ID, `First Date`) VALUES (1, '1989-01-01');\nINSERT INTO Laboratory (ID, Date, SSA) VALUES (1, '1989-01-01', 'negative');\nINSERT INTO Patient (ID, `First Date`) VALUES (2, '1989-01-01');\nINSERT INTO Laboratory (ID, Date, SSA) VALUES (2, '1991-01-01', '-');",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 differ in both SSA value conditions (Q1: 'negative'/'0' vs Q2: '-'/'+-') and date sources (Q1 uses Laboratory.Date, Q2 uses Patient.First Date). These differences can lead to different results.",
+  "counterexample_dsp": "A patient with Laboratory.SSA='negative' and Laboratory.Date='1989-01-01' (counted in Q1 but not Q2) and another patient with Laboratory.SSA='-' and Patient.First Date='1989-01-01' (counted in Q2 but not Q1)",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 and Q2 differ in both SSA value conditions (Q1: 'negative'/'0' vs Q2: '-'/'+-') and date sources (Q1 uses Laboratory.Date, Q2 uses Patient.First Date). These differences can lead to different results.\",\n\"counterexample_dsp\": \"A patient with Laboratory.SSA='negative' and Laboratory.Date='1989-01-01' (counted in Q1 but not Q2) and another patient with Laboratory.SSA='-' and Patient.First Date='1989-01-01' (counted in Q2 but not Q1)\",\n\"counterexample\": \"INSERT INTO Patient (ID, `First Date`) VALUES (1, '1989-01-01');\\nINSERT INTO Laboratory (ID, Date, SSA) VALUES (1, '1989-01-01', 'negative');\\nINSERT INTO Patient (ID, `First Date`) VALUES (2, '1989-01-01');\\nINSERT INTO Laboratory (ID, Date, SSA) VALUES (2, '1991-01-01', '-');\"\n}",
+  "reasoning": "\nOkay, let's see. I need to figure out if Q1 and Q2 are semantically equivalent. Let me start by understanding each query.\n\nQ1 is selecting the count of distinct Patient IDs from Patient joined with Laboratory where T2.SSA is either 'negative' or '0', and the year of T2.Date is before 1990. \n\nQ2 is similar but the conditions on SSA are different: it's looking for '-' or '+-', and the date condition is on T1.\"First Date\" instead of T2.Date. Also, the date part is STRFTIME('%Y', T1.\"First Date\") < '1990'.\n\nSo the main differences are in the SSA conditions and the date fields used. \n\nFirst, the SSA part: Q1 checks for 'negative' or '0' in Laboratory.SSA, while Q2 checks for '-' or '+-'. These are different values, so unless there's some overlap, they would result in different counts. But maybe in the data, these values could be the same? But according to the schema, SSA is a TEXT field in Laboratory, so it's possible that in some cases, these values might be present, but generally, they are different. So unless the data has entries where SSA is both 'negative' and '-', which is possible, but the conditions are different.\n\nThen the date part: Q1 uses the Laboratory's Date, while Q2 uses the Patient's First Date. So even if the SSA conditions were the same, the date conditions could differ. For example, a patient might have a First Date before 1990, but their Laboratory Date could be after, or vice versa.\n\nTherefore, the two queries are not equivalent because they are filtering on different SSA values and different date fields. \n\nTo create a counterexample, I need to create a scenario where the SSA values and dates differ between the two conditions. Let's imagine a patient with ID 1. Suppose in the Laboratory table, for this patient, there's a record with SSA='negative' and Date='1989-01-01'. Then, in Q1, this would be counted because SSA is 'negative' and the date is before 1990. However, in Q2, the SSA is not '-', so it wouldn't be counted. Additionally, if the Patient's First Date is '1989-01-01', then the date condition in Q2 would be satisfied, but since the SSA doesn't match, it's still not counted. \n\nAlternatively, another patient might have SSA='-' in Laboratory and First Date before 1990. Then Q2 would count them, but Q1 wouldn't. \n\nSo inserting such data would show the difference. Let me structure that into SQL inserts.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 975,
+    "total_tokens": 1826,
+    "completion_tokens": 851,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 581
+    },
+    "generation_seconds": 27.484
+  },
+  "started_at": "2026-10-06T20:56:20.535756+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      1
+    ]
+  ],
+  "q2_output": [
+    [
+      1
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT COUNT(DISTINCT T1.ID) FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T2.SSA IN ('negative', '0') AND STRFTIME('%Y', T2.Date) < '1990'",
+  "q2_validation_sql": "SELECT COUNT(DISTINCT T1.ID) FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T2.SSA IN ('-', '+-') AND STRFTIME('%Y', T1.\"First Date\") < '1990'"
+}

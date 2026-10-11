@@ -1,0 +1,59 @@
+{
+  "dbid": "21",
+  "index": "24",
+  "source_index": "29",
+  "schema_ddl": "CREATE TABLE A (A1 INT, A2 INT);\nCREATE TABLE B (B1 INT, B2 INT);",
+  "q1": "SELECT X.A1 AS A1, X.A2 AS A2, Y.B1 AS B1, Y.B2 AS B2 FROM A AS X, B AS Y WHERE X.A1 = Y.B1",
+  "q2": "SELECT Y.A1 AS A1, Y.A2 AS A2, X.B1 AS B1, X.B2 AS B2 FROM B AS X, A AS Y WHERE Y.A1 = X.B1",
+  "dialect": "sqlite",
+  "ground_truth": "EQ",
+  "source": "literature",
+  "q1_prompt_sql": "SELECT X.A1 AS A1, X.A2 AS A2, Y.B1 AS B1, Y.B2 AS B2 FROM A AS X, B AS Y WHERE X.A1 = Y.B1",
+  "q2_prompt_sql": "SELECT Y.A1 AS A1, Y.A2 AS A2, X.B1 AS B1, X.B2 AS B2 FROM B AS X, A AS Y WHERE Y.A1 = X.B1",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO A (A1, A2) VALUES (1, 10), (2, 20); INSERT INTO B (B1, B2) VALUES (1, 100), (3, 300);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent because they join tables A and B on different conditions. Q1 joins A and B where A.A1 = B.B1, while Q2 joins A and B where B.A1 = A.B1. This difference in join conditions can lead to different sets of results.",
+  "counterexample_dsp": "The test data should have at least one row in A where A1 = B1 and another row in A where A1 != B1. The presence of such rows will cause Q1 and Q2 to return different results.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent because they join tables A and B on different conditions. Q1 joins A and B where A.A1 = B.B1, while Q2 joins A and B where B.A1 = A.B1. This difference in join conditions can lead to different sets of results.\",\n  \"counterexample_dsp\": \"The test data should have at least one row in A where A1 = B1 and another row in A where A1 != B1. The presence of such rows will cause Q1 and Q2 to return different results.\",\n  \"counterexample\": \"INSERT INTO A (A1, A2) VALUES (1, 10), (2, 20); INSERT INTO B (B1, B2) VALUES (1, 100), (3, 300);\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 333,
+    "total_tokens": 520,
+    "completion_tokens": 187,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 3.328
+  },
+  "started_at": "2026-10-06T07:05:02.917071+00:00",
+  "elapsed_seconds": 0.657,
+  "q1_output": [
+    [
+      1,
+      10,
+      1,
+      100
+    ]
+  ],
+  "q2_output": [
+    [
+      1,
+      10,
+      1,
+      100
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT X.A1 AS A1, X.A2 AS A2, Y.B1 AS B1, Y.B2 AS B2 FROM A AS X, B AS Y WHERE X.A1 = Y.B1",
+  "q2_validation_sql": "SELECT Y.A1 AS A1, Y.A2 AS A2, X.B1 AS B1, X.B2 AS B2 FROM B AS X, A AS Y WHERE Y.A1 = X.B1"
+}

@@ -1,0 +1,39 @@
+{
+  "dbid": "577",
+  "index": "54",
+  "source_index": "183",
+  "schema_ddl": "CREATE TABLE EMPLOYEE (\n    EMPID INT,\n    NAME VARCHAR(255),\n    SUPERVISOR INT,\n    SALARY INT,\n    PRIMARY KEY (EMPID),\n    CHECK (EMPID <> SUPERVISOR),\n    CHECK (SALARY >= 0)\n);\n\nCREATE TABLE BONUS (\n    EMPID INT,\n    BONUS INT,\n    PRIMARY KEY (EMPID),\n    FOREIGN KEY (EMPID) REFERENCES EMPLOYEE(EMPID),\n    CHECK (BONUS >= 0)\n);",
+  "q1": "SELECT EMPLOYEE.NAME, BONUS.BONUS FROM EMPLOYEE LEFT JOIN BONUS ON EMPLOYEE.EMPID = BONUS.EMPID WHERE BONUS < 1000 OR BONUS IS NULL",
+  "q2": "SELECT E.NAME NAME, B.BONUS BONUS FROM EMPLOYEE E LEFT JOIN BONUS B ON E.EMPID = B.EMPID WHERE B.BONUS IS NULL OR B.BONUS < 1000",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT EMPLOYEE.NAME, BONUS.BONUS FROM EMPLOYEE LEFT JOIN BONUS ON EMPLOYEE.EMPID = BONUS.EMPID WHERE BONUS < 1000 OR BONUS IS NULL",
+  "q2_prompt_sql": "SELECT E.NAME NAME, B.BONUS BONUS FROM EMPLOYEE E LEFT JOIN BONUS B ON E.EMPID = B.EMPID WHERE B.BONUS IS NULL OR B.BONUS < 1000",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries select employees with a bonus less than 1000 or no bonus. The WHERE clauses are logically equivalent, checking for BONUS < 1000 or BONUS IS NULL. The use of table aliases does not affect the condition evaluation since the column references are unambiguous.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries select employees with a bonus less than 1000 or no bonus. The WHERE clauses are logically equivalent, checking for BONUS < 1000 or BONUS IS NULL. The use of table aliases does not affect the condition evaluation since the column references are unambiguous.\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem. So, I need to determine if Q1 and Q2 are semantically equivalent. Let me first understand what each query is doing.\n\nStarting with Q1: It selects the employee's name and their bonus from the EMPLOYEE table left joined with BONUS on EMPID. The WHERE clause is BONUS < 1000 OR BONUS IS NULL. Wait, but in a LEFT JOIN, if there's no matching BONUS record, BONUS would be NULL. So, the condition here is checking if the bonus is less than 1000 or if it's NULL. But wait, in SQL, when you do a LEFT JOIN, the columns from the right table (BONUS) will be NULL if there's no match. So in the WHERE clause, BONUS < 1000 would only be true if there is a BONUS value (since if it's NULL, that part is false). But the OR BONUS IS NULL part would catch those cases where there's no BONUS entry. However, in Q1, the WHERE condition is combining both. So effectively, this would select all employees who either have a bonus less than 1000 or no bonus at all. Wait, but if the BONUS is NULL, then BONUS < 1000 would be false, but the OR condition would make it true. So the WHERE clause is equivalent to BONUS IS NULL OR BONUS < 1000. But wait, that's exactly the same as BONUS < 1000 OR BONUS IS NULL. So maybe Q1 is selecting all employees where their bonus is less than 1000 or they don't have a bonus.\n\nNow looking at Q2: It's similar, but uses aliases E and B. The WHERE clause is B.BONUS IS NULL OR B.BONUS < 1000. Wait, that's the same condition as Q1. But wait, in Q1, the condition is written as BONUS < 1000 OR BONUS IS NULL. In Q2, it's B.BONUS IS NULL OR B.BONUS < 1000. But logically, these are the same. So why would there be a difference?\n\nWait, maybe there's a mistake here. Wait, no. The WHERE clause in both queries is effectively checking if the BONUS is either less than 1000 or NULL. But in a LEFT JOIN, if there's no matching BONUS row, then BONUS is NULL. So both queries are trying to get all employees, including those without a bonus, and those with a bonus less than 1000.\n\nBut wait, maybe there's a difference in how the conditions are evaluated. Let me think again. In SQL, when you have a LEFT JOIN, the right table's columns can be NULL. So in Q1, the WHERE condition is BONUS < 1000 OR BONUS IS NULL. But in Q2, it's B.BONUS IS NULL OR B.BONUS < 1000. But these are logically equivalent. So maybe they are the same. But perhaps I'm missing something.\n\nWait, but in Q1, the column name is BONUS, which is from the BONUS table. In Q2, it's B.BONUS. But since they are using aliases, in Q2, B is the BONUS table. However, in Q1, the column is just BONUS, but since it's a LEFT JOIN, the BONUS column would be from the BONUS table. So in both cases, the WHERE condition is checking the same thing. So why would there be a difference?\n\nWait, maybe the problem is that in Q1, the condition is BONUS < 1000 OR BONUS IS NULL. But if BONUS is NULL, then BONUS < 1000 evaluates to NULL (unknown), and the OR would make the entire condition true if either part is true. Wait, in SQL, the WHERE clause evaluates conditions as true, false, or unknown. The OR operator returns true if either operand is true. So for a row where BONUS is NULL, the first part (BONUS < 1000) is unknown, and the second part (BONUS IS NULL) is true. So the entire condition is true. Therefore, the WHERE clause in Q1 is equivalent to selecting all employees where the bonus is less than 1000 or there's no bonus.\n\nIn Q2, the condition is B.BONUS IS NULL OR B.BONUS < 1000. That's the same as Q1's condition. So logically, they should be equivalent. But wait, maybe there's a difference in how the SQL is written. Let me check again.\n\nWait, maybe in Q1, the column name is just BONUS, but in Q2, it's B.BONUS. But in both cases, the BONUS column comes from the BONUS table. So they are the same. Therefore, the two queries should be equivalent.\n\nBut wait, perhaps there's a mistake here. Let me think of a test case. Suppose there's an employee with a bonus of 500. Then both queries would include them. If an employee has a bonus of 1500, then both would exclude them. If there's no bonus, both include them. So why would there be a difference?\n\nWait, maybe the problem is that in Q1, the WHERE clause is BONUS < 1000 OR BONUS IS NULL. But if the BONUS is not NULL, then BONUS < 1000 is checked. If it's NULL, then the second part is true. So the same as Q2. So they should be equivalent. Therefore, the answer would be Y.\n\nBut maybe I'm missing something. Let me check again. Let me think about the case where BONUS is NULL. In Q1, the condition is BONUS < 1000 OR BONUS IS NULL. Since BONUS is NULL, the first part is false (because comparing NULL to 1000 is unknown), but the second part is true. So the entire condition is true. In Q2, the condition is B.BONUS IS NULL OR B.BONUS < 1000. Same thing. So same result.\n\nWait, but what if there's a case where BONUS is not NULL, but the BONUS is less than 1000? Both queries would include that. So in all cases, the WHERE condition is the same. Therefore, the queries are equivalent.\n\nBut maybe the problem is that in Q1, the column name is written without the table alias, but in Q2, it's using the alias. However, in SQL, if the column name is unique, then it's allowed. Since the LEFT JOIN is on EMPLOYEE and BONUS, and the BONUS table has a BONUS column, in Q1, the BONUS in the WHERE clause refers to the BONUS table's column. So both queries are referring to the same column.\n\nTherefore, the two queries are semantically equivalent. So the answer would be Y.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 446,
+    "total_tokens": 2026,
+    "completion_tokens": 1580,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1503
+    },
+    "generation_seconds": 50.297
+  },
+  "started_at": "2026-10-06T14:41:53.373461+00:00",
+  "elapsed_seconds": 0.0
+}

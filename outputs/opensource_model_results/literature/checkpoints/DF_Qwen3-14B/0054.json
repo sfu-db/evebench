@@ -1,0 +1,53 @@
+{
+  "dbid": "32",
+  "index": "54",
+  "source_index": "61",
+  "schema_ddl": "CREATE TABLE COURSE (COURSE_ID INT, TITLE INT, DEPT_NAME INT, CREDITS INT);\nCREATE TABLE DEPARTMENT (DEPT_NAME INT, BUILDING INT, BUDGET INT);\nCREATE TABLE INSTRUCTOR (ID INT, NAME INT, SALARY INT, DEPT_NAME INT);\nCREATE TABLE TEACHES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, SEMESTER INT, INSTRUCTOR INT);\nCREATE TABLE SECTION (COURSE_ID INT, SEC_ID INT, YEAR INT, BUILDING INT, ROOM_NUMBER INT, TIME_SLOT_ID INT);\nCREATE TABLE TAKES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, GRADE INT);\nCREATE TABLE STUDENT (ID INT, NAME INT, DEPT_NAME INT, TOT_CRED INT);",
+  "q1": "SELECT DISTINCT INSTRUCTOR.ID, INSTRUCTOR.NAME, TEACHES.COURSE_ID FROM INSTRUCTOR LEFT OUTER JOIN TEACHES ON INSTRUCTOR.ID > TEACHES.ID",
+  "q2": "SELECT DISTINCT INSTRUCTOR.ID, INSTRUCTOR.NAME, TEACHES.COURSE_ID FROM INSTRUCTOR, TEACHES WHERE INSTRUCTOR.ID = TEACHES.ID",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "literature",
+  "q1_prompt_sql": "SELECT DISTINCT INSTRUCTOR.ID, INSTRUCTOR.NAME, TEACHES.COURSE_ID FROM INSTRUCTOR LEFT OUTER JOIN TEACHES ON INSTRUCTOR.ID > TEACHES.ID",
+  "q2_prompt_sql": "SELECT DISTINCT INSTRUCTOR.ID, INSTRUCTOR.NAME, TEACHES.COURSE_ID FROM INSTRUCTOR, TEACHES WHERE INSTRUCTOR.ID = TEACHES.ID",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO INSTRUCTOR (ID, NAME, SALARY, DEPT_NAME) VALUES (1, 100, 50000, 1);\nINSERT INTO TEACHES (ID, COURSE_ID, SEC_ID, YEAR, SEMESTER, INSTRUCTOR) VALUES (0, 101, 1, 2023, 1, 1);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 uses a LEFT JOIN with INSTRUCTOR.ID > TEACHES.ID, which includes all instructors even if no matching TEACHES rows, while Q2 uses an INNER JOIN with INSTRUCTOR.ID = TEACHES.ID, excluding instructors without matching TEACHES entries. The join conditions and join types differ significantly.",
+  "counterexample_dsp": "An instructor with ID=1 and a TEACHES record with ID=0. Q1 includes the instructor with COURSE_ID from the TEACHES record, but Q2 excludes it due to no matching ID.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 uses a LEFT JOIN with INSTRUCTOR.ID > TEACHES.ID, which includes all instructors even if no matching TEACHES rows, while Q2 uses an INNER JOIN with INSTRUCTOR.ID = TEACHES.ID, excluding instructors without matching TEACHES entries. The join conditions and join types differ significantly.\",\n\"counterexample_dsp\": \"An instructor with ID=1 and a TEACHES record with ID=0. Q1 includes the instructor with COURSE_ID from the TEACHES record, but Q2 excludes it due to no matching ID.\",\n\"counterexample\": \"INSERT INTO INSTRUCTOR (ID, NAME, SALARY, DEPT_NAME) VALUES (1, 100, 50000, 1);\\nINSERT INTO TEACHES (ID, COURSE_ID, SEC_ID, YEAR, SEMESTER, INSTRUCTOR) VALUES (0, 101, 1, 2023, 1, 1);\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem. So, I need to determine if Q1 and Q2 are semantically equivalent. Let me start by understanding each query.\n\nFirst, looking at Q1: It's a SELECT DISTINCT statement joining INSTRUCTOR with TEACHES using a LEFT OUTER JOIN where the condition is INSTRUCTOR.ID > TEACHES.ID. The LEFT OUTER JOIN means that all instructors will be included, even if there's no matching row in TEACHES. But the join condition is INSTRUCTOR.ID > TEACHES.ID. That's interesting. So for each instructor, it's looking for teaches records where their ID is greater than the instructor's ID. Wait, that seems a bit odd. Because if the instructor's ID is greater than the teaches' ID, then maybe the teaches table has entries with lower IDs. But I'm not sure how that would work. Also, since it's a LEFT JOIN, even if there are no matching rows in TEACHES, the instructor will still be in the result with NULLs for the TEACHES columns.\n\nNow Q2 is a SELECT DISTINCT from INSTRUCTOR and TEACHES using an implicit inner join (since it's using the old-style comma syntax without a JOIN keyword) with the condition INSTRUCTOR.ID = TEACHES.ID. This would produce all pairs where the instructor's ID matches the teaches' ID. Since it's an inner join, only those rows where there's a match in both tables are included. And the DISTINCT is there to avoid duplicates, but since it's an inner join, maybe duplicates are possible if an instructor teaches multiple courses.\n\nSo the main differences between Q1 and Q2 are the type of join (LEFT vs INNER) and the join condition (greater than vs equal to). Let's think about what each query would return.\n\nQ1's LEFT JOIN with INSTRUCTOR.ID > TEACHES.ID would include all instructors. For each instructor, it would look for teaches records where their ID is greater than the instructor's ID. Wait, no, the condition is INSTRUCTOR.ID > TEACHES.ID. So if an instructor has ID 10, then any teaches record with ID less than 10 would match. But if there are no such teaches records, then the result would still have the instructor's data with NULL for COURSE_ID. However, since it's a LEFT JOIN, even if there's no matching row, the instructor is included. But the join condition is INSTRUCTOR.ID > TEACHES.ID. So for example, if an instructor's ID is 5, and there are teaches records with ID 3 and 4, then those would match. But if there are no teaches records with ID less than 5, then the join would not find any matches, and the result would have NULL for COURSE_ID.\n\nQ2 is an inner join where INSTRUCTOR.ID equals TEACHES.ID. So only instructors who have a corresponding entry in TEACHES with the same ID are included. The COURSE_ID from TEACHES would be included. Also, since it's an inner join, if an instructor teaches multiple courses, they would appear once per course (but DISTINCT would collapse duplicates if any).\n\nSo the key differences are:\n\n1. Q1 uses a LEFT JOIN with a condition that may not match (INSTRUCTOR.ID > TEACHES.ID), leading to possible NULLs in COURSE_ID. Q2 uses an INNER JOIN with equality, leading to only matching rows.\n\n2. The join condition is different. In Q1, the join is based on a greater than, which could result in different rows being joined.\n\nLet me think of a counterexample. Suppose there's an instructor with ID 1. Now, suppose there's a teaches record with ID 0. Then, in Q1, the instructor would be joined with that teaches record (since 1 > 0), so the COURSE_ID would be included. However, in Q2, the join is on ID = ID, so the instructor with ID 1 would only be joined with teaches records where ID is 1. If there are no such records, then Q2 would not include that instructor, but Q1 would include them with a NULL COURSE_ID.\n\nAlternatively, consider an instructor with ID 2. Suppose there are teaches records with ID 1 and 3. For Q1, the join condition is INSTRUCTOR.ID > TEACHES.ID. So for instructor ID 2, the teaches record with ID 1 would match (2 > 1), but the teaches record with ID 3 would not (2 < 3). So Q1 would include the COURSE_ID from the teaches record with ID 1. However, in Q2, the join is on ID = ID, so the instructor with ID 2 would only be joined with teaches records where ID is 2. If there are none, then Q2 would not include that instructor, but Q1 would.\n\nAnother scenario: an instructor with ID 3 and no teaches records. In Q1, since it's a LEFT JOIN, the instructor would be included with COURSE_ID as NULL. In Q2, since it's an inner join, there would be no row for this instructor.\n\nSo these scenarios show that Q1 and Q2 are not equivalent. Let's create a test case. Let's have an instructor with ID 1, and a teaches record with ID 0. Then Q1 would include the instructor with COURSE_ID from the teaches record (assuming the teaches record has a COURSE_ID). Q2 would not include this instructor because there's no teaches record with ID 1.\n\nAlternatively, if there's an instructor with ID 2 and a teaches record with ID 1, then Q1 would include that instructor with the COURSE_ID from the teaches record. But if there's no teaches record with ID 2, Q2 would not include that instructor.\n\nAnother case: if an instructor has ID 3, and there are teaches records with ID 2 and 4. Then Q1 would join with the teaches record ID 2 (since 3 > 2), and include that COURSE_ID. But Q2 would not join with any of those because ID 3 is not equal to 2 or 4. So Q1 would have a row, Q2 would not.\n\nSo the counterexample would be a case where an instructor exists and has a teaches record with a lower ID, but no teaches record with the same ID. Then Q1 would include that instructor with the lower ID's COURSE_ID, while Q2 would not include the instructor at all.\n\nLet me create such a test database. Let's insert:\n\nInstructor with ID=1, Name=John, Dept=... (any values, but need to follow schema).\n\nTeaches record with ID=0, COURSE_ID=101, etc.\n\nSo in Q1, the instructor ID=1 would be joined with teaches ID=0 (since 1>0), so COURSE_ID 101 is included. In Q2, since the join is on ID=ID, the instructor ID=1 would only be matched with teaches records with ID=1. If there are none, then Q2 would not include that row.\n\nSo the counterexample would have an instructor with ID 1 and a teaches record with ID 0. Then Q1 would return that instructor with the course, but Q2 would not return it.\n\nTherefore, the queries are not equivalent.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 490,
+    "total_tokens": 2254,
+    "completion_tokens": 1764,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1542
+    },
+    "generation_seconds": 54.672
+  },
+  "started_at": "2026-10-06T07:47:45.422532+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      1,
+      100,
+      101
+    ]
+  ],
+  "q2_output": [],
+  "q1_row_count": 1,
+  "q2_row_count": 0,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DISTINCT INSTRUCTOR.ID, INSTRUCTOR.NAME, TEACHES.COURSE_ID FROM INSTRUCTOR LEFT OUTER JOIN TEACHES ON INSTRUCTOR.ID > TEACHES.ID",
+  "q2_validation_sql": "SELECT DISTINCT INSTRUCTOR.ID, INSTRUCTOR.NAME, TEACHES.COURSE_ID FROM INSTRUCTOR, TEACHES WHERE INSTRUCTOR.ID = TEACHES.ID"
+}

@@ -1,0 +1,65 @@
+{
+  "dbid": "614",
+  "index": "472",
+  "source_index": "9",
+  "schema_ddl": "CREATE TABLE FOLLOW (\n    FOLLOWEE VARCHAR(255),\n    FOLLOWER VARCHAR(255),\n    PRIMARY KEY (FOLLOWEE, FOLLOWER),\n    CHECK (FOLLOWEE <> FOLLOWER)\n);",
+  "q1": "SELECT FOLLOWEE AS FOLLOWER, COUNT(FOLLOWEE) AS NUM FROM FOLLOW WHERE FOLLOWEE IN (SELECT FOLLOWER FROM FOLLOW) GROUP BY 1 ORDER BY 1",
+  "q2": "SELECT DISTINCT FOLLOWEE FOLLOWER, COUNT(DISTINCT FOLLOWER) NUM FROM FOLLOW WHERE FOLLOWEE IN (SELECT DISTINCT FOLLOWER FROM FOLLOW) GROUP BY 1 HAVING COUNT(DISTINCT FOLLOWER) >= 1",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT FOLLOWEE AS FOLLOWER, COUNT(FOLLOWEE) AS NUM FROM FOLLOW WHERE FOLLOWEE IN (SELECT FOLLOWER FROM FOLLOW) GROUP BY 1 ORDER BY 1",
+  "q2_prompt_sql": "SELECT DISTINCT FOLLOWEE FOLLOWER, COUNT(DISTINCT FOLLOWER) NUM FROM FOLLOW WHERE FOLLOWEE IN (SELECT DISTINCT FOLLOWER FROM FOLLOW) GROUP BY 1 HAVING COUNT(DISTINCT FOLLOWER) >= 1",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO FOLLOW (FOLLOWEE, FOLLOWER) VALUES ('A', 'B');\nINSERT INTO FOLLOW (FOLLOWEE, FOLLOWER) VALUES ('A', 'C');\nINSERT INTO FOLLOW (FOLLOWEE, FOLLOWER) VALUES ('B', 'A');",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent. Q1 counts all occurrences of FOLLOWEE in the FOLLOW table where the FOLLOWEE is also a FOLLOWER (i.e., appears in the FOLLOWER column of some row). Q2 uses DISTINCT on both the FOLLOWEE and FOLLOWER columns, which leads to fewer rows and potentially different counts compared to Q1.",
+  "counterexample_dsp": "A simple test case where a FOLLOWEE appears multiple times but only once as a FOLLOWER. This causes Q1 to count all occurrences while Q2 counts only distinct ones.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 and Q2 are not semantically equivalent. Q1 counts all occurrences of FOLLOWEE in the FOLLOW table where the FOLLOWEE is also a FOLLOWER (i.e., appears in the FOLLOWER column of some row). Q2 uses DISTINCT on both the FOLLOWEE and FOLLOWER columns, which leads to fewer rows and potentially different counts compared to Q1.\",\n\"counterexample_dsp\": \"A simple test case where a FOLLOWEE appears multiple times but only once as a FOLLOWER. This causes Q1 to count all occurrences while Q2 counts only distinct ones.\",\n\"counterexample\": \"INSERT INTO FOLLOW (FOLLOWEE, FOLLOWER) VALUES ('A', 'B');\\nINSERT INTO FOLLOW (FOLLOWEE, FOLLOWER) VALUES ('A', 'C');\\nINSERT INTO FOLLOW (FOLLOWEE, FOLLOWER) VALUES ('B', 'A');\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 380,
+    "total_tokens": 578,
+    "completion_tokens": 198,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 6.391
+  },
+  "started_at": "2026-10-06T15:49:13.036761+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "A",
+      2
+    ],
+    [
+      "B",
+      1
+    ]
+  ],
+  "q2_output": [
+    [
+      "A",
+      2
+    ],
+    [
+      "B",
+      1
+    ]
+  ],
+  "q1_row_count": 2,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT FOLLOWEE AS FOLLOWER, COUNT(FOLLOWEE) AS NUM FROM FOLLOW WHERE FOLLOWEE IN (SELECT FOLLOWER FROM FOLLOW) GROUP BY 1 ORDER BY 1",
+  "q2_validation_sql": "SELECT DISTINCT FOLLOWEE FOLLOWER, COUNT(DISTINCT FOLLOWER) NUM FROM FOLLOW WHERE FOLLOWEE IN (SELECT DISTINCT FOLLOWER FROM FOLLOW) GROUP BY 1 HAVING COUNT(DISTINCT FOLLOWER) >= 1"
+}

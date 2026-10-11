@@ -1,0 +1,55 @@
+{
+  "dbid": "debit_card_specializing",
+  "index": "834",
+  "source_index": "1473",
+  "schema_ddl": "CREATE TABLE customers\n(\n    CustomerID INTEGER UNIQUE     not null\n        primary key,\n    Segment    TEXT null,\n    Currency   TEXT null\n);\n\nCREATE TABLE gasstations\n(\n    GasStationID INTEGER    UNIQUE   not null\n        primary key,\n    ChainID      INTEGER          null,\n    Country      TEXT null,\n    Segment      TEXT null\n);\n\nCREATE TABLE products\n(\n    ProductID   INTEGER   UNIQUE      not null\n        primary key,\n    Description TEXT null\n);\n\nCREATE TABLE \"transactions_1k\"\n(\n    TransactionID INTEGER\n        primary key autoincrement,\n    Date          DATE,\n    Time          TEXT,\n    CustomerID    INTEGER,\n    CardID        INTEGER,\n    GasStationID  INTEGER,\n    ProductID     INTEGER,\n    Amount        INTEGER,\n    Price         REAL\n);\n\nCREATE TABLE \"yearmonth\"\n(\n    CustomerID  INTEGER not null\n        references customers\n            on update cascade on delete cascade\n        references customers,\n    Date        TEXT    not null,\n    Consumption REAL,\n    primary key (Date, CustomerID)\n);",
+  "q1": "SELECT T1.CustomerID FROM customers AS T1 INNER JOIN yearmonth AS T2 ON T1.CustomerID = T2.CustomerID WHERE T1.Segment = 'LAM' AND T2.date BETWEEN 201201 AND 201212 GROUP BY T1.CustomerID ORDER BY SUM(T2.Consumption) ASC LIMIT 1",
+  "q2": "SELECT T1.CustomerID FROM yearmonth AS T1 INNER JOIN customers AS T2 ON T1.CustomerID = T2.CustomerID WHERE T2.Segment = 'LAM' AND T1.Date BETWEEN '201201' AND '201212' ORDER BY T1.Consumption ASC LIMIT 1",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT T1.CustomerID FROM customers AS T1 INNER JOIN yearmonth AS T2 ON T1.CustomerID = T2.CustomerID WHERE T1.Segment = 'LAM' AND T2.date BETWEEN 201201 AND 201212 GROUP BY T1.CustomerID ORDER BY SUM(T2.Consumption) ASC LIMIT 1",
+  "q2_prompt_sql": "SELECT T1.CustomerID FROM yearmonth AS T1 INNER JOIN customers AS T2 ON T1.CustomerID = T2.CustomerID WHERE T2.Segment = 'LAM' AND T1.Date BETWEEN '201201' AND '201212' ORDER BY T1.Consumption ASC LIMIT 1",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO customers (CustomerID, Segment) VALUES (1, 'LAM'), (2, 'LAM');\nINSERT INTO yearmonth (CustomerID, Date, Consumption) VALUES (1, '201201', 100), (1, '201202', 200), (2, '201201', 150);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 groups by CustomerID and orders by total consumption (SUM), while Q2 orders individual rows by Consumption without aggregation, leading to different results.",
+  "counterexample_dsp": "Two LAM customers: A has two low-consumption entries, B has one mid-consumption entry. Q1 picks B (lowest total), Q2 picks A (lowest single entry).",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 groups by CustomerID and orders by total consumption (SUM), while Q2 orders individual rows by Consumption without aggregation, leading to different results.\",\n\"counterexample_dsp\": \"Two LAM customers: A has two low-consumption entries, B has one mid-consumption entry. Q1 picks B (lowest total), Q2 picks A (lowest single entry).\",\n\"counterexample\": \"INSERT INTO customers (CustomerID, Segment) VALUES (1, 'LAM'), (2, 'LAM');\\nINSERT INTO yearmonth (CustomerID, Date, Consumption) VALUES (1, '201201', 100), (1, '201202', 200), (2, '201201', 150);\"\n}",
+  "reasoning": "\nOkay, let's try to figure out if Q1 and Q2 are semantically equivalent. \n\nFirst, I need to understand what each query is doing. Let's start with Q1. \n\nQ1 selects CustomerID from customers (T1) joined with yearmonth (T2) on CustomerID. The WHERE clause filters for Segment 'LAM' and dates between 201201 and 201212. Then it groups by CustomerID and orders by the sum of Consumption in ascending order, limiting to 1 result. So this query is finding the customer in the 'LAM' segment with the lowest total consumption across all months in 2012.\n\nNow Q2 selects CustomerID from yearmonth (T1) joined with customers (T2) on CustomerID. The WHERE clause again checks Segment 'LAM' and Date between '201201' and '201212'. It orders by T1.Consumption (which is the Consumption from the yearmonth table, not summed) and limits to 1. So Q2 is ordering by individual Consumption entries, not the sum. \n\nWait, the key difference here is that Q1 uses SUM(T2.Consumption) in the ORDER BY, while Q2 uses T1.Consumption. Also, Q1 groups by CustomerID, which implies that the SUM is per customer. Q2 doesn't have a GROUP BY, so it's ordering individual rows. \n\nSo Q1 is grouping all the yearmonth entries for each customer and summing their Consumption, then ordering by that sum. Q2 is ordering individual rows based on their Consumption value. \n\nTherefore, the two queries are not equivalent. For example, if a customer has multiple entries in yearmonth with varying Consumption values, Q1 would sum them all and order by that total, while Q2 would order by each entry's Consumption, possibly picking a different row. \n\nLet me think of a counterexample. Suppose there are two customers in 'LAM'. Customer A has two entries in yearmonth: 100 and 200. Customer B has one entry of 150. \n\nFor Q1: Sum for A is 300, B is 150. So the lowest is B, so Q1 returns B. \n\nFor Q2: The entries are 100 (A), 200 (A), 150 (B). Ordered by Consumption, the first is 100 (A), so Q2 returns A. \n\nSo the results differ. \n\nNow, I need to make sure that the test data adheres to the schema. The yearmonth table has CustomerID and Date as primary key (Date and CustomerID together). So for each customer, each Date can have only one entry. \n\nSo let's create two customers, A and B. For yearmonth entries:\n\nCustomer A has Date 201201 with Consumption 100, and Date 201202 with 200. \n\nCustomer B has Date 201201 with Consumption 150. \n\nIn the customers table, both have Segment 'LAM'. \n\nIn Q1, grouping by CustomerID, sum Consumption for A is 300, B is 150. Ordered by sum, B is first. \n\nIn Q2, the rows are (A, 100), (A, 200), (B, 150). Ordered by Consumption, the first is A's 100. So Q2 returns A. \n\nThus, the queries return different CustomerIDs. \n\nNow, I need to write the SQL inserts for this scenario. Make sure CustomerID is unique, and the yearmonth entries have unique (Date, CustomerID) pairs. \n\nSo the counterexample would have:\n\ncustomers:\nCustomerID 1, Segment 'LAM'\nCustomerID 2, Segment 'LAM'\n\nyearmonth:\n(1, '201201', 100)\n(1, '201202', 200)\n(2, '201201', 150)\n\nThis should satisfy the schema constraints. \n\nSo the equiv is N, and the explanation is that Q1 sums consumption per customer and orders by that sum, while Q2 orders individual rows by consumption, leading to different results.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 620,
+    "total_tokens": 1739,
+    "completion_tokens": 1119,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 931
+    },
+    "generation_seconds": 36.375
+  },
+  "started_at": "2026-10-06T20:59:49.703501+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      2
+    ]
+  ],
+  "q2_output": [
+    [
+      1
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT T1.CustomerID FROM customers AS T1 INNER JOIN yearmonth AS T2 ON T1.CustomerID = T2.CustomerID WHERE T1.Segment = 'LAM' AND T2.date BETWEEN 201201 AND 201212 GROUP BY T1.CustomerID ORDER BY SUM(T2.Consumption) ASC LIMIT 1",
+  "q2_validation_sql": "SELECT T1.CustomerID FROM yearmonth AS T1 INNER JOIN customers AS T2 ON T1.CustomerID = T2.CustomerID WHERE T2.Segment = 'LAM' AND T1.Date BETWEEN '201201' AND '201212' ORDER BY T1.Consumption ASC LIMIT 1"
+}

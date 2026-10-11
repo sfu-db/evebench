@@ -1,0 +1,55 @@
+{
+  "dbid": "student_club",
+  "index": "820",
+  "source_index": "1443",
+  "schema_ddl": "CREATE TABLE event\n(\n    event_id   TEXT\n        constraint event_pk\n            primary key,\n    event_name TEXT,\n    event_date TEXT,\n    type       TEXT,\n    notes      TEXT,\n    location   TEXT,\n    status     TEXT\n);\n\nCREATE TABLE major\n(\n    major_id   TEXT\n        constraint major_pk\n            primary key,\n    major_name TEXT,\n    department TEXT,\n    college    TEXT\n);\n\nCREATE TABLE zip_code\n(\n    zip_code    INTEGER\n        constraint zip_code_pk\n            primary key,\n    type        TEXT,\n    city        TEXT,\n    county      TEXT,\n    state       TEXT,\n    short_state TEXT\n);\n\nCREATE TABLE \"attendance\"\n(\n    link_to_event  TEXT,\n    link_to_member TEXT,\n    primary key (link_to_event, link_to_member),\n    foreign key (link_to_event) references event(event_id),\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"budget\"\n(\n    budget_id     TEXT\n            primary key,\n    category      TEXT,\n    spent         REAL,\n    remaining     REAL,\n    amount        INTEGER,\n    event_status  TEXT,\n    link_to_event TEXT,\n    foreign key (link_to_event) references event(event_id)\n);\n\nCREATE TABLE \"expense\"\n(\n    expense_id          TEXT\n            primary key,\n    expense_description TEXT,\n    expense_date        TEXT,\n    cost                REAL,\n    approved            TEXT,\n    link_to_member      TEXT,\n    link_to_budget      TEXT,\n    foreign key (link_to_budget) references budget(budget_id),\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"income\"\n(\n    income_id      TEXT\n        constraint income_pk\n            primary key,\n    date_received  TEXT,\n    amount         INTEGER,\n    source         TEXT,\n    notes          TEXT,\n    link_to_member TEXT,\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"member\"\n(\n    member_id     TEXT\n        constraint member_pk\n            primary key,\n    first_name    TEXT,\n    last_name     TEXT,\n    email         TEXT,\n    position      TEXT,\n    t_shirt_size  TEXT,\n    phone         TEXT,\n    zip           INTEGER,\n    link_to_major TEXT,\n    foreign key (link_to_major) references major(major_id),\n    foreign key (zip) references zip_code(zip_code)\n);",
+  "q1": "SELECT CAST(SUM(CASE WHEN remaining < 0 THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(budget_id) FROM budget",
+  "q2": "SELECT CAST(SUM(CASE WHEN remaining < 0 THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(link_to_event) FROM budget",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT CAST(SUM(CASE WHEN remaining < 0 THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(budget_id) FROM budget",
+  "q2_prompt_sql": "SELECT CAST(SUM(CASE WHEN remaining < 0 THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(link_to_event) FROM budget",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO event (event_id, event_name) VALUES ('E1', 'Test Event');\nINSERT INTO budget (budget_id, category, spent, remaining, amount, event_status, link_to_event) VALUES ('B1', 'Food', 0, -50, 100, 'approved', NULL);\nINSERT INTO budget (budget_id, category, spent, remaining, amount, event_status, link_to_event) VALUES ('B2', 'Venue', 200, 50, 300, 'pending', 'E1');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 differ in their denominator: Q1 uses COUNT(budget_id) (counts all rows in budget), while Q2 uses COUNT(link_to_event) (counts only rows where link_to_event is non-NULL). If there are budget rows with NULL link_to_event, the denominators will differ, leading to different percentages.",
+  "counterexample_dsp": "A budget table with two rows: one with NULL link_to_event and negative remaining, and another with valid link_to_event and non-negative remaining. This creates different counts in Q1 and Q2's denominators.",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 and Q2 differ in their denominator: Q1 uses COUNT(budget_id) (counts all rows in budget), while Q2 uses COUNT(link_to_event) (counts only rows where link_to_event is non-NULL). If there are budget rows with NULL link_to_event, the denominators will differ, leading to different percentages.\",\n  \"counterexample_dsp\": \"A budget table with two rows: one with NULL link_to_event and negative remaining, and another with valid link_to_event and non-negative remaining. This creates different counts in Q1 and Q2's denominators.\",\n  \"counterexample\": \"INSERT INTO event (event_id, event_name) VALUES ('E1', 'Test Event');\\nINSERT INTO budget (budget_id, category, spent, remaining, amount, event_status, link_to_event) VALUES ('B1', 'Food', 0, -50, 100, 'approved', NULL);\\nINSERT INTO budget (budget_id, category, spent, remaining, amount, event_status, link_to_event) VALUES ('B2', 'Venue', 200, 50, 300, 'pending', 'E1');\"\n}",
+  "reasoning": "\nOkay, let's see. I need to find a counterexample where Q1 and Q2 return different results. Let me look at the queries again.\n\nQ1 uses COUNT(budget_id) in the denominator, while Q2 uses COUNT(link_to_event). The numerator is the same: the sum of cases where remaining < 0 multiplied by 100. So the difference is in the denominator counts.\n\nSo, the key is that COUNT(budget_id) counts all rows in the budget table, but COUNT(link_to_event) counts the number of non-null values in the link_to_event column. If there are rows in the budget table where link_to_event is NULL, then these rows would be counted in Q1's denominator but not in Q2's. That would make the two queries different.\n\nSo, to create a counterexample, I need a budget table with some entries where link_to_event is NULL. Let's say there are two rows: one with link_to_event NULL and another with a valid value. Let's also have remaining < 0 in one of them.\n\nFor example:\n\nRow 1: budget_id = 'B1', remaining = -100, link_to_event = NULL\nRow 2: budget_id = 'B2', remaining = 50, link_to_event = 'E1'\n\nIn this case, Q1's denominator is 2 (count of budget_id), and the numerator is 1 (only B1 has remaining <0). So Q1 would be (1/2)*100 = 50%.\n\nQ2's denominator is COUNT(link_to_event), which counts non-null values. Here, only B2 has a non-null link_to_event, so denominator is 1. The numerator is still 1 (B1's remaining is <0). So Q2 would be (1/1)*100 = 100%.\n\nSo the results differ. Therefore, the counterexample needs to have at least one row with link_to_event NULL and another with a valid value, and have some entries where remaining <0.\n\nNow, I need to make sure that the other tables don't have constraints that would prevent this. For example, the link_to_event in the budget table references event(event_id). So if there's a budget row with link_to_event = 'E1', there should be an event with event_id 'E1'. So I need to insert that event.\n\nSo the steps would be:\n\n1. Insert an event with event_id 'E1'.\n2. Insert a budget row with budget_id 'B1', link_to_event NULL, remaining <0.\n3. Insert another budget row with budget_id 'B2', link_to_event 'E1', remaining >=0.\n4. Any other tables? Since other tables aren't referenced in the queries, maybe they can be left empty, but the schema requires that foreign keys are present if they're not NULL. So for the budget row with link_to_event 'E1', the event must exist. So inserting that event is necessary.\n\nSo the counterexample would involve inserting those two budget rows and the corresponding event. That should make the two queries return different results.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 759,
+    "total_tokens": 1673,
+    "completion_tokens": 914,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 655
+    },
+    "generation_seconds": 30.172
+  },
+  "started_at": "2026-10-06T17:59:28.957964+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      50.0
+    ]
+  ],
+  "q2_output": [
+    [
+      100.0
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT CAST(SUM(CASE WHEN remaining < 0 THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(budget_id) FROM budget",
+  "q2_validation_sql": "SELECT CAST(SUM(CASE WHEN remaining < 0 THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(link_to_event) FROM budget"
+}

@@ -1,0 +1,58 @@
+{
+  "dbid": "29",
+  "index": "38",
+  "source_index": "45",
+  "schema_ddl": "CREATE TABLE COURSE (COURSE_ID INT, TITLE INT, DEPT_NAME INT, CREDITS INT);\nCREATE TABLE DEPARTMENT (DEPT_NAME INT, BUILDING INT, BUDGET INT);\nCREATE TABLE INSTRUCTOR (ID INT, NAME INT, SALARY INT, DEPT_NAME INT);\nCREATE TABLE TEACHES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, INSTRUCTOR INT);\nCREATE TABLE SECTION (COURSE_ID INT, SEC_ID INT, YEAR INT, BUILDING INT, ROOM_NUMBER INT, TIME_SLOT_ID INT);\nCREATE TABLE TAKES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, GRADE INT);\nCREATE TABLE STUDENT (ID INT, NAME INT, DEPT_NAME INT, TOT_CRED INT);",
+  "q1": "SELECT DISTINCT DEPT_NAME FROM COURSE JOIN (SELECT MAX(CREDITS) AS MAX_CREDITS FROM COURSE) AS A ON COURSE.CREDITS = A.MAX_CREDITS",
+  "q2": "SELECT DISTINCT DEPT_NAME FROM COURSE JOIN (SELECT MAX(CREDITS) AS MAX_CREDITS FROM COURSE GROUP BY DEPT_NAME) AS A ON COURSE.CREDITS = A.MAX_CREDITS",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "literature",
+  "q1_prompt_sql": "SELECT DISTINCT DEPT_NAME FROM COURSE JOIN (SELECT MAX(CREDITS) AS MAX_CREDITS FROM COURSE) AS A ON COURSE.CREDITS = A.MAX_CREDITS",
+  "q2_prompt_sql": "SELECT DISTINCT DEPT_NAME FROM COURSE JOIN (SELECT MAX(CREDITS) AS MAX_CREDITS FROM COURSE GROUP BY DEPT_NAME) AS A ON COURSE.CREDITS = A.MAX_CREDITS",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO COURSE (COURSE_ID, TITLE, DEPT_NAME, CREDITS) VALUES (1, 101, 1, 4); INSERT INTO COURSE (COURSE_ID, TITLE, DEPT_NAME, CREDITS) VALUES (2, 102, 1, 3); INSERT INTO COURSE (COURSE_ID, TITLE, DEPT_NAME, CREDITS) VALUES (3, 103, 2, 3);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 finds departments with courses having the global maximum credits, while Q2 finds departments where at least one course has the maximum credits for that department. They differ when a department's max is less than the global max.",
+  "counterexample_dsp": "A database where one department has courses with global max credits, and another department has courses with lower max credits. Q1 includes only the first department, while Q2 includes both.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 finds departments with courses having the global maximum credits, while Q2 finds departments where at least one course has the maximum credits for that department. They differ when a department's max is less than the global max.\",\n\"counterexample_dsp\": \"A database where one department has courses with global max credits, and another department has courses with lower max credits. Q1 includes only the first department, while Q2 includes both.\",\n\"counterexample\": \"INSERT INTO COURSE (COURSE_ID, TITLE, DEPT_NAME, CREDITS) VALUES (1, 101, 1, 4); INSERT INTO COURSE (COURSE_ID, TITLE, DEPT_NAME, CREDITS) VALUES (2, 102, 1, 3); INSERT INTO COURSE (COURSE_ID, TITLE, DEPT_NAME, CREDITS) VALUES (3, 103, 2, 3);\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem step by step. The user wants to know if the two SQL queries Q1 and Q2 are semantically equivalent. If not, I need to provide a counterexample.\n\nFirst, I need to understand what each query does. Let's start with Q1. \n\nQ1 is selecting distinct DEPT_NAME from COURSE joined with a subquery that gets the MAX(CREDITS) from COURSE. The subquery A here is just a single value, the maximum credits across all courses. Then, the join condition is COURSE.CREDITS = A.MAX_CREDITS. So this would find all courses that have the maximum credit value in the entire COURSE table, and then select their DEPT_NAME, distinct.\n\nNow, Q2 is similar but the subquery A is different. In Q2, the subquery is selecting MAX(CREDITS) grouped by DEPT_NAME. So for each department, it finds the maximum credits of courses in that department. Then, the join is between COURSE and this subquery on COURSE.CREDITS = A.MAX_CREDITS. This would find courses whose credits equal the maximum for their respective department.\n\nThe key difference is that Q1 finds the global maximum credit and then gets all courses with that value, regardless of department. Q2 finds the maximum credit per department and then gets courses in each department that have that maximum. \n\nSo, the results would be different if there's a department where the maximum credit is less than the global maximum. For example, suppose the global max is 4, and there's a department with max 3. Then Q1 would include all courses with 4 credits (from any department), while Q2 would include courses with 3 credits in that department. But if a department has a course with the global max, then Q2 would include that department's course with the max, and Q1 would also include it. \n\nTo create a counterexample, I need a scenario where the global max is different from some department's max. Let's imagine:\n\n- Department A has courses with 3 and 4 credits. So the global max is 4. The department's max is 4.\n- Department B has courses with 3 credits. So the department's max is 3, which is less than the global max.\n\nIn Q1, the join would get all courses with 4 credits. So Department A's courses with 4 credits would be included. Q2 would look for each department's max. For Department A, the max is 4, so courses with 4 are included. For Department B, the max is 3, so courses with 3 are included. Thus, Q2 would return both departments, while Q1 would only return Department A (since the global max is 4, and Department B's courses are 3, which don't match the global max).\n\nWait, but the question is about DEPT_NAME in the result. So in Q1, the DEPT_NAME would be the department(s) that have courses with the global max. In Q2, it would be all departments where at least one course has the max credit for that department. \n\nSo if there's a department where the max is less than the global max, Q2 would include that department (because their max is their own max, even if it's not the global one), but Q1 would not include it because its courses don't have the global max.\n\nTherefore, the two queries are not equivalent. \n\nTo create a counterexample, let's set up a small database. Suppose:\n\n- COURSE table has:\n  - (COURSE_ID=1, DEPT_NAME=1, CREDITS=4)\n  - (COURSE_ID=2, DEPT_NAME=1, CREDITS=3)\n  - (COURSE_ID=3, DEPT_NAME=2, CREDITS=3)\n  \nHere, the global max is 4 (from DEPT_NAME 1). \n\nQ1 would join COURSE with the subquery that returns MAX_CREDITS=4. So the join would be on COURSE.CREDITS = 4. That gives DEPT_NAME=1. So Q1 returns {1}.\n\nQ2's subquery is MAX(CREDITS) grouped by DEPT_NAME. For DEPT_NAME 1, max is 4. For DEPT_NAME 2, max is 3. Then, the join is COURSE.CREDITS = A.MAX_CREDITS. So for DEPT_NAME 1, courses with 4 credits (so DEPT_NAME 1) and for DEPT_NAME 2, courses with 3 credits (so DEPT_NAME 2). Thus, Q2 returns {1, 2}.\n\nSo the results differ. Hence, the queries are not equivalent. \n\nNow, I need to write the INSERT statements for this test data. The COURSE table has the entries I mentioned. The other tables can be empty since they aren't referenced in the queries. So the counterexample would involve inserting those three courses.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 502,
+    "total_tokens": 1767,
+    "completion_tokens": 1265,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1053
+    },
+    "generation_seconds": 39.25
+  },
+  "started_at": "2026-10-06T07:47:32.372112+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      1
+    ]
+  ],
+  "q2_output": [
+    [
+      1
+    ],
+    [
+      2
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DISTINCT DEPT_NAME FROM COURSE JOIN (SELECT MAX(CREDITS) AS MAX_CREDITS FROM COURSE) AS A ON COURSE.CREDITS = A.MAX_CREDITS",
+  "q2_validation_sql": "SELECT DISTINCT DEPT_NAME FROM COURSE JOIN (SELECT MAX(CREDITS) AS MAX_CREDITS FROM COURSE GROUP BY DEPT_NAME) AS A ON COURSE.CREDITS = A.MAX_CREDITS"
+}

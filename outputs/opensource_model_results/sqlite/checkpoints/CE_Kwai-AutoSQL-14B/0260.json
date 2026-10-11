@@ -1,0 +1,55 @@
+{
+  "dbid": "card_games",
+  "index": "260",
+  "source_index": "414",
+  "schema_ddl": "CREATE TABLE \"cards\"\n(\n    id                      INTEGER           not null\n        primary key autoincrement,\n    artist                  TEXT,\n    asciiName               TEXT,\n    availability            TEXT,\n    borderColor             TEXT,\n    cardKingdomFoilId       TEXT,\n    cardKingdomId           TEXT,\n    colorIdentity           TEXT,\n    colorIndicator          TEXT,\n    colors                  TEXT,\n    convertedManaCost       REAL,\n    duelDeck                TEXT,\n    edhrecRank              INTEGER,\n    faceConvertedManaCost   REAL,\n    faceName                TEXT,\n    flavorName              TEXT,\n    flavorText              TEXT,\n    frameEffects            TEXT,\n    frameVersion            TEXT,\n    hand                    TEXT,\n    hasAlternativeDeckLimit INTEGER default 0 not null,\n    hasContentWarning       INTEGER default 0 not null,\n    hasFoil                 INTEGER default 0 not null,\n    hasNonFoil              INTEGER default 0 not null,\n    isAlternative           INTEGER default 0 not null,\n    isFullArt               INTEGER default 0 not null,\n    isOnlineOnly            INTEGER default 0 not null,\n    isOversized             INTEGER default 0 not null,\n    isPromo                 INTEGER default 0 not null,\n    isReprint               INTEGER default 0 not null,\n    isReserved              INTEGER default 0 not null,\n    isStarter               INTEGER default 0 not null,\n    isStorySpotlight        INTEGER default 0 not null,\n    isTextless              INTEGER default 0 not null,\n    isTimeshifted           INTEGER default 0 not null,\n    keywords                TEXT,\n    layout                  TEXT,\n    leadershipSkills        TEXT,\n    life                    TEXT,\n    loyalty                 TEXT,\n    manaCost                TEXT,\n    mcmId                   TEXT,\n    mcmMetaId               TEXT,\n    mtgArenaId              TEXT,\n    mtgjsonV4Id             TEXT,\n    mtgoFoilId              TEXT,\n    mtgoId                  TEXT,\n    multiverseId            TEXT,\n    name                    TEXT,\n    number                  TEXT,\n    originalReleaseDate     TEXT,\n    originalText            TEXT,\n    originalType            TEXT,\n    otherFaceIds            TEXT,\n    power                   TEXT,\n    printings               TEXT,\n    promoTypes              TEXT,\n    purchaseUrls            TEXT,\n    rarity                  TEXT,\n    scryfallId              TEXT,\n    scryfallIllustrationId  TEXT,\n    scryfallOracleId        TEXT,\n    setCode                 TEXT,\n    side                    TEXT,\n    subtypes                TEXT,\n    supertypes              TEXT,\n    tcgplayerProductId      TEXT,\n    text                    TEXT,\n    toughness               TEXT,\n    type                    TEXT,\n    types                   TEXT,\n    uuid                    TEXT              not null\n        unique,\n    variations              TEXT,\n    watermark               TEXT\n);\n\nCREATE TABLE \"foreign_data\"\n(\n    id           INTEGER not null\n        primary key autoincrement,\n    flavorText   TEXT,\n    language     TEXT,\n    multiverseid INTEGER,\n    name         TEXT,\n    text         TEXT,\n    type         TEXT,\n    uuid         TEXT\n        references cards (uuid)\n);\n\nCREATE TABLE \"legalities\"\n(\n    id     INTEGER not null\n        primary key autoincrement,\n    format TEXT,\n    status TEXT,\n    uuid   TEXT\n        references cards (uuid)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE \"sets\"\n(\n    id               INTEGER           not null\n        primary key autoincrement,\n    baseSetSize      INTEGER,\n    block            TEXT,\n    booster          TEXT,\n    code             TEXT              not null\n        unique,\n    isFoilOnly       INTEGER default 0 not null,\n    isForeignOnly    INTEGER default 0 not null,\n    isNonFoilOnly    INTEGER default 0 not null,\n    isOnlineOnly     INTEGER default 0 not null,\n    isPartialPreview INTEGER default 0 not null,\n    keyruneCode      TEXT,\n    mcmId            INTEGER,\n    mcmIdExtras      INTEGER,\n    mcmName          TEXT,\n    mtgoCode         TEXT,\n    name             TEXT,\n    parentCode       TEXT,\n    releaseDate      DATE,\n    tcgplayerGroupId INTEGER,\n    totalSetSize     INTEGER,\n    type             TEXT\n);\n\nCREATE TABLE \"set_translations\"\n(\n    id          INTEGER not null\n        primary key autoincrement,\n    language    TEXT,\n    setCode     TEXT\n        references sets (code)\n            on update cascade on delete cascade,\n    translation TEXT\n);\n\nCREATE TABLE \"rulings\"\n(\n    id   INTEGER not null\n        primary key autoincrement,\n    date DATE,\n    text TEXT,\n    uuid TEXT\n        references cards (uuid)\n            on update cascade on delete cascade\n);",
+  "q1": "SELECT COUNT(DISTINCT T1.id) FROM cards AS T1 INNER JOIN rulings AS T2 ON T1.uuid = T2.uuid WHERE T1.rarity = 'rare' AND T2.date = '2009-01-10'",
+  "q2": "SELECT COUNT(T1.id) FROM cards AS T1 INNER JOIN rulings AS T2 ON T1.uuid = T2.uuid WHERE T1.rarity = 'rare' AND T2.date = '2009-01-10'",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT COUNT(DISTINCT T1.id) FROM cards AS T1 INNER JOIN rulings AS T2 ON T1.uuid = T2.uuid WHERE T1.rarity = 'rare' AND T2.date = '2009-01-10'",
+  "q2_prompt_sql": "SELECT COUNT(T1.id) FROM cards AS T1 INNER JOIN rulings AS T2 ON T1.uuid = T2.uuid WHERE T1.rarity = 'rare' AND T2.date = '2009-01-10'",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO cards (id, uuid, rarity) VALUES (1, 'card1', 'rare');\nINSERT INTO rulings (uuid, date) VALUES ('card1', '2009-01-10');\nINSERT INTO rulings (uuid, date) VALUES ('card1', '2009-01-10');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 uses COUNT(DISTINCT T1.id) while Q2 uses COUNT(T1.id). If a card with rarity 'rare' has multiple rulings on the same date, Q2 will count each ruling row (multiplicity) while Q1 will count the card once.",
+  "counterexample_dsp": "One rare card with uuid 'card1' has two rulings on '2009-01-10'. Q1 returns 1 (distinct id) and Q2 returns 2 (two matching rows from join).",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 uses COUNT(DISTINCT T1.id) while Q2 uses COUNT(T1.id). If a card with rarity 'rare' has multiple rulings on the same date, Q2 will count each ruling row (multiplicity) while Q1 will count the card once.\",\n  \"counterexample_dsp\": \"One rare card with uuid 'card1' has two rulings on '2009-01-10'. Q1 returns 1 (distinct id) and Q2 returns 2 (two matching rows from join).\",\n  \"counterexample\": [\n    \"INSERT INTO cards (id, uuid, rarity) VALUES (1, 'card1', 'rare');\",\n    \"INSERT INTO rulings (uuid, date) VALUES ('card1', '2009-01-10');\",\n    \"INSERT INTO rulings (uuid, date) VALUES ('card1', '2009-01-10');\"\n  ]\n}",
+  "reasoning": "\nOkay, let's see. The user wants me to find a counterexample where Q1 and Q2 return different results. Q1 uses COUNT(DISTINCT T1.id) and Q2 uses COUNT(T1.id) without DISTINCT. So the difference must be that there are duplicate card IDs in the join result. \n\nThe queries are joining cards (T1) with rulings (T2) on uuid. The conditions are rarity = 'rare' and date = '2009-01-10'. \n\nFor Q1 and Q2 to differ, there must be at least one card in the cards table that has multiple rulings on the same date. Because when you join, each ruling entry for that card would produce a row. COUNT without DISTINCT would count each row, while COUNT(DISTINCT) would count the card once per unique id.\n\nSo the counterexample needs a card with rarity 'rare' that has multiple rulings on '2009-01-10'. Let's create two entries in rulings for the same card uuid on that date. Then Q2 would count each ruling (so 2) and Q1 would count the distinct id (1). \n\nLet me check the schema. The cards table has a uuid column which is unique. The rulings table has a uuid that references cards.uuid. So each ruling entry is per card, but a card can have multiple rulings. \n\nSo inserting a card with uuid 'card1', rarity 'rare', and two rulings entries with the same date. That should make Q1 return 1 and Q2 return 2. That's the difference. \n\nNow I need to write the INSERT statements. The cards table needs an id, uuid, rarity, etc. The rulings table needs date and uuid. Let me make sure the uuids are unique in cards. Also, the other tables (foreign_data, legalities, sets, set_translations) don't need data for this example since they aren't referenced in the queries. \n\nSo the counterexample_dsp would be a rare card with two rulings on the same date. The explanation is that Q1 counts distinct card IDs while Q2 counts all joined rows, leading to different results when a card has multiple rulings on that date.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 1271,
+    "total_tokens": 1950,
+    "completion_tokens": 679,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 465
+    },
+    "generation_seconds": 23.375
+  },
+  "started_at": "2026-10-06T18:39:05.459582+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      1
+    ]
+  ],
+  "q2_output": [
+    [
+      2
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT COUNT(DISTINCT T1.id) FROM cards AS T1 INNER JOIN rulings AS T2 ON T1.uuid = T2.uuid WHERE T1.rarity = 'rare' AND T2.date = '2009-01-10'",
+  "q2_validation_sql": "SELECT COUNT(T1.id) FROM cards AS T1 INNER JOIN rulings AS T2 ON T1.uuid = T2.uuid WHERE T1.rarity = 'rare' AND T2.date = '2009-01-10'"
+}

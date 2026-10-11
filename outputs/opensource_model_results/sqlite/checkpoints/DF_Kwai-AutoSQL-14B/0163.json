@@ -1,0 +1,39 @@
+{
+  "dbid": "toxicology",
+  "index": "163",
+  "source_index": "229",
+  "schema_ddl": "CREATE TABLE `atom` (\n  `atom_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `element` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `bond` (\n  `bond_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `bond_type` TEXT DEFAULT NULL,\n  PRIMARY KEY (`bond_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `connected` (\n  `atom_id` TEXT NOT NULL,\n  `atom_id2` TEXT NOT NULL,\n  `bond_id` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`,`atom_id2`),\n  FOREIGN KEY (`atom_id`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`atom_id2`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`bond_id`) REFERENCES `bond` (`bond_id`) ON DELETE CASCADE ON UPDATE CASCADE\n);\n\nCREATE TABLE `molecule` (\n  `molecule_id` TEXT NOT NULL,\n  `label` TEXT DEFAULT NULL,\n  PRIMARY KEY (`molecule_id`)\n);",
+  "q1": "SELECT CAST(COUNT(CASE WHEN T.element = 'h' THEN T.atom_id ELSE NULL END) AS REAL) * 100 / COUNT(T.atom_id) FROM atom AS T WHERE T.molecule_id = 'TR206'",
+  "q2": "SELECT CAST(SUM(CASE WHEN element = 'h' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(atom_id) AS percentage FROM atom WHERE molecule_id = 'TR206'",
+  "dialect": "sqlite",
+  "ground_truth": "EQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT CAST(COUNT(CASE WHEN T.element = 'h' THEN T.atom_id ELSE NULL END) AS REAL) * 100 / COUNT(T.atom_id) FROM atom AS T WHERE T.molecule_id = 'TR206'",
+  "q2_prompt_sql": "SELECT CAST(SUM(CASE WHEN element = 'h' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(atom_id) AS percentage FROM atom WHERE molecule_id = 'TR206'",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries compute the percentage of hydrogen atoms ('h') in molecule 'TR206'. Q1 uses COUNT with a CASE WHEN to count 'h' atoms, while Q2 uses SUM with a CASE WHEN (returning 1 for 'h' and 0 otherwise). Both approaches yield the same numerator (count of 'h') and denominator (total atoms), making them semantically equivalent.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries compute the percentage of hydrogen atoms ('h') in molecule 'TR206'. Q1 uses COUNT with a CASE WHEN to count 'h' atoms, while Q2 uses SUM with a CASE WHEN (returning 1 for 'h' and 0 otherwise). Both approaches yield the same numerator (count of 'h') and denominator (total atoms), making them semantically equivalent.\"\n}",
+  "reasoning": "\nOkay, let's take a look at these two SQL queries and see if they're equivalent. \n\nFirst, Q1 and Q2 both seem to be calculating the percentage of atoms that are hydrogen ('h') in a molecule with molecule_id 'TR206'. Let me break them down.\n\nStarting with Q1: The query uses COUNT with a CASE WHEN condition. The CASE checks if element is 'h' and returns T.atom_id, else NULL. Then it counts those, casts to REAL, multiplies by 100, and divides by COUNT(T.atom_id). So that's counting the number of hydrogen atoms divided by total atoms, times 100 for percentage.\n\nQ2: It uses SUM with a CASE WHEN that returns 1 if element is 'h', else 0. Then same multiplication and division by COUNT(atom_id). SUM of 1s and 0s should give the same count as Q1's COUNT with CASE. So both should be equivalent?\n\nWait, but what about when element is NULL? In Q1, the CASE WHEN T.element = 'h' would not match if element is NULL, so the THEN part would be NULL, and COUNT ignores NULLs. But in Q2, the CASE WHEN element = 'h' would return 0 for NULLs (since else 0). Wait, no. Wait, the CASE in Q2 is CASE WHEN element = 'h' THEN 1 ELSE 0 END. So if element is NULL, the condition is not met, so it returns 0. So SUM would count that as 0. But in Q1, the CASE WHEN element = 'h' THEN T.atom_id ELSE NULL END would return NULL if element is not 'h' (including NULL). Then COUNT counts only non-null values. So if element is NULL, then the CASE in Q1 returns NULL, which is not counted. So in Q1, the count of the CASE is the number of rows where element is exactly 'h'. In Q2, the SUM counts 1 for 'h' and 0 otherwise, so SUM would be the same as COUNT of 'h's. So they should be equivalent.\n\nWait, but what if element is NULL? Let's say there's an atom where element is NULL. In Q1, that row would contribute NULL to the count, so it's not counted. In Q2, the CASE WHEN element = 'h' would evaluate to false (since element is NULL), so it returns 0. Then SUM adds 0. So in both cases, that row doesn't contribute to the numerator. So they are the same.\n\nBut what about the denominator? Both use COUNT(T.atom_id) or COUNT(atom_id). Since the WHERE clause is T.molecule_id = 'TR206', the denominator counts all atoms in that molecule. So same denominator.\n\nSo maybe they are equivalent. Hmm. Wait, but in Q1, the COUNT(T.atom_id) is the same as COUNT(atom_id) in Q2. So yes, same denominator. The numerators are both counting the number of 'h' elements. So the two queries should be equivalent.\n\nBut wait, let me check the exact syntax again. In Q1, the CASE WHEN T.element = 'h' THEN T.atom_id ELSE NULL END. The COUNT of that would count the number of rows where element is 'h', since the ELSE NULL would make those rows not counted. In Q2, SUM(CASE WHEN element = 'h' THEN 1 ELSE 0 END) would sum 1s for 'h's and 0s otherwise. So the sum equals the count of 'h's. Therefore, both numerators are the same. So the two queries should be equivalent.\n\nBut why would someone write them differently? Maybe there's a subtle difference. Let me think again. Are there any cases where the CASE expressions would yield different results?\n\nSuppose element is 'H' (uppercase). Then both would not match 'h', so no difference. But the problem says element is 'h'. So assuming the data is lowercase. If element is NULL, then Q1's CASE returns NULL (so not counted), and Q2's CASE returns 0. So in that case, the numerator would be same. Wait, no. If element is NULL, then in Q1, the CASE WHEN condition is T.element = 'h' which is NULL (since comparing NULL to anything is unknown). So the CASE returns NULL (since ELSE NULL). Then COUNT counts non-null values, so that row is not counted. In Q2, the CASE WHEN element = 'h' evaluates to unknown, so the ELSE 0 is taken. So the SUM adds 0. So for rows where element is NULL, the numerator in both is 0. So same result.\n\nSo I think they are equivalent. Therefore, the answer should be Y.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 618,
+    "total_tokens": 1725,
+    "completion_tokens": 1107,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1009
+    },
+    "generation_seconds": 35.781
+  },
+  "started_at": "2026-10-06T21:12:50.743242+00:00",
+  "elapsed_seconds": 0.0
+}

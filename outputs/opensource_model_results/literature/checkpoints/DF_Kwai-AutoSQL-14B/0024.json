@@ -1,0 +1,61 @@
+{
+  "dbid": "21",
+  "index": "24",
+  "source_index": "29",
+  "schema_ddl": "CREATE TABLE A (A1 INT, A2 INT);\nCREATE TABLE B (B1 INT, B2 INT);",
+  "q1": "SELECT X.A1 AS A1, X.A2 AS A2, Y.B1 AS B1, Y.B2 AS B2 FROM A AS X, B AS Y WHERE X.A1 = Y.B1",
+  "q2": "SELECT Y.A1 AS A1, Y.A2 AS A2, X.B1 AS B1, X.B2 AS B2 FROM B AS X, A AS Y WHERE Y.A1 = X.B1",
+  "dialect": "sqlite",
+  "ground_truth": "EQ",
+  "source": "literature",
+  "q1_prompt_sql": "SELECT X.A1 AS A1, X.A2 AS A2, Y.B1 AS B1, Y.B2 AS B2 FROM A AS X, B AS Y WHERE X.A1 = Y.B1",
+  "q2_prompt_sql": "SELECT Y.A1 AS A1, Y.A2 AS A2, X.B1 AS B1, X.B2 AS B2 FROM B AS X, A AS Y WHERE Y.A1 = X.B1",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO A (A1, A2) VALUES (1, 10);\nINSERT INTO B (B1, B2) VALUES (1, 20);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent. Q1 joins table A (aliased as X) with table B (aliased as Y) on X.A1 = Y.B1 and selects columns A1, A2 from A and B1, B2 from B. Q2 joins table B (aliased as X) with table A (aliased as Y) on Y.A1 = X.B1 and selects columns A1, A2 from A (aliased as Y) and B1, B2 from B (aliased as X). The column aliases differ, so the output columns are swapped in order and potentially in meaning.",
+  "counterexample_dsp": "Insert a row into A with A1 = 1 and A2 = 10, and a row into B with B1 = 1 and B2 = 20. Q1 will return (1, 10, 1, 20) while Q2 will return (1, 20, 1, 10).",
+  "equiv": "N",
+  "raw_response": "\n\n{\n  \"equiv\": \"N\",\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent. Q1 joins table A (aliased as X) with table B (aliased as Y) on X.A1 = Y.B1 and selects columns A1, A2 from A and B1, B2 from B. Q2 joins table B (aliased as X) with table A (aliased as Y) on Y.A1 = X.B1 and selects columns A1, A2 from A (aliased as Y) and B1, B2 from B (aliased as X). The column aliases differ, so the output columns are swapped in order and potentially in meaning.\",\n  \"counterexample_dsp\": \"Insert a row into A with A1 = 1 and A2 = 10, and a row into B with B1 = 1 and B2 = 20. Q1 will return (1, 10, 1, 20) while Q2 will return (1, 20, 1, 10).\",\n  \"counterexample\": \"INSERT INTO A (A1, A2) VALUES (1, 10);\\nINSERT INTO B (B1, B2) VALUES (1, 20);\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 368,
+    "total_tokens": 650,
+    "completion_tokens": 282,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 8.765
+  },
+  "started_at": "2026-10-06T07:53:02.120146+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      1,
+      10,
+      1,
+      20
+    ]
+  ],
+  "q2_output": [
+    [
+      1,
+      10,
+      1,
+      20
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT X.A1 AS A1, X.A2 AS A2, Y.B1 AS B1, Y.B2 AS B2 FROM A AS X, B AS Y WHERE X.A1 = Y.B1",
+  "q2_validation_sql": "SELECT Y.A1 AS A1, Y.A2 AS A2, X.B1 AS B1, X.B2 AS B2 FROM B AS X, A AS Y WHERE Y.A1 = X.B1"
+}

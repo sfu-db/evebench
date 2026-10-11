@@ -1,0 +1,55 @@
+{
+  "dbid": "1083",
+  "index": "108",
+  "source_index": "737",
+  "schema_ddl": "CREATE TABLE PRODUCT (\n    PRODUCT_ID INT,\n    PRODUCT_NAME VARCHAR(255),\n    UNIT_PRICE INT,\n    PRIMARY KEY (PRODUCT_ID),\n    CHECK (UNIT_PRICE > 0),\n    CHECK (PRODUCT_NAME IN ('S8', 'IPHONE'))\n);\n\nCREATE TABLE SALES (\n    PRODUCT_ID INT,\n    SELLER_ID INT,\n    BUYER_ID INT,\n    SALE_DATE DATE,\n    QUANTITY INT,\n    PRICE INT,\n    FOREIGN KEY (PRODUCT_ID) REFERENCES PRODUCT(PRODUCT_ID),\n    CHECK (QUANTITY > 0),\n    CHECK (PRICE > 0)\n);",
+  "q1": "SELECT DISTINCT SALES.BUYER_ID AS BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'S8' AND SALES.BUYER_ID NOT IN ( SELECT SALES.BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'IPHONE')",
+  "q2": "SELECT S.BUYER_ID FROM SALES AS S JOIN PRODUCT AS P ON S.PRODUCT_ID = P.PRODUCT_ID WHERE P.PRODUCT_NAME = 'S8' AND S.BUYER_ID NOT IN (SELECT BUYER_ID FROM SALES JOIN PRODUCT ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT.PRODUCT_NAME = 'IPHONE') GROUP BY S.BUYER_ID",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT DISTINCT SALES.BUYER_ID AS BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'S8' AND SALES.BUYER_ID NOT IN ( SELECT SALES.BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'IPHONE')",
+  "q2_prompt_sql": "SELECT S.BUYER_ID FROM SALES AS S JOIN PRODUCT AS P ON S.PRODUCT_ID = P.PRODUCT_ID WHERE P.PRODUCT_NAME = 'S8' AND S.BUYER_ID NOT IN (SELECT BUYER_ID FROM SALES JOIN PRODUCT ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT.PRODUCT_NAME = 'IPHONE') GROUP BY S.BUYER_ID",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO PRODUCT (PRODUCT_ID, PRODUCT_NAME, UNIT_PRICE) VALUES (1, 'S8', 1000); INSERT INTO PRODUCT (PRODUCT_ID, PRODUCT_NAME, UNIT_PRICE) VALUES (2, 'IPHONE', 800); INSERT INTO SALES (PRODUCT_ID, SELLER_ID, BUYER_ID, SALE_DATE, QUANTITY, PRICE) VALUES (1, 101, 1001, '2023-01-01', 1, 1000); INSERT INTO SALES (PRODUCT_ID, SELLER_ID, BUYER_ID, SALE_DATE, QUANTITY, PRICE) VALUES (1, 101, 1001, '2023-01-02', 1, 1000);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent. Q1 returns distinct BUYER_ID values for 'S8' that are not buyers of 'IPHONE'. Q2 groups by BUYER_ID but does not use DISTINCT explicitly. This could lead to differences if there are duplicate BUYER_ID values in the result set of Q2, though in this specific case, since the NOT IN subquery is the same and the outer query filters on a single product name, the grouping shouldn't cause duplicates. However, the main difference lies in the use of DISTINCT in Q1 and GROUP BY in Q2. In most cases, they may yield the same results, but there could be a subtle difference if the join or subquery produces different behavior in some edge cases.",
+  "counterexample_dsp": "Create a scenario where a BUYER_ID appears multiple times in the outer query for 'S8'. Q1 will return only distinct BUYER_IDs, while Q2 may also return distinct values due to GROUP BY. However, the actual difference may not be clear unless we force a case where the subquery behavior differs slightly.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n  \"equiv\": \"N\",\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent. Q1 returns distinct BUYER_ID values for 'S8' that are not buyers of 'IPHONE'. Q2 groups by BUYER_ID but does not use DISTINCT explicitly. This could lead to differences if there are duplicate BUYER_ID values in the result set of Q2, though in this specific case, since the NOT IN subquery is the same and the outer query filters on a single product name, the grouping shouldn't cause duplicates. However, the main difference lies in the use of DISTINCT in Q1 and GROUP BY in Q2. In most cases, they may yield the same results, but there could be a subtle difference if the join or subquery produces different behavior in some edge cases.\",\n  \"counterexample_dsp\": \"Create a scenario where a BUYER_ID appears multiple times in the outer query for 'S8'. Q1 will return only distinct BUYER_IDs, while Q2 may also return distinct values due to GROUP BY. However, the actual difference may not be clear unless we force a case where the subquery behavior differs slightly.\",\n  \"counterexample\": \"INSERT INTO PRODUCT (PRODUCT_ID, PRODUCT_NAME, UNIT_PRICE) VALUES (1, 'S8', 1000); INSERT INTO PRODUCT (PRODUCT_ID, PRODUCT_NAME, UNIT_PRICE) VALUES (2, 'IPHONE', 800); INSERT INTO SALES (PRODUCT_ID, SELLER_ID, BUYER_ID, SALE_DATE, QUANTITY, PRICE) VALUES (1, 101, 1001, '2023-01-01', 1, 1000); INSERT INTO SALES (PRODUCT_ID, SELLER_ID, BUYER_ID, SALE_DATE, QUANTITY, PRICE) VALUES (1, 101, 1001, '2023-01-02', 1, 1000);\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 537,
+    "total_tokens": 967,
+    "completion_tokens": 430,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 13.734
+  },
+  "started_at": "2026-10-06T15:31:12.705631+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      1001
+    ]
+  ],
+  "q2_output": [
+    [
+      1001
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DISTINCT SALES.BUYER_ID AS BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'S8' AND SALES.BUYER_ID NOT IN ( SELECT SALES.BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'IPHONE')",
+  "q2_validation_sql": "SELECT S.BUYER_ID FROM SALES AS S JOIN PRODUCT AS P ON S.PRODUCT_ID = P.PRODUCT_ID WHERE P.PRODUCT_NAME = 'S8' AND S.BUYER_ID NOT IN (SELECT BUYER_ID FROM SALES JOIN PRODUCT ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT.PRODUCT_NAME = 'IPHONE') GROUP BY S.BUYER_ID"
+}

@@ -1,0 +1,55 @@
+{
+  "dbid": "superhero",
+  "index": "413",
+  "source_index": "776",
+  "schema_ddl": "CREATE TABLE alignment\n(\n    id        INTEGER not null\n            primary key,\n    alignment TEXT default NULL\n);\n\nCREATE TABLE attribute\n(\n    id             INTEGER not null\n            primary key,\n    attribute_name TEXT default NULL\n);\n\nCREATE TABLE colour\n(\n    id     INTEGER not null\n            primary key,\n    colour TEXT default NULL\n);\n\nCREATE TABLE gender\n(\n    id     INTEGER not null\n            primary key,\n    gender TEXT default NULL\n);\n\nCREATE TABLE publisher\n(\n    id             INTEGER not null\n            primary key,\n    publisher_name TEXT default NULL\n);\n\nCREATE TABLE race\n(\n    id   INTEGER not null\n            primary key,\n    race TEXT default NULL\n);\n\nCREATE TABLE superhero\n(\n    id             INTEGER not null\n            primary key,\n    superhero_name TEXT default NULL,\n    full_name      TEXT default NULL,\n    gender_id      INTEGER          default NULL,\n    eye_colour_id  INTEGER          default NULL,\n    hair_colour_id INTEGER          default NULL,\n    skin_colour_id INTEGER          default NULL,\n    race_id        INTEGER          default NULL,\n    publisher_id   INTEGER          default NULL,\n    alignment_id   INTEGER          default NULL,\n    height_cm      INTEGER          default NULL,\n    weight_kg      INTEGER          default NULL,\n    foreign key (alignment_id) references alignment(id),\n    foreign key (eye_colour_id) references colour(id),\n    foreign key (gender_id) references gender(id),\n    foreign key (hair_colour_id) references colour(id),\n    foreign key (publisher_id) references publisher(id),\n    foreign key (race_id) references race(id),\n    foreign key (skin_colour_id) references colour(id)\n);\n\nCREATE TABLE hero_attribute\n(\n    hero_id         INTEGER default NULL,\n    attribute_id    INTEGER default NULL,\n    attribute_value INTEGER default NULL,\n    foreign key (attribute_id) references attribute(id),\n    foreign key (hero_id) references superhero(id)\n);\n\nCREATE TABLE superpower\n(\n    id         INTEGER not null\n            primary key,\n    power_name TEXT default NULL\n);\n\nCREATE TABLE hero_power\n(\n    hero_id  INTEGER default NULL,\n    power_id INTEGER default NULL,\n    foreign key (hero_id) references superhero(id),\n    foreign key (power_id) references superpower(id)\n);",
+  "q1": "SELECT CAST(COUNT(CASE WHEN T3.colour = 'Blue' THEN T1.id ELSE NULL END) AS REAL) * 100 / COUNT(T1.id) FROM superhero AS T1 INNER JOIN gender AS T2 ON T1.gender_id = T2.id INNER JOIN colour AS T3 ON T1.skin_colour_id = T3.id WHERE T2.gender = 'Female'",
+  "q2": "SELECT CAST(SUM(CASE WHEN T2.colour = 'Blue' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(T1.gender_id) FROM superhero AS T1 INNER JOIN colour AS T2 ON T1.eye_colour_id = T2.id WHERE T1.gender_id = (SELECT id FROM gender WHERE gender = 'Female')",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT CAST(COUNT(CASE WHEN T3.colour = 'Blue' THEN T1.id ELSE NULL END) AS REAL) * 100 / COUNT(T1.id) FROM superhero AS T1 INNER JOIN gender AS T2 ON T1.gender_id = T2.id INNER JOIN colour AS T3 ON T1.skin_colour_id = T3.id WHERE T2.gender = 'Female'",
+  "q2_prompt_sql": "SELECT CAST(SUM(CASE WHEN T2.colour = 'Blue' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(T1.gender_id) FROM superhero AS T1 INNER JOIN colour AS T2 ON T1.eye_colour_id = T2.id WHERE T1.gender_id = (SELECT id FROM gender WHERE gender = 'Female')",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO gender (id, gender) VALUES (1, 'Female');\nINSERT INTO colour (id, colour) VALUES (1, 'Blue'), (2, 'Red');\nINSERT INTO superhero (id, superhero_name, gender_id, skin_colour_id, eye_colour_id) VALUES (1, 'Hero1', 1, 1, 2), (2, 'Hero2', 1, 2, 2);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 calculates the percentage of female superheroes with blue skin color, while Q2 calculates the percentage of female superheroes with blue eye color. They differ in the color attribute checked (skin vs eye), leading to potentially different results.",
+  "counterexample_dsp": "Two female superheroes: one with blue skin and non-blue eyes, another with non-blue skin and non-blue eyes. Q1 counts 1 blue skin, Q2 counts 0 blue eyes.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 calculates the percentage of female superheroes with blue skin color, while Q2 calculates the percentage of female superheroes with blue eye color. They differ in the color attribute checked (skin vs eye), leading to potentially different results.\",\n\"counterexample_dsp\": \"Two female superheroes: one with blue skin and non-blue eyes, another with non-blue skin and non-blue eyes. Q1 counts 1 blue skin, Q2 counts 0 blue eyes.\",\n\"counterexample\": \"INSERT INTO gender (id, gender) VALUES (1, 'Female');\\nINSERT INTO colour (id, colour) VALUES (1, 'Blue'), (2, 'Red');\\nINSERT INTO superhero (id, superhero_name, gender_id, skin_colour_id, eye_colour_id) VALUES (1, 'Hero1', 1, 1, 2), (2, 'Hero2', 1, 2, 2);\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem step by step. The user wants to know if the two SQL queries, Q1 and Q2, are semantically equivalent. If not, I need to provide a counterexample. \n\nFirst, I need to understand what each query is doing. Let's look at Q1. It selects the count of superheroes with skin color 'Blue' (from T3, which is the colour table joined on skin_colour_id), divides that by the total count of superheroes, multiplies by 100 to get a percentage. The join is with gender table where gender is 'Female'. So Q1 is calculating the percentage of female superheroes who have blue skin color.\n\nNow Q2: It uses SUM with a CASE statement that checks if T2.colour is 'Blue', then adds 1 else 0. Then divides by COUNT(T1.gender_id). The join here is on eye_colour_id, and the WHERE clause filters superheroes whose gender_id is the id of the gender 'Female'. So Q2 is calculating the percentage of female superheroes with blue eye color.\n\nWait, that's different. Q1 uses skin_colour_id (joined with T3) and checks for 'Blue', while Q2 uses eye_colour_id (joined with T2) and checks for 'Blue'. So the two queries are looking at different attributes: skin color vs. eye color. Therefore, even if the counts are the same, the actual data might differ because they're checking different columns. \n\nSo the main difference is that Q1 checks skin color, and Q2 checks eye color. Therefore, unless the data has the same number of female superheroes with blue skin as blue eyes, the results will differ. \n\nTo create a counterexample, I need a scenario where the number of female superheroes with blue skin is different from those with blue eyes. Let's create a simple test database with a few entries. \n\nLet's insert into the gender table: Female with id 1. In the colour table, id 1 is Blue. Then, in superhero table, create two entries. \n\nFirst superhero: gender_id 1 (female), skin_colour_id 1 (blue), eye_colour_id 2 (not blue). Second superhero: gender_id 1 (female), skin_colour_id 2 (not blue), eye_colour_id 1 (blue). \n\nIn this case, Q1 would count 1 (skin blue) out of 2, so 50%. Q2 would count 1 (eye blue) out of 2, also 50%. Hmm, same result. Wait, maybe I need to adjust. Let's have one female with skin blue and eye not blue, another female with skin not blue and eye blue, and a third female with both skin and eye blue. Then Q1 would have 1/3 (skin blue), Q2 would have 1/3 (eye blue). Wait, maybe that's not enough. Let's think of a case where the counts differ. \n\nSuppose there are two female superheroes. One has skin color blue and eye color red. The other has skin color red and eye color blue. Then Q1 would count 1 (skin blue) / 2 = 50%, Q2 would count 1 (eye blue) / 2 = 50%. Still same. \n\nWait, maybe I need to have a case where the counts are different. Let's have three female superheroes. \n\nSuperhero A: skin blue, eye red.\nSuperhero B: skin blue, eye blue.\nSuperhero C: skin red, eye blue.\n\nQ1 counts skin blue: A and B → 2/3 → 66.67%.\nQ2 counts eye blue: B and C → 2/3 → 66.67%. Still same. \n\nHmm. Maybe I need to have different numbers. Let's make one where skin blue count is different from eye blue count. \n\nLet's have two female superheroes. \n\nSuperhero 1: skin blue, eye red.\nSuperhero 2: skin red, eye blue.\n\nThen Q1: 1/2 (50%), Q2: 1/2 (50%). Same again. \n\nWait, maybe I need to have a case where one of the counts is zero. Let's say there are two female superheroes. \n\nSuperhero 1: skin blue, eye red.\nSuperhero 2: skin red, eye red.\n\nThen Q1 would be 1/2 (50%), Q2 would be 0/2 (0%). Now that's a difference. \n\nYes! In this case, Q1 counts skin color blue (1), and Q2 counts eye color blue (0). So the results would be 50% vs 0%. \n\nSo the counterexample would be:\n\n- Gender table: id 1, gender 'Female'.\n- Colour table: id 1 is 'Blue', id 2 is 'Red'.\n- Superhero table:\n   - id 1, gender_id 1, skin_colour_id 1 (blue), eye_colour_id 2 (red)\n   - id 2, gender_id 1, skin_colour_id 2 (red), eye_colour_id 2 (red)\n\nThis way, Q1's count is 1 (skin blue), Q2's count is 0 (eye blue). \n\nSo the queries are not equivalent because they check different color attributes (skin vs eye), leading to different results when the counts differ.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 868,
+    "total_tokens": 2214,
+    "completion_tokens": 1346,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1139
+    },
+    "generation_seconds": 44.438
+  },
+  "started_at": "2026-10-06T20:35:37.744341+00:00",
+  "elapsed_seconds": 0.016,
+  "q1_output": [
+    [
+      50.0
+    ]
+  ],
+  "q2_output": [
+    [
+      0.0
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT CAST(COUNT(CASE WHEN T3.colour = 'Blue' THEN T1.id ELSE NULL END) AS REAL) * 100 / COUNT(T1.id) FROM superhero AS T1 INNER JOIN gender AS T2 ON T1.gender_id = T2.id INNER JOIN colour AS T3 ON T1.skin_colour_id = T3.id WHERE T2.gender = 'Female'",
+  "q2_validation_sql": "SELECT CAST(SUM(CASE WHEN T2.colour = 'Blue' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(T1.gender_id) FROM superhero AS T1 INNER JOIN colour AS T2 ON T1.eye_colour_id = T2.id WHERE T1.gender_id = (SELECT id FROM gender WHERE gender = 'Female')"
+}

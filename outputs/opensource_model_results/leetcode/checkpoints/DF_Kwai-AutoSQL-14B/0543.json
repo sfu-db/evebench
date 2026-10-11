@@ -1,0 +1,39 @@
+{
+  "dbid": "619",
+  "index": "543",
+  "source_index": "387",
+  "schema_ddl": "CREATE TABLE MYNUMBERS (\n    NUM INT\n);",
+  "q1": "SELECT MAX(NUM) AS NUM FROM (SELECT NUM FROM MYNUMBERS GROUP BY NUM HAVING COUNT(NUM) = 1) AS T",
+  "q2": "SELECT MAX(NUM) AS NUM FROM (SELECT NUM FROM MYNUMBERS GROUP BY NUM HAVING(COUNT(NUM) = 1) ORDER BY NUM DESC LIMIT 1) T",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT MAX(NUM) AS NUM FROM (SELECT NUM FROM MYNUMBERS GROUP BY NUM HAVING COUNT(NUM) = 1) AS T",
+  "q2_prompt_sql": "SELECT MAX(NUM) AS NUM FROM (SELECT NUM FROM MYNUMBERS GROUP BY NUM HAVING(COUNT(NUM) = 1) ORDER BY NUM DESC LIMIT 1) T",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries find the maximum unique number in MYNUMBERS. Q1 uses MAX on a subquery that returns all unique numbers, while Q2 uses ORDER BY DESC LIMIT 1 on the same set. Both approaches yield the same result.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries find the maximum unique number in MYNUMBERS. Q1 uses MAX on a subquery that returns all unique numbers, while Q2 uses ORDER BY DESC LIMIT 1 on the same set. Both approaches yield the same result.\"\n}",
+  "reasoning": "\nOkay, let's see. I need to figure out if Q1 and Q2 are semantically equivalent. Let me start by understanding each query.\n\nFirst, the schema is a single table MYNUMBERS with a column NUM of type INT. The table can have duplicate numbers.\n\nQ1: It selects the MAX(NUM) from a subquery. The subquery groups MYNUMBERS by NUM and uses HAVING COUNT(NUM) = 1. That means it's getting all distinct NUM values (since grouping by NUM with count equal to 1 implies each group has only one occurrence). Then MAX of those gives the maximum unique number.\n\nQ2: The subquery here is similar, grouping by NUM with HAVING COUNT(NUM) = 1. But then it adds ORDER BY NUM DESC LIMIT 1. So instead of taking the max after getting all unique numbers, it's ordering them in descending order and taking the first one, which should also give the maximum unique number. Wait, but isn't that the same as MAX?\n\nWait, maybe there's a difference. Let me think. If the subquery in Q1 returns all unique numbers, then MAX of that is the highest. In Q2, the subquery is ordered by NUM DESC and limited to 1, so it returns just the maximum unique number. So both queries should return the same result. But why would there be a difference?\n\nWait, maybe there's a case where the subquery in Q2 isn't ordered correctly. Wait, no. The HAVING condition in both is the same. So the inner query in both cases is selecting distinct NUMs (those that appear exactly once). Then Q1 takes MAX of that, and Q2 takes the first row after ordering by NUM DESC. So logically, they should be the same.\n\nBut maybe there's a case where the inner query in Q2 isn't ordered correctly? Wait, no. The ORDER BY in Q2 is applied to the grouped results. Let me think of an example.\n\nLet's say MYNUMBERS has numbers like [5, 5, 3, 4]. Then the unique numbers are 3 and 4. MAX would be 4. Q2 would order by NUM DESC (so 4, 3) and take the first, which is 4. Same result.\n\nAnother example: if the unique numbers are 10, 20. Both queries return 20.\n\nHmm. Maybe they are equivalent. But why would the user think they are different? Wait, maybe the HAVING clause in Q2 is written with parentheses. But that shouldn't matter. The HAVING in both is the same.\n\nWait, but what if the inner query in Q2 is not returning the same rows as in Q1? Let me check the syntax.\n\nQ1's inner query is SELECT NUM FROM MYNUMBERS GROUP BY NUM HAVING COUNT(NUM) = 1. Then MAX(NUM) on that result.\n\nQ2's inner query is the same, but then ORDER BY NUM DESC LIMIT 1. So the inner query for Q2 is the same set of rows as in Q1's inner query. Then ordering by NUM DESC and taking the first row gives the same as MAX(NUM). So both queries should return the same result.\n\nWait, but maybe the subquery in Q2 is not returning the same rows? No, because the HAVING is the same. So the set of rows is the same. Then ordering and taking the first gives the same as MAX. So the two queries should be equivalent.\n\nBut why would the user present them as possibly different? Maybe I'm missing something. Let me think again.\n\nWait, what if the inner query in Q2 has multiple rows but the ORDER BY is applied. Suppose the inner query returns multiple rows (which it does if there are multiple unique numbers). Then ORDER BY DESC LIMIT 1 gives the max. So same as MAX in Q1. Therefore, the two queries are equivalent.\n\nSo the answer would be Y, equivalent.\n\nBut let me think of a counterexample. Suppose the table has only one unique number. Like [5, 5, 5]. Then the inner query returns 5. Both queries return 5.\n\nAnother case: multiple unique numbers. Let's say [1, 2, 3]. Then Q1 returns MAX(1,2,3) = 3. Q2 orders by DESC and takes first, which is 3. Same.\n\nWait, so maybe they are equivalent. So the answer is Y.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 331,
+    "total_tokens": 1326,
+    "completion_tokens": 995,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 930
+    },
+    "generation_seconds": 32.625
+  },
+  "started_at": "2026-10-06T15:51:28.091763+00:00",
+  "elapsed_seconds": 0.0
+}

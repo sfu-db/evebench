@@ -1,0 +1,58 @@
+{
+  "dbid": "beers",
+  "index": "6",
+  "source_index": "50",
+  "schema_ddl": "CREATE TABLE Bar (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Beer (\n    name VARCHAR NOT NULL,\n    brewer VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Drinker (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Frequents (\n    drinker VARCHAR NOT NULL,\n    bar VARCHAR NOT NULL,\n    times_a_week SMALLINT NOT NULL,\n    PRIMARY KEY (drinker, bar),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (bar) REFERENCES Bar(name)\n);\n\nCREATE TABLE Serves (\n    bar VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    price DECIMAL(5,2) NOT NULL,\n    PRIMARY KEY (bar, beer),\n    FOREIGN KEY (bar) REFERENCES Bar(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);\n\nCREATE TABLE Likes (\n    drinker VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    PRIMARY KEY (drinker, beer),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);",
+  "q1": "SELECT DISTINCT bar FROM Serves WHERE (beer = 'Amstel' OR beer = 'Corona') AND price > 2",
+  "q2": "SELECT bar FROM serves WHERE beer = 'Amstel' OR beer = 'Corona' AND price > 2",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "beers",
+  "q1_prompt_sql": "SELECT DISTINCT bar FROM Serves WHERE (beer = 'Amstel' OR beer = 'Corona') AND price > 2",
+  "q2_prompt_sql": "SELECT bar FROM serves WHERE beer = 'Amstel' OR beer = 'Corona' AND price > 2",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO Bar (name, address) VALUES ('bar1', 'addr1'), ('bar2', 'addr2');\nINSERT INTO Beer (name, brewer) VALUES ('Amstel', 'BrewerA'), ('Corona', 'BrewerB');\nINSERT INTO Serves (bar, beer, price) VALUES ('bar1', 'Amstel', 1.99), ('bar2', 'Corona', 3.00);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 requires (beer = 'Amstel' OR beer = 'Corona') AND price > 2, ensuring both conditions apply to the same row. Q2 evaluates beer = 'Amstel' OR (beer = 'Corona' AND price > 2) due to operator precedence, including rows where beer = 'Amstel' regardless of price.",
+  "counterexample_dsp": "A bar serving 'Amstel' at price 1.99 (included in Q2 but not Q1) and another bar serving 'Corona' at price 3.00 (included in both). Q1 returns only the second bar; Q2 returns both bars.",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 requires (beer = 'Amstel' OR beer = 'Corona') AND price > 2, ensuring both conditions apply to the same row. Q2 evaluates beer = 'Amstel' OR (beer = 'Corona' AND price > 2) due to operator precedence, including rows where beer = 'Amstel' regardless of price.\",\n  \"counterexample_dsp\": \"A bar serving 'Amstel' at price 1.99 (included in Q2 but not Q1) and another bar serving 'Corona' at price 3.00 (included in both). Q1 returns only the second bar; Q2 returns both bars.\",\n  \"counterexample\": [\n    \"INSERT INTO Bar (name, address) VALUES ('bar1', 'addr1'), ('bar2', 'addr2');\",\n    \"INSERT INTO Beer (name, brewer) VALUES ('Amstel', 'BrewerA'), ('Corona', 'BrewerB');\",\n    \"INSERT INTO Serves (bar, beer, price) VALUES ('bar1', 'Amstel', 1.99), ('bar2', 'Corona', 3.00);\"\n  ]\n}",
+  "reasoning": "\nOkay, let's see. I need to find a counterexample where Q1 and Q2 return different results. The two queries are almost the same, except for the DISTINCT keyword in Q1 and the lack of it in Q2. Wait, no, looking again: Q1 has SELECT DISTINCT bar FROM Serves WHERE (beer = 'Amstel' OR beer = 'Corona') AND price > 2. Q2 is SELECT bar FROM serves WHERE beer = 'Amstel' OR beer = 'Corona' AND price > 2. Oh wait, Q2 doesn't have the parentheses around the OR condition. That's probably the key difference.\n\nIn SQL, the order of operations matters. In Q1, the OR is inside parentheses, so both beer conditions are checked first, then the price. In Q2, the OR applies only to beer = 'Amstel' and the rest of the condition is beer = 'Corona' AND price > 2. Wait, no. Let me parse the WHERE clause again. Q2's WHERE is beer = 'Amstel' OR beer = 'Corona' AND price > 2. Since AND has higher precedence than OR, this is equivalent to beer = 'Amstel' OR (beer = 'Corona' AND price > 2). Whereas Q1's condition is (beer = 'Amstel' OR beer = 'Corona') AND price > 2. So Q1 requires that the beer is either Amstel or Corona AND the price is greater than 2. Q2 requires either the beer is Amstel (regardless of price) or (beer is Corona AND price > 2). \n\nSo if there's a row where beer is 'Amstel' with price <= 2, Q2 would include that row (since the first part of the OR is true), but Q1 would not include it because the price isn't > 2. Similarly, if there's a row where beer is 'Corona' with price <= 2, Q1 wouldn't include it but Q2 would not either because the second part of the OR (Corona AND price>2) would be false. Wait, no. Let me think again.\n\nWait Q2's WHERE clause is beer = 'Amstel' OR beer = 'Corona' AND price > 2. Because AND has higher precedence than OR, it's equivalent to beer = 'Amstel' OR (beer = 'Corona' AND price > 2). So for a row with beer = 'Amstel' and price <= 2, the first part of the OR is true, so the row is included. But in Q1, the entire condition is (beer is Amstel or Corona) AND price > 2. So that row would not be included in Q1 because price is not > 2. Therefore, if there's a row in Serves where beer is 'Amstel' and price <= 2, Q2 will include it, but Q1 won't. That would make their results different.\n\nSo to create a counterexample, I need a Serves table entry where beer is 'Amstel' and price <= 2. Then Q2 would return that bar, but Q1 wouldn't. Let's create such a case. Also, maybe another entry where beer is 'Corona' with price > 2, which would be included in both queries. Then Q1 would have the distinct bar from that entry, and Q2 would have the same bar plus the one from the Amstel entry. Wait, but if there's another bar serving Amstel with price <= 2, that would be in Q2 but not Q1.\n\nSo let's say:\n\nInsert into Serves: (bar1, 'Amstel', 1.99) → price <= 2. This would be included in Q2 but not Q1.\n\nAnd another entry: (bar1, 'Corona', 3.00) → included in both Q1 and Q2.\n\nThen Q1 would return bar1 (from the Corona entry, since price > 2). Q2 would return bar1 (from Amstel) and bar1 again (from Corona). Since Q2 doesn't have DISTINCT, it would return bar1 once (if it's the same bar) or twice if different bars. Wait, but the same bar. So Q1 returns bar1 (distinct), Q2 returns bar1 (from Amstel) and bar1 again (from Corona), but since it's the same bar, even without DISTINCT, the result would be bar1 once (since it's the same row). Wait, but if the same bar is returned twice, but Q2 is just selecting bar, so duplicates would be present. But Q1 uses DISTINCT. So if the same bar appears once in Q1's result (from the Corona entry) and twice in Q2's result (once from Amstel, once from Corona), then Q1 would return one row and Q2 would return two rows (if the same bar is returned twice). But if the bar is the same, then Q2 would return the same bar twice (but with DISTINCT, Q1 returns once). So that's a difference.\n\nAlternatively, maybe have two different bars. For example, bar1 serves Amstel at 1.99 (included in Q2 but not Q1), and bar2 serves Corona at 3.00 (included in both). Then Q1 returns bar2 (distinct), and Q2 returns bar1 and bar2. So the results differ.\n\nSo the counterexample would be:\n\nServes has two entries:\n\n- bar1 serves Amstel at 1.99 → included in Q2 but not Q1.\n\n- bar2 serves Corona at 3.00 → included in both.\n\nThus, Q1 returns bar2 (distinct), Q2 returns bar1 and bar2.\n\nThat's a difference. So the explanation is that Q1 requires price > 2 for both beers, while Q2 includes any Amstel regardless of price. The counterexample database needs to have such entries.\n\nNow, I need to create that in the schema. Let me write the INSERT statements.\n\nFirst, create some bars. For example, bar1 and bar2.\n\nINSERT INTO Bar (name, address) VALUES ('bar1', 'addr1'), ('bar2', 'addr2');\n\nThen, the beers Amstel and Corona need to exist in Beer table.\n\nINSERT INTO Beer (name, brewer) VALUES ('Amstel', 'Brewer1'), ('Corona', 'Brewer2');\n\nThen, the Serves table entries:\n\nINSERT INTO Serves (bar, beer, price) VALUES ('bar1', 'Amstel', 1.99), ('bar2', 'Corona', 3.00);\n\nNow, Q1 would select distinct bar from Serves where (beer is Amstel or Corona) and price > 2. The first entry (bar1, Amstel, 1.99) has price <=2, so excluded. The second entry (bar2, Corona, 3.00) has price > 2, so included. So Q1 returns bar2.\n\nQ2 is select bar from Serves where beer = 'Amstel' OR beer = 'Corona' AND price > 2. Which is beer = 'Amstel' OR (beer = 'Corona' AND price > 2). So the first entry (Amstel, price 1.99) satisfies beer = 'Amstel', so included. The second entry (Corona, price 3.00) satisfies the second part. So Q2 returns bar1 and bar2.\n\nThus, the results are different. That's the counterexample.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 488,
+    "total_tokens": 2401,
+    "completion_tokens": 1913,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1644
+    },
+    "generation_seconds": 59.312
+  },
+  "started_at": "2026-10-06T08:36:33.550626+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "bar2"
+    ]
+  ],
+  "q2_output": [
+    [
+      "bar1"
+    ],
+    [
+      "bar2"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DISTINCT bar FROM Serves WHERE (beer = 'Amstel' OR beer = 'Corona') AND price > 2",
+  "q2_validation_sql": "SELECT bar FROM serves WHERE beer = 'Amstel' OR beer = 'Corona' AND price > 2"
+}

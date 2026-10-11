@@ -1,0 +1,39 @@
+{
+  "dbid": "1149",
+  "index": "258",
+  "source_index": "247",
+  "schema_ddl": "CREATE TABLE VIEWS (\n    ARTICLE_ID INT,\n    AUTHOR_ID INT,\n    VIEWER_ID INT,\n    VIEW_DATE DATE\n);",
+  "q1": "SELECT DISTINCT VIEWER_ID AS ID FROM VIEWS GROUP BY VIEW_DATE, VIEWER_ID HAVING COUNT(DISTINCT ARTICLE_ID) > 1 ORDER BY ID",
+  "q2": "SELECT DISTINCT VIEWER_ID AS ID FROM VIEWS GROUP BY VIEWER_ID, VIEW_DATE HAVING COUNT(DISTINCT(ARTICLE_ID)) >= 2",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT DISTINCT VIEWER_ID AS ID FROM VIEWS GROUP BY VIEW_DATE, VIEWER_ID HAVING COUNT(DISTINCT ARTICLE_ID) > 1 ORDER BY ID",
+  "q2_prompt_sql": "SELECT DISTINCT VIEWER_ID AS ID FROM VIEWS GROUP BY VIEWER_ID, VIEW_DATE HAVING COUNT(DISTINCT(ARTICLE_ID)) >= 2",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries group by VIEWER_ID and VIEW_DATE, and filter groups where the viewer has viewed at least two distinct articles. The HAVING conditions are logically equivalent (COUNT(DISTINCT ARTICLE_ID) > 1 is the same as >= 2).",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries group by VIEWER_ID and VIEW_DATE, and filter groups where the viewer has viewed at least two distinct articles. The HAVING conditions are logically equivalent (COUNT(DISTINCT ARTICLE_ID) > 1 is the same as >= 2).\"\n}",
+  "reasoning": "\nOkay, let's take a look at these two SQL queries. The user wants to know if they're semantically equivalent. \n\nFirst, I need to understand what each query is doing. Let's start with Q1. The query selects distinct VIEWER_ID as ID from the VIEWS table. It groups by VIEW_DATE and VIEWER_ID. The HAVING clause checks if the count of distinct ARTICLE_IDs is greater than 1. Then it orders by ID. \n\nNow Q2: It's similar but the HAVING condition is COUNT(DISTINCT ARTICLE_ID) >= 2. The GROUP BY is VIEWER_ID and VIEW_DATE, which is the same as Q1's grouping. The only difference is the condition in HAVING. \n\nWait, the COUNT(DISTINCT ARTICLE_ID) > 1 in Q1 is equivalent to >=2, right? Because if you have two distinct articles, the count is 2. So greater than 1 is the same as >=2. So maybe they are equivalent. But wait, what about if there's a case where COUNT(DISTINCT ARTICLE_ID) is exactly 2? Both conditions would include that. But what if there's a case where the count is 1? Then Q1's condition would exclude it, and Q2's would also exclude it. So maybe they are the same. \n\nWait, but the GROUP BY clauses in Q1 and Q2 are the same. The order of the columns in GROUP BY doesn't matter in SQL, right? Because GROUP BY VIEWER_ID, VIEW_DATE is the same as VIEW_DATE, VIEWER_ID. So the grouping is the same. \n\nSo the only difference is the HAVING condition. But COUNT(DISTINCT ARTICLE_ID) > 1 is the same as COUNT(DISTINCT ARTICLE_ID) >= 2. Therefore, the two queries should be equivalent. \n\nWait, but maybe there's a case where the count is exactly 1. Let me think. Suppose a viewer has viewed two different articles on the same date. Then COUNT(DISTINCT ARTICLE_ID) would be 2. So both queries would include that. If the count is 1, both would exclude. So the conditions are equivalent. \n\nBut wait, maybe the DISTINCT in the SELECT clause? Q1 has SELECT DISTINCT VIEWER_ID, but since they are grouping by VIEWER_ID, the DISTINCT might be redundant. But in SQL, when you use GROUP BY, the SELECT clause can have aggregate functions or columns in the GROUP BY. So the DISTINCT might not affect the result here. \n\nSo, in that case, the two queries should be equivalent. Therefore, the answer is Y. \n\nBut wait, let me check again. The HAVING clause in Q1 is COUNT(DISTINCT ARTICLE_ID) > 1, and in Q2 it's COUNT(DISTINCT ARTICLE_ID) >= 2. Are these exactly the same? Yes. Because if the count is 2, both conditions are true. If the count is 1, both are false. So they are equivalent. \n\nTherefore, the two queries are semantically equivalent. The answer is Y.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 348,
+    "total_tokens": 1062,
+    "completion_tokens": 714,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 645
+    },
+    "generation_seconds": 23.609
+  },
+  "started_at": "2026-10-06T14:57:27.157378+00:00",
+  "elapsed_seconds": 0.0
+}

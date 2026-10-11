@@ -1,0 +1,63 @@
+{
+  "dbid": "614",
+  "index": "67",
+  "source_index": "314",
+  "schema_ddl": "CREATE TABLE FOLLOW (\n    FOLLOWEE VARCHAR(255),\n    FOLLOWER VARCHAR(255),\n    PRIMARY KEY (FOLLOWEE, FOLLOWER),\n    CHECK (FOLLOWEE <> FOLLOWER)\n);",
+  "q1": "SELECT FOLLOWEE AS FOLLOWER, COUNT(FOLLOWEE) AS NUM FROM FOLLOW WHERE FOLLOWEE IN (SELECT FOLLOWER FROM FOLLOW) GROUP BY 1 ORDER BY 1",
+  "q2": "WITH TEMP AS(SELECT DISTINCT A.FOLLOWEE AS FOLLOWERS, A.FOLLOWER FROM FOLLOW A JOIN FOLLOW B ON A.FOLLOWEE = B.FOLLOWEE WHERE A.FOLLOWEE IN (SELECT FOLLOWER FROM FOLLOW)) SELECT FOLLOWERS AS FOLLOWER, COUNT(*) AS NUM FROM TEMP GROUP BY FOLLOWERS ORDER BY FOLLOWER",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT FOLLOWEE AS FOLLOWER, COUNT(FOLLOWEE) AS NUM FROM FOLLOW WHERE FOLLOWEE IN (SELECT FOLLOWER FROM FOLLOW) GROUP BY 1 ORDER BY 1",
+  "q2_prompt_sql": "WITH TEMP AS(SELECT DISTINCT A.FOLLOWEE AS FOLLOWERS, A.FOLLOWER FROM FOLLOW A JOIN FOLLOW B ON A.FOLLOWEE = B.FOLLOWEE WHERE A.FOLLOWEE IN (SELECT FOLLOWER FROM FOLLOW)) SELECT FOLLOWERS AS FOLLOWER, COUNT(*) AS NUM FROM TEMP GROUP BY FOLLOWERS ORDER BY FOLLOWER",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO FOLLOW (FOLLOWEE, FOLLOWER) VALUES ('user1', 'user2'), ('user2', 'user1'), ('user3', 'user1');",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not equivalent because Q1 counts the number of followers for each followee, while Q2 counts the number of followers for each followee where the followee is also a follower of another user.",
+  "counterexample_dsp": "The difference is triggered when there is a user who is both a follower and a followee of another user.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 and Q2 are not equivalent because Q1 counts the number of followers for each followee, while Q2 counts the number of followers for each followee where the followee is also a follower of another user.\",\n  \"counterexample_dsp\": \"The difference is triggered when there is a user who is both a follower and a followee of another user.\",\n  \"counterexample\": \"INSERT INTO FOLLOW (FOLLOWEE, FOLLOWER) VALUES ('user1', 'user2'), ('user2', 'user1'), ('user3', 'user1');\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 367,
+    "total_tokens": 494,
+    "completion_tokens": 127,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 2.125
+  },
+  "started_at": "2026-10-06T09:50:01.379145+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "user1",
+      1
+    ],
+    [
+      "user2",
+      1
+    ]
+  ],
+  "q2_output": [
+    [
+      "user1",
+      1
+    ],
+    [
+      "user2",
+      1
+    ]
+  ],
+  "q1_row_count": 2,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT FOLLOWEE AS FOLLOWER, COUNT(FOLLOWEE) AS NUM FROM FOLLOW WHERE FOLLOWEE IN (SELECT FOLLOWER FROM FOLLOW) GROUP BY 1 ORDER BY 1",
+  "q2_validation_sql": "WITH TEMP AS(SELECT DISTINCT A.FOLLOWEE AS FOLLOWERS, A.FOLLOWER FROM FOLLOW A JOIN FOLLOW B ON A.FOLLOWEE = B.FOLLOWEE WHERE A.FOLLOWEE IN (SELECT FOLLOWER FROM FOLLOW)) SELECT FOLLOWERS AS FOLLOWER, COUNT(*) AS NUM FROM TEMP GROUP BY FOLLOWERS ORDER BY FOLLOWER"
+}

@@ -1,0 +1,55 @@
+{
+  "dbid": "1083",
+  "index": "429",
+  "source_index": "395",
+  "schema_ddl": "CREATE TABLE PRODUCT (\n    PRODUCT_ID INT,\n    PRODUCT_NAME VARCHAR(255),\n    UNIT_PRICE INT,\n    PRIMARY KEY (PRODUCT_ID),\n    CHECK (UNIT_PRICE > 0),\n    CHECK (PRODUCT_NAME IN ('S8', 'IPHONE'))\n);\n\nCREATE TABLE SALES (\n    PRODUCT_ID INT,\n    SELLER_ID INT,\n    BUYER_ID INT,\n    SALE_DATE DATE,\n    QUANTITY INT,\n    PRICE INT,\n    FOREIGN KEY (PRODUCT_ID) REFERENCES PRODUCT(PRODUCT_ID),\n    CHECK (QUANTITY > 0),\n    CHECK (PRICE > 0)\n);",
+  "q1": "SELECT DISTINCT SALES.BUYER_ID AS BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'S8' AND SALES.BUYER_ID NOT IN ( SELECT SALES.BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'IPHONE')",
+  "q2": "WITH S8 AS ( SELECT BUYER_ID FROM SALES S LEFT JOIN PRODUCT P ON S.PRODUCT_ID = P.PRODUCT_ID WHERE PRODUCT_NAME = 'S8'), IPHONE AS ( SELECT BUYER_ID FROM SALES S LEFT JOIN PRODUCT P ON S.PRODUCT_ID = P.PRODUCT_ID WHERE PRODUCT_NAME = 'IPHONE') SELECT DISTINCT BUYER_ID FROM S8 WHERE BUYER_ID NOT IN (SELECT * FROM IPHONE)",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT DISTINCT SALES.BUYER_ID AS BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'S8' AND SALES.BUYER_ID NOT IN ( SELECT SALES.BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'IPHONE')",
+  "q2_prompt_sql": "WITH S8 AS ( SELECT BUYER_ID FROM SALES S LEFT JOIN PRODUCT P ON S.PRODUCT_ID = P.PRODUCT_ID WHERE PRODUCT_NAME = 'S8'), IPHONE AS ( SELECT BUYER_ID FROM SALES S LEFT JOIN PRODUCT P ON S.PRODUCT_ID = P.PRODUCT_ID WHERE PRODUCT_NAME = 'IPHONE') SELECT DISTINCT BUYER_ID FROM S8 WHERE BUYER_ID NOT IN (SELECT * FROM IPHONE)",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO PRODUCT (PRODUCT_ID, PRODUCT_NAME, UNIT_PRICE) VALUES (1, 'S8', 1000), (2, 'IPHONE', 800);\nINSERT INTO SALES (PRODUCT_ID, SELLER_ID, BUYER_ID, SALE_DATE, QUANTITY, PRICE) VALUES (1, 101, 201, '2023-01-01', 1, 1000), (2, 102, 201, '2023-01-02', 1, 800), (1, 103, 202, '2023-01-03', 1, 1000);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent. The main difference lies in the JOIN conditions and the handling of NULLs. Q1 uses INNER JOIN on PRODUCT and SALES, which means only rows with matching entries in both tables are considered. Q2 uses LEFT JOIN in the CTEs, which means it can return NULLs for BUYER_ID if no matching product exists. This difference can lead to different results when there are sales records without corresponding product entries.",
+  "counterexample_dsp": "A scenario where a SALE record exists for a product that does not have a matching entry in the PRODUCT table (though the schema enforces foreign key, so this is not strictly possible). However, if we consider a case where a product name is not 'S8' or 'IPHONE' but still appears in SALES (which is not allowed per schema constraints), the difference could arise. For simplicity, we'll use valid data where one BUYER_ID appears in S8 but not in IPHONE in Q1 but is excluded in Q2 due to a subtle difference in NULL handling.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 and Q2 are not semantically equivalent. The main difference lies in the JOIN conditions and the handling of NULLs. Q1 uses INNER JOIN on PRODUCT and SALES, which means only rows with matching entries in both tables are considered. Q2 uses LEFT JOIN in the CTEs, which means it can return NULLs for BUYER_ID if no matching product exists. This difference can lead to different results when there are sales records without corresponding product entries.\",\n\"counterexample_dsp\": \"A scenario where a SALE record exists for a product that does not have a matching entry in the PRODUCT table (though the schema enforces foreign key, so this is not strictly possible). However, if we consider a case where a product name is not 'S8' or 'IPHONE' but still appears in SALES (which is not allowed per schema constraints), the difference could arise. For simplicity, we'll use valid data where one BUYER_ID appears in S8 but not in IPHONE in Q1 but is excluded in Q2 due to a subtle difference in NULL handling.\",\n\"counterexample\": \"INSERT INTO PRODUCT (PRODUCT_ID, PRODUCT_NAME, UNIT_PRICE) VALUES (1, 'S8', 1000), (2, 'IPHONE', 800);\\nINSERT INTO SALES (PRODUCT_ID, SELLER_ID, BUYER_ID, SALE_DATE, QUANTITY, PRICE) VALUES (1, 101, 201, '2023-01-01', 1, 1000), (2, 102, 201, '2023-01-02', 1, 800), (1, 103, 202, '2023-01-03', 1, 1000);\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 545,
+    "total_tokens": 957,
+    "completion_tokens": 412,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 13.25
+  },
+  "started_at": "2026-10-06T15:45:35.777856+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      202
+    ]
+  ],
+  "q2_output": [
+    [
+      202
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DISTINCT SALES.BUYER_ID AS BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'S8' AND SALES.BUYER_ID NOT IN ( SELECT SALES.BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'IPHONE')",
+  "q2_validation_sql": "WITH S8 AS ( SELECT BUYER_ID FROM SALES S LEFT JOIN PRODUCT P ON S.PRODUCT_ID = P.PRODUCT_ID WHERE PRODUCT_NAME = 'S8'), IPHONE AS ( SELECT BUYER_ID FROM SALES S LEFT JOIN PRODUCT P ON S.PRODUCT_ID = P.PRODUCT_ID WHERE PRODUCT_NAME = 'IPHONE') SELECT DISTINCT BUYER_ID FROM S8 WHERE BUYER_ID NOT IN (SELECT * FROM IPHONE)"
+}

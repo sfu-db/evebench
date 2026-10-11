@@ -1,0 +1,61 @@
+{
+  "dbid": "beers",
+  "index": "205",
+  "source_index": "5345",
+  "schema_ddl": "CREATE TABLE Bar (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Beer (\n    name VARCHAR NOT NULL,\n    brewer VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Drinker (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Frequents (\n    drinker VARCHAR NOT NULL,\n    bar VARCHAR NOT NULL,\n    times_a_week SMALLINT NOT NULL,\n    PRIMARY KEY (drinker, bar),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (bar) REFERENCES Bar(name)\n);\n\nCREATE TABLE Serves (\n    bar VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    price DECIMAL(5,2) NOT NULL,\n    PRIMARY KEY (bar, beer),\n    FOREIGN KEY (bar) REFERENCES Bar(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);\n\nCREATE TABLE Likes (\n    drinker VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    PRIMARY KEY (drinker, beer),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);",
+  "q1": "SELECT f1.drinker, f2.drinker FROM (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f1, (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f2 WHERE f1.drinker < f2.drinker AND f1.st = f2.st",
+  "q2": "SELECT DISTINCT A.drinker, B.drinker FROM frequents AS A, frequents AS B WHERE A.times_a_week = B.times_a_week",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "beers",
+  "q1_prompt_sql": "SELECT f1.drinker, f2.drinker FROM (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f1, (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f2 WHERE f1.drinker < f2.drinker AND f1.st = f2.st",
+  "q2_prompt_sql": "SELECT DISTINCT A.drinker, B.drinker FROM frequents AS A, frequents AS B WHERE A.times_a_week = B.times_a_week",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO Bar (name, address) VALUES ('BarA', '123 Main'), ('BarB', '456 Oak'), ('BarC', '789 Pine');\nINSERT INTO Drinker (name, address) VALUES ('Alice', '789 Pine'), ('Bob', '123 Main');\nINSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('Alice', 'BarA', 3), ('Alice', 'BarB', 1), ('Bob', 'BarC', 4);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 compares total weekly visit sums of drinkers, while Q2 compares individual visit frequencies. Q1 returns pairs with equal total sums, Q2 returns pairs with at least one matching individual frequency.",
+  "counterexample_dsp": "Two drinkers with same total visits but no matching individual visit counts. Q1 includes them, Q2 excludes them.",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 compares total weekly visit sums of drinkers, while Q2 compares individual visit frequencies. Q1 returns pairs with equal total sums, Q2 returns pairs with at least one matching individual frequency.\",\n  \"counterexample_dsp\": \"Two drinkers with same total visits but no matching individual visit counts. Q1 includes them, Q2 excludes them.\",\n  \"counterexample\": \"INSERT INTO Bar (name, address) VALUES ('BarA', '123 Main'), ('BarB', '456 Oak'), ('BarC', '789 Pine');\\nINSERT INTO Drinker (name, address) VALUES ('Alice', '789 Pine'), ('Bob', '123 Main');\\nINSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('Alice', 'BarA', 3), ('Alice', 'BarB', 1), ('Bob', 'BarC', 4);\"\n}",
+  "reasoning": "\nOkay, let's see. I need to find a counterexample where Q1 and Q2 return different results. First, I need to understand what each query is doing.\n\nQ1: It's taking two subqueries, f1 and f2, which both group the frequents table by drinker and sum their times_a_week. Then it's joining these two subqueries on the condition that f1.drinker is less than f2.drinker and their summed times are equal. So this would give pairs of drinkers who have the same total times_a_week, but only once per pair, ordered by drinker names.\n\nQ2: It's selecting distinct pairs of drinkers from the frequents table where their individual times_a_week are equal. But here, it's comparing individual rows, not the sum. So if two drinkers have at least one entry where their times_a_week are the same, they'll be in the result. Also, since it's using DISTINCT, duplicates are removed, but it's possible that the same pair could be generated from different rows.\n\nSo the main difference is that Q1 is comparing the total sums of times_a_week for drinkers, while Q2 is comparing individual times_a_week entries between any two drinkers. \n\nTo create a counterexample, I need a scenario where two drinkers have the same total sum (so Q1 would include them), but there's no pair of rows where their times_a_week are the same. Alternatively, the reverse: two drinkers have a matching time in some row, but their total sums are different. Wait, but Q1's condition is that their total sums are equal. So maybe if two drinkers have the same total sum, but in their individual entries, their times_a_week don't match. Let's think.\n\nLet me think of an example. Suppose Drinker A has two entries: 2 and 2 times a week. Drinker B has one entry: 4. Then their total sums are both 4. So Q1 would pair A and B. But in Q2, A's entries are 2 and 2, B's is 4. So for Q2, any pair where times_a_week are equal. So A and B would not be in Q2's result because B's only entry is 4, and A's entries are 2. But if there's another drinker C with an entry of 2, then Q2 would have A and C. But Q1 would pair A with B (sum 4 vs 4) and A with C (sum 4 vs 2? No, wait, C's sum would be 2. So if C has sum 2, then A's sum is 4, so Q1 would not pair A with C. So in this case, Q1 would have A and B, but Q2 would have A and C (if C has a 2). But if there's no such C, then Q2 might not have any pair involving A and B. \n\nWait, but in this case, Q2 would look for any two drinkers where any of their entries have the same times_a_week. So if A has two entries (2 and 2), and B has one entry (4), then Q2 would not have any pair between A and B because none of A's entries (2) match B's entry (4). However, Q1 would have A and B because their total sums are equal. So in this case, Q1 would return (A, B) and Q2 would not return that pair. Therefore, this would be a counterexample.\n\nAlternatively, if there's a case where Q2 returns pairs that Q1 does not. For example, if two drinkers have a matching time in their entries, but their total sums are different. Suppose Drinker X has entries 3 and 1 (sum 4), and Drinker Y has an entry 3 (sum 3). Then Q2 would pair X and Y because X has a 3 and Y has a 3. However, their total sums are 4 and 3, so Q1 would not pair them. Therefore, Q2 would have (X, Y) but Q1 would not. So that's another scenario.\n\nSo the key is that Q1 is based on total sums, while Q2 is based on individual entries. Therefore, the counterexample can be constructed in either direction.\n\nLet me create a specific example. Let's take two drinkers: Alice and Bob. \n\nFor Q1 to return them, their total times_a_week must be equal. For Q2 to not return them, there must be no instance where their individual times_a_week are the same. \n\nLet's say:\n\n- Alice frequents Bar1 3 times a week and Bar2 1 time a week. Total is 4.\n- Bob frequents Bar3 4 times a week. Total is 4.\n\nSo Q1 would pair Alice and Bob because their total sums are equal. But Q2 would look for any pair of entries where their times_a_week are the same. Alice's entries are 3 and 1; Bob's is 4. So no matches. Therefore, Q2 would not have Alice and Bob in the result. Thus, Q1 returns (Alice, Bob), Q2 returns nothing for that pair. Hence, different results.\n\nAlternatively, another case where Q2 returns pairs that Q1 does not. Suppose:\n\n- Charlie frequents Bar1 2 times a week (total 2)\n- Dave frequents Bar2 2 times a week (total 2)\n- Then Q1 would pair Charlie and Dave (since their totals are same). Q2 would also pair them because their entries are same. So same result.\n\nBut if Charlie has entries 3 and -1 (but wait, times_a_week is a SMALLINT, but the schema says it's NOT NULL. However, the problem says the counterexample should not violate constraints. So times_a_week must be positive? Well, the schema doesn't specify that, but the problem says to not violate constraints. The schema allows any SMALLINT, but maybe the actual data should be valid. However, the problem says to create a test database that doesn't violate constraints. So maybe times_a_week is allowed to be zero or negative? Not sure, but perhaps the problem assumes that times_a_week is a positive integer.\n\nAssuming that, let's take another example. Suppose:\n\n- Drinker1 has entries: 2 and 3 (total 5)\n- Drinker2 has entries: 1 and 4 (total 5)\n- So Q1 would pair them. Now, Q2 would check if any of their entries match. Drinker1's entries are 2 and 3; Drinker2's are 1 and 4. No matches. So Q2 would not have this pair. Therefore, Q1 returns (Drinker1, Drinker2), Q2 returns nothing. So that's a counterexample.\n\nAlternatively, if there's another pair where Q2 returns something that Q1 doesn't. For example:\n\n- Drinker3 has entries: 2 and 2 (sum 4)\n- Drinker4 has entries: 3 and 1 (sum 4)\n- Then Q1 would pair them. But Q2 would pair Drinker3 with any other drinker who has a 2 in their entries. Suppose Drinker5 has an entry of 2. Then Q2 would have (Drinker3, Drinker5) and (Drinker4, Drinker5) if Drinker5 has a 2. But Q1 would pair Drinker3 and Drinker4 (sum 4 each), but that's already covered. However, if there's a scenario where Q2 has pairs that Q1 doesn't, but I think the main difference is in the first case.\n\nSo to create the counterexample, let's create two drinkers with same total sum but no individual entries matching. Let's make sure that the data is valid.\n\nLet me structure the test data. Let's create:\n\nDrinker 'Alice' frequents two bars: BarA 3 times and BarB 1 time. Total 4.\n\nDrinker 'Bob' frequents BarC 4 times. Total 4.\n\nThen, Q1 would have Alice and Bob as a pair. Q2 would not have them because Alice's entries are 3 and 1, Bob's is 4. So no matching times.\n\nAnother possible case: if there's another drinker with a 3, then Q2 would have Alice and that drinker. But in this case, the main difference is between Alice and Bob.\n\nSo the test database would need:\n\n- Insert into Drinker: Alice and Bob.\n- Insert into Frequents: (Alice, BarA, 3), (Alice, BarB, 1), (Bob, BarC, 4).\n\nAlso, need to create the bars. So BarA, BarB, BarC must be inserted into Bar table.\n\nSo the SQL would be:\n\nINSERT INTO Bar (name, address) VALUES ('BarA', 'addr1'), ('BarB', 'addr2'), ('BarC', 'addr3');\nINSERT INTO Drinker (name, address) VALUES ('Alice', 'addrA'), ('Bob', 'addrB');\nINSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('Alice', 'BarA', 3), ('Alice', 'BarB', 1), ('Bob', 'BarC', 4);\n\nThen, Q1 would return (Alice, Bob) because their totals are both 4. Q2 would not return this pair because none of their individual times match. Therefore, the queries return different results.\n\nThis should be a valid counterexample.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 548,
+    "total_tokens": 2780,
+    "completion_tokens": 2232,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 2027
+    },
+    "generation_seconds": 75.782
+  },
+  "started_at": "2026-10-06T08:26:08.504908+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "Alice",
+      "Bob"
+    ]
+  ],
+  "q2_output": [
+    [
+      "Alice",
+      "Alice"
+    ],
+    [
+      "Bob",
+      "Bob"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT f1.drinker, f2.drinker FROM (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f1, (SELECT drinker, SUM(times_a_week) AS st FROM frequents GROUP BY drinker) AS f2 WHERE f1.drinker < f2.drinker AND f1.st = f2.st",
+  "q2_validation_sql": "SELECT DISTINCT A.drinker, B.drinker FROM frequents AS A, frequents AS B WHERE A.times_a_week = B.times_a_week"
+}

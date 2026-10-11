@@ -1,0 +1,55 @@
+{
+  "dbid": "toxicology",
+  "index": "221",
+  "source_index": "331",
+  "schema_ddl": "CREATE TABLE `atom` (\n  `atom_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `element` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `bond` (\n  `bond_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `bond_type` TEXT DEFAULT NULL,\n  PRIMARY KEY (`bond_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `connected` (\n  `atom_id` TEXT NOT NULL,\n  `atom_id2` TEXT NOT NULL,\n  `bond_id` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`,`atom_id2`),\n  FOREIGN KEY (`atom_id`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`atom_id2`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`bond_id`) REFERENCES `bond` (`bond_id`) ON DELETE CASCADE ON UPDATE CASCADE\n);\n\nCREATE TABLE `molecule` (\n  `molecule_id` TEXT NOT NULL,\n  `label` TEXT DEFAULT NULL,\n  PRIMARY KEY (`molecule_id`)\n);",
+  "q1": "SELECT CAST(SUM(CASE WHEN T1.label = '+' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(DISTINCT T1.molecule_id) FROM molecule AS T1 INNER JOIN atom AS T2 ON T1.molecule_id = T2.molecule_id INNER JOIN bond AS T3 ON T1.molecule_id = T3.molecule_id WHERE T3.bond_type = '#' AND T2.element = 'h'",
+  "q2": "SELECT CAST(SUM(CASE WHEN T1.label = '+' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(T1.molecule_id) FROM molecule AS T1 INNER JOIN atom AS T2 ON T1.molecule_id = T2.molecule_id INNER JOIN connected AS T3 ON T2.atom_id = T3.atom_id INNER JOIN bond AS T4 ON T3.bond_id = T4.bond_id WHERE T2.element = 'h' AND T4.bond_type = '#'",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT CAST(SUM(CASE WHEN T1.label = '+' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(DISTINCT T1.molecule_id) FROM molecule AS T1 INNER JOIN atom AS T2 ON T1.molecule_id = T2.molecule_id INNER JOIN bond AS T3 ON T1.molecule_id = T3.molecule_id WHERE T3.bond_type = '#' AND T2.element = 'h'",
+  "q2_prompt_sql": "SELECT CAST(SUM(CASE WHEN T1.label = '+' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(T1.molecule_id) FROM molecule AS T1 INNER JOIN atom AS T2 ON T1.molecule_id = T2.molecule_id INNER JOIN connected AS T3 ON T2.atom_id = T3.atom_id INNER JOIN bond AS T4 ON T3.bond_id = T4.bond_id WHERE T2.element = 'h' AND T4.bond_type = '#'",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO molecule (molecule_id, label) VALUES ('M1', '+');\nINSERT INTO atom (atom_id, molecule_id, element) VALUES ('A1', 'M1', 'h');\nINSERT INTO atom (atom_id, molecule_id, element) VALUES ('A2', 'M1', 'h');\nINSERT INTO bond (bond_id, molecule_id, bond_type) VALUES ('B1', 'M1', '#');\nINSERT INTO connected (atom_id, atom_id2, bond_id) VALUES ('A1', 'A2', 'B1');\nINSERT INTO connected (atom_id, atom_id2, bond_id) VALUES ('A2', 'A1', 'B1');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 uses COUNT(DISTINCT molecule_id) while Q2 uses COUNT(molecule_id). When a molecule has multiple hydrogen atoms involved in bonds of type '#', Q2's denominator counts rows per atom, while Q1 counts distinct molecules. This creates different results when multiple atoms per molecule meet the criteria.",
+  "counterexample_dsp": "A molecule with label '+' has two hydrogen atoms connected by a single bond of type '#'. Q1 counts 1 distinct molecule in denominator, Q2 counts 2 rows (one per atom) in denominator, producing different percentages.",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 uses COUNT(DISTINCT molecule_id) while Q2 uses COUNT(molecule_id). When a molecule has multiple hydrogen atoms involved in bonds of type '#', Q2's denominator counts rows per atom, while Q1 counts distinct molecules. This creates different results when multiple atoms per molecule meet the criteria.\",\n  \"counterexample_dsp\": \"A molecule with label '+' has two hydrogen atoms connected by a single bond of type '#'. Q1 counts 1 distinct molecule in denominator, Q2 counts 2 rows (one per atom) in denominator, producing different percentages.\",\n  \"counterexample\": [\n    \"INSERT INTO molecule (molecule_id, label) VALUES ('M1', '+')\",\n    \"INSERT INTO atom (atom_id, molecule_id, element) VALUES ('A1', 'M1', 'h')\",\n    \"INSERT INTO atom (atom_id, molecule_id, element) VALUES ('A2', 'M1', 'h')\",\n    \"INSERT INTO bond (bond_id, molecule_id, bond_type) VALUES ('B1', 'M1', '#')\",\n    \"INSERT INTO connected (atom_id, atom_id2, bond_id) VALUES ('A1', 'A2', 'B1')\",\n    \"INSERT INTO connected (atom_id, atom_id2, bond_id) VALUES ('A2', 'A1', 'B1')\"\n  ]\n}",
+  "reasoning": "\nOkay, let's see. I need to find a counterexample where Q1 and Q2 return different results. First, I should understand what each query is doing.\n\nLooking at Q1: It joins molecule (T1) with atom (T2) and bond (T3) on molecule_id. The WHERE clause filters T3.bond_type = '#' and T2.element = 'h'. Then it calculates the sum of cases where T1.label is '+', multiplied by 100 divided by the count of distinct molecule_ids. So the denominator is COUNT(DISTINCT T1.molecule_id), which counts unique molecules that have at least one hydrogen atom and a bond of type '#'.\n\nQ2: Joins molecule (T1) with atom (T2), connected (T3), and bond (T4). The WHERE clause is T2.element = 'h' and T4.bond_type = '#'. The denominator is COUNT(T1.molecule_id), which counts all rows in the joined result. The numerator is the same as Q1: sum of T1.label = '+'.\n\nThe key difference is in the denominator. Q1 uses COUNT(DISTINCT T1.molecule_id) which counts unique molecules, while Q2 uses COUNT(T1.molecule_id) which counts all occurrences. Also, the joins differ: Q1 joins bond directly on molecule_id, while Q2 uses connected table to link atom to bond via bond_id.\n\nWait, but in Q1, the bond table is joined on molecule_id. So each bond in the bond table for that molecule would be included. However, in Q2, connected joins atom to bond via bond_id. The connected table links atoms to bonds. So for each bond, each atom involved in the bond would be connected. So for a bond with two atoms, connected would have two entries (atom1, atom2, bond_id) and (atom2, atom1, bond_id). So the join in Q2 might produce more rows per bond compared to Q1.\n\nBut the main difference is the denominator. Let's think about a scenario where a molecule has multiple bonds of type '#' with hydrogen atoms. In Q1, each such bond would be counted once per molecule (since molecule_id is distinct). In Q2, each bond would be counted once per atom in the connected table. For example, if a bond connects two hydrogen atoms, connected would have two rows (atom1 and atom2), so COUNT(T1.molecule_id) would be 2 for that bond, leading to a different denominator.\n\nAlternatively, maybe the number of rows in the join affects the denominator. For example, if a molecule has two hydrogen atoms connected via a bond of type '#', Q1 would count that molecule once in the denominator (COUNT(DISTINCT)), while Q2 would count two rows (each hydrogen atom contributes one row), leading to a denominator of 2 instead of 1. That would make Q1's percentage higher than Q2's.\n\nLet me create a test case. Suppose there's one molecule with label '+', molecule_id 'M1'. It has two hydrogen atoms (atom1 and atom2) connected by a bond of type '#'. The connected table would have two entries for this bond (atom1-atom2 and atom2-atom1). The bond table has one entry for this bond.\n\nIn Q1: The join on bond (T3) would have one row (bond_type is '#'). The count distinct molecule_id is 1. The numerator is 1 (since label is '+').\n\nSo Q1 result is 100% (1 * 100 / 1).\n\nIn Q2: Joining via connected table, each atom (atom1 and atom2) would produce a row. So COUNT(T1.molecule_id) is 2. The numerator is still 1 (only one molecule with label '+'). So the result is 1 * 100 / 2 = 50%. So different results.\n\nSo this scenario would show a difference. Now, I need to make sure the schema constraints are met. The connected table has atom_id and atom_id2 as primary key, so each pair is unique. The bond table has one bond entry. The atom table has two entries for the same molecule_id.\n\nSo the counterexample would be:\n\nmolecule: (molecule_id 'M1', label '+')\natom: two rows with atom_id 'A1', 'A2', both with molecule_id 'M1' and element 'h'\nbond: one row with bond_id 'B1', molecule_id 'M1', bond_type '#'\nconnected: two rows (A1, A2, B1) and (A2, A1, B1)\n\nThis setup would cause Q1's denominator to be 1 (COUNT DISTINCT) and Q2's denominator to be 2 (COUNT), leading to different percentages.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 670,
+    "total_tokens": 1981,
+    "completion_tokens": 1311,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1015
+    },
+    "generation_seconds": 43.547
+  },
+  "started_at": "2026-10-06T18:37:07.776962+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      200.0
+    ]
+  ],
+  "q2_output": [
+    [
+      100.0
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT CAST(SUM(CASE WHEN T1.label = '+' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(DISTINCT T1.molecule_id) FROM molecule AS T1 INNER JOIN atom AS T2 ON T1.molecule_id = T2.molecule_id INNER JOIN bond AS T3 ON T1.molecule_id = T3.molecule_id WHERE T3.bond_type = '#' AND T2.element = 'h'",
+  "q2_validation_sql": "SELECT CAST(SUM(CASE WHEN T1.label = '+' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(T1.molecule_id) FROM molecule AS T1 INNER JOIN atom AS T2 ON T1.molecule_id = T2.molecule_id INNER JOIN connected AS T3 ON T2.atom_id = T3.atom_id INNER JOIN bond AS T4 ON T3.bond_id = T4.bond_id WHERE T2.element = 'h' AND T4.bond_type = '#'"
+}

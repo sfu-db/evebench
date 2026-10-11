@@ -1,0 +1,55 @@
+{
+  "dbid": "debit_card_specializing",
+  "index": "873",
+  "source_index": "1528",
+  "schema_ddl": "CREATE TABLE customers\n(\n    CustomerID INTEGER UNIQUE     not null\n        primary key,\n    Segment    TEXT null,\n    Currency   TEXT null\n);\n\nCREATE TABLE gasstations\n(\n    GasStationID INTEGER    UNIQUE   not null\n        primary key,\n    ChainID      INTEGER          null,\n    Country      TEXT null,\n    Segment      TEXT null\n);\n\nCREATE TABLE products\n(\n    ProductID   INTEGER   UNIQUE      not null\n        primary key,\n    Description TEXT null\n);\n\nCREATE TABLE \"transactions_1k\"\n(\n    TransactionID INTEGER\n        primary key autoincrement,\n    Date          DATE,\n    Time          TEXT,\n    CustomerID    INTEGER,\n    CardID        INTEGER,\n    GasStationID  INTEGER,\n    ProductID     INTEGER,\n    Amount        INTEGER,\n    Price         REAL\n);\n\nCREATE TABLE \"yearmonth\"\n(\n    CustomerID  INTEGER not null\n        references customers\n            on update cascade on delete cascade\n        references customers,\n    Date        TEXT    not null,\n    Consumption REAL,\n    primary key (Date, CustomerID)\n);",
+  "q1": "SELECT GasStationID FROM transactions_1k GROUP BY GasStationID ORDER BY SUM(Price) DESC LIMIT 1",
+  "q2": "SELECT GasStationID FROM transactions_1k GROUP BY GasStationID ORDER BY SUM(Price * Amount) DESC LIMIT 1",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT GasStationID FROM transactions_1k GROUP BY GasStationID ORDER BY SUM(Price) DESC LIMIT 1",
+  "q2_prompt_sql": "SELECT GasStationID FROM transactions_1k GROUP BY GasStationID ORDER BY SUM(Price * Amount) DESC LIMIT 1",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO customers (CustomerID, Segment, Currency) VALUES (1, 'X', 'USD');\nINSERT INTO gasstations (GasStationID, ChainID, Country, Segment) VALUES (1, 100, 'USA', 'A'), (2, 200, 'USA', 'B');\nINSERT INTO products (ProductID, Description) VALUES (1, 'Gasoline'), (2, 'Diesel'), (3, 'LPG');\nINSERT INTO transactions_1k (TransactionID, Date, Time, CustomerID, CardID, GasStationID, ProductID, Amount, Price) VALUES (1, '2023-01-01', '10:00', 1, 100, 1, 1, 1, 10);\nINSERT INTO transactions_1k (TransactionID, Date, Time, CustomerID, CardID, GasStationID, ProductID, Amount, Price) VALUES (2, '2023-01-01', '10:01', 1, 101, 1, 2, 1, 5);\nINSERT INTO transactions_1k (TransactionID, Date, Time, CustomerID, CardID, GasStationID, ProductID, Amount, Price) VALUES (3, '2023-01-01', '10:02', 1, 102, 2, 3, 2, 10);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 sums the 'Price' column directly, while Q2 sums the product of 'Price' and 'Amount' (total transaction value). These aggregates can yield different results when transactions have varying amounts.",
+  "counterexample_dsp": "GasStation 1 has two transactions: (Price=10, Amount=1) and (Price=5, Amount=1). GasStation 2 has one transaction: (Price=10, Amount=2). Q1 returns GasStation 1 (sum Price=15), Q2 returns GasStation 2 (sum Price*Amount=20).",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 sums the 'Price' column directly, while Q2 sums the product of 'Price' and 'Amount' (total transaction value). These aggregates can yield different results when transactions have varying amounts.\",\n  \"counterexample_dsp\": \"GasStation 1 has two transactions: (Price=10, Amount=1) and (Price=5, Amount=1). GasStation 2 has one transaction: (Price=10, Amount=2). Q1 returns GasStation 1 (sum Price=15), Q2 returns GasStation 2 (sum Price*Amount=20).\",\n  \"counterexample\": [\n    \"INSERT INTO customers (CustomerID, Segment, Currency) VALUES (1, 'X', 'USD');\",\n    \"INSERT INTO gasstations (GasStationID, ChainID, Country, Segment) VALUES (1, 100, 'USA', 'A'), (2, 200, 'USA', 'B');\",\n    \"INSERT INTO products (ProductID, Description) VALUES (1, 'Gasoline'), (2, 'Diesel'), (3, 'LPG');\",\n    \"INSERT INTO transactions_1k (TransactionID, Date, Time, CustomerID, CardID, GasStationID, ProductID, Amount, Price) VALUES (1, '2023-01-01', '10:00', 1, 100, 1, 1, 1, 10);\",\n    \"INSERT INTO transactions_1k (TransactionID, Date, Time, CustomerID, CardID, GasStationID, ProductID, Amount, Price) VALUES (2, '2023-01-01', '10:01', 1, 101, 1, 2, 1, 5);\",\n    \"INSERT INTO transactions_1k (TransactionID, Date, Time, CustomerID, CardID, GasStationID, ProductID, Amount, Price) VALUES (3, '2023-01-01', '10:02', 1, 102, 2, 3, 2, 10);\"\n  ]\n}",
+  "reasoning": "\nOkay, let's see. I need to find a counterexample where Q1 and Q2 return different results. Let me first understand what each query does.\n\nQ1 groups transactions by GasStationID, sums the Price column, orders descending, and takes the top one. So it's finding the gas station with the highest total price across all transactions.\n\nQ2 does the same grouping but sums Price multiplied by Amount. That would be the total amount spent at each gas station, right? Because Price * Amount gives the total cost for each transaction line, and summing that would be the total revenue per gas station.\n\nSo the difference is that Q1 sums just the Price (maybe per transaction?), but Q2 sums the total cost per transaction. Wait, but in the transactions table, each row represents a transaction, which might be a single purchase. For example, if someone buys 5 liters at $2 per liter, the Amount is 5, Price is 2, so Price*Amount is $10. Q1 would sum the Price (adding 2) while Q2 adds 10. So if there are multiple transactions at the same gas station, Q1 would sum the individual prices, but Q2 would sum the total cost per transaction.\n\nTherefore, the two queries are not equivalent because they are summing different values. To create a counterexample, I need to set up data where the sum of Price vs sum of Price*Amount for different gas stations gives different rankings.\n\nLet me think of two gas stations. Let's say GasStation A has two transactions: one with Price=10, Amount=1, and another with Price=5, Amount=1. The sum of Price for A is 15, and sum of Price*Amount is 15. GasStation B has one transaction with Price=10, Amount=2. Sum of Price is 10, sum of Price*Amount is 20. Then Q1 would pick A (sum 15 vs B's 10), but Q2 would pick B (20 vs 15). So in this case, the results differ.\n\nWait, but in that case, the sum for Q1 would be 15 for A and 10 for B. So Q1 returns A. Q2 would have A's sum as 10*1 +5*1=15, and B's 10*2=20. So Q2 returns B. So the two queries would return different GasStationIDs. That's the scenario I need.\n\nSo the counterexample needs two gas stations with different sums when using Price vs Price*Amount.\n\nNow, I need to create such data. Let's create two gas stations, say GasStationID 1 and 2. For GasStation 1, two transactions: one with Price 10, Amount 1, and another Price 5, Amount 1. For GasStation 2, one transaction with Price 10, Amount 2. Then:\n\nQ1: GasStation 1 has sum(Price) = 15, GasStation 2 has sum(Price) =10. So Q1 returns 1.\n\nQ2: GasStation 1's sum(Price*Amount) is 10*1 +5*1=15. GasStation 2's sum is 10*2=20. So Q2 returns 2.\n\nSo the results are different. That's the test case.\n\nNow, I need to write the INSERT statements for transactions_1k. Also, ensure that the other tables (customers, gasstations, products, yearmonth) have the necessary entries, but since the queries only involve transactions_1k, maybe I can just insert into transactions_1k and gasstations.\n\nWait, the GasStationID in transactions_1k must exist in gasstations. So I need to insert into gasstations first.\n\nSo steps:\n\n1. Insert into gasstations GasStationID 1 and 2.\n\n2. Insert into transactions_1k:\n\nFor GasStation 1, two transactions. Let's say TransactionID 1 and 2. Date and Time can be arbitrary, CustomerID and CardID can be any valid (but need to exist in customers?), but since the queries don't involve those, maybe I can just use dummy values. However, the CustomerID must exist in customers. So I need to insert into customers as well.\n\nWait, the customers table has CustomerID as primary key. So I need to have at least one customer. Let's say CustomerID 1, Segment 'X', Currency 'USD'.\n\nSimilarly, for the transactions, the CustomerID must be present. So I need to insert into customers first.\n\nSo the steps are:\n\n- Insert into customers (CustomerID, Segment, Currency) values (1, 'X', 'USD');\n\n- Insert into gasstations (GasStationID, ChainID, Country, Segment) values (1, 100, 'USA', 'A'), (2, 200, 'USA', 'B');\n\n- Insert into transactions_1k:\n\nTransactionID 1: Date '2023-01-01', Time '10:00', CustomerID 1, CardID 100, GasStationID 1, ProductID 1, Amount 1, Price 10.\n\nTransactionID 2: Date '2023-01-01', Time '10:01', CustomerID 1, CardID 101, GasStationID 1, ProductID 2, Amount 1, Price 5.\n\nTransactionID 3: Date '2023-01-01', Time '10:02', CustomerID 1, CardID 102, GasStationID 2, ProductID 3, Amount 2, Price 10.\n\nBut wait, the CardID is not part of any foreign key, so it can be any value. Also, ProductID must exist in products. So need to insert into products as well.\n\nSo:\n\nInsert into products (ProductID, Description) values (1, 'Gasoline'), (2, 'Diesel'), (3, 'LPG');\n\nNow, all the foreign keys are satisfied.\n\nSo the counterexample_dsp would be:\n\nTwo gas stations. GasStation 1 has two transactions with Price 10 and 5, each with Amount 1. GasStation 2 has one transaction with Price 10 and Amount 2. Q1 sums Price (15 vs 10) and returns GasStation 1. Q2 sums Price*Amount (15 vs 20) and returns GasStation 2.\n\nThis setup ensures that the two queries return different GasStationIDs.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 468,
+    "total_tokens": 2376,
+    "completion_tokens": 1908,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1423
+    },
+    "generation_seconds": 61.641
+  },
+  "started_at": "2026-10-06T18:05:16.150912+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      1
+    ]
+  ],
+  "q2_output": [
+    [
+      2
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT GasStationID FROM transactions_1k GROUP BY GasStationID ORDER BY SUM(Price) DESC LIMIT 1",
+  "q2_validation_sql": "SELECT GasStationID FROM transactions_1k GROUP BY GasStationID ORDER BY SUM(Price * Amount) DESC LIMIT 1"
+}

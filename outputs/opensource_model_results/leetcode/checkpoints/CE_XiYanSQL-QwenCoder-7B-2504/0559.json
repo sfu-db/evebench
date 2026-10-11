@@ -1,0 +1,57 @@
+{
+  "dbid": "1097",
+  "index": "559",
+  "source_index": "55",
+  "schema_ddl": "CREATE TABLE ACTIVITY (\n    PLAYER_ID INT,\n    EVENT_DATE DATE,\n    DEVICE_ID INT,\n    GAMES_PLAYED INT,\n    PRIMARY KEY (PLAYER_ID, EVENT_DATE),\n    CHECK (GAMES_PLAYED >= 0)\n);",
+  "q1": "SELECT A1.FIRST_LOGIN AS INSTALL_DT, COUNT(DISTINCT A1.PLAYER_ID) AS INSTALLS, ROUND((SUM(CASE WHEN (A1.FIRST_LOGIN + 1) = A2.EVENT_DATE THEN 1 ELSE 0 END)/ COUNT(DISTINCT A1.PLAYER_ID)), 2) AS DAY1_RETENTION FROM (SELECT PLAYER_ID, MIN(EVENT_DATE) AS FIRST_LOGIN FROM ACTIVITY GROUP BY PLAYER_ID) AS A1 JOIN ACTIVITY AS A2 ON A1.PLAYER_ID = A2.PLAYER_ID GROUP BY A1.FIRST_LOGIN",
+  "q2": "WITH DAY0_TABLE AS (SELECT B.FIRST_LOGIN AS INSTALL_DATE, COUNT(B.PLAYER_ID) AS DAY0_NUM FROM (SELECT PLAYER_ID, MIN(EVENT_DATE) AS FIRST_LOGIN FROM ACTIVITY GROUP BY PLAYER_ID) B GROUP BY B.FIRST_LOGIN), DAY1_TABLE AS (SELECT T.FIRST_LOGIN AS INSTALL_DATE, COALESCE(COUNT(DISTINCT A.PLAYER_ID),0) AS DAY1_NUM FROM ACTIVITY A RIGHT JOIN (SELECT PLAYER_ID, MIN(EVENT_DATE) AS FIRST_LOGIN FROM ACTIVITY GROUP BY PLAYER_ID) T ON A.PLAYER_ID =T.PLAYER_ID AND A.EVENT_DATE = T.FIRST_LOGIN + 1 GROUP BY T.FIRST_LOGIN) SELECT DAY0_TABLE.INSTALL_DATE AS INSTALL_DT, DAY0_TABLE.DAY0_NUM AS INSTALLS, ROUND(DAY1_TABLE.DAY1_NUM/DAY0_TABLE.DAY0_NUM, 2) AS DAY1_RETENTION FROM DAY0_TABLE JOIN DAY1_TABLE ON DAY0_TABLE.INSTALL_DATE = DAY1_TABLE.INSTALL_DATE GROUP BY DAY0_TABLE.INSTALL_DATE",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT A1.FIRST_LOGIN AS INSTALL_DT, COUNT(DISTINCT A1.PLAYER_ID) AS INSTALLS, ROUND((SUM(CASE WHEN (A1.FIRST_LOGIN + 1) = A2.EVENT_DATE THEN 1 ELSE 0 END)/ COUNT(DISTINCT A1.PLAYER_ID)), 2) AS DAY1_RETENTION FROM (SELECT PLAYER_ID, MIN(EVENT_DATE) AS FIRST_LOGIN FROM ACTIVITY GROUP BY PLAYER_ID) AS A1 JOIN ACTIVITY AS A2 ON A1.PLAYER_ID = A2.PLAYER_ID GROUP BY A1.FIRST_LOGIN",
+  "q2_prompt_sql": "WITH DAY0_TABLE AS (SELECT B.FIRST_LOGIN AS INSTALL_DATE, COUNT(B.PLAYER_ID) AS DAY0_NUM FROM (SELECT PLAYER_ID, MIN(EVENT_DATE) AS FIRST_LOGIN FROM ACTIVITY GROUP BY PLAYER_ID) B GROUP BY B.FIRST_LOGIN), DAY1_TABLE AS (SELECT T.FIRST_LOGIN AS INSTALL_DATE, COALESCE(COUNT(DISTINCT A.PLAYER_ID),0) AS DAY1_NUM FROM ACTIVITY A RIGHT JOIN (SELECT PLAYER_ID, MIN(EVENT_DATE) AS FIRST_LOGIN FROM ACTIVITY GROUP BY PLAYER_ID) T ON A.PLAYER_ID =T.PLAYER_ID AND A.EVENT_DATE = T.FIRST_LOGIN + 1 GROUP BY T.FIRST_LOGIN) SELECT DAY0_TABLE.INSTALL_DATE AS INSTALL_DT, DAY0_TABLE.DAY0_NUM AS INSTALLS, ROUND(DAY1_TABLE.DAY1_NUM/DAY0_TABLE.DAY0_NUM, 2) AS DAY1_RETENTION FROM DAY0_TABLE JOIN DAY1_TABLE ON DAY0_TABLE.INSTALL_DATE = DAY1_TABLE.INSTALL_DATE GROUP BY DAY0_TABLE.INSTALL_DATE",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO ACTIVITY (PLAYER_ID, EVENT_DATE, DEVICE_ID, GAMES_PLAYED) VALUES (1, '2023-01-01', 101, 1), (2, '2023-01-01', 102, 0), (2, '2023-01-02', 102, 1);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not equivalent because Q1 uses a JOIN to count the number of players who made an event on the day after their first login, while Q2 uses a RIGHT JOIN to achieve the same. The difference arises when there are players in the ACTIVITY table who do not have an event on the day after their first login, as Q1 will not count these players, while Q2 will count them as 0 for DAY1_NUM.",
+  "counterexample_dsp": "The test data should include a player who has a first login on day 1 and no events on day 2, as well as another player who has a first login on day 1 and an event on day 2. The difference in results will be in the DAY1_RETENTION calculation.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 and Q2 are not equivalent because Q1 uses a JOIN to count the number of players who made an event on the day after their first login, while Q2 uses a RIGHT JOIN to achieve the same. The difference arises when there are players in the ACTIVITY table who do not have an event on the day after their first login, as Q1 will not count these players, while Q2 will count them as 0 for DAY1_NUM.\",\n  \"counterexample_dsp\": \"The test data should include a player who has a first login on day 1 and no events on day 2, as well as another player who has a first login on day 1 and an event on day 2. The difference in results will be in the DAY1_RETENTION calculation.\",\n  \"counterexample\": \"INSERT INTO ACTIVITY (PLAYER_ID, EVENT_DATE, DEVICE_ID, GAMES_PLAYED) VALUES (1, '2023-01-01', 101, 1), (2, '2023-01-01', 102, 0), (2, '2023-01-02', 102, 1);\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 608,
+    "total_tokens": 874,
+    "completion_tokens": 266,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 4.485
+  },
+  "started_at": "2026-10-06T09:55:37.164816+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "2023-01-01",
+      2,
+      "0.50"
+    ]
+  ],
+  "q2_output": [
+    [
+      "2023-01-01",
+      2,
+      "0.50"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT A1.FIRST_LOGIN AS INSTALL_DT, COUNT(DISTINCT A1.PLAYER_ID) AS INSTALLS, ROUND((SUM(CASE WHEN (A1.FIRST_LOGIN + 1) = A2.EVENT_DATE THEN 1 ELSE 0 END)/ COUNT(DISTINCT A1.PLAYER_ID)), 2) AS DAY1_RETENTION FROM (SELECT PLAYER_ID, MIN(EVENT_DATE) AS FIRST_LOGIN FROM ACTIVITY GROUP BY PLAYER_ID) AS A1 JOIN ACTIVITY AS A2 ON A1.PLAYER_ID = A2.PLAYER_ID GROUP BY A1.FIRST_LOGIN",
+  "q2_validation_sql": "WITH DAY0_TABLE AS (SELECT B.FIRST_LOGIN AS INSTALL_DATE, COUNT(B.PLAYER_ID) AS DAY0_NUM FROM (SELECT PLAYER_ID, MIN(EVENT_DATE) AS FIRST_LOGIN FROM ACTIVITY GROUP BY PLAYER_ID) B GROUP BY B.FIRST_LOGIN), DAY1_TABLE AS (SELECT T.FIRST_LOGIN AS INSTALL_DATE, COALESCE(COUNT(DISTINCT A.PLAYER_ID),0) AS DAY1_NUM FROM ACTIVITY A RIGHT JOIN (SELECT PLAYER_ID, MIN(EVENT_DATE) AS FIRST_LOGIN FROM ACTIVITY GROUP BY PLAYER_ID) T ON A.PLAYER_ID =T.PLAYER_ID AND A.EVENT_DATE = T.FIRST_LOGIN + 1 GROUP BY T.FIRST_LOGIN) SELECT DAY0_TABLE.INSTALL_DATE AS INSTALL_DT, DAY0_TABLE.DAY0_NUM AS INSTALLS, ROUND(DAY1_TABLE.DAY1_NUM/DAY0_TABLE.DAY0_NUM, 2) AS DAY1_RETENTION FROM DAY0_TABLE JOIN DAY1_TABLE ON DAY0_TABLE.INSTALL_DATE = DAY1_TABLE.INSTALL_DATE GROUP BY DAY0_TABLE.INSTALL_DATE"
+}

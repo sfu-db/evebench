@@ -1,0 +1,39 @@
+{
+  "dbid": "toxicology",
+  "index": "142",
+  "source_index": "197",
+  "schema_ddl": "CREATE TABLE `atom` (\n  `atom_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `element` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `bond` (\n  `bond_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `bond_type` TEXT DEFAULT NULL,\n  PRIMARY KEY (`bond_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `connected` (\n  `atom_id` TEXT NOT NULL,\n  `atom_id2` TEXT NOT NULL,\n  `bond_id` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`,`atom_id2`),\n  FOREIGN KEY (`atom_id`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`atom_id2`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`bond_id`) REFERENCES `bond` (`bond_id`) ON DELETE CASCADE ON UPDATE CASCADE\n);\n\nCREATE TABLE `molecule` (\n  `molecule_id` TEXT NOT NULL,\n  `label` TEXT DEFAULT NULL,\n  PRIMARY KEY (`molecule_id`)\n);",
+  "q1": "SELECT COUNT(DISTINCT T1.molecule_id) FROM molecule AS T1 INNER JOIN atom AS T2 ON T1.molecule_id = T2.molecule_id WHERE T2.element = 'cl' AND T1.label = '-'",
+  "q2": "SELECT COUNT(DISTINCT T1.molecule_id) FROM atom AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id WHERE T2.label = '-' AND T1.element = 'cl'",
+  "dialect": "sqlite",
+  "ground_truth": "EQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT COUNT(DISTINCT T1.molecule_id) FROM molecule AS T1 INNER JOIN atom AS T2 ON T1.molecule_id = T2.molecule_id WHERE T2.element = 'cl' AND T1.label = '-'",
+  "q2_prompt_sql": "SELECT COUNT(DISTINCT T1.molecule_id) FROM atom AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id WHERE T2.label = '-' AND T1.element = 'cl'",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries count distinct molecule_ids with label '-' that have at least one 'cl' element atom. The join order and table aliases do not affect the logical outcome since the join condition and WHERE clauses are symmetrically equivalent.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries count distinct molecule_ids with label '-' that have at least one 'cl' element atom. The join order and table aliases do not affect the logical outcome since the join condition and WHERE clauses are symmetrically equivalent.\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem. The user wants to know if Q1 and Q2 are semantically equivalent. Let me start by understanding each query.\n\nFirst, looking at Q1: It selects the count of distinct molecule_ids from the molecule table (T1) joined with the atom table (T2) on molecule_id. The WHERE clause checks that T2.element is 'cl' and T1.label is '-'. So this query is counting molecules that have at least one chlorine atom and have the label '-'.\n\nNow Q2: It does a similar count but joins atom as T1 and molecule as T2. The WHERE clause here is T2.label = '-' and T1.element = 'cl'. The structure is similar, but the tables are swapped in the join. Wait, the join condition is T1.molecule_id = T2.molecule_id, which is the same as in Q1. But the aliases are different. In Q1, T1 is molecule and T2 is atom. In Q2, T1 is atom and T2 is molecule.\n\nSo the main difference is the aliases. But since the join condition is on molecule_id, which is present in both tables, the join would still be correct. However, the WHERE clauses are checking the same conditions: element 'cl' in the atom table and label '-' in the molecule table. \n\nWait, in Q1, T1 is molecule, so T1.label is the molecule's label. In Q2, T2 is molecule, so T2.label is the same. So the WHERE conditions are equivalent. The joins are also equivalent because the molecule_id is the same. Therefore, both queries are counting the number of distinct molecules that have at least one chlorine atom and have the label '-'.\n\nBut wait, could there be any difference in how the joins are handled? For example, if there are multiple atoms in a molecule, but the join would still produce the same molecule_id in both cases. The COUNT(DISTINCT) would ensure that each molecule is counted once regardless of how many atoms meet the condition.\n\nSo, the two queries should be equivalent. The only difference is the aliases, but the logic remains the same. Therefore, the answer is Y.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 617,
+    "total_tokens": 1135,
+    "completion_tokens": 518,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 457
+    },
+    "generation_seconds": 17.172
+  },
+  "started_at": "2026-10-06T20:22:07.267262+00:00",
+  "elapsed_seconds": 0.0
+}

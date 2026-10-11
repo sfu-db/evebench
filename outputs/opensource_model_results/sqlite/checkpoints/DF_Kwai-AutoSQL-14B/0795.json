@@ -1,0 +1,59 @@
+{
+  "dbid": "student_club",
+  "index": "795",
+  "source_index": "1389",
+  "schema_ddl": "CREATE TABLE event\n(\n    event_id   TEXT\n        constraint event_pk\n            primary key,\n    event_name TEXT,\n    event_date TEXT,\n    type       TEXT,\n    notes      TEXT,\n    location   TEXT,\n    status     TEXT\n);\n\nCREATE TABLE major\n(\n    major_id   TEXT\n        constraint major_pk\n            primary key,\n    major_name TEXT,\n    department TEXT,\n    college    TEXT\n);\n\nCREATE TABLE zip_code\n(\n    zip_code    INTEGER\n        constraint zip_code_pk\n            primary key,\n    type        TEXT,\n    city        TEXT,\n    county      TEXT,\n    state       TEXT,\n    short_state TEXT\n);\n\nCREATE TABLE \"attendance\"\n(\n    link_to_event  TEXT,\n    link_to_member TEXT,\n    primary key (link_to_event, link_to_member),\n    foreign key (link_to_event) references event(event_id),\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"budget\"\n(\n    budget_id     TEXT\n            primary key,\n    category      TEXT,\n    spent         REAL,\n    remaining     REAL,\n    amount        INTEGER,\n    event_status  TEXT,\n    link_to_event TEXT,\n    foreign key (link_to_event) references event(event_id)\n);\n\nCREATE TABLE \"expense\"\n(\n    expense_id          TEXT\n            primary key,\n    expense_description TEXT,\n    expense_date        TEXT,\n    cost                REAL,\n    approved            TEXT,\n    link_to_member      TEXT,\n    link_to_budget      TEXT,\n    foreign key (link_to_budget) references budget(budget_id),\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"income\"\n(\n    income_id      TEXT\n        constraint income_pk\n            primary key,\n    date_received  TEXT,\n    amount         INTEGER,\n    source         TEXT,\n    notes          TEXT,\n    link_to_member TEXT,\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"member\"\n(\n    member_id     TEXT\n        constraint member_pk\n            primary key,\n    first_name    TEXT,\n    last_name     TEXT,\n    email         TEXT,\n    position      TEXT,\n    t_shirt_size  TEXT,\n    phone         TEXT,\n    zip           INTEGER,\n    link_to_major TEXT,\n    foreign key (link_to_major) references major(major_id),\n    foreign key (zip) references zip_code(zip_code)\n);",
+  "q1": "SELECT T1.first_name, T1.last_name, T2.source FROM member AS T1 INNER JOIN income AS T2 ON T1.member_id = T2.link_to_member GROUP BY T1.first_name, T1.last_name, T2.source ORDER BY SUM(T2.amount) DESC LIMIT 1",
+  "q2": "SELECT T1.first_name, T1.last_name, T2.source FROM member AS T1 INNER JOIN income AS T2 ON T1.member_id = T2.link_to_member ORDER BY T2.amount DESC LIMIT 1",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT T1.first_name, T1.last_name, T2.source FROM member AS T1 INNER JOIN income AS T2 ON T1.member_id = T2.link_to_member GROUP BY T1.first_name, T1.last_name, T2.source ORDER BY SUM(T2.amount) DESC LIMIT 1",
+  "q2_prompt_sql": "SELECT T1.first_name, T1.last_name, T2.source FROM member AS T1 INNER JOIN income AS T2 ON T1.member_id = T2.link_to_member ORDER BY T2.amount DESC LIMIT 1",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO member (member_id, first_name, last_name) VALUES ('M1', 'John', 'Doe');\nINSERT INTO income (income_id, amount, source, link_to_member) VALUES ('I1', 200, 'A', 'M1');\nINSERT INTO income (income_id, amount, source, link_to_member) VALUES ('I2', 150, 'B', 'M1');\nINSERT INTO income (income_id, amount, source, link_to_member) VALUES ('I3', 100, 'B', 'M1');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 groups by member name and income source, ordering by total income amount (SUM) and returning the top group. Q2 orders individual income rows by their amount and returns the single row with the highest amount. These can differ when a group's summed amount is higher than individual rows in other groups.",
+  "counterexample_dsp": "A member with two income sources: one with a single high amount (source A: 200), and another source with two smaller amounts (source B: 150 + 100 = 250). Q1 returns source B (higher sum), Q2 returns source A (single highest amount row).",
+  "equiv": "N",
+  "raw_response": "\n\n{\n  \"equiv\": \"N\",\n  \"explanation\": \"Q1 groups by member name and income source, ordering by total income amount (SUM) and returning the top group. Q2 orders individual income rows by their amount and returns the single row with the highest amount. These can differ when a group's summed amount is higher than individual rows in other groups.\",\n  \"counterexample_dsp\": \"A member with two income sources: one with a single high amount (source A: 200), and another source with two smaller amounts (source B: 150 + 100 = 250). Q1 returns source B (higher sum), Q2 returns source A (single highest amount row).\",\n  \"counterexample\": \"INSERT INTO member (member_id, first_name, last_name) VALUES ('M1', 'John', 'Doe');\\nINSERT INTO income (income_id, amount, source, link_to_member) VALUES ('I1', 200, 'A', 'M1');\\nINSERT INTO income (income_id, amount, source, link_to_member) VALUES ('I2', 150, 'B', 'M1');\\nINSERT INTO income (income_id, amount, source, link_to_member) VALUES ('I3', 100, 'B', 'M1');\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem step by step. The user wants to know if the two SQL queries Q1 and Q2 are semantically equivalent. If not, I need to provide a counterexample.\n\nFirst, I'll look at both queries to understand what they're doing.\n\nStarting with Q1: It selects first_name, last_name, and source from member (T1) joined with income (T2) on member_id = link_to_member. Then it groups by those three columns and orders by SUM(T2.amount) descending, limiting to 1 result. So Q1 is grouping all the income entries per member-source combination, summing their amounts, and returning the one with the highest total amount. The GROUP BY here means that for each unique first_name, last_name, and source, we sum all amounts from income rows for that member and source.\n\nNow Q2: It's a simpler query. It selects the same columns, joins the same way, but orders by T2.amount DESC and takes the first row. This means Q2 is ordering individual income rows by their amount in descending order and returning the first one. So the result here is the single income row with the highest amount, along with the member's name and the source of that income.\n\nThe key difference is that Q1 aggregates all incomes per member-source pair and picks the one with the highest total amount, while Q2 picks the individual income row with the highest amount (regardless of source or member's other incomes).\n\nSo they are not equivalent. Let's think of a counterexample. Suppose there's a member named John Doe with two income records. One income has a source 'Job1' and amount 100, and another with source 'Job2' and amount 50. In this case, Q1 would group by name and source, sum each. The group for Job1 would be 100, Job2 50. So Q1 returns John Doe, Job1. Q2 would take the individual row with the highest amount, which is the Job1 row (100). So same result here.\n\nBut what if there's a member with two income rows for the same source but different amounts. Wait, maybe a scenario where the same member has two different income sources. Let me think of another case.\n\nWait, suppose there's a member named Alice Smith. She has two income records: one from 'JobA' with amount 100 and another from 'JobA' with amount 150. Then, Q1 groups by source (JobA) and sums the amounts (250), so the result is Alice Smith, JobA. Q2 would order by amount DESC, so the row with 150 is first. So the result would be Alice Smith, JobA. Same result here.\n\nWait, maybe a case where the single highest amount row isn't the same as the group with the highest sum. For example, if a member has three income rows: one source 'A' with amount 200, another source 'B' with amount 150, and another source 'B' with amount 100. Then Q1 groups by source: source A has sum 200, source B sum 250. So Q1 returns source B. Q2 orders by amount DESC, so the first row is source A with 200. So here Q1 returns B, Q2 returns A. That's a difference!\n\nSo in this case, the two queries would return different results. Let's formalize this example.\n\nMember: first_name 'John', last_name 'Doe', member_id 'M1'.\n\nIncome rows:\n- income_id 'I1', amount 200, source 'A', link_to_member 'M1'\n- income_id 'I2', amount 150, source 'B', link_to_member 'M1'\n- income_id 'I3', amount 100, source 'B', link_to_member 'M1'\n\nFor Q1: grouping by first_name, last_name, source. The sources are A (sum 200) and B (sum 250). So Q1 returns source B.\n\nFor Q2: ordering by amount DESC. The first row is I1 (amount 200, source A), so Q2 returns source A.\n\nTherefore, the two queries would return different results. This is a counterexample.\n\nNow, I need to make sure that the test data adheres to the schema constraints. The member table has member_id, first_name, last_name, etc. The income table has link_to_member (foreign key to member(member_id)), amount, source, etc. So inserting these three income rows for member M1 should be fine.\n\nSo the counterexample database would have one member with first_name 'John', last_name 'Doe', member_id 'M1', and three income rows as described. Then Q1 returns (John, Doe, B) and Q2 returns (John, Doe, A). That's the difference.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 852,
+    "total_tokens": 2197,
+    "completion_tokens": 1345,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1054
+    },
+    "generation_seconds": 44.5
+  },
+  "started_at": "2026-10-06T21:37:56.343349+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "John",
+      "Doe",
+      "B"
+    ]
+  ],
+  "q2_output": [
+    [
+      "John",
+      "Doe",
+      "A"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT T1.first_name, T1.last_name, T2.source FROM member AS T1 INNER JOIN income AS T2 ON T1.member_id = T2.link_to_member GROUP BY T1.first_name, T1.last_name, T2.source ORDER BY SUM(T2.amount) DESC LIMIT 1",
+  "q2_validation_sql": "SELECT T1.first_name, T1.last_name, T2.source FROM member AS T1 INNER JOIN income AS T2 ON T1.member_id = T2.link_to_member ORDER BY T2.amount DESC LIMIT 1"
+}

@@ -1,0 +1,39 @@
+{
+  "dbid": "16",
+  "index": "18",
+  "source_index": "19",
+  "schema_ddl": "CREATE TABLE R (A INT);",
+  "q1": "SELECT DISTINCT Y.A AS A FROM R AS X, R AS Y WHERE X.A = Y.A",
+  "q2": "SELECT DISTINCT X.A AS A FROM R AS X",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "literature",
+  "q1_prompt_sql": "SELECT DISTINCT Y.A AS A FROM R AS X, R AS Y WHERE X.A = Y.A",
+  "q2_prompt_sql": "SELECT DISTINCT X.A AS A FROM R AS X",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both Q1 and Q2 return distinct values of column A from table R. Q1 uses a self-join on R where X.A = Y.A, which effectively produces all values of A from R, and DISTINCT ensures no duplicates. Q2 directly selects distinct A from R. Since the join condition X.A = Y.A is always true for any row in R when joining R with itself on A, Q1 and Q2 are semantically equivalent.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n  \"equiv\": \"Y\",\n  \"explanation\": \"Both Q1 and Q2 return distinct values of column A from table R. Q1 uses a self-join on R where X.A = Y.A, which effectively produces all values of A from R, and DISTINCT ensures no duplicates. Q2 directly selects distinct A from R. Since the join condition X.A = Y.A is always true for any row in R when joining R with itself on A, Q1 and Q2 are semantically equivalent.\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 293,
+    "total_tokens": 405,
+    "completion_tokens": 112,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 3.266
+  },
+  "started_at": "2026-10-06T07:53:02.115632+00:00",
+  "elapsed_seconds": 0.0
+}

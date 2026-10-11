@@ -1,0 +1,39 @@
+{
+  "dbid": "toxicology",
+  "index": "184",
+  "source_index": "262",
+  "schema_ddl": "CREATE TABLE `atom` (\n  `atom_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `element` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `bond` (\n  `bond_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `bond_type` TEXT DEFAULT NULL,\n  PRIMARY KEY (`bond_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `connected` (\n  `atom_id` TEXT NOT NULL,\n  `atom_id2` TEXT NOT NULL,\n  `bond_id` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`,`atom_id2`),\n  FOREIGN KEY (`atom_id`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`atom_id2`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`bond_id`) REFERENCES `bond` (`bond_id`) ON DELETE CASCADE ON UPDATE CASCADE\n);\n\nCREATE TABLE `molecule` (\n  `molecule_id` TEXT NOT NULL,\n  `label` TEXT DEFAULT NULL,\n  PRIMARY KEY (`molecule_id`)\n);",
+  "q1": "SELECT DISTINCT T1.bond_id FROM bond AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id WHERE T2.label = '+'",
+  "q2": "SELECT DISTINCT T2.bond_id FROM molecule AS T1 INNER JOIN bond AS T2 ON T1.molecule_id = T2.molecule_id WHERE T1.label = '+'",
+  "dialect": "sqlite",
+  "ground_truth": "EQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT DISTINCT T1.bond_id FROM bond AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id WHERE T2.label = '+'",
+  "q2_prompt_sql": "SELECT DISTINCT T2.bond_id FROM molecule AS T1 INNER JOIN bond AS T2 ON T1.molecule_id = T2.molecule_id WHERE T1.label = '+'",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries retrieve distinct bond IDs from bonds associated with molecules labeled '+'. The join logic and filtering conditions are equivalent despite table alias differences.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries retrieve distinct bond IDs from bonds associated with molecules labeled '+'. The join logic and filtering conditions are equivalent despite table alias differences.\"\n}",
+  "reasoning": "\nOkay, let's see. I need to determine if Q1 and Q2 are semantically equivalent. Let me start by understanding each query.\n\nQ1: SELECT DISTINCT T1.bond_id FROM bond AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id WHERE T2.label = '+'\n\nSo here, they're joining the bond table (T1) with the molecule table (T2) on molecule_id. The WHERE condition is T2.label = '+', which means they're looking for molecules with label '+', and then getting the bond IDs from the bond table where those bonds belong to such molecules.\n\nQ2: SELECT DISTINCT T2.bond_id FROM molecule AS T1 INNER JOIN bond AS T2 ON T1.molecule_id = T2.molecule_id WHERE T1.label = '+'\n\nIn this case, the tables are joined the other way: molecule is T1 and bond is T2. The WHERE condition is T1.label = '+', which is the same as Q1's condition. But here, they're selecting T2.bond_id, which is the same as T1.bond_id in Q1. Wait, no, in Q1, T1 is bond, so T1.bond_id is the bond's ID. In Q2, T2 is bond, so T2.bond_id is the same as T1.bond_id in Q1. Wait, but the tables are joined on molecule_id. So in both cases, they're joining bond and molecule on molecule_id, filtering on the molecule's label being '+', and selecting the bond IDs.\n\nWait, but the aliases are different. In Q1, T1 is bond, T2 is molecule. In Q2, T1 is molecule, T2 is bond. But the join condition is the same: molecule_id from both tables. The WHERE clause is checking the molecule's label. So the logic seems similar. However, maybe there's a difference in the tables being joined or the columns selected?\n\nWait, in Q1, T1 is bond, so T1.molecule_id is the molecule_id from the bond table. T2 is molecule, so T2.molecule_id is the same. So the join is between bond.molecule_id and molecule.molecule_id. Similarly for Q2: T1 is molecule, T2 is bond. The join is on T1.molecule_id (from molecule) equals T2.molecule_id (from bond). So the join condition is the same. The WHERE clause is T2.label = '+' in Q1 and T1.label = '+' in Q2. Since in Q1, T2 is molecule, so T2.label is the molecule's label. In Q2, T1 is molecule, so T1.label is the same. So the WHERE condition is the same. The selected column is T1.bond_id in Q1 (bond table's bond_id) and T2.bond_id in Q2 (bond table's bond_id). Since T1 and T2 in each query are aliases for bond and molecule, but in Q1, T1 is bond, so T1.bond_id is the bond's ID. In Q2, T2 is bond, so T2.bond_id is the same. So the selected columns are the same. The DISTINCT is also the same. \n\nWait, so maybe they are equivalent? Because both are selecting bond IDs from bonds that belong to molecules with label '+'. The only difference is the aliases and the order of the tables in the JOIN. But since the join is on molecule_id and the WHERE is on the molecule's label, the result should be the same. \n\nBut wait, could there be a case where the bond table has multiple entries with the same molecule_id? But the join is between bond and molecule on molecule_id. So for each bond in the bond table, if its molecule_id exists in the molecule table with label '+', then it's included. So both queries would return the same set of bond IDs. \n\nHmm. Then why would they not be equivalent? Maybe I'm missing something. Let me think again. Are there any constraints or possible issues? For example, if a bond's molecule_id is not present in the molecule table, then the join would exclude it. But both queries are doing INNER JOIN, so that's the same. \n\nWait, the schema shows that in bond, the molecule_id is a foreign key to molecule. So every bond's molecule_id must exist in molecule. So the INNER JOIN would not exclude any bonds. So both queries are effectively selecting all bonds where their molecule has label '+'. Therefore, the results should be the same. \n\nBut maybe there's a mistake in the aliases? Let me check again. \n\nIn Q1: T1 is bond, T2 is molecule. The join is T1.molecule_id = T2.molecule_id. The WHERE is T2.label = '+'. The selected column is T1.bond_id. \n\nIn Q2: T1 is molecule, T2 is bond. The join is T1.molecule_id = T2.molecule_id. The WHERE is T1.label = '+'. The selected column is T2.bond_id. \n\nSo both are selecting bond IDs from bonds that are linked to molecules with label '+'. So the results should be identical. Therefore, the queries are equivalent. \n\nBut wait, the user is asking if they are equivalent. Maybe I'm missing a case where the molecule has multiple entries? No, because the molecule_id is the primary key in molecule. Each molecule_id is unique. So for each bond, the molecule_id points to exactly one molecule. So the WHERE condition is checking that molecule's label. \n\nSo I think the answer is that they are equivalent. Therefore, the equiv is Y.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 594,
+    "total_tokens": 1840,
+    "completion_tokens": 1246,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1202
+    },
+    "generation_seconds": 39.953
+  },
+  "started_at": "2026-10-06T20:24:10.247603+00:00",
+  "elapsed_seconds": 0.0
+}

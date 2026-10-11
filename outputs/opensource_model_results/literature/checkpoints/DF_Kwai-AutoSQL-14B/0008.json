@@ -1,0 +1,55 @@
+{
+  "dbid": "6",
+  "index": "8",
+  "source_index": "7",
+  "schema_ddl": "CREATE TABLE EMP (NAME INT, DEPT INT, EMP INT);\nCREATE TABLE DEPT (DEPT INT, LOC INT, MGR INT);",
+  "q1": "SELECT X.NAME AS XN FROM EMP AS X WHERE (X.EMP, X.DEPT) IN (SELECT Y.MGR, Y.DEPT FROM DEPT AS Y WHERE Y.LOC = 3)",
+  "q2": "SELECT X.NAME AS XN FROM EMP AS X, DEPT AS Y WHERE X.DEPT = Y.DEPT AND Y.LOC = 3 AND X.EMP = Y.MGR",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "literature",
+  "q1_prompt_sql": "SELECT X.NAME AS XN FROM EMP AS X WHERE (X.EMP, X.DEPT) IN (SELECT Y.MGR, Y.DEPT FROM DEPT AS Y WHERE Y.LOC = 3)",
+  "q2_prompt_sql": "SELECT X.NAME AS XN FROM EMP AS X, DEPT AS Y WHERE X.DEPT = Y.DEPT AND Y.LOC = 3 AND X.EMP = Y.MGR",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO EMP (NAME, DEPT, EMP) VALUES (1, 1, 2); INSERT INTO EMP (NAME, DEPT, EMP) VALUES (2, 1, 1); INSERT INTO DEPT (DEPT, LOC, MGR) VALUES (1, 3, 1);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent. Q1 uses a subquery with IN to match (X.EMP, X.DEPT) against (Y.MGR, Y.DEPT) from DEPT where LOC = 3. Q2 uses an explicit join between EMP and DEPT on DEPT and matches X.EMP = Y.MGR and Y.LOC = 3. These are logically different conditions, leading to different results in some cases.",
+  "counterexample_dsp": "A case where an employee (X) has the same DEPT as a department (Y), but X.EMP does not equal Y.MGR, and another employee matches both X.EMP = Y.MGR and Y.LOC = 3. This will cause Q1 to return more rows than Q2.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n  \"equiv\": \"N\",\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent. Q1 uses a subquery with IN to match (X.EMP, X.DEPT) against (Y.MGR, Y.DEPT) from DEPT where LOC = 3. Q2 uses an explicit join between EMP and DEPT on DEPT and matches X.EMP = Y.MGR and Y.LOC = 3. These are logically different conditions, leading to different results in some cases.\",\n  \"counterexample_dsp\": \"A case where an employee (X) has the same DEPT as a department (Y), but X.EMP does not equal Y.MGR, and another employee matches both X.EMP = Y.MGR and Y.LOC = 3. This will cause Q1 to return more rows than Q2.\",\n  \"counterexample\": \"INSERT INTO EMP (NAME, DEPT, EMP) VALUES (1, 1, 2); INSERT INTO EMP (NAME, DEPT, EMP) VALUES (2, 1, 1); INSERT INTO DEPT (DEPT, LOC, MGR) VALUES (1, 3, 1);\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 364,
+    "total_tokens": 619,
+    "completion_tokens": 255,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 8.094
+  },
+  "started_at": "2026-10-06T07:53:02.105420+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      2
+    ]
+  ],
+  "q2_output": [
+    [
+      2
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT X.NAME AS XN FROM EMP AS X WHERE (X.EMP, X.DEPT) IN (SELECT Y.MGR, Y.DEPT FROM DEPT AS Y WHERE Y.LOC = 3)",
+  "q2_validation_sql": "SELECT X.NAME AS XN FROM EMP AS X, DEPT AS Y WHERE X.DEPT = Y.DEPT AND Y.LOC = 3 AND X.EMP = Y.MGR"
+}

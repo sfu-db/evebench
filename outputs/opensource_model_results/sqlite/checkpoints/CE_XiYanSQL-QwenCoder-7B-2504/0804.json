@@ -1,0 +1,49 @@
+{
+  "dbid": "student_club",
+  "index": "804",
+  "source_index": "1407",
+  "schema_ddl": "CREATE TABLE event\n(\n    event_id   TEXT\n        constraint event_pk\n            primary key,\n    event_name TEXT,\n    event_date TEXT,\n    type       TEXT,\n    notes      TEXT,\n    location   TEXT,\n    status     TEXT\n);\n\nCREATE TABLE major\n(\n    major_id   TEXT\n        constraint major_pk\n            primary key,\n    major_name TEXT,\n    department TEXT,\n    college    TEXT\n);\n\nCREATE TABLE zip_code\n(\n    zip_code    INTEGER\n        constraint zip_code_pk\n            primary key,\n    type        TEXT,\n    city        TEXT,\n    county      TEXT,\n    state       TEXT,\n    short_state TEXT\n);\n\nCREATE TABLE \"attendance\"\n(\n    link_to_event  TEXT,\n    link_to_member TEXT,\n    primary key (link_to_event, link_to_member),\n    foreign key (link_to_event) references event(event_id),\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"budget\"\n(\n    budget_id     TEXT\n            primary key,\n    category      TEXT,\n    spent         REAL,\n    remaining     REAL,\n    amount        INTEGER,\n    event_status  TEXT,\n    link_to_event TEXT,\n    foreign key (link_to_event) references event(event_id)\n);\n\nCREATE TABLE \"expense\"\n(\n    expense_id          TEXT\n            primary key,\n    expense_description TEXT,\n    expense_date        TEXT,\n    cost                REAL,\n    approved            TEXT,\n    link_to_member      TEXT,\n    link_to_budget      TEXT,\n    foreign key (link_to_budget) references budget(budget_id),\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"income\"\n(\n    income_id      TEXT\n        constraint income_pk\n            primary key,\n    date_received  TEXT,\n    amount         INTEGER,\n    source         TEXT,\n    notes          TEXT,\n    link_to_member TEXT,\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"member\"\n(\n    member_id     TEXT\n        constraint member_pk\n            primary key,\n    first_name    TEXT,\n    last_name     TEXT,\n    email         TEXT,\n    position      TEXT,\n    t_shirt_size  TEXT,\n    phone         TEXT,\n    zip           INTEGER,\n    link_to_major TEXT,\n    foreign key (link_to_major) references major(major_id),\n    foreign key (zip) references zip_code(zip_code)\n);",
+  "q1": "SELECT budget_id FROM budget WHERE category = 'Food' AND amount = (SELECT MAX(amount) FROM budget)",
+  "q2": "SELECT budget_id FROM budget WHERE category = 'Food' ORDER BY amount DESC LIMIT 1",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT budget_id FROM budget WHERE category = 'Food' AND amount = (SELECT MAX(amount) FROM budget)",
+  "q2_prompt_sql": "SELECT budget_id FROM budget WHERE category = 'Food' ORDER BY amount DESC LIMIT 1",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO budget (budget_id, category, amount) VALUES ('b1', 'Food', 100), ('b2', 'Food', 100), ('b3', 'Food', 90), ('b4', 'Other', 150);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not equivalent because Q1 uses a subquery to find the maximum amount in the 'budget' table and then selects the budget_id where the category is 'Food' and the amount matches this maximum value. Q2, on the other hand, orders the budget records by amount in descending order and selects the budget_id of the first record where the category is 'Food', which might not necessarily be the one with the highest amount if there are multiple records with the same highest amount.",
+  "counterexample_dsp": "The test data should have multiple budget records for the 'Food' category with the same highest amount, and at least one additional 'Food' budget record with a different amount.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 and Q2 are not equivalent because Q1 uses a subquery to find the maximum amount in the 'budget' table and then selects the budget_id where the category is 'Food' and the amount matches this maximum value. Q2, on the other hand, orders the budget records by amount in descending order and selects the budget_id of the first record where the category is 'Food', which might not necessarily be the one with the highest amount if there are multiple records with the same highest amount.\",\n  \"counterexample_dsp\": \"The test data should have multiple budget records for the 'Food' category with the same highest amount, and at least one additional 'Food' budget record with a different amount.\",\n  \"counterexample\": \"INSERT INTO budget (budget_id, category, amount) VALUES ('b1', 'Food', 100), ('b2', 'Food', 100), ('b3', 'Food', 90), ('b4', 'Other', 150);\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 749,
+    "total_tokens": 969,
+    "completion_tokens": 220,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 4.453
+  },
+  "started_at": "2026-10-06T16:07:11.316171+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [],
+  "q2_output": [
+    [
+      "b1"
+    ]
+  ],
+  "q1_row_count": 0,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT budget_id FROM budget WHERE category = 'Food' AND amount = (SELECT MAX(amount) FROM budget)",
+  "q2_validation_sql": "SELECT budget_id FROM budget WHERE category = 'Food' ORDER BY amount DESC LIMIT 1"
+}

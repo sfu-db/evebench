@@ -1,0 +1,61 @@
+{
+  "dbid": "card_games",
+  "index": "229",
+  "source_index": "345",
+  "schema_ddl": "CREATE TABLE \"cards\"\n(\n    id                      INTEGER           not null\n        primary key autoincrement,\n    artist                  TEXT,\n    asciiName               TEXT,\n    availability            TEXT,\n    borderColor             TEXT,\n    cardKingdomFoilId       TEXT,\n    cardKingdomId           TEXT,\n    colorIdentity           TEXT,\n    colorIndicator          TEXT,\n    colors                  TEXT,\n    convertedManaCost       REAL,\n    duelDeck                TEXT,\n    edhrecRank              INTEGER,\n    faceConvertedManaCost   REAL,\n    faceName                TEXT,\n    flavorName              TEXT,\n    flavorText              TEXT,\n    frameEffects            TEXT,\n    frameVersion            TEXT,\n    hand                    TEXT,\n    hasAlternativeDeckLimit INTEGER default 0 not null,\n    hasContentWarning       INTEGER default 0 not null,\n    hasFoil                 INTEGER default 0 not null,\n    hasNonFoil              INTEGER default 0 not null,\n    isAlternative           INTEGER default 0 not null,\n    isFullArt               INTEGER default 0 not null,\n    isOnlineOnly            INTEGER default 0 not null,\n    isOversized             INTEGER default 0 not null,\n    isPromo                 INTEGER default 0 not null,\n    isReprint               INTEGER default 0 not null,\n    isReserved              INTEGER default 0 not null,\n    isStarter               INTEGER default 0 not null,\n    isStorySpotlight        INTEGER default 0 not null,\n    isTextless              INTEGER default 0 not null,\n    isTimeshifted           INTEGER default 0 not null,\n    keywords                TEXT,\n    layout                  TEXT,\n    leadershipSkills        TEXT,\n    life                    TEXT,\n    loyalty                 TEXT,\n    manaCost                TEXT,\n    mcmId                   TEXT,\n    mcmMetaId               TEXT,\n    mtgArenaId              TEXT,\n    mtgjsonV4Id             TEXT,\n    mtgoFoilId              TEXT,\n    mtgoId                  TEXT,\n    multiverseId            TEXT,\n    name                    TEXT,\n    number                  TEXT,\n    originalReleaseDate     TEXT,\n    originalText            TEXT,\n    originalType            TEXT,\n    otherFaceIds            TEXT,\n    power                   TEXT,\n    printings               TEXT,\n    promoTypes              TEXT,\n    purchaseUrls            TEXT,\n    rarity                  TEXT,\n    scryfallId              TEXT,\n    scryfallIllustrationId  TEXT,\n    scryfallOracleId        TEXT,\n    setCode                 TEXT,\n    side                    TEXT,\n    subtypes                TEXT,\n    supertypes              TEXT,\n    tcgplayerProductId      TEXT,\n    text                    TEXT,\n    toughness               TEXT,\n    type                    TEXT,\n    types                   TEXT,\n    uuid                    TEXT              not null\n        unique,\n    variations              TEXT,\n    watermark               TEXT\n);\n\nCREATE TABLE \"foreign_data\"\n(\n    id           INTEGER not null\n        primary key autoincrement,\n    flavorText   TEXT,\n    language     TEXT,\n    multiverseid INTEGER,\n    name         TEXT,\n    text         TEXT,\n    type         TEXT,\n    uuid         TEXT\n        references cards (uuid)\n);\n\nCREATE TABLE \"legalities\"\n(\n    id     INTEGER not null\n        primary key autoincrement,\n    format TEXT,\n    status TEXT,\n    uuid   TEXT\n        references cards (uuid)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE \"sets\"\n(\n    id               INTEGER           not null\n        primary key autoincrement,\n    baseSetSize      INTEGER,\n    block            TEXT,\n    booster          TEXT,\n    code             TEXT              not null\n        unique,\n    isFoilOnly       INTEGER default 0 not null,\n    isForeignOnly    INTEGER default 0 not null,\n    isNonFoilOnly    INTEGER default 0 not null,\n    isOnlineOnly     INTEGER default 0 not null,\n    isPartialPreview INTEGER default 0 not null,\n    keyruneCode      TEXT,\n    mcmId            INTEGER,\n    mcmIdExtras      INTEGER,\n    mcmName          TEXT,\n    mtgoCode         TEXT,\n    name             TEXT,\n    parentCode       TEXT,\n    releaseDate      DATE,\n    tcgplayerGroupId INTEGER,\n    totalSetSize     INTEGER,\n    type             TEXT\n);\n\nCREATE TABLE \"set_translations\"\n(\n    id          INTEGER not null\n        primary key autoincrement,\n    language    TEXT,\n    setCode     TEXT\n        references sets (code)\n            on update cascade on delete cascade,\n    translation TEXT\n);\n\nCREATE TABLE \"rulings\"\n(\n    id   INTEGER not null\n        primary key autoincrement,\n    date DATE,\n    text TEXT,\n    uuid TEXT\n        references cards (uuid)\n            on update cascade on delete cascade\n);",
+  "q1": "SELECT DISTINCT T1.id FROM cards AS T1 INNER JOIN legalities AS T2 ON T1.uuid = T2.uuid WHERE T2.format = 'gladiator' AND T2.status = 'Banned' AND T1.rarity = 'mythic'",
+  "q2": "SELECT T1.name FROM cards AS T1 INNER JOIN legalities AS T2 ON T1.uuid = T2.uuid WHERE T1.rarity = 'mythic' AND T2.status = 'Banned' AND T2.format = 'gladiator'",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT DISTINCT T1.id FROM cards AS T1 INNER JOIN legalities AS T2 ON T1.uuid = T2.uuid WHERE T2.format = 'gladiator' AND T2.status = 'Banned' AND T1.rarity = 'mythic'",
+  "q2_prompt_sql": "SELECT T1.name FROM cards AS T1 INNER JOIN legalities AS T2 ON T1.uuid = T2.uuid WHERE T1.rarity = 'mythic' AND T2.status = 'Banned' AND T2.format = 'gladiator'",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO cards (id, name, rarity, uuid) VALUES (1, 'Test Card', 'mythic', 'uuid1');\nINSERT INTO cards (id, name, rarity, uuid) VALUES (2, 'Test Card', 'mythic', 'uuid2');\nINSERT INTO legalities (uuid, format, status) VALUES ('uuid1', 'gladiator', 'Banned');\nINSERT INTO legalities (uuid, format, status) VALUES ('uuid2', 'gladiator', 'Banned');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not equivalent because they select different columns (id vs name) and Q2 does not use DISTINCT. Even if names are unique, the output columns differ, making results semantically different.",
+  "counterexample_dsp": "Two cards with same name but different ids, both mythic rarity and banned in gladiator format.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 and Q2 are not equivalent because they select different columns (id vs name) and Q2 does not use DISTINCT. Even if names are unique, the output columns differ, making results semantically different.\",\n\"counterexample_dsp\": \"Two cards with same name but different ids, both mythic rarity and banned in gladiator format.\",\n\"counterexample\": \"INSERT INTO cards (id, name, rarity, uuid) VALUES (1, 'Test Card', 'mythic', 'uuid1');\\nINSERT INTO cards (id, name, rarity, uuid) VALUES (2, 'Test Card', 'mythic', 'uuid2');\\nINSERT INTO legalities (uuid, format, status) VALUES ('uuid1', 'gladiator', 'Banned');\\nINSERT INTO legalities (uuid, format, status) VALUES ('uuid2', 'gladiator', 'Banned');\"\n}",
+  "reasoning": "\nOkay, let's take a look at these two SQL queries and see if they're equivalent.\n\nFirst, Q1 selects DISTINCT T1.id from cards (T1) joined with legalities (T2) on uuid. The conditions are T2.format is 'gladiator', T2.status is 'Banned', and T1.rarity is 'mythic'. So it's getting unique card IDs that meet those criteria.\n\nQ2, on the other hand, selects T1.name from the same tables and joins, with the same conditions but selects the name instead of the id. Also, Q2 doesn't use DISTINCT, but since it's selecting a name, which might not be unique, but the problem is that the columns selected are different.\n\nSo the main differences are the selected columns (id vs name) and the use of DISTINCT in Q1. But since the question is about semantic equivalence, which would require that for every row in Q1's result, there's a corresponding row in Q2 and vice versa. But since they're selecting different columns, unless the name and id are functionally dependent (i.e., each name corresponds to exactly one id and vice versa), the results would differ.\n\nLooking at the schema, the cards table has id as the primary key, which is unique. The name column is not a primary key, so multiple cards could have the same name but different ids. However, in practice, Magic: The Gathering cards usually have unique names, but the schema doesn't enforce that. So if there are two different cards with the same name but different ids, then Q1 would return distinct ids, and Q2 would return the same name for both, leading to different results.\n\nSo if there's a case where two different cards (different ids) have the same name and both meet the conditions, Q1 would return one id (since it's distinct) but Q2 would return the same name twice (unless there's a DISTINCT in Q2 as well, which there isn't). Wait, but Q2 doesn't have DISTINCT. So in that case, Q2 would return two rows with the same name, while Q1 would return one id. So the results would be different.\n\nAlternatively, if the name is unique, then Q1 and Q2 would return the same number of rows, but with different columns. But the problem is that the queries are selecting different columns, so even if the number of rows is the same, the actual data would be different. Therefore, the queries are not semantically equivalent because they return different columns. Even if the number of rows is the same, the content is different.\n\nWait, but the user is asking if they are semantically equivalent. Semantically equivalent would mean that for every possible database instance, the results are the same. But since they select different columns, they can't be equivalent unless the columns are the same. So unless the columns are the same, they are not equivalent. However, in this case, the columns are different (id vs name). Therefore, the queries are not equivalent.\n\nSo the answer is that they are not equivalent. The counterexample would be a scenario where two different cards (different ids) have the same name, both are mythic rarity, and both are banned in gladiator format. Then Q1 would return one id (since it's distinct, but wait, if they have the same name but different ids, then the ids would be different. Wait, Q1 selects DISTINCT T1.id. If there are two different cards with same name, same rarity, same legality, then Q1 would return two distinct ids. But Q2 would return the same name twice. So the results would differ. Therefore, even if the name is the same, the queries return different data. Hence, they are not equivalent.\n\nSo the counterexample would be two cards with same name, different ids, same rarity, same legality. Then Q1 would return both ids (as distinct), and Q2 would return the same name twice. So the results are different.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 1325,
+    "total_tokens": 2353,
+    "completion_tokens": 1028,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 825
+    },
+    "generation_seconds": 34.641
+  },
+  "started_at": "2026-10-06T20:26:45.058478+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      1
+    ],
+    [
+      2
+    ]
+  ],
+  "q2_output": [
+    [
+      "Test Card"
+    ],
+    [
+      "Test Card"
+    ]
+  ],
+  "q1_row_count": 2,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DISTINCT T1.id FROM cards AS T1 INNER JOIN legalities AS T2 ON T1.uuid = T2.uuid WHERE T2.format = 'gladiator' AND T2.status = 'Banned' AND T1.rarity = 'mythic'",
+  "q2_validation_sql": "SELECT T1.name FROM cards AS T1 INNER JOIN legalities AS T2 ON T1.uuid = T2.uuid WHERE T1.rarity = 'mythic' AND T2.status = 'Banned' AND T2.format = 'gladiator'"
+}

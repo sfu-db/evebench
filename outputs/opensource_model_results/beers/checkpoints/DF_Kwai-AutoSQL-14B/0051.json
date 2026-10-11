@@ -1,0 +1,51 @@
+{
+  "dbid": "beers",
+  "index": "51",
+  "source_index": "642",
+  "schema_ddl": "CREATE TABLE Bar (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Beer (\n    name VARCHAR NOT NULL,\n    brewer VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Drinker (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Frequents (\n    drinker VARCHAR NOT NULL,\n    bar VARCHAR NOT NULL,\n    times_a_week SMALLINT NOT NULL,\n    PRIMARY KEY (drinker, bar),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (bar) REFERENCES Bar(name)\n);\n\nCREATE TABLE Serves (\n    bar VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    price DECIMAL(5,2) NOT NULL,\n    PRIMARY KEY (bar, beer),\n    FOREIGN KEY (bar) REFERENCES Bar(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);\n\nCREATE TABLE Likes (\n    drinker VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    PRIMARY KEY (drinker, beer),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);",
+  "q1": "SELECT DISTINCT drinker FROM frequents NATURAL JOIN serves WHERE beer = 'Corona' AND NOT drinker IN (SELECT drinker FROM Likes WHERE beer = 'Corona')",
+  "q2": "WITH v1 AS (SELECT drinker FROM Likes WHERE beer <> 'Corona'), v2 AS (SELECT * FROM Frequents NATURAL JOIN Serves), v3 AS (SELECT drinker FROM v2 WHERE beer = 'Corona') SELECT * FROM v3",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "beers",
+  "q1_prompt_sql": "SELECT DISTINCT drinker FROM frequents NATURAL JOIN serves WHERE beer = 'Corona' AND NOT drinker IN (SELECT drinker FROM Likes WHERE beer = 'Corona')",
+  "q2_prompt_sql": "WITH v1 AS (SELECT drinker FROM Likes WHERE beer <> 'Corona'), v2 AS (SELECT * FROM Frequents NATURAL JOIN Serves), v3 AS (SELECT drinker FROM v2 WHERE beer = 'Corona') SELECT * FROM v3",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO Bar (name, address) VALUES ('Bar1', '123 Main');\nINSERT INTO Beer (name, brewer) VALUES ('Corona', 'BrewCo');\nINSERT INTO Drinker (name, address) VALUES ('Alice', '456 Oak');\nINSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('Alice', 'Bar1', 3);\nINSERT INTO Serves (bar, beer, price) VALUES ('Bar1', 'Corona', 5.99);\nINSERT INTO Likes (drinker, beer) VALUES ('Alice', 'Corona');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 excludes drinkers who like 'Corona', while Q2 includes all drinkers who frequent a bar serving 'Corona' without any exclusion based on the Likes table. Thus, they are not equivalent.",
+  "counterexample_dsp": "A drinker who frequents a bar serving 'Corona' and also likes 'Corona' is included in Q2 but excluded in Q1.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 excludes drinkers who like 'Corona', while Q2 includes all drinkers who frequent a bar serving 'Corona' without any exclusion based on the Likes table. Thus, they are not equivalent.\",\n\"counterexample_dsp\": \"A drinker who frequents a bar serving 'Corona' and also likes 'Corona' is included in Q2 but excluded in Q1.\",\n\"counterexample\": \"INSERT INTO Bar (name, address) VALUES ('Bar1', '123 Main');\\nINSERT INTO Beer (name, brewer) VALUES ('Corona', 'BrewCo');\\nINSERT INTO Drinker (name, address) VALUES ('Alice', '456 Oak');\\nINSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('Alice', 'Bar1', 3);\\nINSERT INTO Serves (bar, beer, price) VALUES ('Bar1', 'Corona', 5.99);\\nINSERT INTO Likes (drinker, beer) VALUES ('Alice', 'Corona');\"\n}",
+  "reasoning": "\nOkay, let's see. I need to check if Q1 and Q2 are semantically equivalent. Let me first understand what each query does.\n\nStarting with Q1: It selects distinct drinkers from the natural join of frequents and serves where the beer is 'Corona'. Then it excludes any drinker who appears in the subquery that selects drinkers from Likes where beer is 'Corona'. So Q1 is giving me drinkers who frequent a bar that serves Corona but don't like Corona.\n\nNow Q2 uses a WITH clause. v1 is a CTE selecting drinkers from Likes where beer is not 'Corona'. Then v2 is the natural join of Frequents and Serves. v3 selects drinkers from v2 where beer is 'Corona'. The final select is from v3. Wait, but v1 isn't used in v3. So Q2 is just selecting drinkers from Frequents joined with Serves where beer is 'Corona', without any exclusion based on the Likes table. Wait, that can't be right. Because v1 is defined but not used in the final query. Hmm, maybe I'm misunderstanding. Let me check again.\n\nWait, Q2's final select is from v3, which is from v2 (Frequents NATURAL JOIN Serves) where beer = 'Corona'. So Q2 is just selecting drinkers who frequent a bar that serves Corona. The v1 CTE (drinker from Likes where beer <> 'Corona') is not used anywhere. So maybe that's a mistake in the query? Or perhaps there's a typo. Because the original Q2 as given has v1 defined but not referenced. That seems odd. Wait, looking back at the original Q2:\n\nWITH v1 AS (SELECT drinker FROM Likes WHERE beer <> 'Corona'), v2 AS (SELECT * FROM Frequents NATURAL JOIN Serves), v3 AS (SELECT drinker FROM v2 WHERE beer = 'Corona') SELECT * FROM v3\n\nYes, v1 is not used in any of the subsequent queries. So Q2 is simply selecting drinkers from Frequents joined with Serves where beer is 'Corona'. So it's not excluding anyone. But Q1 is excluding drinkers who like 'Corona'. Therefore, Q1 and Q2 are different. Q1 gives drinkers who frequent a bar serving Corona but don't like Corona. Q2 gives all drinkers who frequent a bar serving Corona, regardless of their likes. So they are not equivalent.\n\nWait, but maybe I made a mistake. Let me recheck. Q1's WHERE clause is beer = 'Corona' AND NOT drinker IN (SELECT drinker FROM Likes WHERE beer = 'Corona'). So that's drinkers who are in frequents/serves for Corona but not in the Likes table for Corona. Q2's v3 is selecting from v2 (Frequents joined with Serves) where beer = 'Corona'. So that's all drinkers who frequent a bar that serves Corona. So Q2 includes all those drinkers, even if they like Corona. So the difference is that Q1 excludes those who like Corona, while Q2 doesn't. Therefore, they are not equivalent.\n\nSo the answer is not equivalent. Now, to create a counterexample. Let's create a scenario where a drinker both frequents a bar serving Corona and likes Corona. Then Q1 would exclude them, but Q2 would include them. So in that case, Q1's result is smaller than Q2's.\n\nLet me create some test data. Suppose there is a drinker named 'Alice' who frequents a bar (say 'Bar1') that serves Corona. Also, Alice likes Corona. Then Q1 would exclude Alice, but Q2 would include her. So Q1's result would be empty (assuming that's the only drinker), while Q2 would return Alice. That's a counterexample.\n\nAlternatively, if there's a drinker who frequents a bar serving Corona but doesn't like it, then Q1 would include them and Q2 would also include them. But if there's another drinker who frequents and likes, then Q1 excludes and Q2 includes. So the presence of such a drinker would show the difference.\n\nLet me structure the test data. Insert into Frequents, Serves, Likes.\n\nFor example:\n\nBar: name 'Bar1' (address doesn't matter)\nBeer: name 'Corona' (brewer doesn't matter)\nDrinker: 'Alice' (address doesn't matter)\n\nServes: Bar1 serves Corona at some price.\nFrequents: Alice frequents Bar1, say times_a_week 2.\nLikes: Alice likes Corona.\n\nIn this case, Q1 would select Alice from frequents/serves where beer=Corona, but then exclude her because she is in the subquery. So Q1 returns nothing. Q2 selects Alice from v3, so returns her. Hence different results.\n\nAnother case: a drinker 'Bob' who frequents Bar1 serving Corona but does not like Corona. Then Q1 would return Bob, and Q2 also returns Bob. So in this case, they agree. But if there's another drinker (like Alice) who is in Q2 but excluded by Q1, then the difference is shown.\n\nSo the counterexample needs at least one drinker who is in Q2 but not in Q1. So the test data would have such a drinker.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 582,
+    "total_tokens": 1943,
+    "completion_tokens": 1361,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1126
+    },
+    "generation_seconds": 43.593
+  },
+  "started_at": "2026-10-06T09:33:28.611114+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [],
+  "q2_output": [
+    [
+      "Alice"
+    ]
+  ],
+  "q1_row_count": 0,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DISTINCT drinker FROM frequents NATURAL JOIN serves WHERE beer = 'Corona' AND NOT drinker IN (SELECT drinker FROM Likes WHERE beer = 'Corona')",
+  "q2_validation_sql": "WITH v1 AS (SELECT drinker FROM Likes WHERE beer <> 'Corona'), v2 AS (SELECT * FROM Frequents NATURAL JOIN Serves), v3 AS (SELECT drinker FROM v2 WHERE beer = 'Corona') SELECT * FROM v3"
+}

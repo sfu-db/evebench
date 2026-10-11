@@ -1,0 +1,58 @@
+{
+  "dbid": "beers",
+  "index": "48",
+  "source_index": "627",
+  "schema_ddl": "CREATE TABLE Bar (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Beer (\n    name VARCHAR NOT NULL,\n    brewer VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Drinker (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Frequents (\n    drinker VARCHAR NOT NULL,\n    bar VARCHAR NOT NULL,\n    times_a_week SMALLINT NOT NULL,\n    PRIMARY KEY (drinker, bar),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (bar) REFERENCES Bar(name)\n);\n\nCREATE TABLE Serves (\n    bar VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    price DECIMAL(5,2) NOT NULL,\n    PRIMARY KEY (bar, beer),\n    FOREIGN KEY (bar) REFERENCES Bar(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);\n\nCREATE TABLE Likes (\n    drinker VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    PRIMARY KEY (drinker, beer),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);",
+  "q1": "SELECT DISTINCT drinker FROM frequents NATURAL JOIN serves WHERE beer = 'Corona' AND NOT drinker IN (SELECT drinker FROM Likes WHERE beer = 'Corona')",
+  "q2": "SELECT drinker FROM Likes WHERE (beer <> 'Corona')",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "beers",
+  "q1_prompt_sql": "SELECT DISTINCT drinker FROM frequents NATURAL JOIN serves WHERE beer = 'Corona' AND NOT drinker IN (SELECT drinker FROM Likes WHERE beer = 'Corona')",
+  "q2_prompt_sql": "SELECT drinker FROM Likes WHERE (beer <> 'Corona')",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO Drinker (name, address) VALUES ('Alice', '123 St'), ('Bob', '456 St');\nINSERT INTO Beer (name, brewer) VALUES ('Corona', 'Cerveceria'), ('Heineken', 'Heineken'), ('Budweiser', 'Anheuser-Busch');\nINSERT INTO Likes (drinker, beer) VALUES ('Alice', 'Heineken'), ('Bob', 'Budweiser');\nINSERT INTO Bar (name, address) VALUES ('Bar1', '789 St');\nINSERT INTO Serves (bar, beer, price) VALUES ('Bar1', 'Corona', 5.99);\nINSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('Bob', 'Bar1', 3);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 finds drinkers who frequent bars serving Corona but do not like Corona. Q2 finds all drinkers who like any beer except Corona. These are different sets.",
+  "counterexample_dsp": "Drinker 'Alice' likes 'Heineken' (so in Q2) but doesn't frequent any Corona-serving bar (so not in Q1). Drinker 'Bob' frequents a Corona-serving bar but doesn't like Corona (so in Q1 but not Q2).",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 finds drinkers who frequent bars serving Corona but do not like Corona. Q2 finds all drinkers who like any beer except Corona. These are different sets.\",\n\"counterexample_dsp\": \"Drinker 'Alice' likes 'Heineken' (so in Q2) but doesn't frequent any Corona-serving bar (so not in Q1). Drinker 'Bob' frequents a Corona-serving bar but doesn't like Corona (so in Q1 but not Q2).\",\n\"counterexample\": \"INSERT INTO Drinker (name, address) VALUES ('Alice', '123 St'), ('Bob', '456 St');\\nINSERT INTO Beer (name, brewer) VALUES ('Corona', 'Cerveceria'), ('Heineken', 'Heineken'), ('Budweiser', 'Anheuser-Busch');\\nINSERT INTO Likes (drinker, beer) VALUES ('Alice', 'Heineken'), ('Bob', 'Budweiser');\\nINSERT INTO Bar (name, address) VALUES ('Bar1', '789 St');\\nINSERT INTO Serves (bar, beer, price) VALUES ('Bar1', 'Corona', 5.99);\\nINSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('Bob', 'Bar1', 3);\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem step by step. First, I need to understand what each query is doing and then compare them to see if they're equivalent.\n\nStarting with Q1: It selects distinct drinkers from the frequents table joined with serves, where the beer is 'Corona'. Then, it excludes drinkers who are in the Likes table where beer is 'Corona'. So, Q1 is finding drinkers who frequent a bar that serves Corona but don't like Corona.\n\nQ2 is selecting all drinkers from the Likes table where the beer is not 'Corona'. So, this gives all drinkers who like any beer except Corona.\n\nNow, are these two queries equivalent? Let's think. Q1 is about drinkers who frequent bars serving Corona but don't like Corona. Q2 is about drinkers who like any beer other than Corona. These are different. For example, a drinker who likes a beer other than Corona but doesn't frequent any bar that serves Corona would be in Q2 but not in Q1. Conversely, a drinker who frequents a bar serving Corona but doesn't like Corona would be in Q1 but not in Q2. So they are not equivalent.\n\nTo create a counterexample, I need a scenario where these sets differ. Let's say there's a drinker named 'Alice' who likes 'Heineken' (so she's in Q2). But she doesn't frequent any bar that serves Corona. Then she's in Q2 but not Q1. Another example: 'Bob' frequents a bar that serves Corona but doesn't like Corona. He would be in Q1 but not in Q2. So inserting these cases would show the difference.\n\nNow, I need to make sure the test data follows the schema constraints. Let's create some entries. Insert a drinker Alice and Bob. Insert into Likes: Alice likes Heineken, Bob likes Budweiser. Then, in Serves, have a bar that serves Corona. In Frequents, Bob frequents that bar. So Q1 would include Bob (since he frequents a bar with Corona and doesn't like it), and Q2 would include Alice (she likes Heineken, which is not Corona). Thus, their results differ.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 540,
+    "total_tokens": 1297,
+    "completion_tokens": 757,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 459
+    },
+    "generation_seconds": 24.063
+  },
+  "started_at": "2026-10-06T09:11:53.021400+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "Bob"
+    ]
+  ],
+  "q2_output": [
+    [
+      "Alice"
+    ],
+    [
+      "Bob"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DISTINCT drinker FROM frequents NATURAL JOIN serves WHERE beer = 'Corona' AND NOT drinker IN (SELECT drinker FROM Likes WHERE beer = 'Corona')",
+  "q2_validation_sql": "SELECT drinker FROM Likes WHERE (beer <> 'Corona')"
+}

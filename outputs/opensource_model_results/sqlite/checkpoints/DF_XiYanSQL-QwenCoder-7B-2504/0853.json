@@ -1,0 +1,49 @@
+{
+  "dbid": "debit_card_specializing",
+  "index": "853",
+  "source_index": "1502",
+  "schema_ddl": "CREATE TABLE customers\n(\n    CustomerID INTEGER UNIQUE     not null\n        primary key,\n    Segment    TEXT null,\n    Currency   TEXT null\n);\n\nCREATE TABLE gasstations\n(\n    GasStationID INTEGER    UNIQUE   not null\n        primary key,\n    ChainID      INTEGER          null,\n    Country      TEXT null,\n    Segment      TEXT null\n);\n\nCREATE TABLE products\n(\n    ProductID   INTEGER   UNIQUE      not null\n        primary key,\n    Description TEXT null\n);\n\nCREATE TABLE \"transactions_1k\"\n(\n    TransactionID INTEGER\n        primary key autoincrement,\n    Date          DATE,\n    Time          TEXT,\n    CustomerID    INTEGER,\n    CardID        INTEGER,\n    GasStationID  INTEGER,\n    ProductID     INTEGER,\n    Amount        INTEGER,\n    Price         REAL\n);\n\nCREATE TABLE \"yearmonth\"\n(\n    CustomerID  INTEGER not null\n        references customers\n            on update cascade on delete cascade\n        references customers,\n    Date        TEXT    not null,\n    Consumption REAL,\n    primary key (Date, CustomerID)\n);",
+  "q1": "SELECT T2.Country FROM transactions_1k AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID INNER JOIN yearmonth AS T3 ON T1.CustomerID = T3.CustomerID WHERE T3.Date = '201306'",
+  "q2": "SELECT DISTINCT T2.Country FROM transactions_1k AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID WHERE SUBSTR(T1.Date, 1, 6) = '201306'",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT T2.Country FROM transactions_1k AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID INNER JOIN yearmonth AS T3 ON T1.CustomerID = T3.CustomerID WHERE T3.Date = '201306'",
+  "q2_prompt_sql": "SELECT DISTINCT T2.Country FROM transactions_1k AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID WHERE SUBSTR(T1.Date, 1, 6) = '201306'",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO customers (CustomerID, Segment, Currency) VALUES (1, 'A', 'USD'); INSERT INTO gasstations (GasStationID, ChainID, Country, Segment) VALUES (1, 1, 'USA', 'Regular'); INSERT INTO products (ProductID, Description) VALUES (1, 'Gasoline'); INSERT INTO transactions_1k (TransactionID, Date, Time, CustomerID, CardID, GasStationID, ProductID, Amount, Price) VALUES (1, '2013-06-01', '10:00:00', 1, 1, 1, 1, 10, 3.0); INSERT INTO yearmonth (CustomerID, Date, Consumption) VALUES (1, '201306', 100);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not equivalent because they join on different tables and conditions. Q1 joins on 'CustomerID' from 'transactions_1k' and 'yearmonth', while Q2 joins only on 'GasStationID' from 'transactions_1k' and 'gasstations'. Additionally, Q1 filters on 'Date' from 'yearmonth', while Q2 filters on 'Date' from 'transactions_1k' using a SUBSTR function.",
+  "counterexample_dsp": "Q1 and Q2 will produce different results if there are transactions in 'transactions_1k' that do not have a corresponding entry in 'yearmonth' for the date '201306', or if there are transactions in 'transactions_1k' that do not have a corresponding entry in 'gasstations' for the 'GasStationID'.",
+  "equiv": "N",
+  "raw_response": "{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 and Q2 are not equivalent because they join on different tables and conditions. Q1 joins on 'CustomerID' from 'transactions_1k' and 'yearmonth', while Q2 joins only on 'GasStationID' from 'transactions_1k' and 'gasstations'. Additionally, Q1 filters on 'Date' from 'yearmonth', while Q2 filters on 'Date' from 'transactions_1k' using a SUBSTR function.\",\n\"counterexample_dsp\": \"Q1 and Q2 will produce different results if there are transactions in 'transactions_1k' that do not have a corresponding entry in 'yearmonth' for the date '201306', or if there are transactions in 'transactions_1k' that do not have a corresponding entry in 'gasstations' for the 'GasStationID'.\",\n\"counterexample\": \"INSERT INTO customers (CustomerID, Segment, Currency) VALUES (1, 'A', 'USD'); INSERT INTO gasstations (GasStationID, ChainID, Country, Segment) VALUES (1, 1, 'USA', 'Regular'); INSERT INTO products (ProductID, Description) VALUES (1, 'Gasoline'); INSERT INTO transactions_1k (TransactionID, Date, Time, CustomerID, CardID, GasStationID, ProductID, Amount, Price) VALUES (1, '2013-06-01', '10:00:00', 1, 1, 1, 1, 10, 3.0); INSERT INTO yearmonth (CustomerID, Date, Consumption) VALUES (1, '201306', 100);\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 612,
+    "total_tokens": 983,
+    "completion_tokens": 371,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 7.281
+  },
+  "started_at": "2026-10-06T20:10:23.343983+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "USA"
+    ]
+  ],
+  "q2_output": [],
+  "q1_row_count": 1,
+  "q2_row_count": 0,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT T2.Country FROM transactions_1k AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID INNER JOIN yearmonth AS T3 ON T1.CustomerID = T3.CustomerID WHERE T3.Date = '201306'",
+  "q2_validation_sql": "SELECT DISTINCT T2.Country FROM transactions_1k AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID WHERE SUBSTR(T1.Date, 1, 6) = '201306'"
+}

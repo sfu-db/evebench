@@ -1,0 +1,67 @@
+{
+  "dbid": "175",
+  "index": "439",
+  "source_index": "0",
+  "schema_ddl": "CREATE TABLE PERSON (\n    PERSONID INT,\n    FIRSTNAME VARCHAR(255),\n    LASTNAME VARCHAR(255),\n    PRIMARY KEY (PERSONID)\n);\n\nCREATE TABLE ADDRESS (\n    ADDRESSID INT,\n    PERSONID INT,\n    CITY VARCHAR(255),\n    STATE VARCHAR(255),\n    PRIMARY KEY (ADDRESSID, PERSONID),\n    FOREIGN KEY (PERSONID) REFERENCES PERSON(PERSONID)\n);",
+  "q1": "SELECT FIRSTNAME, LASTNAME, CITY, STATE FROM PERSON AS P LEFT OUTER JOIN ADDRESS AS A ON P.PERSONID = A.PERSONID",
+  "q2": "SELECT DISTINCT FIRSTNAME, LASTNAME, CITY, STATE FROM PERSON AS P LEFT JOIN ADDRESS AS A ON P.PERSONID = A.PERSONID",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT FIRSTNAME, LASTNAME, CITY, STATE FROM PERSON AS P LEFT OUTER JOIN ADDRESS AS A ON P.PERSONID = A.PERSONID",
+  "q2_prompt_sql": "SELECT DISTINCT FIRSTNAME, LASTNAME, CITY, STATE FROM PERSON AS P LEFT JOIN ADDRESS AS A ON P.PERSONID = A.PERSONID",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO PERSON (PERSONID, FIRSTNAME, LASTNAME) VALUES (1, 'John', 'Doe');\nINSERT INTO ADDRESS (ADDRESSID, PERSONID, CITY, STATE) VALUES (1, 1, 'Springfield', 'IL');\nINSERT INTO ADDRESS (ADDRESSID, PERSONID, CITY, STATE) VALUES (2, 1, 'Springfield', 'IL');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 returns all rows from the LEFT JOIN (including duplicates from multiple matching ADDRESS rows for the same PERSON), while Q2 uses DISTINCT to remove duplicates. When a person has multiple addresses with identical CITY/STATE, Q1 produces duplicate rows for that person but Q2 returns only one unique row.",
+  "counterexample_dsp": "A person (John Doe) with two identical addresses in ADDRESS table. Q1 returns two rows for John Doe, Q2 returns one distinct row.",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 returns all rows from the LEFT JOIN (including duplicates from multiple matching ADDRESS rows for the same PERSON), while Q2 uses DISTINCT to remove duplicates. When a person has multiple addresses with identical CITY/STATE, Q1 produces duplicate rows for that person but Q2 returns only one unique row.\",\n  \"counterexample_dsp\": \"A person (John Doe) with two identical addresses in ADDRESS table. Q1 returns two rows for John Doe, Q2 returns one distinct row.\",\n  \"counterexample\": \"INSERT INTO PERSON (PERSONID, FIRSTNAME, LASTNAME) VALUES (1, 'John', 'Doe');\\nINSERT INTO ADDRESS (ADDRESSID, PERSONID, CITY, STATE) VALUES (1, 1, 'Springfield', 'IL');\\nINSERT INTO ADDRESS (ADDRESSID, PERSONID, CITY, STATE) VALUES (2, 1, 'Springfield', 'IL');\"\n}",
+  "reasoning": "\nOkay, let's see. The user wants me to find a counterexample where Q1 and Q2 produce different results. The two queries are a LEFT OUTER JOIN and a LEFT JOIN with DISTINCT. Wait, but LEFT JOIN is the same as LEFT OUTER JOIN, right? So maybe the difference is in the DISTINCT keyword in Q2.\n\nLooking at the schema: PERSON has PERSONID, FIRSTNAME, LASTNAME. ADDRESS has ADDRESSID, PERSONID, CITY, STATE. The primary key for ADDRESS is (ADDRESSID, PERSONID), which means a person can have multiple addresses with different ADDRESSIDs but same PERSONID. So a person can have multiple rows in ADDRESS.\n\nQ1 does a LEFT OUTER JOIN, so for each person, it joins all matching addresses. So if a person has two addresses, the result will have two rows for that person, each with different CITY and STATE. But Q2 uses SELECT DISTINCT, so if there are duplicates (due to multiple addresses), they would be removed. Wait, but in a LEFT JOIN, even with multiple addresses, each address row would produce a separate row. So if a person has two addresses, Q1 would return two rows for that person, while Q2 would return one if both addresses have the same city and state, or two if they differ. Wait, no. The DISTINCT applies to all columns. So if the person has two different addresses, Q2 would return two distinct rows. But if the person has the same city and state in both addresses, then Q2 would return one row. Wait, but in that case, the person would have two rows from the join, but with same city and state. So Q1 would return two rows, and Q2 would return one. That's the case where they differ.\n\nSo the counterexample would be a person with two addresses that have the same city and state. Then Q1 would return two rows (same person info repeated), and Q2 would return one distinct row. That would make the queries different.\n\nSo let's create a test case. Person John Doe with PERSONID 1. Two addresses: ADDRESSID 1 and 2, both with CITY 'Springfield' and STATE 'IL'. Then Q1 would return two rows for John Doe with same info, and Q2 would return one row. That's the difference.\n\nAlternatively, if the two addresses have different city/state, then Q1 would have two rows (distinct in the joined result) and Q2 would also have two rows. So the difference only occurs when the addresses are same in city and state. So the key is to have a person with multiple addresses that have the same city and state. Then Q1 would have duplicates and Q2 would not.\n\nSo the counterexample would be inserting a person with two addresses same city/state. Then Q1 would return two rows, Q2 one.\n\nSo the explanation is that Q1 includes all joined rows (including duplicates from multiple addresses with same city/state), while Q2 uses DISTINCT to remove duplicates, leading to different results when a person has multiple addresses with same city and state.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 350,
+    "total_tokens": 1184,
+    "completion_tokens": 834,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 633
+    },
+    "generation_seconds": 28.907
+  },
+  "started_at": "2026-10-06T13:55:36.632867+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "John",
+      "Doe",
+      "Springfield",
+      "IL"
+    ],
+    [
+      "John",
+      "Doe",
+      "Springfield",
+      "IL"
+    ]
+  ],
+  "q2_output": [
+    [
+      "John",
+      "Doe",
+      "Springfield",
+      "IL"
+    ]
+  ],
+  "q1_row_count": 2,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT FIRSTNAME, LASTNAME, CITY, STATE FROM PERSON AS P LEFT OUTER JOIN ADDRESS AS A ON P.PERSONID = A.PERSONID",
+  "q2_validation_sql": "SELECT DISTINCT FIRSTNAME, LASTNAME, CITY, STATE FROM PERSON AS P LEFT JOIN ADDRESS AS A ON P.PERSONID = A.PERSONID"
+}

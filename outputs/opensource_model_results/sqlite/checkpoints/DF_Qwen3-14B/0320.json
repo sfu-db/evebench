@@ -1,0 +1,59 @@
+{
+  "dbid": "codebase_community",
+  "index": "320",
+  "source_index": "532",
+  "schema_ddl": "CREATE TABLE badges\n(\n    Id     INTEGER          not null\n        primary key,\n    UserId INTEGER          null,\n    Name   TEXT null,\n    Date   DATETIME     null,\n        foreign key (UserId) references users (Id)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE comments\n(\n    Id              INTEGER          not null\n        primary key,\n    PostId          INTEGER          null,\n    Score           INTEGER          null,\n    Text            TEXT     null,\n    CreationDate    DATETIME     null,\n    UserId          INTEGER          null,\n    UserDisplayName TEXT null,\n        foreign key (PostId) references posts (Id)\n            on update cascade on delete cascade,\n        foreign key (UserId) references users (Id)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE postHistory\n(\n    Id                INTEGER          not null UNIQUE\n        primary key,\n    PostHistoryTypeId INTEGER          null,\n    PostId            INTEGER          null,\n    RevisionGUID      TEXT null,\n    CreationDate      DATETIME     null,\n    UserId            INTEGER          null,\n    Text              TEXT     null,\n    Comment           TEXT         null,\n    UserDisplayName   TEXT null,\n        foreign key (PostId) references posts (Id)\n            on update cascade on delete cascade,\n        foreign key (UserId) references users (Id)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE postLinks\n(\n    Id            INTEGER      not null\n        primary key,\n    CreationDate  DATETIME null,\n    PostId        INTEGER      null,\n    RelatedPostId INTEGER      null,\n    LinkTypeId    INTEGER      null,\n        foreign key (PostId) references posts (Id)\n            on update cascade on delete cascade,\n        foreign key (RelatedPostId) references posts (Id)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE posts\n(\n    Id                    INTEGER          not null UNIQUE\n        primary key,\n    PostTypeId            INTEGER          null,\n    AcceptedAnswerId      INTEGER          null,\n    CreaionDate           DATETIME     null,\n    Score                 INTEGER          null,\n    ViewCount             INTEGER          null,\n    Body                  TEXT     null,\n    OwnerUserId           INTEGER          null,\n    LasActivityDate       DATETIME     null,\n    Title                 TEXT null,\n    Tags                  TEXT null,\n    AnswerCount           INTEGER          null,\n    CommentCount          INTEGER          null,\n    FavoriteCount         INTEGER          null,\n    LastEditorUserId      INTEGER          null,\n    LastEditDate          DATETIME     null,\n    CommunityOwnedDate    DATETIME    null,\n    ParentId              INTEGER          null,\n    ClosedDate            DATETIME     null,\n    OwnerDisplayName      TEXT null,\n    LastEditorDisplayName TEXT null,\n        foreign key (LastEditorUserId) references users (Id)\n            on update cascade on delete cascade,\n        foreign key (OwnerUserId) references users (Id)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE tags\n(\n    Id            INTEGER          not null\n        primary key,\n    TagName       TEXT null,\n    Count         INTEGER          null,\n    ExcerptPostId INTEGER          null,\n    WikiPostId    INTEGER          null,\n    foreign key (ExcerptPostId) references posts (Id)\n        on update cascade on delete cascade\n);\n\nCREATE TABLE users\n(\n    Id              INTEGER          not null UNIQUE\n        primary key,\n    Reputation      INTEGER          null,\n    CreationDate    DATETIME     null,\n    DisplayName     TEXT null,\n    LastAccessDate  DATETIME     null,\n    WebsiteUrl      TEXT null,\n    Location        TEXT null,\n    AboutMe         TEXT     null,\n    Views           INTEGER          null,\n    UpVotes         INTEGER          null,\n    DownVotes       INTEGER          null,\n    AccountId       INTEGER          null,\n    Age             INTEGER          null,\n    ProfileImageUrl TEXT null\n);\n\nCREATE TABLE votes\n(\n    Id           INTEGER  not null\n        primary key,\n    PostId       INTEGER  null,\n    VoteTypeId   INTEGER  null,\n    CreationDate DATE null,\n    UserId       INTEGER  null,\n    BountyAmount INTEGER  null,\n        foreign key (PostId) references posts (Id)\n            on update cascade on delete cascade,\n        foreign key (UserId) references users (Id)\n            on update cascade on delete cascade\n);",
+  "q1": "SELECT DisplayName FROM users WHERE DisplayName IN ('Harlan', 'Jarrod Dixon') AND Reputation = (SELECT MAX(Reputation) FROM users WHERE DisplayName IN ('Harlan', 'Jarrod Dixon'))",
+  "q2": "SELECT DisplayName, Reputation FROM users WHERE DisplayName IN ('Harlan', 'Jarrod Dixon') ORDER BY Reputation DESC LIMIT 1",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT DisplayName FROM users WHERE DisplayName IN ('Harlan', 'Jarrod Dixon') AND Reputation = (SELECT MAX(Reputation) FROM users WHERE DisplayName IN ('Harlan', 'Jarrod Dixon'))",
+  "q2_prompt_sql": "SELECT DisplayName, Reputation FROM users WHERE DisplayName IN ('Harlan', 'Jarrod Dixon') ORDER BY Reputation DESC LIMIT 1",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO users (Id, DisplayName, Reputation) VALUES (1, 'Harlan', 100), (2, 'Jarrod Dixon', 100);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 returns all users with the maximum reputation in the specified set, while Q2 returns only one user (even if there's a tie). When multiple users share the maximum reputation, Q1 and Q2 produce different results.",
+  "counterexample_dsp": "Two users 'Harlan' and 'Jarrod Dixon' both have Reputation 100. Q1 returns both, Q2 returns only one due to LIMIT 1.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n  \"equiv\": \"N\",\n  \"explanation\": \"Q1 returns all users with the maximum reputation in the specified set, while Q2 returns only one user (even if there's a tie). When multiple users share the maximum reputation, Q1 and Q2 produce different results.\",\n  \"counterexample_dsp\": \"Two users 'Harlan' and 'Jarrod Dixon' both have Reputation 100. Q1 returns both, Q2 returns only one due to LIMIT 1.\",\n  \"counterexample\": \"INSERT INTO users (Id, DisplayName, Reputation) VALUES (1, 'Harlan', 100), (2, 'Jarrod Dixon', 100);\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem. So, I need to determine if Q1 and Q2 are semantically equivalent. Let me first understand what each query does.\n\nStarting with Q1: It selects the DisplayName from users where the DisplayName is either 'Harlan' or 'Jarrod Dixon', and their Reputation equals the maximum Reputation among those two users. So, it's finding the user(s) with the highest reputation in that specific set of names. If there's a tie, it would return all of them.\n\nNow Q2: It selects DisplayName and Reputation from the same set of users, orders them by Reputation in descending order, and then takes the top 1 result. This would return the user with the highest reputation, but if there's a tie, it would only return one of them (since LIMIT 1 is used). However, the order of the tiebreaker isn't specified, so it might depend on the database's internal ordering when there are multiple rows with the same max value.\n\nSo the main difference here is that Q1 could return multiple users if there's a tie for the maximum reputation, whereas Q2 would only return one user, even if there's a tie. Therefore, in cases where two users have the same max reputation, Q1 would return both, and Q2 would return just one (depending on how the database handles the LIMIT 1 with ties).\n\nTo create a counterexample, I need a scenario where both 'Harlan' and 'Jarrod Dixon' have the same maximum reputation. Then Q1 would return both, while Q2 would return only one (either one, depending on the database's order). However, the problem states that the user must provide a test database where the outputs differ. Let me think about how to structure that.\n\nLet's say we have two users: Harlan with Reputation 100 and Jarrod Dixon with Reputation 100. Then Q1 would return both names, while Q2 would return one of them (since it's ordered by Reputation DESC and then LIMIT 1). But if there's a third user with the same reputation, but not in the IN clause, that's not relevant here. Wait, the IN clause in both queries is the same, so only Harlan and Jarrod are considered.\n\nSo, in the test case, if both have the same max reputation, Q1 returns both, Q2 returns one. That's a clear difference. However, in the schema, the users table has DisplayName as a column. So inserting two users with those display names and same Reputation.\n\nBut need to make sure that the test data doesn't violate any constraints. For example, the Id in users is primary key, so they need unique Ids. Also, other tables may have foreign keys referencing users, but since the problem says to create a small test database, maybe only the users table is needed here. The other tables can be left empty as long as the constraints are not violated. But the foreign keys in other tables reference users, but if those tables are empty, that's okay.\n\nSo the counterexample would have two users with the same Reputation, both in the IN list. Then Q1 returns both, Q2 returns one. Therefore, they are not equivalent.\n\nAnother possible scenario: if there's only one user in the IN list. But that's not a counterexample. The case where there's a tie is the key.\n\nSo the answer should be that they are not equivalent, and the counterexample is two users with same max reputation in the IN list.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 1194,
+    "total_tokens": 2071,
+    "completion_tokens": 877,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 725
+    },
+    "generation_seconds": 30.094
+  },
+  "started_at": "2026-10-06T20:31:52.205328+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "Harlan"
+    ],
+    [
+      "Jarrod Dixon"
+    ]
+  ],
+  "q2_output": [
+    [
+      "Harlan",
+      100
+    ]
+  ],
+  "q1_row_count": 2,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DisplayName FROM users WHERE DisplayName IN ('Harlan', 'Jarrod Dixon') AND Reputation = (SELECT MAX(Reputation) FROM users WHERE DisplayName IN ('Harlan', 'Jarrod Dixon'))",
+  "q2_validation_sql": "SELECT DisplayName, Reputation FROM users WHERE DisplayName IN ('Harlan', 'Jarrod Dixon') ORDER BY Reputation DESC LIMIT 1"
+}

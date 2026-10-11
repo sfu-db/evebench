@@ -1,0 +1,39 @@
+{
+  "dbid": "1045",
+  "index": "384",
+  "source_index": "154",
+  "schema_ddl": "CREATE TABLE PRODUCT (\n    PRODUCT_KEY INT,\n    PRIMARY KEY (PRODUCT_KEY)\n);\nCREATE TABLE CUSTOMER (\n    CUSTOMER_ID INT,\n    PRODUCT_KEY INT,\n    PRIMARY KEY (CUSTOMER_ID),\n    FOREIGN KEY (PRODUCT_KEY) REFERENCES PRODUCT(PRODUCT_KEY)\n);",
+  "q1": "SELECT CUSTOMER_ID FROM CUSTOMER GROUP BY 1 HAVING COUNT(DISTINCT PRODUCT_KEY) = (SELECT COUNT(DISTINCT PRODUCT_KEY) FROM PRODUCT)",
+  "q2": "SELECT CUSTOMER_ID FROM ( SELECT CUSTOMER_ID, COUNT(1) AS CNT FROM ( SELECT DISTINCT CUSTOMER_ID, PRODUCT_KEY FROM CUSTOMER ) AS T GROUP BY CUSTOMER_ID ) AS T2 WHERE T2.CNT=(SELECT COUNT(1) FROM PRODUCT)",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT CUSTOMER_ID FROM CUSTOMER GROUP BY 1 HAVING COUNT(DISTINCT PRODUCT_KEY) = (SELECT COUNT(DISTINCT PRODUCT_KEY) FROM PRODUCT)",
+  "q2_prompt_sql": "SELECT CUSTOMER_ID FROM ( SELECT CUSTOMER_ID, COUNT(1) AS CNT FROM ( SELECT DISTINCT CUSTOMER_ID, PRODUCT_KEY FROM CUSTOMER ) AS T GROUP BY CUSTOMER_ID ) AS T2 WHERE T2.CNT=(SELECT COUNT(1) FROM PRODUCT)",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries aim to find customers who have purchased all distinct products. Q1 uses COUNT(DISTINCT PRODUCT_KEY) directly in the HAVING clause, while Q2 deduplicates customer-product pairs first and then counts. Since PRODUCT_KEY is a primary key, both approaches yield the same result.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries aim to find customers who have purchased all distinct products. Q1 uses COUNT(DISTINCT PRODUCT_KEY) directly in the HAVING clause, while Q2 deduplicates customer-product pairs first and then counts. Since PRODUCT_KEY is a primary key, both approaches yield the same result.\"\n}",
+  "reasoning": "\nOkay, let's see. I need to determine if Q1 and Q2 are semantically equivalent. Let me start by understanding what each query does.\n\nFirst, looking at Q1: It selects CUSTOMER_ID from the CUSTOMER table, groups by CUSTOMER_ID, and uses a HAVING clause. The condition is that the count of distinct PRODUCT_KEY for each customer equals the count of distinct PRODUCT_KEY in the PRODUCT table. So, this query is finding customers who have purchased all distinct products available. Because COUNT(DISTINCT PRODUCT_KEY) in the HAVING clause is compared to the total number of distinct products in the PRODUCT table.\n\nNow, Q2 is a bit more nested. It starts by selecting distinct CUSTOMER_ID and PRODUCT_KEY from CUSTOMER, then groups by CUSTOMER_ID, counting the number of distinct products each customer has. Then, it compares that count to the total number of products in the PRODUCT table. Wait, but in Q2, the inner query uses COUNT(1) as CNT. Wait, the inner query is selecting distinct CUSTOMER_ID and PRODUCT_KEY, so each row is a unique customer-product pair. Then, grouping by CUSTOMER_ID and counting the number of rows (which would be the number of distinct products each customer has, since the inner select is distinct). Then, the outer query checks if that count equals the total number of products in the PRODUCT table. But wait, the PRODUCT table's count is using COUNT(1), which is the number of rows, which is the same as COUNT(DISTINCT PRODUCT_KEY) since PRODUCT_KEY is the primary key. So Q2 is also checking if the customer has all products.\n\nWait, but in Q1, the HAVING clause uses COUNT(DISTINCT PRODUCT_KEY) which for each customer's group, counts the distinct product keys they have. In Q2, the inner query first selects distinct customer and product pairs, so each customer-product pair is unique. Then, grouping by customer and counting the number of rows (which is the count of distinct products per customer). Then, comparing that count to the total number of products in the PRODUCT table. So in that case, Q1 and Q2 should be equivalent, right?\n\nBut wait, maybe there's a difference. Let me think. Suppose a customer has multiple entries for the same product. For example, if a customer has product A twice. In Q1, COUNT(DISTINCT PRODUCT_KEY) would count that as 1. In Q2, the inner query selects distinct CUSTOMER_ID and PRODUCT_KEY, so duplicates are removed. Then, the count is the number of distinct products. So both queries would count the same. Therefore, the logic seems the same.\n\nWait, but in Q2, the inner query is selecting distinct CUSTOMER_ID and PRODUCT_KEY. So for each customer, the count is the number of distinct products they have. Then, comparing that to the total number of products. So if the total number of products is N, then customers who have all N distinct products would be selected.\n\nIn Q1, the same logic: group by customer, count distinct products they have, and compare to the total distinct products in the product table. Since the product table's count is the same as the number of distinct product keys (because it's the primary key), both queries should be equivalent.\n\nBut wait, maybe there's a case where the count in Q2 is different. Let me think of a scenario. Suppose the PRODUCT table has two products: 1 and 2. Now, a customer has product 1 once and product 2 once. Both queries would count 2, which matches the total. Now, if another customer has product 1 twice and product 2 once. Q1 would count 2 distinct products, Q2 would count 2 (since the inner distinct removes duplicates). So same result.\n\nWait, but in Q2, the inner query is (SELECT DISTINCT CUSTOMER_ID, PRODUCT_KEY FROM CUSTOMER). So for each customer, their product entries are deduped. Then, grouping by customer and counting the number of entries (which is the number of distinct products they have). Then, compare to the total number of products.\n\nBut in Q1, the COUNT(DISTINCT PRODUCT_KEY) is done directly on the CUSTOMER table, which would also count the number of distinct products per customer. So both approaches are equivalent.\n\nBut why is the HAVING clause in Q1 using COUNT(DISTINCT PRODUCT_KEY) and in Q2 using COUNT(1) after deduping?\n\nWait, in Q2, the inner query is selecting distinct customer and product pairs. Then, grouping by customer and counting the number of rows. That count is exactly the number of distinct products for that customer. So that's equivalent to COUNT(DISTINCT PRODUCT_KEY) in Q1.\n\nSo both queries are trying to find customers who have all the products. Therefore, they should be equivalent. But maybe there's a case where the two approaches differ?\n\nWait, but what if the PRODUCT table has multiple entries for the same product? No, because PRODUCT_KEY is the primary key. So the PRODUCT table has unique PRODUCT_KEYs. Therefore, COUNT(1) from PRODUCT is the same as COUNT(DISTINCT PRODUCT_KEY) from PRODUCT.\n\nTherefore, both queries are equivalent. So the answer should be Y.\n\nBut wait, perhaps I'm missing something. Let me think again. Suppose there's a customer who has all products, but in the CUSTOMER table, there are multiple entries for some products. Both queries would count the distinct products, so they would be the same. Therefore, the queries should be equivalent. Hence, the answer is Y.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 399,
+    "total_tokens": 1636,
+    "completion_tokens": 1237,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1162
+    },
+    "generation_seconds": 38.703
+  },
+  "started_at": "2026-10-06T15:06:15.281777+00:00",
+  "elapsed_seconds": 0.0
+}

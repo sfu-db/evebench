@@ -1,0 +1,55 @@
+{
+  "dbid": "thrombosis_prediction",
+  "index": "726",
+  "source_index": "1266",
+  "schema_ddl": "CREATE TABLE Examination\n(\n    ID                 INTEGER          null,\n    `Examination Date` DATE         null,\n    `aCL IgG`          REAL        null,\n    `aCL IgM`          REAL        null,\n    ANA                INTEGER          null,\n    `ANA Pattern`      TEXT null,\n    `aCL IgA`          INTEGER          null,\n    Diagnosis          TEXT null,\n    KCT                TEXT null,\n    RVVT              TEXT null,\n    LAC                TEXT null,\n    Symptoms           TEXT null,\n    Thrombosis         INTEGER          null,\n    foreign key (ID) references Patient (ID)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE Patient\n(\n    ID           INTEGER default 0 not null\n        primary key,\n    SEX          TEXT  null,\n    Birthday     DATE          null,\n    Description  DATE          null,\n    `First Date` DATE          null,\n    Admission    TEXT  null,\n    Diagnosis    TEXT  null\n);\n\nCREATE TABLE Laboratory\n(\n    ID        INTEGER  default 0            not null,\n    Date      DATE default '0000-00-00' not null,\n    GOT       INTEGER                       null,\n    GPT       INTEGER                        null,\n    LDH       INTEGER                        null,\n    ALP       INTEGER                        null,\n    TP        REAL             null,\n    ALB       REAL             null,\n    UA        REAL             null,\n    UN        INTEGER                       null,\n    CRE       REAL             null,\n    `T-BIL`   REAL             null,\n    `T-CHO`   INTEGER                       null,\n    TG        INTEGER                       null,\n    CPK       INTEGER                       null,\n    GLU       INTEGER                       null,\n    WBC       REAL             null,\n    RBC       REAL             null,\n    HGB       REAL             null,\n    HCT       REAL             null,\n    PLT       INTEGER                       null,\n    PT        REAL             null,\n    APTT      INTEGER                       null,\n    FG        REAL             null,\n    PIC       INTEGER                       null,\n    TAT       INTEGER                       null,\n    TAT2      INTEGER                       null,\n    `U-PRO`   TEXT              null,\n    IGG       INTEGER                       null,\n    IGA       INTEGER                       null,\n    IGM       INTEGER                       null,\n    CRP       TEXT              null,\n    RA        TEXT              null,\n    RF        TEXT              null,\n    C3        INTEGER                       null,\n    C4        INTEGER                       null,\n    RNP       TEXT              null,\n    SM        TEXT              null,\n    SC170     TEXT              null,\n    SSA       TEXT              null,\n    SSB       TEXT              null,\n    CENTROMEA TEXT              null,\n    DNA       TEXT              null,\n    `DNA-II`  INTEGER                       null,\n    primary key (ID, Date),\n        foreign key (ID) references Patient (ID)\n            on update cascade on delete cascade\n);",
+  "q1": "SELECT COUNT(DISTINCT T1.ID) FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T2.RNP = 'negative' OR T2.RNP = '0' AND T1.Admission = '+'",
+  "q2": "SELECT COUNT(DISTINCT T1.ID) FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T2.RNP IN ('-', '+-') AND T1.Admission = '+'",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT COUNT(DISTINCT T1.ID) FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T2.RNP = 'negative' OR T2.RNP = '0' AND T1.Admission = '+'",
+  "q2_prompt_sql": "SELECT COUNT(DISTINCT T1.ID) FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T2.RNP IN ('-', '+-') AND T1.Admission = '+'",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO Patient (ID, Admission) VALUES (1, '+'), (2, '+');\nINSERT INTO Laboratory (ID, Date, RNP) VALUES (1, '2023-01-01', 'negative'), (2, '2023-01-02', '-');",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 checks for RNP = 'negative' OR RNP = '0' (with Admission '+'), while Q2 checks RNP IN ('-', '+-') (with Admission '+'). These are different value sets, leading to different results.",
+  "counterexample_dsp": "Two patients: one with RNP='negative' (counted by Q1 but not Q2), another with RNP='-' (counted by Q2 but not Q1). Both have Admission '+'.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 checks for RNP = 'negative' OR RNP = '0' (with Admission '+'), while Q2 checks RNP IN ('-', '+-') (with Admission '+'). These are different value sets, leading to different results.\",\n\"counterexample_dsp\": \"Two patients: one with RNP='negative' (counted by Q1 but not Q2), another with RNP='-' (counted by Q2 but not Q1). Both have Admission '+'.\",\n\"counterexample\": \"INSERT INTO Patient (ID, Admission) VALUES (1, '+'), (2, '+');\\nINSERT INTO Laboratory (ID, Date, RNP) VALUES (1, '2023-01-01', 'negative'), (2, '2023-01-02', '-');\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem step by step. The user wants to know if the two SQL queries Q1 and Q2 are semantically equivalent. If not, they need a counterexample.\n\nFirst, I need to understand what each query is doing. Let's look at Q1:\n\nQ1 selects the count of distinct T1.ID from Patient (T1) joined with Laboratory (T2) on ID. The WHERE clause has two conditions: T2.RNP is 'negative' or '0', and T1.Admission is '+'.\n\nWait, the WHERE condition is a bit tricky. The OR and AND have different precedence. In SQL, AND has higher precedence than OR unless parentheses are used. So the original condition is T2.RNP = 'negative' OR (T2.RNP = '0' AND T1.Admission = '+'). Wait no, the original WHERE is (T2.RNP = 'negative' OR T2.RNP = '0') AND T1.Admission = '+'. Wait, no, the original Q1's WHERE is T2.RNP = 'negative' OR T2.RNP = '0' AND T1.Admission = '+'. So according to operator precedence, the AND is evaluated before OR. So it's equivalent to T2.RNP = 'negative' OR (T2.RNP = '0' AND T1.Admission = '+'). Wait, no. Let me parse it again. The original WHERE is:\n\nT2.RNP = 'negative' OR T2.RNP = '0' AND T1.Admission = '+'\n\nSince AND has higher precedence than OR, this is equivalent to:\n\n(T2.RNP = 'negative') OR ( (T2.RNP = '0') AND (T1.Admission = '+') )\n\nBut that's not the same as if the OR was grouped with the AND. So the condition is that either T2.RNP is 'negative' regardless of Admission, or T2.RNP is '0' and Admission is '+'. But in Q1, the Admission condition is only applied to the second part. Wait, no, the Admission condition is only in the second part. Wait, the original WHERE clause is:\n\n(T2.RNP = 'negative' OR T2.RNP = '0') AND T1.Admission = '+'\n\nWait, no. Wait the original Q1 is:\n\nWHERE T2.RNP = 'negative' OR T2.RNP = '0' AND T1.Admission = '+'\n\nSo the correct grouping is T2.RNP = 'negative' OR (T2.RNP = '0' AND T1.Admission = '+'). Because AND is higher precedence than OR. So the overall condition is that either T2.RNP is 'negative', or both T2.RNP is '0' and T1.Admission is '+'.\n\nNow Q2's WHERE is T2.RNP IN ('-', '+-') AND T1.Admission = '+'. So Q2 is counting patients where their Laboratory RNP is either '-' or '+-' and their Admission is '+'.\n\nSo the key difference is in the RNP conditions. Q1's RNP is 'negative' or '0', and Q2's RNP is '-' or '+-'. Unless these values are equivalent, which they are not. So the first thing to check is whether 'negative' and '0' in Q1 correspond to '-' and '+-' in Q2. If not, then the queries are different.\n\nAssuming that the RNP field in Laboratory is supposed to have values like 'negative', '0', '-', '+-', etc., then the conditions in Q1 and Q2 are checking for different values. Therefore, the two queries are not equivalent. For example, if a patient has RNP = 'negative', it would be counted in Q1 but not in Q2. Similarly, if RNP is '-', it would be counted in Q2 but not in Q1. So the count would differ.\n\nTherefore, the answer should be that they are not equivalent. Now, to create a counterexample, we need to have a test database where there are records that meet the conditions of one query but not the other.\n\nLet's create two patients. Suppose Patient 1 has Admission '+', and in Laboratory, RNP is 'negative'. Then Q1 would count this patient, but Q2 would not. Patient 2 has Admission '+', and RNP is '-'. Then Q2 would count this, but Q1 would not. So inserting these two records would show different counts.\n\nBut need to ensure that the schema constraints are followed. For example, the Laboratory table has a composite primary key (ID, Date), so each ID must have entries with unique dates. Let's create two entries for each patient with different dates.\n\nSo the counterexample would involve inserting:\n\n- Patient 1 with ID=1, Admission '+'\n\n- Laboratory entry for ID=1, Date='2023-01-01', RNP='negative'\n\n- Patient 2 with ID=2, Admission '+'\n\n- Laboratory entry for ID=2, Date='2023-01-02', RNP='-'\n\nThen Q1 would count 1 (from patient 1), and Q2 would count 1 (from patient 2). So the counts are different. Alternatively, if both patients are present, then Q1 would count 1 (patient 1) and Q2 would count 1 (patient 2), leading to different results.\n\nThus, the counterexample is when there are patients with RNP values that are in one query's condition but not the other.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 959,
+    "total_tokens": 2319,
+    "completion_tokens": 1360,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1168
+    },
+    "generation_seconds": 44.5
+  },
+  "started_at": "2026-10-06T20:56:20.530754+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      1
+    ]
+  ],
+  "q2_output": [
+    [
+      1
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT COUNT(DISTINCT T1.ID) FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T2.RNP = 'negative' OR T2.RNP = '0' AND T1.Admission = '+'",
+  "q2_validation_sql": "SELECT COUNT(DISTINCT T1.ID) FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T2.RNP IN ('-', '+-') AND T1.Admission = '+'"
+}

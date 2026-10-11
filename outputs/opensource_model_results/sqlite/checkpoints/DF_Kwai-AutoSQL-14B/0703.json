@@ -1,0 +1,52 @@
+{
+  "dbid": "thrombosis_prediction",
+  "index": "703",
+  "source_index": "1234",
+  "schema_ddl": "CREATE TABLE Examination\n(\n    ID                 INTEGER          null,\n    `Examination Date` DATE         null,\n    `aCL IgG`          REAL        null,\n    `aCL IgM`          REAL        null,\n    ANA                INTEGER          null,\n    `ANA Pattern`      TEXT null,\n    `aCL IgA`          INTEGER          null,\n    Diagnosis          TEXT null,\n    KCT                TEXT null,\n    RVVT              TEXT null,\n    LAC                TEXT null,\n    Symptoms           TEXT null,\n    Thrombosis         INTEGER          null,\n    foreign key (ID) references Patient (ID)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE Patient\n(\n    ID           INTEGER default 0 not null\n        primary key,\n    SEX          TEXT  null,\n    Birthday     DATE          null,\n    Description  DATE          null,\n    `First Date` DATE          null,\n    Admission    TEXT  null,\n    Diagnosis    TEXT  null\n);\n\nCREATE TABLE Laboratory\n(\n    ID        INTEGER  default 0            not null,\n    Date      DATE default '0000-00-00' not null,\n    GOT       INTEGER                       null,\n    GPT       INTEGER                        null,\n    LDH       INTEGER                        null,\n    ALP       INTEGER                        null,\n    TP        REAL             null,\n    ALB       REAL             null,\n    UA        REAL             null,\n    UN        INTEGER                       null,\n    CRE       REAL             null,\n    `T-BIL`   REAL             null,\n    `T-CHO`   INTEGER                       null,\n    TG        INTEGER                       null,\n    CPK       INTEGER                       null,\n    GLU       INTEGER                       null,\n    WBC       REAL             null,\n    RBC       REAL             null,\n    HGB       REAL             null,\n    HCT       REAL             null,\n    PLT       INTEGER                       null,\n    PT        REAL             null,\n    APTT      INTEGER                       null,\n    FG        REAL             null,\n    PIC       INTEGER                       null,\n    TAT       INTEGER                       null,\n    TAT2      INTEGER                       null,\n    `U-PRO`   TEXT              null,\n    IGG       INTEGER                       null,\n    IGA       INTEGER                       null,\n    IGM       INTEGER                       null,\n    CRP       TEXT              null,\n    RA        TEXT              null,\n    RF        TEXT              null,\n    C3        INTEGER                       null,\n    C4        INTEGER                       null,\n    RNP       TEXT              null,\n    SM        TEXT              null,\n    SC170     TEXT              null,\n    SSA       TEXT              null,\n    SSB       TEXT              null,\n    CENTROMEA TEXT              null,\n    DNA       TEXT              null,\n    `DNA-II`  INTEGER                       null,\n    primary key (ID, Date),\n        foreign key (ID) references Patient (ID)\n            on update cascade on delete cascade\n);",
+  "q1": "SELECT DISTINCT T1.ID, T2.GLU FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE STRFTIME('%Y', T1.\"First Date\") = '1991' AND T2.GLU < 180",
+  "q2": "SELECT T1.ID, T2.GLU FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T2.GLU < 180 AND STRFTIME('%Y', T1.Description) >= '1991'",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT DISTINCT T1.ID, T2.GLU FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE STRFTIME('%Y', T1.\"First Date\") = '1991' AND T2.GLU < 180",
+  "q2_prompt_sql": "SELECT T1.ID, T2.GLU FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T2.GLU < 180 AND STRFTIME('%Y', T1.Description) >= '1991'",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO Patient (ID, `First Date`, Description) VALUES (1, '1991-01-01', '1990-01-01');\nINSERT INTO Laboratory (ID, Date, GLU) VALUES (1, '1991-01-01', 170);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 filters on Patient.`First Date` being exactly year 1991, while Q2 filters on Patient.Description being >= 1991. These different columns and comparison operators produce different results.",
+  "counterexample_dsp": "A patient with First Date in 1991 and Description in 1990 will be included by Q1 but excluded by Q2. Conversely, a patient with Description in 1992 and First Date in 1990 will be excluded by Q1 but included by Q2.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 filters on Patient.`First Date` being exactly year 1991, while Q2 filters on Patient.Description being >= 1991. These different columns and comparison operators produce different results.\",\n\"counterexample_dsp\": \"A patient with First Date in 1991 and Description in 1990 will be included by Q1 but excluded by Q2. Conversely, a patient with Description in 1992 and First Date in 1990 will be excluded by Q1 but included by Q2.\",\n\"counterexample\": \"INSERT INTO Patient (ID, `First Date`, Description) VALUES (1, '1991-01-01', '1990-01-01');\\nINSERT INTO Laboratory (ID, Date, GLU) VALUES (1, '1991-01-01', 170);\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem step by step. The user wants to know if Q1 and Q2 are semantically equivalent. If not, they need a counterexample.\n\nFirst, I'll look at both queries. \n\nQ1 selects distinct ID and GLU from Patient joined with Laboratory where the year of First Date is 1991 and GLU < 180. The STRFTIME function is used on T1.\"First Date\" to get the year. \n\nQ2 does a similar join but uses STRFTIME on T1.Description and checks if it's >= '1991'. Also, the DISTINCT keyword is missing in Q2. \n\nSo the main differences are:\n1. Q1 uses \"First Date\" column, Q2 uses Description column.\n2. Q1's year check is exactly '1991', while Q2 uses >= '1991', which could include years after 1991.\n3. Q1 has DISTINCT, Q2 does not.\n\nWait, the WHERE clause in Q2 is STRFTIME('%Y', T1.Description) >= '1991'. Since Description is a DATE type, STRFTIME on it would return the year. So >= '1991' would include all years from 1991 onwards. But Q1's condition is exactly 1991. So that's a significant difference in the year filter.\n\nAnother point: the Description column in Patient is a DATE type. The First Date is also a DATE. So using STRFTIME on both would extract the year correctly. But the columns themselves are different.\n\nSo, if there's a patient with First Date in 1991 but Description in 1990, then Q1 would include them (if GLU < 180) but Q2 would not. Conversely, if a patient has Description in 1992 but First Date in 1990, then Q2 would include them but Q1 wouldn't. \n\nAlso, the DISTINCT in Q1 vs no DISTINCT in Q2 could lead to differences in results if there are duplicates, but that's a secondary point. The main issue is the different columns used in the year condition.\n\nTo create a counterexample, I need a patient where First Date is 1991 but Description is before 1991. Then Q1 would include them, but Q2 wouldn't. Alternatively, a patient with Description >= 1991 but First Date not 1991. Let's pick the first case.\n\nLet me create a patient with ID=1, First Date '1991-01-01', Description '1990-01-01'. Then, in the Laboratory table, GLU < 180. Then Q1 would include this patient (year 1991), but Q2 would check Description's year (1990) which is <1991, so not included. So Q1 returns this row, Q2 does not. That's a clear difference.\n\nAnother case: a patient where Description is 1992, First Date is 1990. Then Q2 would include (year >=1991) but Q1 wouldn't. So that's another counterexample.\n\nSo the main issue is the different columns used for year extraction. Therefore, the queries are not equivalent.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 974,
+    "total_tokens": 1904,
+    "completion_tokens": 930,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 719
+    },
+    "generation_seconds": 30.734
+  },
+  "started_at": "2026-10-06T21:33:49.980568+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      1,
+      170
+    ]
+  ],
+  "q2_output": [],
+  "q1_row_count": 1,
+  "q2_row_count": 0,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DISTINCT T1.ID, T2.GLU FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE STRFTIME('%Y', T1.\"First Date\") = '1991' AND T2.GLU < 180",
+  "q2_validation_sql": "SELECT T1.ID, T2.GLU FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T2.GLU < 180 AND STRFTIME('%Y', T1.Description) >= '1991'"
+}

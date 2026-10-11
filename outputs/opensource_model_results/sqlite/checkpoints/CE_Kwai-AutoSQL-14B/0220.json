@@ -1,0 +1,55 @@
+{
+  "dbid": "toxicology",
+  "index": "220",
+  "source_index": "330",
+  "schema_ddl": "CREATE TABLE `atom` (\n  `atom_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `element` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `bond` (\n  `bond_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `bond_type` TEXT DEFAULT NULL,\n  PRIMARY KEY (`bond_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `connected` (\n  `atom_id` TEXT NOT NULL,\n  `atom_id2` TEXT NOT NULL,\n  `bond_id` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`,`atom_id2`),\n  FOREIGN KEY (`atom_id`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`atom_id2`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`bond_id`) REFERENCES `bond` (`bond_id`) ON DELETE CASCADE ON UPDATE CASCADE\n);\n\nCREATE TABLE `molecule` (\n  `molecule_id` TEXT NOT NULL,\n  `label` TEXT DEFAULT NULL,\n  PRIMARY KEY (`molecule_id`)\n);",
+  "q1": "SELECT T.molecule_id FROM (SELECT T2.molecule_id, COUNT(T1.atom_id) FROM atom AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id WHERE T2.label = '+' GROUP BY T2.molecule_id ORDER BY COUNT(T1.atom_id) DESC LIMIT 1) AS t",
+  "q2": "SELECT molecule.label FROM molecule INNER JOIN atom ON molecule.molecule_id = atom.molecule_id WHERE molecule.label = '+' GROUP BY atom.molecule_id ORDER BY COUNT(atom.atom_id) DESC LIMIT 1",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT T.molecule_id FROM (SELECT T2.molecule_id, COUNT(T1.atom_id) FROM atom AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id WHERE T2.label = '+' GROUP BY T2.molecule_id ORDER BY COUNT(T1.atom_id) DESC LIMIT 1) AS t",
+  "q2_prompt_sql": "SELECT molecule.label FROM molecule INNER JOIN atom ON molecule.molecule_id = atom.molecule_id WHERE molecule.label = '+' GROUP BY atom.molecule_id ORDER BY COUNT(atom.atom_id) DESC LIMIT 1",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO molecule (molecule_id, label) VALUES ('M1', '+'), ('M2', '+');\nINSERT INTO atom (atom_id, molecule_id, element) VALUES ('a1', 'M1', 'C'), ('a2', 'M1', 'O'), ('a3', 'M1', 'H'), ('a4', 'M2', 'C'), ('a5', 'M2', 'O');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 returns the molecule_id of the molecule with the most atoms (label '+'), while Q2 returns the label '+'. Since the label is fixed by the WHERE clause, Q2 always outputs '+', whereas Q1 outputs the actual molecule_id. They differ when molecule_id ≠ '+'.",
+  "counterexample_dsp": "Two molecules with label '+': 'M1' (3 atoms) and 'M2' (2 atoms). Q1 returns 'M1', Q2 returns '+'.",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 returns the molecule_id of the molecule with the most atoms (label '+'), while Q2 returns the label '+'. Since the label is fixed by the WHERE clause, Q2 always outputs '+', whereas Q1 outputs the actual molecule_id. They differ when molecule_id ≠ '+'.\",\n  \"counterexample_dsp\": \"Two molecules with label '+': 'M1' (3 atoms) and 'M2' (2 atoms). Q1 returns 'M1', Q2 returns '+'.\",\n  \"counterexample\": [\n    \"INSERT INTO molecule (molecule_id, label) VALUES ('M1', '+'), ('M2', '+');\",\n    \"INSERT INTO atom (atom_id, molecule_id, element) VALUES ('a1', 'M1', 'C'), ('a2', 'M1', 'O'), ('a3', 'M1', 'H'), ('a4', 'M2', 'C'), ('a5', 'M2', 'O');\"\n  ]\n}",
+  "reasoning": "\nOkay, let me try to figure out why these two queries aren't equivalent and come up with a counterexample. \n\nFirst, looking at Q1 and Q2. Both are trying to find the molecule_id (or label) of the molecule with the most atoms where the label is '+'. But the structure is different. \n\nQ1: It's a subquery that joins atom and molecule on molecule_id, filters by label '+', groups by molecule_id, orders by count of atom_id descending, takes the first one. Then selects molecule_id from that subquery. So Q1 returns molecule_id.\n\nQ2: It joins molecule and atom, filters by label '+', groups by atom.molecule_id (which is same as molecule.molecule_id), orders by count(atom.atom_id) descending, limit 1. Then selects molecule.label. So Q2 returns the label of the molecule.\n\nWait, but in the schema, the molecule table has molecule_id and label. So if the molecule has label '+', then Q2 returns '+', but Q1 returns the molecule_id. Wait, but the problem says that they return different results. So maybe in some cases, the molecule_id and label are different? But in Q2, the GROUP BY is on atom.molecule_id, which is same as molecule.molecule_id. So the label is the same for all rows in the group. So Q2 returns the label of the molecule with the most atoms. \n\nBut Q1 returns the molecule_id. So in that case, the output of Q1 is molecule_id, Q2 is label. So if the label is '+', then Q2 returns '+', but Q1 returns the actual molecule_id. However, if the molecule_id is also '+', then both would return the same value. But maybe the label is a different value. Wait, no. The WHERE clause in both queries is molecule.label = '+'. So the label is '+'. So Q2 returns '+', and Q1 returns the molecule_id. Therefore, they are returning different columns. \n\nWait, but the problem says that they are not semantically equivalent. But maybe the user made a typo in Q2? Let me check again.\n\nLooking at Q2's SELECT clause: SELECT molecule.label FROM molecule INNER JOIN atom ON molecule.molecule_id = atom.molecule_id WHERE molecule.label = '+' GROUP BY atom.molecule_id ORDER BY COUNT(atom.atom_id) DESC LIMIT 1. So Q2 returns the label of the molecule with the most atoms. Since the WHERE condition is label = '+', the label is '+', so Q2 returns '+'.\n\nBut Q1 returns the molecule_id. So if the molecule_id is not '+', then Q1 returns that molecule_id, and Q2 returns '+'. So in that case, the results are different. Therefore, the queries are not equivalent. \n\nSo to create a counterexample, I need a scenario where the molecule with the most atoms has label '+', but its molecule_id is different from '+'. For example, molecule_id is 'mol1', label is '+'. Then Q1 returns 'mol1', Q2 returns '+'. So different results.\n\nAlternatively, maybe there's another case where the GROUP BY or ORDER BY is different. Let me think again. Suppose there are two molecules with label '+'. One has more atoms, but due to some grouping difference, the queries pick different ones. Wait, but both queries are ordering by count descending and taking the first one. So the main difference is that Q1 returns molecule_id, Q2 returns label. So in that case, as long as the label is '+', Q2 will return '+', and Q1 returns the molecule_id. So if the molecule_id is not '+', then they differ.\n\nTherefore, the counterexample would be a molecule with label '+' and molecule_id something else, say 'M1', and another molecule with label '+' and fewer atoms. Then Q1 returns 'M1', Q2 returns '+'.\n\nBut wait, what if there are multiple molecules with the same label '+' but different molecule_ids? For example, molecule1 (molecule_id 'A', label '+', 3 atoms), molecule2 (molecule_id 'B', label '+', 2 atoms). Then both queries would return the same label '+' for Q2, but Q1 returns 'A' (the molecule_id of the one with more atoms). So the outputs are different.\n\nSo the explanation is that Q1 returns the molecule_id of the molecule with the most atoms (label '+'), while Q2 returns the label '+'. Since the label is fixed by the WHERE clause, Q2 always returns '+', whereas Q1 returns the actual molecule_id. Therefore, they differ when the molecule_id isn't '+'. \n\nSo to create the test data, I need two molecules with label '+', one with more atoms than the other. Let's create molecule 'M1' with label '+' and 3 atoms, and molecule 'M2' with label '+' and 2 atoms. Then Q1 will return M1's molecule_id, and Q2 returns '+'.\n\nSo inserting into molecule:\nINSERT INTO molecule (molecule_id, label) VALUES ('M1', '+'), ('M2', '+');\nThen into atom:\nINSERT INTO atom (atom_id, molecule_id, element) VALUES ('a1', 'M1', 'C'), ('a2', 'M1', 'O'), ('a3', 'M1', 'H'), ('a4', 'M2', 'C'), ('a5', 'M2', 'O');\n\nThis way, M1 has 3 atoms, M2 has 2. So Q1 returns 'M1', Q2 returns '+'.\n\nBut wait, in Q2, the GROUP BY is on atom.molecule_id, which is same as molecule.molecule_id. So grouping by that, and selecting molecule.label. Since all rows in the group have the same label (because the WHERE is label '+'), the GROUP BY is fine. So the output is '+'.\n\nSo the counterexample is when the molecule_id is not '+', but the label is '+'. Then Q1 gives the molecule_id, Q2 gives '+'.\n\nYes, that should work. So the explanation is that Q1 returns the molecule_id while Q2 returns the label, which is '+', hence different results.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 577,
+    "total_tokens": 2096,
+    "completion_tokens": 1519,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1299
+    },
+    "generation_seconds": 49.828
+  },
+  "started_at": "2026-10-06T18:37:07.775962+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "M1"
+    ]
+  ],
+  "q2_output": [
+    [
+      "+"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT T.molecule_id FROM (SELECT T2.molecule_id, COUNT(T1.atom_id) FROM atom AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id WHERE T2.label = '+' GROUP BY T2.molecule_id ORDER BY COUNT(T1.atom_id) DESC LIMIT 1) AS t",
+  "q2_validation_sql": "SELECT molecule.label FROM molecule INNER JOIN atom ON molecule.molecule_id = atom.molecule_id WHERE molecule.label = '+' GROUP BY atom.molecule_id ORDER BY COUNT(atom.atom_id) DESC LIMIT 1"
+}

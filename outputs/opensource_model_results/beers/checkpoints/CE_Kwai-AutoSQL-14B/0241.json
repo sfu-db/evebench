@@ -1,0 +1,80 @@
+{
+  "dbid": "beers",
+  "index": "241",
+  "source_index": "7200",
+  "schema_ddl": "CREATE TABLE Bar (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Beer (\n    name VARCHAR NOT NULL,\n    brewer VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Drinker (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Frequents (\n    drinker VARCHAR NOT NULL,\n    bar VARCHAR NOT NULL,\n    times_a_week SMALLINT NOT NULL,\n    PRIMARY KEY (drinker, bar),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (bar) REFERENCES Bar(name)\n);\n\nCREATE TABLE Serves (\n    bar VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    price DECIMAL(5,2) NOT NULL,\n    PRIMARY KEY (bar, beer),\n    FOREIGN KEY (bar) REFERENCES Bar(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);\n\nCREATE TABLE Likes (\n    drinker VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    PRIMARY KEY (drinker, beer),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);",
+  "q1": "SELECT b1.name AS bar1, b2.name AS bar2 FROM bar AS b1, bar AS b2 WHERE NOT EXISTS(SELECT s1.beer FROM serves AS s1 WHERE s1.bar = b1.name AND NOT EXISTS(SELECT 1 FROM serves AS s2 WHERE s2.bar = b2.name AND s2.beer = s1.beer)) AND EXISTS(SELECT s2.beer FROM serves AS s2 WHERE s2.bar = b2.name AND NOT EXISTS(SELECT 1 FROM serves AS s1 WHERE s1.bar = b1.name AND s1.beer = s2.beer))",
+  "q2": "SELECT b1.bar, b2.bar FROM serves AS b1 JOIN serves AS b2 ON b1.bar <> b2.bar WHERE NOT EXISTS(SELECT * FROM serves AS s1 WHERE b1.bar = s1.bar AND NOT EXISTS(SELECT * FROM serves AS s2 WHERE s2.bar = b2.bar AND s1.beer = s2.beer))",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "beers",
+  "q1_prompt_sql": "SELECT b1.name AS bar1, b2.name AS bar2 FROM bar AS b1, bar AS b2 WHERE NOT EXISTS(SELECT s1.beer FROM serves AS s1 WHERE s1.bar = b1.name AND NOT EXISTS(SELECT 1 FROM serves AS s2 WHERE s2.bar = b2.name AND s2.beer = s1.beer)) AND EXISTS(SELECT s2.beer FROM serves AS s2 WHERE s2.bar = b2.name AND NOT EXISTS(SELECT 1 FROM serves AS s1 WHERE s1.bar = b1.name AND s1.beer = s2.beer))",
+  "q2_prompt_sql": "SELECT b1.bar, b2.bar FROM serves AS b1 JOIN serves AS b2 ON b1.bar <> b2.bar WHERE NOT EXISTS(SELECT * FROM serves AS s1 WHERE b1.bar = s1.bar AND NOT EXISTS(SELECT * FROM serves AS s2 WHERE s2.bar = b2.bar AND s1.beer = s2.beer))",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO Bar (name, address) VALUES ('BarA', 'Addr1'), ('BarB', 'Addr2');\nINSERT INTO Beer (name, brewer) VALUES ('BeerX', 'Brewer1'), ('BeerY', 'Brewer2');\nINSERT INTO Serves (bar, beer, price) VALUES ('BarA', 'BeerX', 3.50), ('BarA', 'BeerY', 4.00);\nINSERT INTO Serves (bar, beer, price) VALUES ('BarB', 'BeerX', 3.50), ('BarB', 'BeerY', 4.00);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 requires bar1's beers to be a proper subset of bar2's beers, while Q2 allows bar1's beers to be any subset (including equal). When two bars serve exactly the same beers, Q2 returns the pair but Q1 does not.",
+  "counterexample_dsp": "Two bars (BarA and BarB) each serve the same two beers (BeerX and BeerY). Q2 returns (BarA, BarB) since BarA's beers are a subset of BarB's. Q1 does not return this pair because BarB has no beer not in BarA.",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 requires bar1's beers to be a proper subset of bar2's beers, while Q2 allows bar1's beers to be any subset (including equal). When two bars serve exactly the same beers, Q2 returns the pair but Q1 does not.\",\n  \"counterexample_dsp\": \"Two bars (BarA and BarB) each serve the same two beers (BeerX and BeerY). Q2 returns (BarA, BarB) since BarA's beers are a subset of BarB's. Q1 does not return this pair because BarB has no beer not in BarA.\",\n  \"counterexample\": [\n    \"INSERT INTO Bar (name, address) VALUES ('BarA', 'Addr1'), ('BarB', 'Addr2');\",\n    \"INSERT INTO Beer (name, brewer) VALUES ('BeerX', 'Brewer1'), ('BeerY', 'Brewer2');\",\n    \"INSERT INTO Serves (bar, beer, price) VALUES ('BarA', 'BeerX', 3.50), ('BarA', 'BeerY', 4.00);\",\n    \"INSERT INTO Serves (bar, beer, price) VALUES ('BarB', 'BeerX', 3.50), ('BarB', 'BeerY', 4.00);\"\n  ]\n}",
+  "reasoning": "\nOkay, I need to find a counterexample where Q1 and Q2 return different results. Let me start by understanding what each query is doing.\n\nFirst, looking at Q1. It selects pairs of bars (b1, b2) from the Bar table. The conditions are a bit complex. The first part says NOT EXISTS a subquery that checks if there's a beer served by b1 that isn't served by b2. So that means for every beer that b1 serves, b2 must serve it too. Wait, no. The NOT EXISTS here is negating the existence of a beer served by b1 that b2 doesn't serve. So if that subquery returns nothing, then the NOT EXISTS is true. So the first condition is that b2 serves all beers that b1 serves. So b1's beer set is a subset of b2's beer set.\n\nThe second part of Q1's WHERE clause is EXISTS a subquery that checks if there's a beer served by b2 that isn't served by b1. So that means b2 has at least one beer that b1 doesn't serve. So putting those two together, Q1 is looking for pairs where b1's beers are a subset of b2's beers, and b2 has more beers than b1. So essentially, b1 serves a proper subset of b2's beers.\n\nNow Q2: It selects from serves AS b1 JOIN serves AS b2 ON b1.bar <> b2.bar. So this is joining the Serves table with itself on different bars. Then the NOT EXISTS condition checks if there's a beer in b1's bar that isn't served by b2's bar. Wait, no. The subquery is selecting from serves as s1 where b1.bar = s1.bar (so s1 is the same as b1's row) and NOT EXISTS a subquery where s2.bar = b2.bar and s1.beer = s2.beer. So the NOT EXISTS here means that there's no beer in b1's bar that is served by b2's bar. Wait, no: the NOT EXISTS is checking for beers in s1 (which is the same as b1's beer for that bar) that are not present in s2 (b2's bar). So the NOT EXISTS would be true if there's at least one beer in s1 (b1's bar) that isn't in s2 (b2's bar). Wait, no. The NOT EXISTS is negating the existence of such a beer. So the overall condition is that for all beers served by b1's bar, there exists a beer in b2's bar with the same name. So that means b1's bar serves a subset of the beers that b2's bar serves. So Q2 is looking for pairs of bars (different bars) where b1's bar serves a subset of b2's bar's beers.\n\nWait, but Q2's structure is joining serves on different bars, and then the NOT EXISTS condition is that there's no beer in b1's bar that isn't in b2's bar. So that would mean that all beers served by b1's bar are also served by b2's bar. So Q2 is returning pairs (bar1, bar2) where bar1's beers are a subset of bar2's beers. But Q1 is returning pairs where bar1's beers are a proper subset of bar2's beers (because the first condition is subset and the second condition is that bar2 has at least one beer not in bar1).\n\nSo the difference between Q1 and Q2 is that Q1 requires bar1's beers to be a proper subset of bar2's, while Q2 requires bar1's beers to be a subset (including the case where they are equal). Therefore, if there's a pair where bar1 and bar2 serve the exact same beers, then Q2 would include that pair, but Q1 would not. Conversely, if bar1's beers are a proper subset of bar2's, then both queries would return that pair. Wait, but Q1's first condition is that bar1's beers are a subset of bar2's, and the second condition is that bar2 has at least one beer not in bar1's. So Q1 returns pairs where bar1's beers are a proper subset of bar2's. Q2 returns pairs where bar1's beers are a subset (could be equal or proper subset). Therefore, if there's a pair where bar1 and bar2 serve the same beers, then Q2 would return it, but Q1 would not. So a counterexample would be two bars that serve the same beers. Then Q2 would have that pair, but Q1 would not. Alternatively, if there's a case where bar1's beers are a proper subset, then Q1 would return it, and Q2 would also return it. So to find a counterexample, I need a scenario where Q1 and Q2 differ. Let me think of two bars, barA and barB. Suppose barA serves beer1 and beer2, barB serves beer1 and beer2. Then Q2 would return (barA, barB) because barA's beers are a subset of barB's. But Q1 would not return it because the second condition in Q1 (that bar2 has a beer not in bar1) is not met. Alternatively, if barA serves beer1, and barB serves beer1 and beer2. Then Q1 would return (barA, barB) because barA's beers are a proper subset. Q2 would also return (barA, barB) because barA's beers are a subset. So in this case, both queries return the same pair. But if there's a pair where barA and barB serve the same beers, then Q2 returns it and Q1 does not. Therefore, a counterexample would be two bars serving the same beers. Let me create such a scenario.\n\nLet me create two bars: bar1 and bar2. Both serve beerA and beerB. Then Q2 would have bar1 paired with bar2 (since bar1's beers are a subset of bar2's), and Q1 would not have that pair because the second condition in Q1 (the EXISTS part) would not be satisfied (since bar2 doesn't have a beer not in bar1). Therefore, in this case, Q2 returns (bar1, bar2) and Q1 returns nothing. Thus, they differ.\n\nBut wait, in Q2, the join is on serves AS b1 JOIN serves AS b2 ON b1.bar <> b2.bar. So for each row in serves (bar, beer), when joined with another row from serves where the bar is different. So for bar1 serving beerA and beerB, and bar2 serving the same, when we do the join, each row in bar1's serves would be joined with each row in bar2's serves. But the NOT EXISTS condition in Q2 is that there's no beer in b1's bar that isn't in b2's bar. Since they have the same beers, that condition holds. So Q2 would return bar1 paired with bar2. But Q1's first condition is that bar1's beers are a subset of bar2's, which they are. The second condition is that there exists a beer in bar2 that isn't in bar1. But since they are the same, that condition is not met, so Q1 doesn't return this pair. Therefore, this scenario would be a counterexample.\n\nSo the counterexample would involve two bars serving the same beers. Let me create that in SQL. Insert two bars, bar1 and bar2, each serving the same beers. Then Q2 would return (bar1, bar2) and Q1 would not. Therefore, the results differ.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 633,
+    "total_tokens": 2562,
+    "completion_tokens": 1929,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1637
+    },
+    "generation_seconds": 64.89
+  },
+  "started_at": "2026-10-06T09:01:45.913288+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [],
+  "q2_output": [
+    [
+      "BarA",
+      "BarB"
+    ],
+    [
+      "BarA",
+      "BarB"
+    ],
+    [
+      "BarA",
+      "BarB"
+    ],
+    [
+      "BarA",
+      "BarB"
+    ],
+    [
+      "BarB",
+      "BarA"
+    ],
+    [
+      "BarB",
+      "BarA"
+    ],
+    [
+      "BarB",
+      "BarA"
+    ],
+    [
+      "BarB",
+      "BarA"
+    ]
+  ],
+  "q1_row_count": 0,
+  "q2_row_count": 8,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT b1.name AS bar1, b2.name AS bar2 FROM bar AS b1, bar AS b2 WHERE NOT EXISTS(SELECT s1.beer FROM serves AS s1 WHERE s1.bar = b1.name AND NOT EXISTS(SELECT 1 FROM serves AS s2 WHERE s2.bar = b2.name AND s2.beer = s1.beer)) AND EXISTS(SELECT s2.beer FROM serves AS s2 WHERE s2.bar = b2.name AND NOT EXISTS(SELECT 1 FROM serves AS s1 WHERE s1.bar = b1.name AND s1.beer = s2.beer))",
+  "q2_validation_sql": "SELECT b1.bar, b2.bar FROM serves AS b1 JOIN serves AS b2 ON b1.bar <> b2.bar WHERE NOT EXISTS(SELECT * FROM serves AS s1 WHERE b1.bar = s1.bar AND NOT EXISTS(SELECT * FROM serves AS s2 WHERE s2.bar = b2.bar AND s1.beer = s2.beer))"
+}

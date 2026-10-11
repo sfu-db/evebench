@@ -1,0 +1,53 @@
+{
+  "dbid": "student_club",
+  "index": "811",
+  "source_index": "1430",
+  "schema_ddl": "CREATE TABLE event\n(\n    event_id   TEXT\n        constraint event_pk\n            primary key,\n    event_name TEXT,\n    event_date TEXT,\n    type       TEXT,\n    notes      TEXT,\n    location   TEXT,\n    status     TEXT\n);\n\nCREATE TABLE major\n(\n    major_id   TEXT\n        constraint major_pk\n            primary key,\n    major_name TEXT,\n    department TEXT,\n    college    TEXT\n);\n\nCREATE TABLE zip_code\n(\n    zip_code    INTEGER\n        constraint zip_code_pk\n            primary key,\n    type        TEXT,\n    city        TEXT,\n    county      TEXT,\n    state       TEXT,\n    short_state TEXT\n);\n\nCREATE TABLE \"attendance\"\n(\n    link_to_event  TEXT,\n    link_to_member TEXT,\n    primary key (link_to_event, link_to_member),\n    foreign key (link_to_event) references event(event_id),\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"budget\"\n(\n    budget_id     TEXT\n            primary key,\n    category      TEXT,\n    spent         REAL,\n    remaining     REAL,\n    amount        INTEGER,\n    event_status  TEXT,\n    link_to_event TEXT,\n    foreign key (link_to_event) references event(event_id)\n);\n\nCREATE TABLE \"expense\"\n(\n    expense_id          TEXT\n            primary key,\n    expense_description TEXT,\n    expense_date        TEXT,\n    cost                REAL,\n    approved            TEXT,\n    link_to_member      TEXT,\n    link_to_budget      TEXT,\n    foreign key (link_to_budget) references budget(budget_id),\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"income\"\n(\n    income_id      TEXT\n        constraint income_pk\n            primary key,\n    date_received  TEXT,\n    amount         INTEGER,\n    source         TEXT,\n    notes          TEXT,\n    link_to_member TEXT,\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"member\"\n(\n    member_id     TEXT\n        constraint member_pk\n            primary key,\n    first_name    TEXT,\n    last_name     TEXT,\n    email         TEXT,\n    position      TEXT,\n    t_shirt_size  TEXT,\n    phone         TEXT,\n    zip           INTEGER,\n    link_to_major TEXT,\n    foreign key (link_to_major) references major(major_id),\n    foreign key (zip) references zip_code(zip_code)\n);",
+  "q1": "SELECT T2.event_name FROM attendance AS T1 INNER JOIN event AS T2 ON T2.event_id = T1.link_to_event INNER JOIN member AS T3 ON T1.link_to_member = T3.member_id WHERE T3.position = 'Vice President' AND T2.location = '900 E. Washington St.' AND T2.type = 'Social'",
+  "q2": "SELECT T1.event_name FROM event AS T1 INNER JOIN attendance AS T2 ON T1.event_id = T2.link_to_event INNER JOIN member AS T3 ON T2.link_to_member = T3.member_id WHERE T1.type = 'Social' AND T3.position = 'Vice President' AND T1.location = '900 E. Washington St.'",
+  "dialect": "sqlite",
+  "ground_truth": "EQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT T2.event_name FROM attendance AS T1 INNER JOIN event AS T2 ON T2.event_id = T1.link_to_event INNER JOIN member AS T3 ON T1.link_to_member = T3.member_id WHERE T3.position = 'Vice President' AND T2.location = '900 E. Washington St.' AND T2.type = 'Social'",
+  "q2_prompt_sql": "SELECT T1.event_name FROM event AS T1 INNER JOIN attendance AS T2 ON T1.event_id = T2.link_to_event INNER JOIN member AS T3 ON T2.link_to_member = T3.member_id WHERE T1.type = 'Social' AND T3.position = 'Vice President' AND T1.location = '900 E. Washington St.'",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO event (event_id, event_name, type, location) VALUES ('e1', 'Event 1', 'Social', '900 E. Washington St.'); INSERT INTO event (event_id, event_name, type, location) VALUES ('e2', 'Event 2', 'Charity', '123 Main St.'); INSERT INTO member (member_id, position) VALUES ('m1', 'Vice President'); INSERT INTO member (member_id, position) VALUES ('m2', 'President'); INSERT INTO attendance (link_to_event, link_to_member) VALUES ('e1', 'm1');",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not equivalent because they join the 'event' table with the 'attendance' table and the 'member' table in different orders, which can lead to different results if the join conditions are not symmetric.",
+  "counterexample_dsp": "The difference between Q1 and Q2 arises from the order of the JOIN operations. In Q1, the 'event' table is joined with the 'attendance' table first, and then with the 'member' table. In Q2, the 'event' table is joined with the 'member' table first, and then with the 'attendance' table. This difference can lead to different results if the join conditions are not symmetric. For example, if there are events that are attended by members who are not in the 'member' table, or if there are members who are not in the 'event' table, the results of Q1 and Q2 will be different.",
+  "equiv": "N",
+  "raw_response": "{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 and Q2 are not equivalent because they join the 'event' table with the 'attendance' table and the 'member' table in different orders, which can lead to different results if the join conditions are not symmetric.\",\n\"counterexample_dsp\": \"The difference between Q1 and Q2 arises from the order of the JOIN operations. In Q1, the 'event' table is joined with the 'attendance' table first, and then with the 'member' table. In Q2, the 'event' table is joined with the 'member' table first, and then with the 'attendance' table. This difference can lead to different results if the join conditions are not symmetric. For example, if there are events that are attended by members who are not in the 'member' table, or if there are members who are not in the 'event' table, the results of Q1 and Q2 will be different.\",\n\"counterexample\": \"INSERT INTO event (event_id, event_name, type, location) VALUES ('e1', 'Event 1', 'Social', '900 E. Washington St.'); INSERT INTO event (event_id, event_name, type, location) VALUES ('e2', 'Event 2', 'Charity', '123 Main St.'); INSERT INTO member (member_id, position) VALUES ('m1', 'Vice President'); INSERT INTO member (member_id, position) VALUES ('m2', 'President'); INSERT INTO attendance (link_to_event, link_to_member) VALUES ('e1', 'm1');\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 916,
+    "total_tokens": 1254,
+    "completion_tokens": 338,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 6.953
+  },
+  "started_at": "2026-10-06T20:10:23.304461+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "Event 1"
+    ]
+  ],
+  "q2_output": [
+    [
+      "Event 1"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT T2.event_name FROM attendance AS T1 INNER JOIN event AS T2 ON T2.event_id = T1.link_to_event INNER JOIN member AS T3 ON T1.link_to_member = T3.member_id WHERE T3.position = 'Vice President' AND T2.location = '900 E. Washington St.' AND T2.type = 'Social'",
+  "q2_validation_sql": "SELECT T1.event_name FROM event AS T1 INNER JOIN attendance AS T2 ON T1.event_id = T2.link_to_event INNER JOIN member AS T3 ON T2.link_to_member = T3.member_id WHERE T1.type = 'Social' AND T3.position = 'Vice President' AND T1.location = '900 E. Washington St.'"
+}

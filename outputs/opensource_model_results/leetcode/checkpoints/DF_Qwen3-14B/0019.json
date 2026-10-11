@@ -1,0 +1,39 @@
+{
+  "dbid": "1141",
+  "index": "19",
+  "source_index": "78",
+  "schema_ddl": "CREATE TABLE ACTIVITY (\n    USER_ID INT,\n    SESSION_ID INT,\n    ACTIVITY_DATE DATE,\n    ACTIVITY_TYPE ENUM('OPEN_SESSION', 'END_SESSION', 'SCROLL_DOWN', 'SEND_MESSAGE'),\n    CHECK (ACTIVITY_TYPE IN ('OPEN_SESSION', 'END_SESSION', 'SCROLL_DOWN', 'SEND_MESSAGE'))\n);",
+  "q1": "SELECT ACTIVITY_DATE AS DAY, COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY WHERE ACTIVITY_DATE BETWEEN '2019-06-28' AND '2019-07-27' GROUP BY ACTIVITY_DATE",
+  "q2": "SELECT ACTIVITY_DATE AS DAY ,COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY GROUP BY ACTIVITY_DATE HAVING ACTIVITY_DATE BETWEEN SUBDATE('2019-07-27' ,INTERVAL 29 DAY) AND '2019-07-27'",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT ACTIVITY_DATE AS DAY, COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY WHERE ACTIVITY_DATE BETWEEN '2019-06-28' AND '2019-07-27' GROUP BY ACTIVITY_DATE",
+  "q2_prompt_sql": "SELECT ACTIVITY_DATE AS DAY ,COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY GROUP BY ACTIVITY_DATE HAVING ACTIVITY_DATE BETWEEN SUBDATE('2019-07-27' ,INTERVAL 29 DAY) AND '2019-07-27'",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries aim to count distinct users per day within the same date range. Q1 uses a WHERE clause to filter rows before grouping, while Q2 uses a HAVING clause to filter groups after grouping. Since the date range is identical and the filtering condition is on the GROUP BY column, the results are equivalent.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries aim to count distinct users per day within the same date range. Q1 uses a WHERE clause to filter rows before grouping, while Q2 uses a HAVING clause to filter groups after grouping. Since the date range is identical and the filtering condition is on the GROUP BY column, the results are equivalent.\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem. So, I need to figure out if Q1 and Q2 are semantically equivalent. Let's start by understanding what each query does.\n\nFirst, looking at Q1: It selects the activity date as DAY and counts the distinct user IDs as active users. The WHERE clause filters the activity_date between '2019-06-28' and '2019-07-27'. Then it groups by activity_date. So this query is getting the number of unique users per day within that date range.\n\nNow Q2: It does a similar thing but uses a HAVING clause instead of a WHERE. The HAVING condition is that the activity_date is between SUBDATE('2019-07-27', INTERVAL 29 DAY) and '2019-07-27'. Let me calculate that date. Subtracting 29 days from July 27, 2019. Let's see, July has 31 days. So July 27 minus 29 days would be June 28, 2019. Because 27 - 29 is -2 days, so June 28. So the HAVING condition is effectively the same date range as Q1's WHERE clause. Wait, but HAVING is applied after grouping, right? So Q2 is grouping by activity_date first, then filtering the groups based on the date range. \n\nWait, but in Q1, the WHERE clause filters the rows before grouping. In Q2, the HAVING clause filters the groups after grouping. However, since the condition is on the ACTIVITY_DATE, which is part of the GROUP BY, maybe they are equivalent? But wait, the HAVING clause is applied after grouping. But if the ACTIVITY_DATE is part of the GROUP BY, then each group is a single date. So the HAVING clause is checking if that date is within the range. So for each group (each date), the HAVING condition is checking if that date is between June 28 and July 27. So the effect should be the same as Q1's WHERE clause, which filters the rows before grouping. \n\nBut wait, what if there are dates outside that range in the table? For example, if there's a date in the table that's not in the range, Q1 would exclude those rows, while Q2 would group them and then exclude those groups. But in both cases, the result would be the same: only dates within the range are included. So perhaps they are equivalent?\n\nWait, but maybe there's a case where the HAVING clause could behave differently. Let me think. Suppose a date is in the range, but the group has no rows? No, because if there are no rows for a date, then the group wouldn't exist. So in Q2, the HAVING clause would filter out groups (dates) that are not in the range. But in Q1, the WHERE clause would exclude those rows, so the grouping would only be on dates in the range. So the two queries should produce the same result.\n\nBut wait, what if the date range in Q2 is different? Let me check the dates again. The SUBDATE('2019-07-27', INTERVAL 29 DAY) would be 2019-06-28. Because July 27 minus 29 days is June 28. So the HAVING condition is the same as the WHERE in Q1. Therefore, the date ranges are the same. \n\nSo both queries are grouping by activity_date and counting distinct users, but Q1 filters before grouping, Q2 filters after grouping. However, since the filter is on the group key (ACTIVITY_DATE), the result should be the same. Because any group (date) that's not in the range would be excluded in Q2, and in Q1, those dates wouldn't be present in the data because the WHERE clause filters them out. \n\nWait, but what if there are dates in the ACTIVITY table that are not in the range? For example, suppose there's a date in the table that's outside the range. In Q1, those rows are excluded, so the grouping is done on the dates within the range. In Q2, the grouping is done on all dates, but then the HAVING clause filters the groups to those within the range. So the result should be the same. \n\nTherefore, the two queries should be semantically equivalent. But I need to make sure that the HAVING clause is correctly applied. Since HAVING is on the ACTIVITY_DATE, which is in the GROUP BY, the groups that are not in the range are excluded. \n\nBut wait, what if there are multiple entries for the same date but outside the range? For example, a date that's outside the range, but in Q2, the group is formed, then HAVING excludes it. In Q1, those rows are excluded before grouping. So the results should be the same. \n\nSo, in conclusion, they are equivalent. Therefore, the answer is \"Y\".\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 444,
+    "total_tokens": 1597,
+    "completion_tokens": 1153,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1073
+    },
+    "generation_seconds": 35.781
+  },
+  "started_at": "2026-10-06T14:39:21.249964+00:00",
+  "elapsed_seconds": 0.0
+}

@@ -1,0 +1,55 @@
+{
+  "dbid": "beers",
+  "index": "163",
+  "source_index": "3259",
+  "schema_ddl": "CREATE TABLE Bar (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Beer (\n    name VARCHAR NOT NULL,\n    brewer VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Drinker (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Frequents (\n    drinker VARCHAR NOT NULL,\n    bar VARCHAR NOT NULL,\n    times_a_week SMALLINT NOT NULL,\n    PRIMARY KEY (drinker, bar),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (bar) REFERENCES Bar(name)\n);\n\nCREATE TABLE Serves (\n    bar VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    price DECIMAL(5,2) NOT NULL,\n    PRIMARY KEY (bar, beer),\n    FOREIGN KEY (bar) REFERENCES Bar(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);\n\nCREATE TABLE Likes (\n    drinker VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    PRIMARY KEY (drinker, beer),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);",
+  "q1": "SELECT DISTINCT bar FROM Serves WHERE (beer = 'Amstel' OR beer = 'Corona') AND price > 2",
+  "q2": "SELECT frequents.drinker FROM frequents, (SELECT bar FROM serves WHERE serves.beer = 'Corona') AS servesCorona, (SELECT drinker FROM likes WHERE likes.beer <> 'Corona') AS likesFilter WHERE frequents.bar = servesCorona.bar AND frequents.drinker = likesFilter.drinker",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "beers",
+  "q1_prompt_sql": "SELECT DISTINCT bar FROM Serves WHERE (beer = 'Amstel' OR beer = 'Corona') AND price > 2",
+  "q2_prompt_sql": "SELECT frequents.drinker FROM frequents, (SELECT bar FROM serves WHERE serves.beer = 'Corona') AS servesCorona, (SELECT drinker FROM likes WHERE likes.beer <> 'Corona') AS likesFilter WHERE frequents.bar = servesCorona.bar AND frequents.drinker = likesFilter.drinker",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO Bar (name, address) VALUES ('Bar1', 'addr1');\nINSERT INTO Beer (name, brewer) VALUES ('Amstel', 'BrewerA'), ('Corona', 'BrewerB');\nINSERT INTO Serves (bar, beer, price) VALUES ('Bar1', 'Amstel', 3), ('Bar1', 'Corona', 3);\nINSERT INTO Drinker (name, address) VALUES ('Drinker1', 'addrD');\nINSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('Drinker1', 'Bar1', 2);\nINSERT INTO Likes (drinker, beer) VALUES ('Drinker1', 'Amstel');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 returns bars serving Amstel/Corona with price > 2. Q2 returns drinkers who frequent bars serving Corona AND like a beer that's not Corona. They return different columns (bar vs drinker) and have distinct conditions/logic.",
+  "counterexample_dsp": "A bar serving Corona at price 3 (so appears in Q1). A drinker who frequents that bar and likes 'Amstel' (so appears in Q2). Q1 returns the bar name; Q2 returns the drinker name.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 returns bars serving Amstel/Corona with price > 2. Q2 returns drinkers who frequent bars serving Corona AND like a beer that's not Corona. They return different columns (bar vs drinker) and have distinct conditions/logic.\",\n\"counterexample_dsp\": \"A bar serving Corona at price 3 (so appears in Q1). A drinker who frequents that bar and likes 'Amstel' (so appears in Q2). Q1 returns the bar name; Q2 returns the drinker name.\",\n\"counterexample\": \"INSERT INTO Bar (name, address) VALUES ('Bar1', 'addr1');\\nINSERT INTO Beer (name, brewer) VALUES ('Amstel', 'BrewerA'), ('Corona', 'BrewerB');\\nINSERT INTO Serves (bar, beer, price) VALUES ('Bar1', 'Amstel', 3), ('Bar1', 'Corona', 3);\\nINSERT INTO Drinker (name, address) VALUES ('Drinker1', 'addrD');\\nINSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('Drinker1', 'Bar1', 2);\\nINSERT INTO Likes (drinker, beer) VALUES ('Drinker1', 'Amstel');\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem step by step. First, I need to understand what each query is doing.\n\nStarting with Q1: It selects distinct 'bar' from the Serves table where the beer is either 'Amstel' or 'Corona' and the price is greater than 2. So this query is giving me the list of bars that serve either of those two beers at a price above 2. The DISTINCT keyword means there are no duplicates in the result.\n\nNow, Q2 looks more complicated. Let's break it down. It's selecting 'frequents.drinker' from three parts: the Frequents table, a subquery that selects bars serving 'Corona' from Serves, and another subquery selecting drinkers from Likes where the beer is not 'Corona'. Then it joins these three parts on Frequents.bar = servesCorona.bar and Frequents.drinker = likesFilter.drinker.\n\nSo Q2 is finding drinkers who frequent a bar that serves Corona and also like a beer that's not Corona. Wait, the LikesFilter subquery is selecting drinker from Likes where beer <> 'Corona'. So any drinker who likes any beer other than Corona. But the Frequents join with servesCorona.bar means they go to a bar that serves Corona. So combining these, Q2 gives drinkers who go to a bar that serves Corona and also like at least one beer that's not Corona.\n\nComparing Q1 and Q2, they seem to be answering different questions. Q1 is about bars serving specific beers at a certain price. Q2 is about drinkers who frequent bars serving Corona and also like a different beer. So their output columns are different: Q1 outputs bar names, Q2 outputs drinker names. Therefore, they can't be semantically equivalent because they return different types of data. But maybe I need to check if there's any overlap in the data they produce, but given their different output columns, they are not equivalent.\n\nWait, but maybe there's a misunderstanding. Let me recheck. Q1's output is bar names, Q2's output is drinker names. So even if the data were the same in some way, the columns are different. Therefore, they are not equivalent. But maybe I need to confirm if there's any possible scenario where their results could be the same. But no, the columns are different. So the answer is definitely not equivalent.\n\nTherefore, the equivalence is N. The explanation is that Q1 returns bars serving specific beers with price > 2, while Q2 returns drinkers who frequent bars serving Corona and like other beers. They have different output columns and different conditions. A counterexample would involve a scenario where Q1 returns some bars, and Q2 returns some drinkers, which are clearly different. For example, if there are bars serving Amstel or Corona with price > 2, and some drinkers who frequent those bars and like other beers. But since the outputs are different, even if the data exists, the results would differ.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 588,
+    "total_tokens": 1502,
+    "completion_tokens": 914,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 623
+    },
+    "generation_seconds": 29.375
+  },
+  "started_at": "2026-10-06T09:41:20.212060+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "Bar1"
+    ]
+  ],
+  "q2_output": [
+    [
+      "Drinker1"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DISTINCT bar FROM Serves WHERE (beer = 'Amstel' OR beer = 'Corona') AND price > 2",
+  "q2_validation_sql": "SELECT frequents.drinker FROM frequents, (SELECT bar FROM serves WHERE serves.beer = 'Corona') AS servesCorona, (SELECT drinker FROM likes WHERE likes.beer <> 'Corona') AS likesFilter WHERE frequents.bar = servesCorona.bar AND frequents.drinker = likesFilter.drinker"
+}

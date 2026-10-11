@@ -1,0 +1,55 @@
+{
+  "dbid": "debit_card_specializing",
+  "index": "838",
+  "source_index": "1478",
+  "schema_ddl": "CREATE TABLE customers\n(\n    CustomerID INTEGER UNIQUE     not null\n        primary key,\n    Segment    TEXT null,\n    Currency   TEXT null\n);\n\nCREATE TABLE gasstations\n(\n    GasStationID INTEGER    UNIQUE   not null\n        primary key,\n    ChainID      INTEGER          null,\n    Country      TEXT null,\n    Segment      TEXT null\n);\n\nCREATE TABLE products\n(\n    ProductID   INTEGER   UNIQUE      not null\n        primary key,\n    Description TEXT null\n);\n\nCREATE TABLE \"transactions_1k\"\n(\n    TransactionID INTEGER\n        primary key autoincrement,\n    Date          DATE,\n    Time          TEXT,\n    CustomerID    INTEGER,\n    CardID        INTEGER,\n    GasStationID  INTEGER,\n    ProductID     INTEGER,\n    Amount        INTEGER,\n    Price         REAL\n);\n\nCREATE TABLE \"yearmonth\"\n(\n    CustomerID  INTEGER not null\n        references customers\n            on update cascade on delete cascade\n        references customers,\n    Date        TEXT    not null,\n    Consumption REAL,\n    primary key (Date, CustomerID)\n);",
+  "q1": "SELECT SUBSTRING(T2.Date, 1, 4) FROM customers AS T1 INNER JOIN yearmonth AS T2 ON T1.CustomerID = T2.CustomerID WHERE T1.Currency = 'EUR' GROUP BY SUBSTRING(T2.Date, 1, 4) ORDER BY SUM(T2.Consumption) DESC LIMIT 1",
+  "q2": "SELECT STRFTIME('%Y', T1.Date) FROM \"transactions_1k\" AS T1 INNER JOIN customers AS T2 ON T1.CustomerID = T2.CustomerID WHERE T2.Currency = 'EUR' GROUP BY STRFTIME('%Y', T1.Date) ORDER BY SUM(T1.Amount) DESC LIMIT 1",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT SUBSTRING(T2.Date, 1, 4) FROM customers AS T1 INNER JOIN yearmonth AS T2 ON T1.CustomerID = T2.CustomerID WHERE T1.Currency = 'EUR' GROUP BY SUBSTRING(T2.Date, 1, 4) ORDER BY SUM(T2.Consumption) DESC LIMIT 1",
+  "q2_prompt_sql": "SELECT STRFTIME('%Y', T1.Date) FROM \"transactions_1k\" AS T1 INNER JOIN customers AS T2 ON T1.CustomerID = T2.CustomerID WHERE T2.Currency = 'EUR' GROUP BY STRFTIME('%Y', T1.Date) ORDER BY SUM(T1.Amount) DESC LIMIT 1",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO customers (CustomerID, Currency) VALUES (1, 'EUR');\nINSERT INTO yearmonth (CustomerID, Date, Consumption) VALUES (1, '2020-01', 100);\nINSERT INTO yearmonth (CustomerID, Date, Consumption) VALUES (1, '2021-01', 50);\nINSERT INTO transactions_1k (TransactionID, Date, CustomerID, Amount) VALUES (1, '2020-01-01', 1, 50);\nINSERT INTO transactions_1k (TransactionID, Date, CustomerID, Amount) VALUES (2, '2021-01-01', 1, 100);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 differ in their data sources (yearmonth vs transactions_1k), aggregation columns (Consumption vs Amount), and date handling. This leads to different ordering when grouping by year.",
+  "counterexample_dsp": "A EUR customer has higher consumption in 2020 (yearmonth) but higher transaction amounts in 2021 (transactions_1k), causing Q1 to return 2020 and Q2 to return 2021.",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 and Q2 differ in their data sources (yearmonth vs transactions_1k), aggregation columns (Consumption vs Amount), and date handling. This leads to different ordering when grouping by year.\",\n  \"counterexample_dsp\": \"A EUR customer has higher consumption in 2020 (yearmonth) but higher transaction amounts in 2021 (transactions_1k), causing Q1 to return 2020 and Q2 to return 2021.\",\n  \"counterexample\": [\n    \"INSERT INTO customers (CustomerID, Currency) VALUES (1, 'EUR');\",\n    \"INSERT INTO yearmonth (CustomerID, Date, Consumption) VALUES (1, '2020-01', 100);\",\n    \"INSERT INTO yearmonth (CustomerID, Date, Consumption) VALUES (1, '2021-01', 50);\",\n    \"INSERT INTO transactions_1k (TransactionID, Date, CustomerID, Amount) VALUES (1, '2020-01-01', 1, 50);\",\n    \"INSERT INTO transactions_1k (TransactionID, Date, CustomerID, Amount) VALUES (2, '2021-01-01', 1, 100);\"\n  ]\n}",
+  "reasoning": "\nOkay, I need to figure out why Q1 and Q2 are not equivalent and create a counterexample where they return different results. Let's start by understanding both queries.\n\nFirst, Q1 is selecting the substring of T2.Date (from the yearmonth table) up to 4 characters, which would be the year. It joins customers (T1) with yearmonth (T2) on CustomerID, where T1.Currency is 'EUR'. Then it groups by the year, orders by the sum of Consumption in descending order, and picks the top one.\n\nQ2 is selecting the STRFTIME('%Y', T1.Date) from transactions_1k (T1) joined with customers (T2) on CustomerID, where T2.Currency is 'EUR'. It groups by the year, orders by the sum of Amount in descending order, and takes the top one.\n\nSo the main differences are:\n\n1. The tables involved: Q1 uses yearmonth, Q2 uses transactions_1k.\n2. The aggregated column: Q1 uses Consumption from yearmonth, Q2 uses Amount from transactions_1k.\n3. The date handling: Q1 uses SUBSTRING on Date (which is a TEXT field in yearmonth), while Q2 uses STRFTIME on Date (which is a DATE type in transactions_1k).\n\nNow, for the counterexample, I need to create data where the top year based on Consumption in yearmonth is different from the top year based on Amount in transactions_1k, even though both are for EUR customers.\n\nLet's think of a scenario where:\n\n- For a customer with EUR currency, in yearmonth table, the Consumption for 2020 is higher than 2021, but in transactions_1k, the Amount for 2021 is higher than 2020.\n\nBut wait, the tables are different. The yearmonth table's Date is a TEXT, like '2020-01', and the transactions_1k's Date is a DATE. The grouping is by year, so in yearmonth, the Date might be stored as 'YYYY-MM', and the substring would take the first 4 characters as the year. In transactions_1k, STRFTIME would extract the year from the DATE.\n\nSo, I need to create a customer with EUR currency. Then, in yearmonth, have entries for that customer with different years and Consumption values. In transactions_1k, have entries for the same customer with different years and Amounts.\n\nLet me outline the data:\n\nCustomer: CustomerID 1, Currency 'EUR'.\n\nIn yearmonth table:\n\n- CustomerID 1, Date '2020-01', Consumption 100\n- CustomerID 1, Date '2021-01', Consumption 50\n\nIn transactions_1k:\n\n- TransactionID 1, Date '2020-01-01', CustomerID 1, Amount 50\n- TransactionID 2, Date '2021-01-01', CustomerID 1, Amount 100\n\nThen, Q1 would group by year (2020 and 2021), sum Consumption: 100 and 50. Order by sum desc, so 2020 is first. Q2 would group by year, sum Amount: 50 and 100. Order by sum desc, so 2021 is first. Thus, the results differ.\n\nBut I need to make sure that the data adheres to the schema. The yearmonth table's Date is TEXT, and the primary key is (Date, CustomerID). The transactions_1k's Date is a DATE type.\n\nSo, inserting the customer first. Then inserting the yearmonth entries, and transactions entries.\n\nAnother thing: the transactions_1k table has a primary key TransactionID, which autoincrements. So for the inserts, I can use any TransactionID as long as they are unique. But since the user just wants the inserts, I can assign them as 1 and 2.\n\nAlso, the yearmonth table's Date is stored as 'YYYY-MM', so the SUBSTRING would get '2020' and '2021'.\n\nSo the counterexample would have the customer with EUR, and in yearmonth, 2020 has higher consumption, but in transactions, 2021 has higher amount. Thus, Q1 returns 2020, Q2 returns 2021. That's the difference.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 556,
+    "total_tokens": 1807,
+    "completion_tokens": 1251,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 958
+    },
+    "generation_seconds": 43.375
+  },
+  "started_at": "2026-10-06T18:01:01.819516+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "2020"
+    ]
+  ],
+  "q2_output": [
+    [
+      "2021"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT SUBSTRING(T2.Date, 1, 4) FROM customers AS T1 INNER JOIN yearmonth AS T2 ON T1.CustomerID = T2.CustomerID WHERE T1.Currency = 'EUR' GROUP BY SUBSTRING(T2.Date, 1, 4) ORDER BY SUM(T2.Consumption) DESC LIMIT 1",
+  "q2_validation_sql": "SELECT STRFTIME('%Y', T1.Date) FROM \"transactions_1k\" AS T1 INNER JOIN customers AS T2 ON T1.CustomerID = T2.CustomerID WHERE T2.Currency = 'EUR' GROUP BY STRFTIME('%Y', T1.Date) ORDER BY SUM(T1.Amount) DESC LIMIT 1"
+}

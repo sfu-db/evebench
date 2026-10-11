@@ -1,0 +1,51 @@
+{
+  "dbid": "beers",
+  "index": "60",
+  "source_index": "792",
+  "schema_ddl": "CREATE TABLE Bar (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Beer (\n    name VARCHAR NOT NULL,\n    brewer VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Drinker (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Frequents (\n    drinker VARCHAR NOT NULL,\n    bar VARCHAR NOT NULL,\n    times_a_week SMALLINT NOT NULL,\n    PRIMARY KEY (drinker, bar),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (bar) REFERENCES Bar(name)\n);\n\nCREATE TABLE Serves (\n    bar VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    price DECIMAL(5,2) NOT NULL,\n    PRIMARY KEY (bar, beer),\n    FOREIGN KEY (bar) REFERENCES Bar(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);\n\nCREATE TABLE Likes (\n    drinker VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    PRIMARY KEY (drinker, beer),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);",
+  "q1": "SELECT name FROM drinker WHERE NOT EXISTS(SELECT f.bar FROM frequents AS f, serves AS s WHERE f.drinker = drinker.name AND f.bar = s.bar AND NOT s.beer IN (SELECT beer FROM likes WHERE drinker = drinker.name))",
+  "q2": "SELECT f.drinker FROM frequents AS f JOIN serves AS s ON f.bar = s.bar INTERSECT SELECT L.drinker FROM likes AS L",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "beers",
+  "q1_prompt_sql": "SELECT name FROM drinker WHERE NOT EXISTS(SELECT f.bar FROM frequents AS f, serves AS s WHERE f.drinker = drinker.name AND f.bar = s.bar AND NOT s.beer IN (SELECT beer FROM likes WHERE drinker = drinker.name))",
+  "q2_prompt_sql": "SELECT f.drinker FROM frequents AS f JOIN serves AS s ON f.bar = s.bar INTERSECT SELECT L.drinker FROM likes AS L",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO Bar (name, address) VALUES ('Bar1', '123 Main');\nINSERT INTO Beer (name, brewer) VALUES ('A', 'Brewer1'), ('B', 'Brewer2');\nINSERT INTO Drinker (name, address) VALUES ('Alice', '456 Elm');\nINSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('Alice', 'Bar1', 3);\nINSERT INTO Serves (bar, beer, price) VALUES ('Bar1', 'A', 2.50), ('Bar1', 'B', 3.00);\nINSERT INTO Likes (drinker, beer) VALUES ('Alice', 'A');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 finds drinkers who like all beers served at every bar they frequent. Q2 finds drinkers who both frequent a bar serving beer and like at least one beer. These conditions differ: Q1 requires universal liking of all served beers, while Q2 only requires existence of at least one liked beer.",
+  "counterexample_dsp": "A drinker (Alice) frequents a bar (Bar1) that serves two beers (A and B). Alice likes beer A but not B. Q2 includes Alice (she likes A and frequents Bar1), but Q1 excludes her (she dislikes B at Bar1).",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 finds drinkers who like all beers served at every bar they frequent. Q2 finds drinkers who both frequent a bar serving beer and like at least one beer. These conditions differ: Q1 requires universal liking of all served beers, while Q2 only requires existence of at least one liked beer.\",\n\"counterexample_dsp\": \"A drinker (Alice) frequents a bar (Bar1) that serves two beers (A and B). Alice likes beer A but not B. Q2 includes Alice (she likes A and frequents Bar1), but Q1 excludes her (she dislikes B at Bar1).\",\n\"counterexample\": \"INSERT INTO Bar (name, address) VALUES ('Bar1', '123 Main');\\nINSERT INTO Beer (name, brewer) VALUES ('A', 'Brewer1'), ('B', 'Brewer2');\\nINSERT INTO Drinker (name, address) VALUES ('Alice', '456 Elm');\\nINSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('Alice', 'Bar1', 3);\\nINSERT INTO Serves (bar, beer, price) VALUES ('Bar1', 'A', 2.50), ('Bar1', 'B', 3.00);\\nINSERT INTO Likes (drinker, beer) VALUES ('Alice', 'A');\"\n}",
+  "reasoning": "\nOkay, let's try to figure out whether Q1 and Q2 are semantically equivalent. First, I need to understand what each query is doing.\n\nStarting with Q1: It selects the name from the Drinker table where there does not exist a bar that the drinker frequents where the bar serves a beer that the drinker does not like. Wait, let me parse that again. The NOT EXISTS part is checking for a bar (f.bar) that the drinker frequents (f.drinker = drinker.name) and that bar serves a beer (s.bar = s.bar, which is the same as f.bar) such that the beer is not in the list of beers the drinker likes. So, the NOT EXISTS condition is saying that there is no such bar and beer where the bar serves a beer the drinker doesn't like. Therefore, Q1 is selecting drinkers who, for every bar they frequent, all the beers served at those bars are ones they like. So, the drinker likes all the beers served at every bar they go to.\n\nNow Q2 is a bit different. It's taking the intersection of two sets. The first part is selecting f.drinker from Frequents joined with Serves on bar, which would be all drinkers who frequent a bar that serves some beer. The second part is selecting drinkers from Likes, which are all drinkers who like at least one beer. The INTERSECT would give drinkers who are present in both sets. So, that's drinkers who both frequent a bar that serves a beer (which is almost all drinkers, since Frequents has drinkers and bars, and Serves has bars and beers) and who like at least one beer. Wait, but the INTERSECT is between two sets: the first set is all drinkers that are in Frequents and Serves (so any drinker who frequents any bar that serves any beer), and the second set is all drinkers who have at least one like. So the result would be drinkers who both frequent at least one bar that serves a beer and like at least one beer. But that's a different condition than Q1.\n\nWait, but Q1 is about all beers served at all bars the drinker frequents being liked by the drinker. So if a drinker goes to a bar that serves a beer they don't like, then they are excluded from Q1's result. Q2's result is drinkers who are in both the set of drinkers who frequent a bar that serves some beer (which is all drinkers, unless they don't frequent any bars that serve beer, but that's unlikely) and who like at least one beer. So Q2 is more about drinkers who have at least one beer they like and are in a bar that serves some beer. But Q1 is about drinkers who like all beers at all bars they frequent. These are different conditions.\n\nSo, for example, consider a drinker who likes some beers but also frequents a bar that serves a beer they don't like. Then Q1 would exclude them, but Q2 would include them if they like at least one beer and are in a bar that serves a beer (which they are). Therefore, Q1 and Q2 are not equivalent. Let me think of a counterexample.\n\nLet's create a test case where a drinker is in Q2's result but not in Q1's. Suppose there's a drinker named Alice who frequents Bar1, which serves BeerA and BeerB. Alice likes BeerA but not BeerB. So, according to Q1, since there exists a beer (BeerB) at a bar she frequents that she doesn't like, she would be excluded. However, in Q2, she is in the first set (since she frequents a bar that serves beer) and in the second set (she likes BeerA), so she would be in the intersection. Therefore, Q1 would not include her, but Q2 would. Thus, the queries are not equivalent.\n\nNow, I need to structure the counterexample with actual SQL inserts. Let's create the necessary tables with the example data.\n\nFirst, create the Bar, Beer, Drinker, Frequents, Serves, and Likes tables.\n\nInsert Bar1 and Bar2 (but maybe just Bar1 is enough for this case). Insert BeerA and BeerB. Insert Drinker Alice. In Frequents, Alice frequents Bar1. In Serves, Bar1 serves BeerA and BeerB. In Likes, Alice likes BeerA.\n\nThis setup would make Alice be in Q2's result but not in Q1's. Therefore, the counterexample would show that the two queries are not equivalent.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 578,
+    "total_tokens": 1841,
+    "completion_tokens": 1263,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 961
+    },
+    "generation_seconds": 40.407
+  },
+  "started_at": "2026-10-06T09:12:09.864722+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [],
+  "q2_output": [
+    [
+      "Alice"
+    ]
+  ],
+  "q1_row_count": 0,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT name FROM drinker WHERE NOT EXISTS(SELECT f.bar FROM frequents AS f, serves AS s WHERE f.drinker = drinker.name AND f.bar = s.bar AND NOT s.beer IN (SELECT beer FROM likes WHERE drinker = drinker.name))",
+  "q2_validation_sql": "SELECT f.drinker FROM frequents AS f JOIN serves AS s ON f.bar = s.bar INTERSECT SELECT L.drinker FROM likes AS L"
+}

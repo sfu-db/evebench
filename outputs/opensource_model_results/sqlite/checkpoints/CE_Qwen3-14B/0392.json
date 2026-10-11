@@ -1,0 +1,55 @@
+{
+  "dbid": "superhero",
+  "index": "392",
+  "source_index": "724",
+  "schema_ddl": "CREATE TABLE alignment\n(\n    id        INTEGER not null\n            primary key,\n    alignment TEXT default NULL\n);\n\nCREATE TABLE attribute\n(\n    id             INTEGER not null\n            primary key,\n    attribute_name TEXT default NULL\n);\n\nCREATE TABLE colour\n(\n    id     INTEGER not null\n            primary key,\n    colour TEXT default NULL\n);\n\nCREATE TABLE gender\n(\n    id     INTEGER not null\n            primary key,\n    gender TEXT default NULL\n);\n\nCREATE TABLE publisher\n(\n    id             INTEGER not null\n            primary key,\n    publisher_name TEXT default NULL\n);\n\nCREATE TABLE race\n(\n    id   INTEGER not null\n            primary key,\n    race TEXT default NULL\n);\n\nCREATE TABLE superhero\n(\n    id             INTEGER not null\n            primary key,\n    superhero_name TEXT default NULL,\n    full_name      TEXT default NULL,\n    gender_id      INTEGER          default NULL,\n    eye_colour_id  INTEGER          default NULL,\n    hair_colour_id INTEGER          default NULL,\n    skin_colour_id INTEGER          default NULL,\n    race_id        INTEGER          default NULL,\n    publisher_id   INTEGER          default NULL,\n    alignment_id   INTEGER          default NULL,\n    height_cm      INTEGER          default NULL,\n    weight_kg      INTEGER          default NULL,\n    foreign key (alignment_id) references alignment(id),\n    foreign key (eye_colour_id) references colour(id),\n    foreign key (gender_id) references gender(id),\n    foreign key (hair_colour_id) references colour(id),\n    foreign key (publisher_id) references publisher(id),\n    foreign key (race_id) references race(id),\n    foreign key (skin_colour_id) references colour(id)\n);\n\nCREATE TABLE hero_attribute\n(\n    hero_id         INTEGER default NULL,\n    attribute_id    INTEGER default NULL,\n    attribute_value INTEGER default NULL,\n    foreign key (attribute_id) references attribute(id),\n    foreign key (hero_id) references superhero(id)\n);\n\nCREATE TABLE superpower\n(\n    id         INTEGER not null\n            primary key,\n    power_name TEXT default NULL\n);\n\nCREATE TABLE hero_power\n(\n    hero_id  INTEGER default NULL,\n    power_id INTEGER default NULL,\n    foreign key (hero_id) references superhero(id),\n    foreign key (power_id) references superpower(id)\n);",
+  "q1": "SELECT COUNT(T1.id) FROM superhero AS T1 INNER JOIN hero_power AS T2 ON T1.id = T2.hero_id INNER JOIN superpower AS T3 ON T2.power_id = T3.id INNER JOIN colour AS T4 ON T1.eye_colour_id = T4.id WHERE T3.power_name = 'Agility' AND T4.colour = 'Blue'",
+  "q2": "SELECT COUNT(DISTINCT T1.id) FROM superhero AS T1 INNER JOIN colour AS T2 ON T1.eye_colour_id = T2.id INNER JOIN hero_power AS T3 ON T1.id = T3.hero_id INNER JOIN superpower AS T4 ON T3.power_id = T4.id WHERE T2.colour = 'Blue' AND T4.power_name = 'Agility'",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT COUNT(T1.id) FROM superhero AS T1 INNER JOIN hero_power AS T2 ON T1.id = T2.hero_id INNER JOIN superpower AS T3 ON T2.power_id = T3.id INNER JOIN colour AS T4 ON T1.eye_colour_id = T4.id WHERE T3.power_name = 'Agility' AND T4.colour = 'Blue'",
+  "q2_prompt_sql": "SELECT COUNT(DISTINCT T1.id) FROM superhero AS T1 INNER JOIN colour AS T2 ON T1.eye_colour_id = T2.id INNER JOIN hero_power AS T3 ON T1.id = T3.hero_id INNER JOIN superpower AS T4 ON T3.power_id = T4.id WHERE T2.colour = 'Blue' AND T4.power_name = 'Agility'",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO colour (id, colour) VALUES (1, 'Blue');\nINSERT INTO superpower (id, power_name) VALUES (1, 'Agility');\nINSERT INTO superhero (id, superhero_name, eye_colour_id) VALUES (1, 'Test Hero', 1);\nINSERT INTO hero_power (hero_id, power_id) VALUES (1, 1), (1, 1);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 counts all matching rows (including duplicates if a superhero has multiple 'Agility' entries), while Q2 uses COUNT(DISTINCT) to avoid overcounting the same superhero.",
+  "counterexample_dsp": "A superhero with blue eyes and two 'Agility' power entries in hero_power. Q1 counts both entries, Q2 counts the superhero once.",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 counts all matching rows (including duplicates if a superhero has multiple 'Agility' entries), while Q2 uses COUNT(DISTINCT) to avoid overcounting the same superhero.\",\n  \"counterexample_dsp\": \"A superhero with blue eyes and two 'Agility' power entries in hero_power. Q1 counts both entries, Q2 counts the superhero once.\",\n  \"counterexample\": \"INSERT INTO colour (id, colour) VALUES (1, 'Blue');\\nINSERT INTO superpower (id, power_name) VALUES (1, 'Agility');\\nINSERT INTO superhero (id, superhero_name, eye_colour_id) VALUES (1, 'Test Hero', 1);\\nINSERT INTO hero_power (hero_id, power_id) VALUES (1, 1), (1, 1);\"\n}",
+  "reasoning": "\nOkay, let's see. I need to find a counterexample where Q1 and Q2 return different results. Let me first understand what each query is doing.\n\nQ1: It's selecting the count of T1.id (superhero) from joins with hero_power, superpower, and colour. The conditions are that the power name is 'Agility' and eye color is 'Blue'. So it's counting superheroes who have the 'Agility' power and have blue eyes.\n\nQ2: It's selecting the count of distinct T1.id from joins with colour, hero_power, and superpower. The same conditions on color and power name. But here, it's using COUNT(DISTINCT T1.id). \n\nWait, the difference might be that Q1 could count the same superhero multiple times if they have multiple entries in hero_power for 'Agility' (but that's not possible because hero_power links a hero to a power, and if a hero has the same power multiple times, but the schema doesn't have a primary key on hero_id and power_id. Wait, the hero_power table has hero_id and power_id as foreign keys. If a hero has the same power multiple times, that would be duplicate rows. But in reality, probably each hero has each power once. But the schema allows for multiple entries. So if a superhero has 'Agility' in hero_power multiple times, then Q1 would count that superhero once per occurrence, while Q2 would count them once because of DISTINCT.\n\nBut the question is, are there any cases where Q1 and Q2 would differ? For example, if a superhero has multiple entries in hero_power for 'Agility' and blue eyes. Then Q1 would count each occurrence, leading to a higher number than Q2, which counts distinct IDs.\n\nSo the key is to create a scenario where a superhero has multiple entries in hero_power for the same power (Agility) and eye color blue. Then Q1 would count each occurrence, while Q2 would count the superhero once.\n\nSo to create a counterexample, I need:\n\n- A superhero with eye color blue (so T4.colour is blue)\n- That superhero has multiple entries in hero_power for power_id that corresponds to 'Agility' in superpower.\n\nLet me structure the test data.\n\nFirst, insert into colour: id 1, colour 'Blue'.\n\nThen superpower: id 1, power_name 'Agility'.\n\nThen superhero: id 1, eye_colour_id 1 (blue).\n\nThen in hero_power, insert two entries for hero_id 1 and power_id 1. So that hero has two entries for Agility.\n\nNow, Q1 would count 2 (because each join would produce two rows), while Q2 would count 1 (distinct id).\n\nThus, the two queries would return different results.\n\nSo the explanation is that Q1 counts all matching rows, including duplicates if a hero has multiple entries in hero_power for the same power, whereas Q2 uses COUNT(DISTINCT) to avoid duplicates.\n\nNow, I need to write the SQL inserts for this scenario, making sure all foreign keys are properly set. Also, other tables might need dummy data for foreign keys that are required but not used here. For example, the superhero table has gender_id, publisher_id, etc., which can be set to NULL or some default values, but the schema allows them to be NULL. However, the foreign key constraints require that if they are not NULL, they must exist in the referenced tables. But since the problem allows for default values, maybe I can set them to NULL.\n\nWait, the superhero table has gender_id, eye_colour_id, etc., as foreign keys. So for the superhero's eye_colour_id, I need to have a colour with id 1. So I need to insert into colour (id 1, 'Blue').\n\nThen, the superpower table needs an entry with id 1 and power_name 'Agility'.\n\nThe superhero's eye_colour_id is 1.\n\nThen, in hero_power, two entries for hero_id 1 and power_id 1.\n\nSo the counterexample would involve inserting these records.\n\nOther tables like alignment, attribute, gender, publisher, race may not be needed for this example, but the superhero table's columns that are foreign keys (like gender_id, publisher_id, etc.) can be set to NULL as per the schema's default.\n\nSo the SQL inserts would be:\n\nInsert into colour (id, colour) values (1, 'Blue');\nInsert into superpower (id, power_name) values (1, 'Agility');\nInsert into superhero (id, superhero_name, eye_colour_id) values (1, 'Test Hero', 1);\nInsert into hero_power (hero_id, power_id) values (1, 1), (1, 1);\n\nBut I need to make sure that all the foreign keys are valid. For example, superhero's eye_colour_id is 1, which exists in colour. The hero_power's power_id is 1, which exists in superpower.\n\nThis setup would make Q1 return 2 (because two rows in hero_power) and Q2 return 1 (COUNT(DISTINCT T1.id)).\n\nSo that's the counterexample.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 814,
+    "total_tokens": 2074,
+    "completion_tokens": 1260,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1079
+    },
+    "generation_seconds": 44.11
+  },
+  "started_at": "2026-10-06T16:59:37.897709+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      2
+    ]
+  ],
+  "q2_output": [
+    [
+      1
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT COUNT(T1.id) FROM superhero AS T1 INNER JOIN hero_power AS T2 ON T1.id = T2.hero_id INNER JOIN superpower AS T3 ON T2.power_id = T3.id INNER JOIN colour AS T4 ON T1.eye_colour_id = T4.id WHERE T3.power_name = 'Agility' AND T4.colour = 'Blue'",
+  "q2_validation_sql": "SELECT COUNT(DISTINCT T1.id) FROM superhero AS T1 INNER JOIN colour AS T2 ON T1.eye_colour_id = T2.id INNER JOIN hero_power AS T3 ON T1.id = T3.hero_id INNER JOIN superpower AS T4 ON T3.power_id = T4.id WHERE T2.colour = 'Blue' AND T4.power_name = 'Agility'"
+}

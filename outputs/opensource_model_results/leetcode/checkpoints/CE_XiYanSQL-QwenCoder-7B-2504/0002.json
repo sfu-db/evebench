@@ -1,0 +1,53 @@
+{
+  "dbid": "1148",
+  "index": "2",
+  "source_index": "148",
+  "schema_ddl": "CREATE TABLE VIEWS (\n    ARTICLE_ID INT,\n    AUTHOR_ID INT,\n    VIEWER_ID INT,\n    VIEW_DATE DATE\n);",
+  "q1": "SELECT DISTINCT AUTHOR_ID AS ID FROM VIEWS WHERE AUTHOR_ID = VIEWER_ID ORDER BY ID",
+  "q2": "SELECT DISTINCT AUTHOR_ID AS ID FROM VIEWS AS V WHERE V.VIEWER_ID = AUTHOR_ID ORDER BY AUTHOR_ID",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT DISTINCT AUTHOR_ID AS ID FROM VIEWS WHERE AUTHOR_ID = VIEWER_ID ORDER BY ID",
+  "q2_prompt_sql": "SELECT DISTINCT AUTHOR_ID AS ID FROM VIEWS AS V WHERE V.VIEWER_ID = AUTHOR_ID ORDER BY AUTHOR_ID",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO VIEWS (ARTICLE_ID, AUTHOR_ID, VIEWER_ID, VIEW_DATE) VALUES (1, 101, 101, '2023-01-01'); INSERT INTO VIEWS (ARTICLE_ID, AUTHOR_ID, VIEWER_ID, VIEW_DATE) VALUES (2, 102, 103, '2023-01-02');",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent because they use different table aliases. Q1 uses no alias, while Q2 uses 'V' as the alias for the VIEWS table. This difference in aliasing can lead to different results if the table names are not unique in the database.",
+  "counterexample_dsp": "The test data should include at least two records in the VIEWS table, one with a VIEWER_ID that matches the AUTHOR_ID and another with a different VIEWER_ID. The first record triggers the difference in Q1, while the second record triggers the difference in Q2.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent because they use different table aliases. Q1 uses no alias, while Q2 uses 'V' as the alias for the VIEWS table. This difference in aliasing can lead to different results if the table names are not unique in the database.\",\n  \"counterexample_dsp\": \"The test data should include at least two records in the VIEWS table, one with a VIEWER_ID that matches the AUTHOR_ID and another with a different VIEWER_ID. The first record triggers the difference in Q1, while the second record triggers the difference in Q2.\",\n  \"counterexample\": \"INSERT INTO VIEWS (ARTICLE_ID, AUTHOR_ID, VIEWER_ID, VIEW_DATE) VALUES (1, 101, 101, '2023-01-01'); INSERT INTO VIEWS (ARTICLE_ID, AUTHOR_ID, VIEWER_ID, VIEW_DATE) VALUES (2, 102, 103, '2023-01-02');\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 291,
+    "total_tokens": 521,
+    "completion_tokens": 230,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 4.079
+  },
+  "started_at": "2026-10-06T09:49:46.832276+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      101
+    ]
+  ],
+  "q2_output": [
+    [
+      101
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DISTINCT AUTHOR_ID AS ID FROM VIEWS WHERE AUTHOR_ID = VIEWER_ID ORDER BY ID",
+  "q2_validation_sql": "SELECT DISTINCT AUTHOR_ID AS ID FROM VIEWS AS V WHERE V.VIEWER_ID = AUTHOR_ID ORDER BY AUTHOR_ID"
+}

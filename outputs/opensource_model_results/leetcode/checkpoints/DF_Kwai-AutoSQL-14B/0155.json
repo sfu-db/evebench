@@ -1,0 +1,55 @@
+{
+  "dbid": "585",
+  "index": "155",
+  "source_index": "234",
+  "schema_ddl": "CREATE TABLE INSURANCE (\n    PID INT,\n    TIV_2015 NUMERIC,\n    TIV_2016 NUMERIC,\n    LAT NUMERIC,\n    LON NUMERIC,\n    PRIMARY KEY (PID),\n    CHECK (TIV_2015 >= 0),\n    CHECK (TIV_2016 >= 0)\n);",
+  "q1": "SELECT ROUND(SUM(TIV_2016),2) TIV_2016 FROM INSURANCE WHERE TIV_2015 IN (SELECT TIV_2015 FROM INSURANCE GROUP BY TIV_2015 HAVING COUNT(*)>1) AND (LAT,LON) IN (SELECT LAT,LON FROM INSURANCE GROUP BY LAT,LON HAVING COUNT(*)=1)",
+  "q2": "WITH CTE AS(SELECT TIV_2015, COUNT(*) AS NUM FROM INSURANCE GROUP BY TIV_2015 HAVING COUNT(*) >=2), CTE2 AS(SELECT COUNT(PID) AS CNT, CONCAT_WS(',', LAT, LON) AS LOC FROM INSURANCE GROUP BY 2 HAVING COUNT(PID) = 1 ) SELECT SUM(TIV_2016) AS TIV_2016 FROM INSURANCE WHERE TIV_2015 IN (SELECT TIV_2015 FROM CTE) AND CONCAT_WS(',', LAT, LON) IN (SELECT LOC FROM CTE2)",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT ROUND(SUM(TIV_2016),2) TIV_2016 FROM INSURANCE WHERE TIV_2015 IN (SELECT TIV_2015 FROM INSURANCE GROUP BY TIV_2015 HAVING COUNT(*)>1) AND (LAT,LON) IN (SELECT LAT,LON FROM INSURANCE GROUP BY LAT,LON HAVING COUNT(*)=1)",
+  "q2_prompt_sql": "WITH CTE AS(SELECT TIV_2015, COUNT(*) AS NUM FROM INSURANCE GROUP BY TIV_2015 HAVING COUNT(*) >=2), CTE2 AS(SELECT COUNT(PID) AS CNT, CONCAT_WS(',', LAT, LON) AS LOC FROM INSURANCE GROUP BY 2 HAVING COUNT(PID) = 1 ) SELECT SUM(TIV_2016) AS TIV_2016 FROM INSURANCE WHERE TIV_2015 IN (SELECT TIV_2015 FROM CTE) AND CONCAT_WS(',', LAT, LON) IN (SELECT LOC FROM CTE2)",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO INSURANCE (PID, TIV_2015, TIV_2016, LAT, LON) VALUES (1, 10, 10.1234, 40.7128, -74.0060);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent. Q1 uses ROUND(SUM(TIV_2016), 2) while Q2 uses SUM(TIV_2016) without rounding. Additionally, Q2 uses a Common Table Expression (CTE) and CONCAT_WS for grouping coordinates, which may behave differently from the implicit grouping and IN subquery in Q1.",
+  "counterexample_dsp": "A small test database with one row that satisfies both conditions but shows the difference in SUM rounding behavior.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n  \"equiv\": \"N\",\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent. Q1 uses ROUND(SUM(TIV_2016), 2) while Q2 uses SUM(TIV_2016) without rounding. Additionally, Q2 uses a Common Table Expression (CTE) and CONCAT_WS for grouping coordinates, which may behave differently from the implicit grouping and IN subquery in Q1.\",\n  \"counterexample_dsp\": \"A small test database with one row that satisfies both conditions but shows the difference in SUM rounding behavior.\",\n  \"counterexample\": \"INSERT INTO INSURANCE (PID, TIV_2015, TIV_2016, LAT, LON) VALUES (1, 10, 10.1234, 40.7128, -74.0060);\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 563,
+    "total_tokens": 762,
+    "completion_tokens": 199,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 6.39
+  },
+  "started_at": "2026-10-06T15:33:06.714731+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      null
+    ]
+  ],
+  "q2_output": [
+    [
+      null
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT ROUND(SUM(TIV_2016),2) TIV_2016 FROM INSURANCE WHERE TIV_2015 IN (SELECT TIV_2015 FROM INSURANCE GROUP BY TIV_2015 HAVING COUNT(*)>1) AND (LAT,LON) IN (SELECT LAT,LON FROM INSURANCE GROUP BY LAT,LON HAVING COUNT(*)=1)",
+  "q2_validation_sql": "WITH CTE AS(SELECT TIV_2015, COUNT(*) AS NUM FROM INSURANCE GROUP BY TIV_2015 HAVING COUNT(*) >=2), CTE2 AS(SELECT COUNT(PID) AS CNT, CONCAT_WS(',', LAT, LON) AS LOC FROM INSURANCE GROUP BY 2 HAVING COUNT(PID) = 1 ) SELECT SUM(TIV_2016) AS TIV_2016 FROM INSURANCE WHERE TIV_2015 IN (SELECT TIV_2015 FROM CTE) AND CONCAT_WS(',', LAT, LON) IN (SELECT LOC FROM CTE2)"
+}

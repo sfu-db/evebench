@@ -1,0 +1,53 @@
+{
+  "dbid": "debit_card_specializing",
+  "index": "834",
+  "source_index": "1473",
+  "schema_ddl": "CREATE TABLE customers\n(\n    CustomerID INTEGER UNIQUE     not null\n        primary key,\n    Segment    TEXT null,\n    Currency   TEXT null\n);\n\nCREATE TABLE gasstations\n(\n    GasStationID INTEGER    UNIQUE   not null\n        primary key,\n    ChainID      INTEGER          null,\n    Country      TEXT null,\n    Segment      TEXT null\n);\n\nCREATE TABLE products\n(\n    ProductID   INTEGER   UNIQUE      not null\n        primary key,\n    Description TEXT null\n);\n\nCREATE TABLE \"transactions_1k\"\n(\n    TransactionID INTEGER\n        primary key autoincrement,\n    Date          DATE,\n    Time          TEXT,\n    CustomerID    INTEGER,\n    CardID        INTEGER,\n    GasStationID  INTEGER,\n    ProductID     INTEGER,\n    Amount        INTEGER,\n    Price         REAL\n);\n\nCREATE TABLE \"yearmonth\"\n(\n    CustomerID  INTEGER not null\n        references customers\n            on update cascade on delete cascade\n        references customers,\n    Date        TEXT    not null,\n    Consumption REAL,\n    primary key (Date, CustomerID)\n);",
+  "q1": "SELECT T1.CustomerID FROM customers AS T1 INNER JOIN yearmonth AS T2 ON T1.CustomerID = T2.CustomerID WHERE T1.Segment = 'LAM' AND T2.date BETWEEN 201201 AND 201212 GROUP BY T1.CustomerID ORDER BY SUM(T2.Consumption) ASC LIMIT 1",
+  "q2": "SELECT T1.CustomerID FROM yearmonth AS T1 INNER JOIN customers AS T2 ON T1.CustomerID = T2.CustomerID WHERE T2.Segment = 'LAM' AND T1.Date BETWEEN '201201' AND '201212' ORDER BY T1.Consumption ASC LIMIT 1",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT T1.CustomerID FROM customers AS T1 INNER JOIN yearmonth AS T2 ON T1.CustomerID = T2.CustomerID WHERE T1.Segment = 'LAM' AND T2.date BETWEEN 201201 AND 201212 GROUP BY T1.CustomerID ORDER BY SUM(T2.Consumption) ASC LIMIT 1",
+  "q2_prompt_sql": "SELECT T1.CustomerID FROM yearmonth AS T1 INNER JOIN customers AS T2 ON T1.CustomerID = T2.CustomerID WHERE T2.Segment = 'LAM' AND T1.Date BETWEEN '201201' AND '201212' ORDER BY T1.Consumption ASC LIMIT 1",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO customers (CustomerID, Segment, Currency) VALUES (1, 'LAM', 'USD'); INSERT INTO yearmonth (CustomerID, Date, Consumption) VALUES (1, '201201', 100), (1, '201202', 50);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent because they join the 'yearmonth' table with the 'customers' table in different orders. Q1 groups by T1.CustomerID (which is the alias for the 'yearmonth' table) and orders by the sum of T2.Consumption (alias for the 'yearmonth' table's Consumption column), while Q2 orders by T1.Consumption (alias for the 'yearmonth' table's Consumption column) without grouping.",
+  "counterexample_dsp": "The difference is triggered when the 'yearmonth' table has multiple records for the same CustomerID with different Consumption values. In this case, Q1 will consider the sum of Consumption for each CustomerID, while Q2 will consider the smallest Consumption value for each CustomerID.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent because they join the 'yearmonth' table with the 'customers' table in different orders. Q1 groups by T1.CustomerID (which is the alias for the 'yearmonth' table) and orders by the sum of T2.Consumption (alias for the 'yearmonth' table's Consumption column), while Q2 orders by T1.Consumption (alias for the 'yearmonth' table's Consumption column) without grouping.\",\n  \"counterexample_dsp\": \"The difference is triggered when the 'yearmonth' table has multiple records for the same CustomerID with different Consumption values. In this case, Q1 will consider the sum of Consumption for each CustomerID, while Q2 will consider the smallest Consumption value for each CustomerID.\",\n  \"counterexample\": \"INSERT INTO customers (CustomerID, Segment, Currency) VALUES (1, 'LAM', 'USD'); INSERT INTO yearmonth (CustomerID, Date, Consumption) VALUES (1, '201201', 100), (1, '201202', 50);\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 585,
+    "total_tokens": 830,
+    "completion_tokens": 245,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 4.796
+  },
+  "started_at": "2026-10-06T16:07:11.359688+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      1
+    ]
+  ],
+  "q2_output": [
+    [
+      1
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT T1.CustomerID FROM customers AS T1 INNER JOIN yearmonth AS T2 ON T1.CustomerID = T2.CustomerID WHERE T1.Segment = 'LAM' AND T2.date BETWEEN 201201 AND 201212 GROUP BY T1.CustomerID ORDER BY SUM(T2.Consumption) ASC LIMIT 1",
+  "q2_validation_sql": "SELECT T1.CustomerID FROM yearmonth AS T1 INNER JOIN customers AS T2 ON T1.CustomerID = T2.CustomerID WHERE T2.Segment = 'LAM' AND T1.Date BETWEEN '201201' AND '201212' ORDER BY T1.Consumption ASC LIMIT 1"
+}

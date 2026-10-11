@@ -1,0 +1,53 @@
+{
+  "dbid": "1083",
+  "index": "222",
+  "source_index": "672",
+  "schema_ddl": "CREATE TABLE PRODUCT (\n    PRODUCT_ID INT,\n    PRODUCT_NAME VARCHAR(255),\n    UNIT_PRICE INT,\n    PRIMARY KEY (PRODUCT_ID),\n    CHECK (UNIT_PRICE > 0),\n    CHECK (PRODUCT_NAME IN ('S8', 'IPHONE'))\n);\n\nCREATE TABLE SALES (\n    PRODUCT_ID INT,\n    SELLER_ID INT,\n    BUYER_ID INT,\n    SALE_DATE DATE,\n    QUANTITY INT,\n    PRICE INT,\n    FOREIGN KEY (PRODUCT_ID) REFERENCES PRODUCT(PRODUCT_ID),\n    CHECK (QUANTITY > 0),\n    CHECK (PRICE > 0)\n);",
+  "q1": "SELECT DISTINCT SALES.BUYER_ID AS BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'S8' AND SALES.BUYER_ID NOT IN ( SELECT SALES.BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'IPHONE')",
+  "q2": "WITH T AS( SELECT BUYER_ID FROM SALES AS S JOIN PRODUCT AS P ON S.PRODUCT_ID =P.PRODUCT_ID WHERE PRODUCT_NAME='S8'), T1 AS( SELECT BUYER_ID FROM SALES AS S JOIN PRODUCT AS P ON S.PRODUCT_ID =P.PRODUCT_ID WHERE PRODUCT_NAME='IPHONE') SELECT DISTINCT BUYER_ID FROM SALES WHERE BUYER_ID IN (SELECT T.BUYER_ID FROM T) AND BUYER_ID NOT IN (SELECT T1.BUYER_ID FROM T1)",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT DISTINCT SALES.BUYER_ID AS BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'S8' AND SALES.BUYER_ID NOT IN ( SELECT SALES.BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'IPHONE')",
+  "q2_prompt_sql": "WITH T AS( SELECT BUYER_ID FROM SALES AS S JOIN PRODUCT AS P ON S.PRODUCT_ID =P.PRODUCT_ID WHERE PRODUCT_NAME='S8'), T1 AS( SELECT BUYER_ID FROM SALES AS S JOIN PRODUCT AS P ON S.PRODUCT_ID =P.PRODUCT_ID WHERE PRODUCT_NAME='IPHONE') SELECT DISTINCT BUYER_ID FROM SALES WHERE BUYER_ID IN (SELECT T.BUYER_ID FROM T) AND BUYER_ID NOT IN (SELECT T1.BUYER_ID FROM T1)",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO PRODUCT (PRODUCT_ID, PRODUCT_NAME, UNIT_PRICE) VALUES (1, 'S8', 1000), (2, 'IPHONE', 1200); INSERT INTO SALES (PRODUCT_ID, SELLER_ID, BUYER_ID, SALE_DATE, QUANTITY, PRICE) VALUES (1, 101, 201, '2023-01-01', 1, 1000);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent because Q1 uses a NOT IN subquery, which can return NULL values if the subquery does not find any matching rows, leading to unexpected results. Q2, on the other hand, uses a NOT IN subquery with a CTE, which avoids this issue by handling NULL values more gracefully.",
+  "counterexample_dsp": "The test data should include a product 'S8' and a product 'IPHONE' with at least one buyer associated with 'S8' and no buyer associated with 'IPHONE'. The NOT IN subquery in Q1 might return NULL if no buyer is found for 'IPHONE', leading to the buyer of 'S8' being included in the result. Q2, however, correctly handles this case and excludes the buyer of 'S8' from the result.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent because Q1 uses a NOT IN subquery, which can return NULL values if the subquery does not find any matching rows, leading to unexpected results. Q2, on the other hand, uses a NOT IN subquery with a CTE, which avoids this issue by handling NULL values more gracefully.\",\n  \"counterexample_dsp\": \"The test data should include a product 'S8' and a product 'IPHONE' with at least one buyer associated with 'S8' and no buyer associated with 'IPHONE'. The NOT IN subquery in Q1 might return NULL if no buyer is found for 'IPHONE', leading to the buyer of 'S8' being included in the result. Q2, however, correctly handles this case and excludes the buyer of 'S8' from the result.\",\n  \"counterexample\": \"INSERT INTO PRODUCT (PRODUCT_ID, PRODUCT_NAME, UNIT_PRICE) VALUES (1, 'S8', 1000), (2, 'IPHONE', 1200); INSERT INTO SALES (PRODUCT_ID, SELLER_ID, BUYER_ID, SALE_DATE, QUANTITY, PRICE) VALUES (1, 101, 201, '2023-01-01', 1, 1000);\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 529,
+    "total_tokens": 820,
+    "completion_tokens": 291,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 4.766
+  },
+  "started_at": "2026-10-06T09:50:39.599365+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      201
+    ]
+  ],
+  "q2_output": [
+    [
+      201
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DISTINCT SALES.BUYER_ID AS BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'S8' AND SALES.BUYER_ID NOT IN ( SELECT SALES.BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'IPHONE')",
+  "q2_validation_sql": "WITH T AS( SELECT BUYER_ID FROM SALES AS S JOIN PRODUCT AS P ON S.PRODUCT_ID =P.PRODUCT_ID WHERE PRODUCT_NAME='S8'), T1 AS( SELECT BUYER_ID FROM SALES AS S JOIN PRODUCT AS P ON S.PRODUCT_ID =P.PRODUCT_ID WHERE PRODUCT_NAME='IPHONE') SELECT DISTINCT BUYER_ID FROM SALES WHERE BUYER_ID IN (SELECT T.BUYER_ID FROM T) AND BUYER_ID NOT IN (SELECT T1.BUYER_ID FROM T1)"
+}

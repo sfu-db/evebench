@@ -1,0 +1,39 @@
+{
+  "dbid": "beers",
+  "index": "8",
+  "source_index": "85",
+  "schema_ddl": "CREATE TABLE Bar (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Beer (\n    name VARCHAR NOT NULL,\n    brewer VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Drinker (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Frequents (\n    drinker VARCHAR NOT NULL,\n    bar VARCHAR NOT NULL,\n    times_a_week SMALLINT NOT NULL,\n    PRIMARY KEY (drinker, bar),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (bar) REFERENCES Bar(name)\n);\n\nCREATE TABLE Serves (\n    bar VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    price DECIMAL(5,2) NOT NULL,\n    PRIMARY KEY (bar, beer),\n    FOREIGN KEY (bar) REFERENCES Bar(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);\n\nCREATE TABLE Likes (\n    drinker VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    PRIMARY KEY (drinker, beer),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);",
+  "q1": "SELECT DISTINCT drinker FROM frequents NATURAL JOIN serves WHERE beer = 'Corona' AND NOT drinker IN (SELECT drinker FROM Likes WHERE beer = 'Corona')",
+  "q2": "SELECT f.drinker FROM frequents AS f JOIN serves AS s ON f.bar = s.bar WHERE s.beer = 'Corona' AND NOT f.drinker IN (SELECT l.drinker FROM likes AS l WHERE l.beer = 'Corona')",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "beers",
+  "q1_prompt_sql": "SELECT DISTINCT drinker FROM frequents NATURAL JOIN serves WHERE beer = 'Corona' AND NOT drinker IN (SELECT drinker FROM Likes WHERE beer = 'Corona')",
+  "q2_prompt_sql": "SELECT f.drinker FROM frequents AS f JOIN serves AS s ON f.bar = s.bar WHERE s.beer = 'Corona' AND NOT f.drinker IN (SELECT l.drinker FROM likes AS l WHERE l.beer = 'Corona')",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries select drinkers who frequent a bar serving 'Corona' but do not like 'Corona'. Q1 uses NATURAL JOIN on bar (common column between frequents and serves), and Q2 uses explicit JOIN on bar. Since the join condition and filtering logic are identical, the results are equivalent.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries select drinkers who frequent a bar serving 'Corona' but do not like 'Corona'. Q1 uses NATURAL JOIN on bar (common column between frequents and serves), and Q2 uses explicit JOIN on bar. Since the join condition and filtering logic are identical, the results are equivalent.\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem. So, I need to determine if Q1 and Q2 are semantically equivalent. Let me start by understanding each query.\n\nFirst, looking at Q1: It uses a NATURAL JOIN between frequents and serves. The condition is beer = 'Corona' and the drinker is not in the subquery that selects drinkers from Likes where beer is 'Corona'. The NATURAL JOIN means it joins on all common columns. The frequents table has columns drinker and bar, and serves has bar and beer. So the natural join would join on bar, since that's the common column. Then, the WHERE clause filters for beer = 'Corona' and excludes drinkers who like Corona.\n\nNow Q2: It does an explicit JOIN of frequents as f with serves as s on f.bar = s.bar. The same beer condition, and the same subquery. The difference here is that Q1 uses NATURAL JOIN, which automatically joins on all common columns, whereas Q2 explicitly joins on bar. But in this case, both tables (frequents and serves) have bar as a common column. So the join condition should be the same. Wait, but maybe there's a difference in the way the tables are joined? Let me check again.\n\nWait, the NATURAL JOIN between frequents and serves would join on the common column bar. Because frequents has bar (as part of the composite key with drinker) and serves has bar (as part of the composite key with beer). So the natural join would indeed join on bar. Then, the WHERE beer = 'Corona' comes from the serves table. The NOT IN subquery is the same in both queries.\n\nSo the main difference between Q1 and Q2 is the use of NATURAL JOIN in Q1 versus an explicit JOIN with ON f.bar = s.bar in Q2. But since they both are joining on bar, maybe they are equivalent. Wait, but in Q1, the NATURAL JOIN would also include other columns from both tables. However, the SELECT DISTINCT drinker in Q1 would just pick the drinker from the joined result. In Q2, it's selecting f.drinker from the join.\n\nBut maybe there's a case where the natural join could produce duplicates or different results? Wait, no. The join condition is the same. Both are joining on bar. The only difference is the syntax. So I think they should be equivalent. But wait, maybe the NATURAL JOIN in Q1 could have issues if there are other common columns? Let me check the schema again.\n\nLooking at the schema, frequents has drinker and bar. Serves has bar and beer. So the only common column is bar. So NATURAL JOIN would join on bar. The explicit join in Q2 also joins on bar. So the join conditions are the same. The rest of the query is the same. So the two queries should be equivalent. Therefore, the answer is Y.\n\nWait, but I need to be careful. Let me think again. The NATURAL JOIN in Q1 would produce all columns from frequents and serves, but the explicit join in Q2 is also selecting the same columns. The WHERE conditions are the same. The subquery is the same. So the result should be the same. Therefore, they are equivalent. So the answer is Y.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 582,
+    "total_tokens": 1354,
+    "completion_tokens": 772,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 693
+    },
+    "generation_seconds": 24.0
+  },
+  "started_at": "2026-10-06T09:29:32.783959+00:00",
+  "elapsed_seconds": 0.0
+}

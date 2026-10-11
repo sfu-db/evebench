@@ -1,0 +1,39 @@
+{
+  "dbid": "student_club",
+  "index": "833",
+  "source_index": "1470",
+  "schema_ddl": "CREATE TABLE event\n(\n    event_id   TEXT\n        constraint event_pk\n            primary key,\n    event_name TEXT,\n    event_date TEXT,\n    type       TEXT,\n    notes      TEXT,\n    location   TEXT,\n    status     TEXT\n);\n\nCREATE TABLE major\n(\n    major_id   TEXT\n        constraint major_pk\n            primary key,\n    major_name TEXT,\n    department TEXT,\n    college    TEXT\n);\n\nCREATE TABLE zip_code\n(\n    zip_code    INTEGER\n        constraint zip_code_pk\n            primary key,\n    type        TEXT,\n    city        TEXT,\n    county      TEXT,\n    state       TEXT,\n    short_state TEXT\n);\n\nCREATE TABLE \"attendance\"\n(\n    link_to_event  TEXT,\n    link_to_member TEXT,\n    primary key (link_to_event, link_to_member),\n    foreign key (link_to_event) references event(event_id),\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"budget\"\n(\n    budget_id     TEXT\n            primary key,\n    category      TEXT,\n    spent         REAL,\n    remaining     REAL,\n    amount        INTEGER,\n    event_status  TEXT,\n    link_to_event TEXT,\n    foreign key (link_to_event) references event(event_id)\n);\n\nCREATE TABLE \"expense\"\n(\n    expense_id          TEXT\n            primary key,\n    expense_description TEXT,\n    expense_date        TEXT,\n    cost                REAL,\n    approved            TEXT,\n    link_to_member      TEXT,\n    link_to_budget      TEXT,\n    foreign key (link_to_budget) references budget(budget_id),\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"income\"\n(\n    income_id      TEXT\n        constraint income_pk\n            primary key,\n    date_received  TEXT,\n    amount         INTEGER,\n    source         TEXT,\n    notes          TEXT,\n    link_to_member TEXT,\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"member\"\n(\n    member_id     TEXT\n        constraint member_pk\n            primary key,\n    first_name    TEXT,\n    last_name     TEXT,\n    email         TEXT,\n    position      TEXT,\n    t_shirt_size  TEXT,\n    phone         TEXT,\n    zip           INTEGER,\n    link_to_major TEXT,\n    foreign key (link_to_major) references major(major_id),\n    foreign key (zip) references zip_code(zip_code)\n);",
+  "q1": "SELECT T1.first_name, T1.last_name, T1.position FROM member AS T1 INNER JOIN zip_code AS T2 ON T2.zip_code = T1.zip WHERE T2.city = 'Lincolnton' AND T2.state = 'North Carolina' AND T2.zip_code = 28092",
+  "q2": "SELECT first_name, last_name, position FROM member INNER JOIN zip_code ON member.zip = zip_code.zip_code WHERE city = 'Lincolnton' AND state = 'North Carolina' AND zip_code = 28092",
+  "dialect": "sqlite",
+  "ground_truth": "EQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT T1.first_name, T1.last_name, T1.position FROM member AS T1 INNER JOIN zip_code AS T2 ON T2.zip_code = T1.zip WHERE T2.city = 'Lincolnton' AND T2.state = 'North Carolina' AND T2.zip_code = 28092",
+  "q2_prompt_sql": "SELECT first_name, last_name, position FROM member INNER JOIN zip_code ON member.zip = zip_code.zip_code WHERE city = 'Lincolnton' AND state = 'North Carolina' AND zip_code = 28092",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries join the member table with zip_code on zip code, filter by city, state, and zip_code value. The only difference is the use of table aliases in Q1, which does not affect the result.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries join the member table with zip_code on zip code, filter by city, state, and zip_code value. The only difference is the use of table aliases in Q1, which does not affect the result.\"\n}",
+  "reasoning": "\nOkay, let me try to figure out whether Q1 and Q2 are equivalent. \n\nFirst, I need to understand what each query is doing. \n\nLooking at Q1: It selects first_name, last_name, position from member (aliased as T1) joined with zip_code (T2) on T2.zip_code = T1.zip. The WHERE clause filters on T2.city = 'Lincolnton', T2.state = 'North Carolina', and T2.zip_code = 28092.\n\nQ2 is similar but without the table aliases. It selects first_name, last_name, position from member joined with zip_code on member.zip = zip_code.zip_code, with the same WHERE conditions on city, state, and zip_code.\n\nWait, the only difference I see is the use of aliases in Q1 versus not in Q2. But looking at the join condition: in Q1, T1.zip is joined to T2.zip_code. In Q2, member.zip is joined to zip_code.zip_code. Since member.zip is a foreign key to zip_code.zip_code, that's the same join condition. The WHERE conditions in both are on zip_code's columns (city, state, zip_code). \n\nWait, in Q1, the WHERE clause uses T2.zip_code = 28092. In Q2, the WHERE clause uses zip_code = 28092. Since zip_code is the primary key of the zip_code table, that should be equivalent. \n\nSo the only difference is the aliases. The column references in Q1 use T1 and T2, but in Q2, they use member.zip and zip_code.zip_code. But since the join condition is the same, and the WHERE conditions are on the same columns, they should return the same results. \n\nWait, but in Q2, the WHERE clause uses zip_code = 28092. The zip_code table's primary key is zip_code (an integer). So that's correct. In Q1, T2.zip_code is the same column. So both are filtering on the same column. \n\nSo both queries are joining member to zip_code on member.zip = zip_code.zip_code, then filtering on city, state, and zip_code. Therefore, they should be equivalent. \n\nBut wait, maybe there's a typo in Q2's WHERE condition. Let me check again. \n\nIn Q1, the WHERE is T2.city = 'Lincolnton', T2.state = 'North Carolina', and T2.zip_code = 28092. In Q2, the WHERE is city = 'Lincolnton', state = 'North Carolina', and zip_code = 28092. Since in Q2, the zip_code table is referenced as the second table in the join, the city and state columns are from zip_code. So the aliases in Q1 are just for T1 and T2, but the columns referenced in WHERE are all from the zip_code table (T2 in Q1). \n\nIn Q2, since the join is member INNER JOIN zip_code ON member.zip = zip_code.zip_code, the city and state would be from the zip_code table. So the WHERE conditions in both are the same. \n\nTherefore, Q1 and Q2 should be semantically equivalent. They both select members whose zip code is 28092 in Lincolnton, North Carolina. \n\nWait, but maybe there's a case where the zip_code in the zip_code table has a different value. Wait no, the WHERE clause in Q1 has T2.zip_code = 28092, which is the same as Q2's zip_code = 28092. \n\nSo I think they are equivalent. Therefore, the answer should be Y.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 858,
+    "total_tokens": 1707,
+    "completion_tokens": 849,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 788
+    },
+    "generation_seconds": 27.656
+  },
+  "started_at": "2026-10-06T21:39:02.966774+00:00",
+  "elapsed_seconds": 0.0
+}

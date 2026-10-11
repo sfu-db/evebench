@@ -1,0 +1,61 @@
+{
+  "dbid": "1113",
+  "index": "135",
+  "source_index": "30",
+  "schema_ddl": "CREATE TABLE ACTIONS (\n    USER_ID INT,\n    POST_ID INT,\n    ACTION_DATE DATE,\n    ACTION ENUM('VIEW', 'LIKE', 'REACTION', 'COMMENT', 'REPORT', 'SHARE'),\n    EXTRA VARCHAR(255),\n    CHECK (ACTION_DATE <= '2019-07-05'),\n    CHECK (ACTION IN ('VIEW', 'LIKE', 'REACTION', 'COMMENT', 'REPORT', 'SHARE'))\n);",
+  "q1": "SELECT EXTRA AS REPORT_REASON, COUNT(DISTINCT POST_ID) AS REPORT_COUNT FROM ACTIONS WHERE ACTION = 'REPORT' AND ACTION_DATE = '2019-07-04' GROUP BY EXTRA",
+  "q2": "SELECT EXTRA AS REPORT_REASON, COUNT(DISTINCT POST_ID) AS REPORT_COUNT FROM ACTIONS WHERE ACTION_DATE = '2019-07-04' AND ACTION = 'REPORT' GROUP BY EXTRA HAVING EXTRA IS NOT NULL",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT EXTRA AS REPORT_REASON, COUNT(DISTINCT POST_ID) AS REPORT_COUNT FROM ACTIONS WHERE ACTION = 'REPORT' AND ACTION_DATE = '2019-07-04' GROUP BY EXTRA",
+  "q2_prompt_sql": "SELECT EXTRA AS REPORT_REASON, COUNT(DISTINCT POST_ID) AS REPORT_COUNT FROM ACTIONS WHERE ACTION_DATE = '2019-07-04' AND ACTION = 'REPORT' GROUP BY EXTRA HAVING EXTRA IS NOT NULL",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO ACTIONS (USER_ID, POST_ID, ACTION_DATE, ACTION, EXTRA) VALUES (1, 100, '2019-07-04', 'REPORT', NULL);\nINSERT INTO ACTIONS (USER_ID, POST_ID, ACTION_DATE, ACTION, EXTRA) VALUES (2, 101, '2019-07-04', 'REPORT', 'Spam');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 includes groups with NULL EXTRA values, while Q2 excludes them via HAVING EXTRA IS NOT NULL. If there are rows with ACTION = 'REPORT', ACTION_DATE = '2019-07-04', and EXTRA = NULL, Q1 will return a row with NULL REPORT_REASON, whereas Q2 will omit it.",
+  "counterexample_dsp": "Insert one row with EXTRA = NULL and another with EXTRA = 'Spam' for ACTION = 'REPORT' on the target date. Q1 includes NULL, Q2 excludes it.",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 includes groups with NULL EXTRA values, while Q2 excludes them via HAVING EXTRA IS NOT NULL. If there are rows with ACTION = 'REPORT', ACTION_DATE = '2019-07-04', and EXTRA = NULL, Q1 will return a row with NULL REPORT_REASON, whereas Q2 will omit it.\",\n  \"counterexample_dsp\": \"Insert one row with EXTRA = NULL and another with EXTRA = 'Spam' for ACTION = 'REPORT' on the target date. Q1 includes NULL, Q2 excludes it.\",\n  \"counterexample\": \"INSERT INTO ACTIONS (USER_ID, POST_ID, ACTION_DATE, ACTION, EXTRA) VALUES (1, 100, '2019-07-04', 'REPORT', NULL);\\nINSERT INTO ACTIONS (USER_ID, POST_ID, ACTION_DATE, ACTION, EXTRA) VALUES (2, 101, '2019-07-04', 'REPORT', 'Spam');\"\n}",
+  "reasoning": "\nOkay, let's see. I need to find a counterexample where Q1 and Q2 return different results. Let me first understand what each query does.\n\nQ1 selects from ACTIONS where ACTION is 'REPORT' and ACTION_DATE is '2019-07-04', groups by EXTRA, and counts distinct POST_ID. So it's only considering rows where the action is exactly 'REPORT' on that specific date.\n\nQ2 is similar but the order of the conditions is different. It also filters on ACTION_DATE and ACTION being 'REPORT', same as Q1. Then groups by EXTRA and adds a HAVING clause that checks EXTRA IS NOT NULL. Wait, the HAVING clause here is a bit odd. HAVING applies to the grouped result. So the HAVING condition is checking that the group's EXTRA is not null. But since GROUP BY EXTRA, each group has a specific value of EXTRA. So if EXTRA is NULL, that group would be excluded. But in Q1, there's no HAVING clause. So if there are rows where ACTION is 'REPORT', ACTION_DATE is correct, but EXTRA is NULL, then Q1 would include them in the grouping with EXTRA as NULL, while Q2 would exclude them because of HAVING EXTRA IS NOT NULL.\n\nWait, but Q1's WHERE clause already has ACTION = 'REPORT', so in Q1, the EXTRA could be NULL. But the GROUP BY is on EXTRA, so if there are rows with EXTRA NULL, they would form a group with NULL as the key. Q2's HAVING clause says that the group's EXTRA must not be NULL. So if there's a group where EXTRA is NULL, Q1 would include it (with REPORT_REASON as NULL) and Q2 would exclude it. So that's the difference.\n\nSo to create a counterexample, I need a scenario where there's at least one row in ACTIONS where ACTION is 'REPORT', ACTION_DATE is '2019-07-04', and EXTRA is NULL. Then Q1 would have a group with EXTRA = NULL and count distinct POST_ID, while Q2 would exclude that group due to HAVING EXTRA IS NOT NULL.\n\nLet me think of some test data. Suppose there are two entries:\n\n1. A row where ACTION is 'REPORT', ACTION_DATE is '2019-07-04', EXTRA is NULL, POST_ID is 100.\n2. Another row where ACTION is 'REPORT', same date, EXTRA is 'Spam', POST_ID is 101.\n\nThen Q1 would have two groups: one with REPORT_REASON NULL and count 1, and another with 'Spam' and count 1. Q2 would only have the 'Spam' group because the HAVING filters out the NULL. So the results would differ.\n\nBut wait, in Q1's query, the GROUP BY is on EXTRA. If there are multiple rows with the same EXTRA value (including NULL), they would be grouped. But if there's a single row with NULL, that's one group. So yes, the presence of a NULL in EXTRA would cause Q1 to have a row with NULL in REPORT_REASON, which Q2 excludes.\n\nSo the counterexample needs to include at least one row with EXTRA NULL for the 'REPORT' action on that date. Let me create such data.\n\nLet me write the INSERT statements:\n\nINSERT INTO ACTIONS (USER_ID, POST_ID, ACTION_DATE, ACTION, EXTRA) VALUES (1, 100, '2019-07-04', 'REPORT', NULL);\nINSERT INTO ACTIONS (USER_ID, POST_ID, ACTION_DATE, ACTION, EXTRA) VALUES (2, 101, '2019-07-04', 'REPORT', 'Spam');\n\nIn this case, Q1 would return two rows: one with REPORT_REASON NULL and count 1, and one with 'Spam' and count 1. Q2 would return only the 'Spam' row because the HAVING clause filters out the NULL.\n\nYes, that's a valid counterexample. The HAVING clause in Q2 removes groups where EXTRA is NULL, which Q1 doesn't have. So the difference comes from that.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 384,
+    "total_tokens": 1483,
+    "completion_tokens": 1099,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 876
+    },
+    "generation_seconds": 41.078
+  },
+  "started_at": "2026-10-06T12:48:08.754618+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      null,
+      1
+    ],
+    [
+      "Spam",
+      1
+    ]
+  ],
+  "q2_output": [
+    [
+      "Spam",
+      1
+    ]
+  ],
+  "q1_row_count": 2,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT EXTRA AS REPORT_REASON, COUNT(DISTINCT POST_ID) AS REPORT_COUNT FROM ACTIONS WHERE ACTION = 'REPORT' AND ACTION_DATE = '2019-07-04' GROUP BY EXTRA",
+  "q2_validation_sql": "SELECT EXTRA AS REPORT_REASON, COUNT(DISTINCT POST_ID) AS REPORT_COUNT FROM ACTIONS WHERE ACTION_DATE = '2019-07-04' AND ACTION = 'REPORT' GROUP BY EXTRA HAVING EXTRA IS NOT NULL"
+}

@@ -1,0 +1,55 @@
+{
+  "dbid": "toxicology",
+  "index": "208",
+  "source_index": "312",
+  "schema_ddl": "CREATE TABLE `atom` (\n  `atom_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `element` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `bond` (\n  `bond_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `bond_type` TEXT DEFAULT NULL,\n  PRIMARY KEY (`bond_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `connected` (\n  `atom_id` TEXT NOT NULL,\n  `atom_id2` TEXT NOT NULL,\n  `bond_id` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`,`atom_id2`),\n  FOREIGN KEY (`atom_id`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`atom_id2`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`bond_id`) REFERENCES `bond` (`bond_id`) ON DELETE CASCADE ON UPDATE CASCADE\n);\n\nCREATE TABLE `molecule` (\n  `molecule_id` TEXT NOT NULL,\n  `label` TEXT DEFAULT NULL,\n  PRIMARY KEY (`molecule_id`)\n);",
+  "q1": "SELECT COUNT(DISTINCT T1.molecule_id) FROM atom AS T1 INNER JOIN bond AS T2 ON T1.molecule_id = T2.molecule_id WHERE T1.element <> 's' AND T2.bond_type <> '='",
+  "q2": "SELECT COUNT(DISTINCT m.molecule_id) FROM molecule AS m LEFT JOIN atom AS a ON m.molecule_id = a.molecule_id LEFT JOIN connected AS c ON a.atom_id = c.atom_id LEFT JOIN bond AS b ON c.bond_id = b.bond_id WHERE a.element <> 's' AND b.bond_type <> '='",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT COUNT(DISTINCT T1.molecule_id) FROM atom AS T1 INNER JOIN bond AS T2 ON T1.molecule_id = T2.molecule_id WHERE T1.element <> 's' AND T2.bond_type <> '='",
+  "q2_prompt_sql": "SELECT COUNT(DISTINCT m.molecule_id) FROM molecule AS m LEFT JOIN atom AS a ON m.molecule_id = a.molecule_id LEFT JOIN connected AS c ON a.atom_id = c.atom_id LEFT JOIN bond AS b ON c.bond_id = b.bond_id WHERE a.element <> 's' AND b.bond_type <> '='",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO molecule (molecule_id) VALUES ('M1');\nINSERT INTO atom (atom_id, molecule_id, element) VALUES ('A1', 'M1', 'C'), ('A2', 'M1', 's');\nINSERT INTO bond (bond_id, molecule_id, bond_type) VALUES ('B1', 'M1', '-');\nINSERT INTO connected (atom_id, atom_id2, bond_id) VALUES ('A1', 'A2', NULL);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 counts molecules with any non-sulfur atom and any non-'=' bond in the same molecule, regardless of their connection. Q2 requires a direct connection between a non-sulfur atom and a non-'=' bond via the connected table. They differ when a molecule has non-s atoms and non-'=' bonds but no connecting bonds.",
+  "counterexample_dsp": "A molecule with non-s atom and non-'=' bond not connected via the connected table.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 counts molecules with any non-sulfur atom and any non-'=' bond in the same molecule, regardless of their connection. Q2 requires a direct connection between a non-sulfur atom and a non-'=' bond via the connected table. They differ when a molecule has non-s atoms and non-'=' bonds but no connecting bonds.\",\n\"counterexample_dsp\": \"A molecule with non-s atom and non-'=' bond not connected via the connected table.\",\n\"counterexample\": \"INSERT INTO molecule (molecule_id) VALUES ('M1');\\nINSERT INTO atom (atom_id, molecule_id, element) VALUES ('A1', 'M1', 'C'), ('A2', 'M1', 's');\\nINSERT INTO bond (bond_id, molecule_id, bond_type) VALUES ('B1', 'M1', '-');\\nINSERT INTO connected (atom_id, atom_id2, bond_id) VALUES ('A1', 'A2', NULL);\"\n}",
+  "reasoning": "\nOkay, let's try to figure out if Q1 and Q2 are semantically equivalent. \n\nFirst, I need to understand what each query is doing. \n\nStarting with Q1: It's selecting the count of distinct molecule_ids from the atom table (T1) joined with the bond table (T2) on molecule_id. The conditions are that T1.element is not 's' and T2.bond_type is not '='. So, this query is counting molecules that have at least one atom (not sulfur) and at least one bond (not a double bond). But since it's a join between atom and bond, it's considering molecules that have both atoms (excluding sulfur) and bonds (excluding double bonds). However, because it's a COUNT(DISTINCT T1.molecule_id), it's counting each molecule once even if there are multiple atoms or bonds meeting the criteria.\n\nNow Q2: It starts with a LEFT JOIN from molecule to atom, then to connected, then to bond. The WHERE clause has a.element <> 's' and b.bond_type <> '='. The count is on distinct m.molecule_id. Since it's using LEFT JOINs, it might include molecules even if they don't have atoms or bonds, but the WHERE clause might filter those out. Wait, but LEFT JOINs can lead to NULLs. However, the WHERE conditions on a.element and b.bond_type could cause some rows to be excluded. Let's think: For a molecule to be counted, there must be at least one atom (a) with element not 's' and at least one bond (b) with type not '='. But the joins are through connected table. The connected table links atoms to bonds via bond_id. So, Q2 is looking for molecules that have atoms (not sulfur) connected via bonds (not double bonds). \n\nNow, the key difference is in how they join the tables. Q1 directly joins atom and bond on molecule_id, which might not capture the exact relationships between atoms and bonds. In contrast, Q2 uses the connected table as an intermediary, which links atoms to bonds. So, Q1's join on molecule_id assumes that any atom and bond in the same molecule are connected, but in reality, the connected table is needed to establish which atoms are connected via which bonds. \n\nFor example, consider a molecule with two atoms (A and B) connected by a bond of type 'single' (not '='). Q1 would count this molecule if there's at least one atom (not 's') and a bond (not '='). But if the molecule has another atom that's sulfur, but there's a bond that's not '=', then Q1 would still count it because it's using the join on molecule_id. However, Q2 would require that there's an atom (not 's') connected via a bond (not '='). So, if there's a sulfur atom but also a non-sulfur atom connected via a non '=' bond, Q2 would count it. But if the non-sulfur atom is not connected via any non '=' bond, then Q2 would not count it.\n\nWait, but Q1's join is between atom and bond on molecule_id. That would include all atoms and bonds in the same molecule. So, if a molecule has at least one non-sulfur atom and at least one non '=' bond, then Q1 would count it. But Q2 requires that there exists an atom (non-s) that is connected via a bond (non '='). So, Q1 might count a molecule where there's a non-s atom and a non '=' bond, even if they are not connected. But Q2 only counts if there's a connection between a non-s atom and a non '=' bond. \n\nSo, the difference is that Q1 is considering the existence of non-s atoms and non '=' bonds in the same molecule, regardless of their connection. Q2 requires that there's a connection between a non-s atom and a non '=' bond. Therefore, they are not equivalent. \n\nFor a counterexample, imagine a molecule that has a non-s atom and a non '=' bond, but they are not connected. Then Q1 would count it, but Q2 would not. Let's create such a scenario. \n\nLet's say molecule 'M1' has two atoms: A (element 'C') and B (element 's'). It also has a bond 'B1' of type '-', but the connected table doesn't link A to B1. So, in this case, Q1 would count M1 because there's a non-s atom (A) and a non '=' bond (B1). But Q2 would look for a connection between an atom (non-s) and a bond (non '='). Since A is not connected to B1 (no entry in connected), Q2 would not count M1. Hence, the counts differ.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 643,
+    "total_tokens": 1873,
+    "completion_tokens": 1230,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1009
+    },
+    "generation_seconds": 38.421
+  },
+  "started_at": "2026-10-06T20:25:28.307178+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      1
+    ]
+  ],
+  "q2_output": [
+    [
+      0
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT COUNT(DISTINCT T1.molecule_id) FROM atom AS T1 INNER JOIN bond AS T2 ON T1.molecule_id = T2.molecule_id WHERE T1.element <> 's' AND T2.bond_type <> '='",
+  "q2_validation_sql": "SELECT COUNT(DISTINCT m.molecule_id) FROM molecule AS m LEFT JOIN atom AS a ON m.molecule_id = a.molecule_id LEFT JOIN connected AS c ON a.atom_id = c.atom_id LEFT JOIN bond AS b ON c.bond_id = b.bond_id WHERE a.element <> 's' AND b.bond_type <> '='"
+}

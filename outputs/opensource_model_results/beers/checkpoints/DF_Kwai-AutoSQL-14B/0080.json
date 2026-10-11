@@ -1,0 +1,64 @@
+{
+  "dbid": "beers",
+  "index": "80",
+  "source_index": "1202",
+  "schema_ddl": "CREATE TABLE Bar (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Beer (\n    name VARCHAR NOT NULL,\n    brewer VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Drinker (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Frequents (\n    drinker VARCHAR NOT NULL,\n    bar VARCHAR NOT NULL,\n    times_a_week SMALLINT NOT NULL,\n    PRIMARY KEY (drinker, bar),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (bar) REFERENCES Bar(name)\n);\n\nCREATE TABLE Serves (\n    bar VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    price DECIMAL(5,2) NOT NULL,\n    PRIMARY KEY (bar, beer),\n    FOREIGN KEY (bar) REFERENCES Bar(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);\n\nCREATE TABLE Likes (\n    drinker VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    PRIMARY KEY (drinker, beer),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);",
+  "q1": "SELECT beer.name, min_price, bar FROM beer LEFT OUTER JOIN (SELECT beer, MIN(price) AS min_price FROM serves GROUP BY beer) AS t ON beer.name = t.beer LEFT OUTER JOIN serves ON beer.name = serves.beer AND min_price = serves.price",
+  "q2": "SELECT * FROM serves",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "beers",
+  "q1_prompt_sql": "SELECT beer.name, min_price, bar FROM beer LEFT OUTER JOIN (SELECT beer, MIN(price) AS min_price FROM serves GROUP BY beer) AS t ON beer.name = t.beer LEFT OUTER JOIN serves ON beer.name = serves.beer AND min_price = serves.price",
+  "q2_prompt_sql": "SELECT * FROM serves",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO Beer (name, brewer) VALUES ('Budweiser', 'Miller');\nINSERT INTO Bar (name, address) VALUES ('Bar1', 'Main St'), ('Bar2', 'Broad St');\nINSERT INTO Serves (bar, beer, price) VALUES ('Bar1', 'Budweiser', 3), ('Bar2', 'Budweiser', 2);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 retrieves each beer with its minimum price and the bar offering it at that price, while Q2 returns all rows from the Serves table. They produce different output structures and data.",
+  "counterexample_dsp": "A beer served at two bars with different prices. Q1 returns one row (beer, min_price, bar), Q2 returns two rows.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 retrieves each beer with its minimum price and the bar offering it at that price, while Q2 returns all rows from the Serves table. They produce different output structures and data.\",\n\"counterexample_dsp\": \"A beer served at two bars with different prices. Q1 returns one row (beer, min_price, bar), Q2 returns two rows.\",\n\"counterexample\": \"INSERT INTO Beer (name, brewer) VALUES ('Budweiser', 'Miller');\\nINSERT INTO Bar (name, address) VALUES ('Bar1', 'Main St'), ('Bar2', 'Broad St');\\nINSERT INTO Serves (bar, beer, price) VALUES ('Bar1', 'Budweiser', 3), ('Bar2', 'Budweiser', 2);\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem step by step. First, I need to understand what each query is doing and then compare them.\n\nStarting with Q1. The query is a SELECT statement that joins the Beer table with a subquery that finds the minimum price per beer from the Serves table. Then, it does another LEFT OUTER JOIN with the Serves table again, matching on beer name and the min_price. The result should be each beer along with its minimum price and the bar where that minimum price occurs. Wait, because the second join condition is on min_price equals serves.price. So for each beer, it's joining to the serves row that has the minimum price. But since it's a LEFT JOIN, even if there are no matching rows, it would still return the beer name and min_price (but bar would be null?), but the first join (the subquery) already groups by beer, so the first join gives beer.name and min_price, then the second join tries to find a serves row with that price. So the result would be beer name, min_price, and the bar that serves it at that minimum price. However, since there could be multiple bars serving the same beer at the same minimum price, but the LEFT JOIN would return one of them, maybe the first one? Not sure, but the main idea is that Q1 is trying to get for each beer, the minimum price and the bar where that price is offered.\n\nNow Q2 is simply SELECT * FROM serves. That gives all rows from the Serves table. Each row in Serves has bar, beer, price. So Q2 returns all the serve records.\n\nSo the question is whether these two queries are semantically equivalent. Clearly not. Q1 is about getting each beer with its minimum price and the bar where that min price is offered. Q2 is returning all serve records. The output columns are different. Q1 has beer.name, min_price, bar (from Beer and Serves), while Q2 has bar, beer, price. Also, Q1 could have duplicates if a beer is served at the same min price in multiple bars, but the LEFT JOIN might not handle that. But the main difference is that Q1 is a summary per beer of min price and a specific bar, whereas Q2 is all serves. So they are not equivalent.\n\nTo create a counterexample, let's think of a simple case. Suppose there's one beer, say 'Budweiser', served at two bars: Bar1 at $3 and Bar2 at $2. The minimum price is $2 at Bar2. Then Q1 would return Budweiser, 2, Bar2. But Q2 would return two rows: (Bar1, Budweiser, 3) and (Bar2, Budweiser, 2). So clearly different results. Therefore, they are not equivalent.\n\nNow, to create a test database that shows this. Let's insert Beer, Bar, and Serves entries. Beer: name 'Budweiser'. Bar: names 'Bar1' and 'Bar2'. Serves: Bar1 serves Budweiser at 3, Bar2 serves Budweiser at 2. Then Q1 would return one row with min_price 2 and Bar2. Q2 returns two rows. Hence, different outputs.\n\nAnother case: if there's a beer served at only one bar. Then Q1 would return that one row, and Q2 would return the same. But if there's more than one serve entry for a beer, Q1 would return one row (the min price and the bar where it's served), while Q2 returns multiple rows. So the counterexample would be when a beer is served at multiple bars with varying prices.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 552,
+    "total_tokens": 1507,
+    "completion_tokens": 955,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 772
+    },
+    "generation_seconds": 30.609
+  },
+  "started_at": "2026-10-06T09:34:30.101881+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "Budweiser",
+      2,
+      "Bar2"
+    ]
+  ],
+  "q2_output": [
+    [
+      "Bar1",
+      "Budweiser",
+      3
+    ],
+    [
+      "Bar2",
+      "Budweiser",
+      2
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT beer.name, min_price, bar FROM beer LEFT OUTER JOIN (SELECT beer, MIN(price) AS min_price FROM serves GROUP BY beer) AS t ON beer.name = t.beer LEFT OUTER JOIN serves ON beer.name = serves.beer AND min_price = serves.price",
+  "q2_validation_sql": "SELECT * FROM serves"
+}

@@ -1,0 +1,61 @@
+{
+  "dbid": "beers",
+  "index": "155",
+  "source_index": "3028",
+  "schema_ddl": "CREATE TABLE Bar (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Beer (\n    name VARCHAR NOT NULL,\n    brewer VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Drinker (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Frequents (\n    drinker VARCHAR NOT NULL,\n    bar VARCHAR NOT NULL,\n    times_a_week SMALLINT NOT NULL,\n    PRIMARY KEY (drinker, bar),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (bar) REFERENCES Bar(name)\n);\n\nCREATE TABLE Serves (\n    bar VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    price DECIMAL(5,2) NOT NULL,\n    PRIMARY KEY (bar, beer),\n    FOREIGN KEY (bar) REFERENCES Bar(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);\n\nCREATE TABLE Likes (\n    drinker VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    PRIMARY KEY (drinker, beer),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);",
+  "q1": "SELECT b1.name AS bar1, b2.name AS bar2 FROM bar AS b1, bar AS b2 WHERE NOT EXISTS(SELECT s1.beer FROM serves AS s1 WHERE s1.bar = b1.name AND NOT EXISTS(SELECT 1 FROM serves AS s2 WHERE s2.bar = b2.name AND s2.beer = s1.beer)) AND EXISTS(SELECT s2.beer FROM serves AS s2 WHERE s2.bar = b2.name AND NOT EXISTS(SELECT 1 FROM serves AS s1 WHERE s1.bar = b1.name AND s1.beer = s2.beer))",
+  "q2": "SELECT DISTINCT serves1.bar, bar.name FROM serves AS serves1 RIGHT OUTER JOIN bar ON serves1.beer = bar.name",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "beers",
+  "q1_prompt_sql": "SELECT b1.name AS bar1, b2.name AS bar2 FROM bar AS b1, bar AS b2 WHERE NOT EXISTS(SELECT s1.beer FROM serves AS s1 WHERE s1.bar = b1.name AND NOT EXISTS(SELECT 1 FROM serves AS s2 WHERE s2.bar = b2.name AND s2.beer = s1.beer)) AND EXISTS(SELECT s2.beer FROM serves AS s2 WHERE s2.bar = b2.name AND NOT EXISTS(SELECT 1 FROM serves AS s1 WHERE s1.bar = b1.name AND s1.beer = s2.beer))",
+  "q2_prompt_sql": "SELECT DISTINCT serves1.bar, bar.name FROM serves AS serves1 RIGHT OUTER JOIN bar ON serves1.beer = bar.name",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO Bar (name, address) VALUES ('B1', 'Addr1'), ('B2', 'Addr2');\nINSERT INTO Beer (name, brewer) VALUES ('A', 'BrewerA'), ('B', 'BrewerB');\nINSERT INTO Serves (bar, beer, price) VALUES ('B1', 'A', 2.50), ('B2', 'A', 2.50), ('B2', 'B', 3.00);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 finds pairs of bars (b1, b2) where b1's served beers are a strict subset of b2's served beers. Q2 produces pairs (serves.bar, bar.name) via a RIGHT JOIN on serves.beer = bar.name, which is unrelated to subset relationships and depends on beer/bar name equality. The objectives and logic are fundamentally different.",
+  "counterexample_dsp": "A database with two bars (B1, B2) where B1 serves {A}, B2 serves {A, B}. Q1 returns (B1, B2). Q2 returns no meaningful results unless beer names match bar names (e.g., a beer named 'B1' served by B1, producing (B1, B1)).",
+  "equiv": "N",
+  "raw_response": "\n\n{\n  \"equiv\": \"N\",\n  \"explanation\": \"Q1 finds pairs of bars (b1, b2) where b1's served beers are a strict subset of b2's served beers. Q2 produces pairs (serves.bar, bar.name) via a RIGHT JOIN on serves.beer = bar.name, which is unrelated to subset relationships and depends on beer/bar name equality. The objectives and logic are fundamentally different.\",\n  \"counterexample_dsp\": \"A database with two bars (B1, B2) where B1 serves {A}, B2 serves {A, B}. Q1 returns (B1, B2). Q2 returns no meaningful results unless beer names match bar names (e.g., a beer named 'B1' served by B1, producing (B1, B1)).\",\n  \"counterexample\": [\n    \"INSERT INTO Bar (name, address) VALUES ('B1', 'Addr1'), ('B2', 'Addr2');\",\n    \"INSERT INTO Beer (name, brewer) VALUES ('A', 'BrewerA'), ('B', 'BrewerB');\",\n    \"INSERT INTO Serves (bar, beer, price) VALUES ('B1', 'A', 2.50), ('B2', 'A', 2.50), ('B2', 'B', 3.00);\"\n  ]\n}",
+  "reasoning": "\nOkay, let's try to figure out whether Q1 and Q2 are semantically equivalent. First, I need to understand what each query is doing.\n\nStarting with Q1. The query selects two bars, b1 and b2, with a complex set of conditions. Let me break down the WHERE clause. The first part is NOT EXISTS, which checks that there's no beer served by b1 that isn't served by b2. Wait, the inner query says: SELECT s1.beer FROM serves s1 WHERE s1.bar = b1.name AND NOT EXISTS (SELECT 1 FROM serves s2 WHERE s2.bar = b2.name AND s2.beer = s1.beer). So if this NOT EXISTS is true, that means for every beer that b1 serves, b2 also serves it. So the outer NOT EXISTS would mean that there are no beers served by b1 that b2 doesn't serve. So that part is saying b1's beer set is a subset of b2's beer set.\n\nThen the second part is EXISTS: there exists a beer served by b2 that is not served by b1. Because the inner part is SELECT s2.beer FROM serves s2 WHERE s2.bar = b2.name AND NOT EXISTS (SELECT 1 FROM serves s1 WHERE s1.bar = b1.name AND s1.beer = s2.beer). So this inner NOT EXISTS is checking if s2.beer isn't served by b1. So the outer EXISTS is saying there is at least one beer served by b2 that b1 doesn't serve. So putting those two together: the first condition says b1's beers are a subset of b2's, and the second says b2 has at least one beer not in b1. Therefore, Q1 is finding pairs of bars where b1 serves a strict subset of the beers that b2 serves. So the result pairs (b1, b2) where b1's served beers are a proper subset of b2's.\n\nNow looking at Q2. The query is SELECT DISTINCT serves1.bar, bar.name FROM serves AS serves1 RIGHT OUTER JOIN bar ON serves1.beer = bar.name. Wait, the RIGHT OUTER JOIN means that all rows from bar are included, and if there's no match in serves1, then serves1.bar would be NULL. Wait, no: the join condition is serves1.beer = bar.name. Wait, bar.name is a VARCHAR, and serves1.beer is a beer name from the Beer table. Wait, that seems off. Because in the Serves table, the beer is a beer name (from Beer table), and the bar is a bar name (from Bar table). So the join condition here is serves1.beer equals bar.name. That would join a beer name (from serves1.beer) to bar.name, which is a bar's name. That seems like a cross-join between Beer and Bar names, but maybe that's a mistake. Wait, but the schema says that bar.name is the name of the bar, and beer's name is the beer's name. So joining on serves1.beer = bar.name would be comparing beer names to bar names. That seems incorrect. Unless there's a typo. But the user provided the schema as given, so I have to go with that.\n\nBut the RIGHT OUTER JOIN on bar would take all rows from bar (the Bar table) and join with serves1 where serves1.beer equals bar.name. So for each bar in Bar, if there's a serves record where the beer is the same as the bar's name (unlikely, but possible), then it would pair them. Otherwise, serves1.bar would be NULL. Then the output is serves1.bar (which would be NULL in most cases) and bar.name. Then DISTINCT is applied. So the result would be pairs (NULL, bar_name) for each bar that doesn't have a beer with the same name as the bar, and (serves.bar, bar.name) where serves1.beer equals bar.name. Wait, but serves1.bar is the bar that serves a beer. So if the beer's name is equal to the bar's name, then serves1.bar would be the bar's name. So for example, if a bar named \"Bud\" serves a beer named \"Bud\", then serves1.bar is \"Bud\" and bar.name is \"Bud\". So that pair would be (\"Bud\", \"Bud\"). But that seems very specific. However, this seems entirely different from Q1's purpose.\n\nSo Q2's output is pairs (bar1, bar2) where bar1 is the bar from serves that serves a beer whose name equals bar2's name. But given that serves.bar is a bar name, and serves.beer is a beer name. So the join condition serves1.beer = bar.name would match when a beer's name is the same as a bar's name. So for example, if there's a beer named \"Joe's Bar\" and a bar named \"Joe's Bar\", then serves1.bar would be the bar name (say, \"Joe's Bar\") and bar.name would be \"Joe's Bar\". So that would produce a pair where both are the same. But in general, this seems unrelated to Q1's logic.\n\nTherefore, the two queries are not equivalent. Q1 is looking for pairs of bars where one's served beers are a proper subset of the other's. Q2 is producing pairs where the beer name equals the bar name, with the bar's name as the second element. These are entirely different objectives. \n\nTo confirm, let's think of a counterexample. Suppose we have two bars: Bar1 serves beer A and B; Bar2 serves beer A, B, and C. Then Q1 would return (Bar1, Bar2) as a valid pair. But Q2 would not return anything unless there's a beer with the same name as a bar. For example, if Bar1 serves a beer named \"Bar1\", then Q2 would have a row (Bar1, Bar1). But in this case, Q1's result would be (Bar1, Bar2), and Q2's result would be (Bar1, Bar1) if that's the case. So they are different.\n\nAlternatively, if there's no beer named like a bar name, Q2 would have all NULLs for serves1.bar. So the result would be (NULL, bar_name) for each bar. Which would be different from Q1's output. Hence, they are not equivalent.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 642,
+    "total_tokens": 2303,
+    "completion_tokens": 1661,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1363
+    },
+    "generation_seconds": 52.547
+  },
+  "started_at": "2026-10-06T09:40:02.489271+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "B1",
+      "B2"
+    ]
+  ],
+  "q2_output": [
+    [
+      null,
+      "B1"
+    ],
+    [
+      null,
+      "B2"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT b1.name AS bar1, b2.name AS bar2 FROM bar AS b1, bar AS b2 WHERE NOT EXISTS(SELECT s1.beer FROM serves AS s1 WHERE s1.bar = b1.name AND NOT EXISTS(SELECT 1 FROM serves AS s2 WHERE s2.bar = b2.name AND s2.beer = s1.beer)) AND EXISTS(SELECT s2.beer FROM serves AS s2 WHERE s2.bar = b2.name AND NOT EXISTS(SELECT 1 FROM serves AS s1 WHERE s1.bar = b1.name AND s1.beer = s2.beer))",
+  "q2_validation_sql": "SELECT DISTINCT serves1.bar, bar.name FROM serves AS serves1 RIGHT OUTER JOIN bar ON serves1.beer = bar.name"
+}

@@ -1,0 +1,39 @@
+{
+  "dbid": "183",
+  "index": "243",
+  "source_index": "209",
+  "schema_ddl": "CREATE TABLE CUSTOMERS (\n    ID INT,\n    NAME VARCHAR(255),\n    PRIMARY KEY (ID)\n);\n\nCREATE TABLE ORDERS (\n    ID INT,\n    CUSTOMERID VARCHAR(255),\n    PRIMARY KEY (ID),\n    FOREIGN KEY (CUSTOMERID) REFERENCES CUSTOMERS(ID)\n);",
+  "q1": "SELECT NAME AS CUSTOMERS FROM CUSTOMERS WHERE ID NOT IN (SELECT CUSTOMERID FROM ORDERS)",
+  "q2": "SELECT NAME AS CUSTOMERS FROM CUSTOMERS C WHERE ID NOT IN (SELECT CUSTOMERID FROM ORDERS) ORDER BY 1",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT NAME AS CUSTOMERS FROM CUSTOMERS WHERE ID NOT IN (SELECT CUSTOMERID FROM ORDERS)",
+  "q2_prompt_sql": "SELECT NAME AS CUSTOMERS FROM CUSTOMERS C WHERE ID NOT IN (SELECT CUSTOMERID FROM ORDERS) ORDER BY 1",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries select the same set of customer names who have no orders. The only difference is the ORDER BY clause in Q2, which does not affect the semantic equivalence of the result set.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries select the same set of customer names who have no orders. The only difference is the ORDER BY clause in Q2, which does not affect the semantic equivalence of the result set.\"\n}",
+  "reasoning": "\nOkay, let's see. I need to determine if Q1 and Q2 are semantically equivalent. Let me start by understanding what each query does.\n\nQ1 is selecting the NAME from CUSTOMERS where the ID is not in the list of CUSTOMERID from ORDERS. So it's finding customers who haven't placed any orders. The result is just the names, aliased as CUSTOMERS.\n\nQ2 looks almost the same, except it adds an ORDER BY 1 clause. The ORDER BY 1 would sort the results by the first column, which is the NAME column since that's the first selected column. \n\nSo the main difference between Q1 and Q2 is the ORDER BY clause. The logical result of both queries should be the same set of names, but Q2's output is sorted. However, the question is about semantic equivalence. If the order of the results matters, then they aren't equivalent. But in SQL, unless the ORDER BY is specified, the order is considered unspecified. So if the problem considers the order as part of the result, then they are different. But if the problem only cares about the set of results, then they are the same.\n\nBut the user is asking for semantic equivalence. Typically, two queries are considered semantically equivalent if they return the same set of rows, regardless of order. However, in some contexts, especially when the order is part of the expected output, they might not be. But according to standard SQL semantics, the ORDER BY affects the presentation order but not the set of rows. So Q1 and Q2 would return the same rows, just ordered differently. Therefore, they are semantically equivalent in terms of the data retrieved, but differ in the order.\n\nWait, but the problem says \"semantically equivalent\". If the order is not part of the semantic meaning, then they are equivalent. But if the order is considered part of the output, then they are not. However, in SQL, unless the ORDER BY is part of the query's purpose, the absence of it means the order is not guaranteed. So, for example, if a query is supposed to return a list of customers without orders, the order isn't specified. Adding an ORDER BY would make the output ordered, but the actual data is the same. Therefore, in terms of the data returned, they are equivalent. But if the user expects the same order, then they are not. However, the question is about whether the queries are semantically equivalent. \n\nBut the answer depends on whether the ORDER BY affects the result's semantics. In most cases, the ORDER BY is considered part of the query's output formatting, not the data itself. So, if two queries return the same rows but in different orders, they are considered equivalent in terms of data, but not in terms of presentation. However, in the context of this problem, the user might be considering the output as a set, so the order doesn't matter. Therefore, Q1 and Q2 would be equivalent. \n\nBut wait, the problem says \"semantically equivalent\". If the order is part of the output, then they are not equivalent. But in SQL, the absence of ORDER BY means the order is arbitrary. So if you have two queries that return the same rows but in different orders, they are considered equivalent because the order isn't guaranteed. But when you add an ORDER BY, you're enforcing a specific order. However, if the original query (Q1) doesn't have an ORDER BY, then the order is undefined. So, for example, if the database returns the rows in a different order, but Q2 returns them sorted, the actual data is the same, but the order is different. \n\nBut the question is about whether the queries are equivalent. If the user considers the order as part of the output, then they are not equivalent. However, in standard SQL, two queries are considered equivalent if they return the same rows, regardless of order. Therefore, the answer would be \"Y\" because the ORDER BY in Q2 doesn't change the set of rows returned, just the order. \n\nWait, but the problem might be considering that the ORDER BY is part of the query's logic. For example, if the user is expecting the same order, then Q2 would be different. However, the problem's instructions don't specify whether order matters. The user's task is to determine if they are semantically equivalent. In most cases, the answer would be \"Y\" because the data is the same, just ordered differently. However, there's a possibility that the problem considers the order as part of the output, making them not equivalent. \n\nBut looking back, the problem's example schema and the queries. The Q1 doesn't have an order, Q2 does. So if you have a test case where the names are different, the order would change. For example, if there are two customers, Alice and Bob, and they are not in the orders. Q1 might return Alice then Bob, or Bob then Alice, depending on the database's internal order. Q2 would always return Alice first if ordered by NAME. But if the original query's order is undefined, then the two queries could return the same data but ordered differently. However, in terms of the actual result set, they are the same. \n\nTherefore, the answer is that they are equivalent because the ORDER BY clause in Q2 only affects the order of the output, not the data itself. Hence, the two queries are semantically equivalent.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 365,
+    "total_tokens": 1546,
+    "completion_tokens": 1181,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1126
+    },
+    "generation_seconds": 36.953
+  },
+  "started_at": "2026-10-06T14:56:20.610980+00:00",
+  "elapsed_seconds": 0.0
+}

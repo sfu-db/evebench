@@ -1,0 +1,70 @@
+{
+  "dbid": "beers",
+  "index": "141",
+  "source_index": "2671",
+  "schema_ddl": "CREATE TABLE Bar (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Beer (\n    name VARCHAR NOT NULL,\n    brewer VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Drinker (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Frequents (\n    drinker VARCHAR NOT NULL,\n    bar VARCHAR NOT NULL,\n    times_a_week SMALLINT NOT NULL,\n    PRIMARY KEY (drinker, bar),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (bar) REFERENCES Bar(name)\n);\n\nCREATE TABLE Serves (\n    bar VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    price DECIMAL(5,2) NOT NULL,\n    PRIMARY KEY (bar, beer),\n    FOREIGN KEY (bar) REFERENCES Bar(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);\n\nCREATE TABLE Likes (\n    drinker VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    PRIMARY KEY (drinker, beer),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);",
+  "q1": "SELECT bar FROM Serves GROUP BY bar HAVING COUNT(beer) >= 5",
+  "q2": "SELECT bar FROM serves WHERE (5 <= (SELECT COUNT(DISTINCT serves.beer) FROM serves))",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "beers",
+  "q1_prompt_sql": "SELECT bar FROM Serves GROUP BY bar HAVING COUNT(beer) >= 5",
+  "q2_prompt_sql": "SELECT bar FROM serves WHERE (5 <= (SELECT COUNT(DISTINCT serves.beer) FROM serves))",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO Bar (name, address) VALUES ('Bar1', '123 Main St'), ('Bar2', '456 Oak St');\nINSERT INTO Beer (name, brewer) VALUES ('Beer1', 'BrewCo'), ('Beer2', 'BrewCo'), ('Beer3', 'BrewCo'), ('Beer4', 'BrewCo'), ('Beer5', 'BrewCo');\nINSERT INTO Serves (bar, beer, price) VALUES ('Bar1', 'Beer1', 3.50), ('Bar1', 'Beer2', 4.00), ('Bar1', 'Beer3', 3.75), ('Bar1', 'Beer4', 4.25), ('Bar1', 'Beer5', 3.90), ('Bar2', 'Beer1', 3.00);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 filters bars that serve at least 5 distinct beers (per-bar count), while Q2 checks if the total distinct beers in the entire table >=5 (global condition). Q2 returns all bars if global count >=5, regardless of individual bar counts.",
+  "counterexample_dsp": "Two bars: Bar1 serves 5 beers, Bar2 serves 1 beer. Total distinct beers = 5. Q1 returns Bar1 (5+ beers), Q2 returns both bars (global count >=5).",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 filters bars that serve at least 5 distinct beers (per-bar count), while Q2 checks if the total distinct beers in the entire table >=5 (global condition). Q2 returns all bars if global count >=5, regardless of individual bar counts.\",\n  \"counterexample_dsp\": \"Two bars: Bar1 serves 5 beers, Bar2 serves 1 beer. Total distinct beers = 5. Q1 returns Bar1 (5+ beers), Q2 returns both bars (global count >=5).\",\n  \"counterexample\": [\n    \"INSERT INTO Bar (name, address) VALUES ('Bar1', '123 Main St'), ('Bar2', '456 Oak St');\",\n    \"INSERT INTO Beer (name, brewer) VALUES ('Beer1', 'BrewCo'), ('Beer2', 'BrewCo'), ('Beer3', 'BrewCo'), ('Beer4', 'BrewCo'), ('Beer5', 'BrewCo');\",\n    \"INSERT INTO Serves (bar, beer, price) VALUES ('Bar1', 'Beer1', 3.50), ('Bar1', 'Beer2', 4.00), ('Bar1', 'Beer3', 3.75), ('Bar1', 'Beer4', 4.25), ('Bar1', 'Beer5', 3.90), ('Bar2', 'Beer1', 3.00);\"\n  ]\n}",
+  "reasoning": "\nOkay, let's tackle this problem. So, the user wants me to find a counterexample where Q1 and Q2 return different results. Let me first understand what each query does.\n\nQ1 is selecting bars from the Serves table, grouping by bar and having a count of beers >=5. So, this means each bar in the result has at least 5 different beers listed in the Serves table. Because COUNT(beer) counts the number of rows in each group, which would be the number of beers each bar serves.\n\nQ2 is selecting bars from serves where 5 is less than or equal to the count of distinct beers in serves. Wait, but the subquery here is (SELECT COUNT(DISTINCT serves.beer) FROM serves). Wait, that subquery is counting all distinct beers in the entire Serves table, not per bar. So the WHERE clause here is checking if 5 is <= that total count. But that doesn't make sense because the subquery is not correlated with the outer query. So Q2 would return all bars in the Serves table if the total number of distinct beers in the entire Serves table is >=5. But that's not per bar. So Q2 is not filtering per bar, it's checking a global condition.\n\nWait, no. Let me recheck Q2. The query is:\n\nSELECT bar FROM serves WHERE (5 <= (SELECT COUNT(DISTINCT serves.beer) FROM serves))\n\nWait, the subquery here is not correlated. It's just counting all distinct beers in the entire Serves table. So the WHERE clause is checking if 5 is less than or equal to that total. If that's true, then all bars in the Serves table would be selected. Because the condition is a constant (based on the entire table), not per bar. So Q2 would return all bars in Serves if there are at least 5 distinct beers in the entire Serves table. Otherwise, it returns nothing.\n\nBut Q1 is grouping by bar and checking that each bar has at least 5 beers. So Q1 is per-bar, while Q2 is a global check. Therefore, they are not equivalent.\n\nSo for example, if there are 6 distinct beers in total, then Q2 would return all bars in Serves. But Q1 would return only those bars that serve at least 5 beers each. So if there's a bar that serves 3 beers, and another that serves 6, then Q1 would return the one with 6, while Q2 would return both (since total distinct beers is 6 >=5). Therefore, the results would differ.\n\nSo to create a counterexample, I need a scenario where:\n\n- The total number of distinct beers in Serves is >=5 (so Q2 returns all bars in Serves).\n\n- But some bars in Serves have less than 5 beers, so Q1 doesn't include them.\n\nFor example, let's say there are 5 distinct beers. Suppose there are two bars: Bar A serves 5 beers, Bar B serves 1 beer. Then Q1 would return Bar A (since it has 5 beers), but Q2 would return both Bar A and Bar B (since total distinct beers is 5 >=5). Thus, the results are different.\n\nSo the counterexample would involve inserting data where:\n\n- There are at least 5 distinct beers in total.\n\n- Some bars have fewer than 5 beers.\n\nSo let's create that. Let me think of the data.\n\nLet's create 5 different beers. Let's say Beer1 to Beer5. Then, have two bars. Bar1 serves all 5 beers. Bar2 serves only Beer1. Then:\n\nQ1 would group by bar. For Bar1, count is 5 (so included). Bar2 has count 1 (excluded). So Q1 returns Bar1.\n\nQ2's subquery counts 5 distinct beers. So 5 >=5 is true. So Q2 returns all bars in Serves, which are Bar1 and Bar2. Therefore, Q1 and Q2 return different results.\n\nThat's the counterexample. Now, need to write the INSERT statements accordingly.\n\nBut I need to make sure that the Serves table entries are correct. Also, the Bar names must be unique and exist in the Bar table.\n\nSo first, insert into Bar: Bar1 and Bar2.\n\nThen insert into Beer: Beer1 to Beer5.\n\nThen into Serves:\n\nBar1 serves Beer1, Beer2, Beer3, Beer4, Beer5 (5 entries).\n\nBar2 serves Beer1 (1 entry).\n\nSo the INSERTs would be:\n\nINSERT INTO Bar (name, address) VALUES ('Bar1', 'Addr1'), ('Bar2', 'Addr2');\n\nINSERT INTO Beer (name, brewer) VALUES ('Beer1', 'Brewer1'), ('Beer2', 'Brewer2'), ('Beer3', 'Brewer3'), ('Beer4', 'Brewer4'), ('Beer5', 'Brewer5');\n\nINSERT INTO Serves (bar, beer, price) VALUES \n('Bar1', 'Beer1', 3.50),\n('Bar1', 'Beer2', 4.00),\n('Bar1', 'Beer3', 3.75),\n('Bar1', 'Beer4', 4.25),\n('Bar1', 'Beer5', 3.90),\n('Bar2', 'Beer1', 3.00);\n\nThis setup would make Q1 return Bar1, and Q2 return both Bar1 and Bar2. Hence, different results.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 474,
+    "total_tokens": 1960,
+    "completion_tokens": 1486,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1168
+    },
+    "generation_seconds": 47.766
+  },
+  "started_at": "2026-10-06T08:20:47.217933+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "Bar1"
+    ]
+  ],
+  "q2_output": [
+    [
+      "Bar1"
+    ],
+    [
+      "Bar1"
+    ],
+    [
+      "Bar1"
+    ],
+    [
+      "Bar1"
+    ],
+    [
+      "Bar1"
+    ],
+    [
+      "Bar2"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 6,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT bar FROM Serves GROUP BY bar HAVING COUNT(beer) >= 5",
+  "q2_validation_sql": "SELECT bar FROM serves WHERE (5 <= (SELECT COUNT(DISTINCT serves.beer) FROM serves))"
+}

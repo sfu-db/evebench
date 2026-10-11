@@ -1,0 +1,73 @@
+{
+  "dbid": "1083",
+  "index": "3",
+  "source_index": "755",
+  "schema_ddl": "CREATE TABLE PRODUCT (\n    PRODUCT_ID INT,\n    PRODUCT_NAME VARCHAR(255),\n    UNIT_PRICE INT,\n    PRIMARY KEY (PRODUCT_ID),\n    CHECK (UNIT_PRICE > 0),\n    CHECK (PRODUCT_NAME IN ('S8', 'IPHONE'))\n);\n\nCREATE TABLE SALES (\n    PRODUCT_ID INT,\n    SELLER_ID INT,\n    BUYER_ID INT,\n    SALE_DATE DATE,\n    QUANTITY INT,\n    PRICE INT,\n    FOREIGN KEY (PRODUCT_ID) REFERENCES PRODUCT(PRODUCT_ID),\n    CHECK (QUANTITY > 0),\n    CHECK (PRICE > 0)\n);",
+  "q1": "SELECT DISTINCT SALES.BUYER_ID AS BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'S8' AND SALES.BUYER_ID NOT IN ( SELECT SALES.BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'IPHONE')",
+  "q2": "SELECT S.BUYER_ID AS BUYER_ID FROM SALES S LEFT JOIN PRODUCT P ON P.PRODUCT_ID = S.PRODUCT_ID GROUP BY S.BUYER_ID HAVING SUM(P.PRODUCT_NAME='S8')>0 AND SUM(P.PRODUCT_NAME='IPHONE')=0",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT DISTINCT SALES.BUYER_ID AS BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'S8' AND SALES.BUYER_ID NOT IN ( SELECT SALES.BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'IPHONE')",
+  "q2_prompt_sql": "SELECT S.BUYER_ID AS BUYER_ID FROM SALES S LEFT JOIN PRODUCT P ON P.PRODUCT_ID = S.PRODUCT_ID GROUP BY S.BUYER_ID HAVING SUM(P.PRODUCT_NAME='S8')>0 AND SUM(P.PRODUCT_NAME='IPHONE')=0",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO PRODUCT (PRODUCT_ID, PRODUCT_NAME, UNIT_PRICE) VALUES (1, 'S8', 1000);\nINSERT INTO PRODUCT (PRODUCT_ID, PRODUCT_NAME, UNIT_PRICE) VALUES (2, 'IPHONE', 1500);\nINSERT INTO SALES (PRODUCT_ID, SELLER_ID, BUYER_ID, SALE_DATE, QUANTITY, PRICE) VALUES (1, 101, 201, '2023-01-01', 1, 1000);\nINSERT INTO SALES (PRODUCT_ID, SELLER_ID, BUYER_ID, SALE_DATE, QUANTITY, PRICE) VALUES (2, 101, 202, '2023-01-02', 1, 1500);\nINSERT INTO SALES (PRODUCT_ID, SELLER_ID, BUYER_ID, SALE_DATE, QUANTITY, PRICE) VALUES (1, 102, 203, '2023-01-03', 1, 1000);\nINSERT INTO SALES (PRODUCT_ID, SELLER_ID, BUYER_ID, SALE_DATE, QUANTITY, PRICE) VALUES (2, 103, 204, '2023-01-04', 1, 1500);\nINSERT INTO SALES (PRODUCT_ID, SELLER_ID, BUYER_ID, SALE_DATE, QUANTITY, PRICE) VALUES (1, 104, 205, '2023-01-05', 1, 1000);\nINSERT INTO SALES (PRODUCT_ID, SELLER_ID, BUYER_ID, SALE_DATE, QUANTITY, PRICE) VALUES (1, 105, 206, '2023-01-06', 1, 1000);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent. Q1 finds buyers who bought 'S8' but not 'IPHONE'. Q2 finds buyers who bought 'S8' and did not buy 'IPHONE', but it uses a LEFT JOIN with GROUP BY and HAVING, which may include buyers who have no 'IPHONE' purchase but may have other products. This subtle difference can lead to different results in edge cases.",
+  "counterexample_dsp": "A buyer who has purchased 'S8' but no 'IPHONE' and no other products will be included in both queries. However, if a buyer has purchased 'S8' and another product that is not 'IPHONE', Q2 may still include them due to the GROUP BY and HAVING logic, while Q1 will not. This difference arises from the aggregate condition in Q2.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n  \"equiv\": \"N\",\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent. Q1 finds buyers who bought 'S8' but not 'IPHONE'. Q2 finds buyers who bought 'S8' and did not buy 'IPHONE', but it uses a LEFT JOIN with GROUP BY and HAVING, which may include buyers who have no 'IPHONE' purchase but may have other products. This subtle difference can lead to different results in edge cases.\",\n  \"counterexample_dsp\": \"A buyer who has purchased 'S8' but no 'IPHONE' and no other products will be included in both queries. However, if a buyer has purchased 'S8' and another product that is not 'IPHONE', Q2 may still include them due to the GROUP BY and HAVING logic, while Q1 will not. This difference arises from the aggregate condition in Q2.\",\n  \"counterexample\": \"INSERT INTO PRODUCT (PRODUCT_ID, PRODUCT_NAME, UNIT_PRICE) VALUES (1, 'S8', 1000);\\nINSERT INTO PRODUCT (PRODUCT_ID, PRODUCT_NAME, UNIT_PRICE) VALUES (2, 'IPHONE', 1500);\\nINSERT INTO SALES (PRODUCT_ID, SELLER_ID, BUYER_ID, SALE_DATE, QUANTITY, PRICE) VALUES (1, 101, 201, '2023-01-01', 1, 1000);\\nINSERT INTO SALES (PRODUCT_ID, SELLER_ID, BUYER_ID, SALE_DATE, QUANTITY, PRICE) VALUES (2, 101, 202, '2023-01-02', 1, 1500);\\nINSERT INTO SALES (PRODUCT_ID, SELLER_ID, BUYER_ID, SALE_DATE, QUANTITY, PRICE) VALUES (1, 102, 203, '2023-01-03', 1, 1000);\\nINSERT INTO SALES (PRODUCT_ID, SELLER_ID, BUYER_ID, SALE_DATE, QUANTITY, PRICE) VALUES (2, 103, 204, '2023-01-04', 1, 1500);\\nINSERT INTO SALES (PRODUCT_ID, SELLER_ID, BUYER_ID, SALE_DATE, QUANTITY, PRICE) VALUES (1, 104, 205, '2023-01-05', 1, 1000);\\nINSERT INTO SALES (PRODUCT_ID, SELLER_ID, BUYER_ID, SALE_DATE, QUANTITY, PRICE) VALUES (1, 105, 206, '2023-01-06', 1, 1000);\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 516,
+    "total_tokens": 1140,
+    "completion_tokens": 624,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 19.421
+  },
+  "started_at": "2026-10-06T15:24:37.195602+00:00",
+  "elapsed_seconds": 1.0,
+  "q1_output": [
+    [
+      201
+    ],
+    [
+      203
+    ],
+    [
+      205
+    ],
+    [
+      206
+    ]
+  ],
+  "q2_output": [
+    [
+      201
+    ],
+    [
+      203
+    ],
+    [
+      205
+    ],
+    [
+      206
+    ]
+  ],
+  "q1_row_count": 4,
+  "q2_row_count": 4,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DISTINCT SALES.BUYER_ID AS BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'S8' AND SALES.BUYER_ID NOT IN ( SELECT SALES.BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'IPHONE')",
+  "q2_validation_sql": "SELECT S.BUYER_ID AS BUYER_ID FROM SALES S LEFT JOIN PRODUCT P ON P.PRODUCT_ID = S.PRODUCT_ID GROUP BY S.BUYER_ID HAVING SUM(P.PRODUCT_NAME='S8')>0 AND SUM(P.PRODUCT_NAME='IPHONE')=0"
+}

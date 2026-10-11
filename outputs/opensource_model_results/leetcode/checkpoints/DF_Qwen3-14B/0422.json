@@ -1,0 +1,39 @@
+{
+  "dbid": "1083",
+  "index": "422",
+  "source_index": "291",
+  "schema_ddl": "CREATE TABLE PRODUCT (\n    PRODUCT_ID INT,\n    PRODUCT_NAME VARCHAR(255),\n    UNIT_PRICE INT,\n    PRIMARY KEY (PRODUCT_ID),\n    CHECK (UNIT_PRICE > 0),\n    CHECK (PRODUCT_NAME IN ('S8', 'IPHONE'))\n);\n\nCREATE TABLE SALES (\n    PRODUCT_ID INT,\n    SELLER_ID INT,\n    BUYER_ID INT,\n    SALE_DATE DATE,\n    QUANTITY INT,\n    PRICE INT,\n    FOREIGN KEY (PRODUCT_ID) REFERENCES PRODUCT(PRODUCT_ID),\n    CHECK (QUANTITY > 0),\n    CHECK (PRICE > 0)\n);",
+  "q1": "SELECT DISTINCT SALES.BUYER_ID AS BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'S8' AND SALES.BUYER_ID NOT IN ( SELECT SALES.BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'IPHONE')",
+  "q2": "SELECT DISTINCT S.BUYER_ID FROM (SELECT S.PRODUCT_ID,PRODUCT_NAME,BUYER_ID FROM SALES S JOIN PRODUCT P USING(PRODUCT_ID) WHERE PRODUCT_NAME = 'S8') S LEFT JOIN (SELECT S.PRODUCT_ID,PRODUCT_NAME,BUYER_ID FROM SALES S JOIN PRODUCT P USING(PRODUCT_ID) WHERE PRODUCT_NAME = 'IPHONE') I USING(BUYER_ID) WHERE I.BUYER_ID IS NULL",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT DISTINCT SALES.BUYER_ID AS BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'S8' AND SALES.BUYER_ID NOT IN ( SELECT SALES.BUYER_ID FROM PRODUCT INNER JOIN SALES ON SALES.PRODUCT_ID = PRODUCT.PRODUCT_ID WHERE PRODUCT_NAME = 'IPHONE')",
+  "q2_prompt_sql": "SELECT DISTINCT S.BUYER_ID FROM (SELECT S.PRODUCT_ID,PRODUCT_NAME,BUYER_ID FROM SALES S JOIN PRODUCT P USING(PRODUCT_ID) WHERE PRODUCT_NAME = 'S8') S LEFT JOIN (SELECT S.PRODUCT_ID,PRODUCT_NAME,BUYER_ID FROM SALES S JOIN PRODUCT P USING(PRODUCT_ID) WHERE PRODUCT_NAME = 'IPHONE') I USING(BUYER_ID) WHERE I.BUYER_ID IS NULL",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries aim to find distinct buyers of 'S8' who did not purchase 'IPHONE'. Q1 uses a NOT IN clause, while Q2 uses a LEFT JOIN with IS NULL. These are logically equivalent in this context, as both exclude buyers present in the 'IPHONE' subquery and return distinct 'S8' buyers.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries aim to find distinct buyers of 'S8' who did not purchase 'IPHONE'. Q1 uses a NOT IN clause, while Q2 uses a LEFT JOIN with IS NULL. These are logically equivalent in this context, as both exclude buyers present in the 'IPHONE' subquery and return distinct 'S8' buyers.\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem. I need to determine if the two SQL queries, Q1 and Q2, are semantically equivalent. If they're not, I have to come up with a counterexample.\n\nFirst, I'll start by understanding what each query does.\n\nLooking at Q1: It selects distinct BUYER_IDs from SALES where the product is 'S8' and the BUYER_ID is not in the subquery that gets all BUYER_IDs for 'IPHONE' sales. So, it's finding buyers who bought 'S8' but not 'IPHONE'.\n\nNow Q2: It uses a LEFT JOIN approach. It creates a subquery S for 'S8' sales and another subquery I for 'IPHONE' sales. Then it left joins S and I on BUYER_ID and filters where I.BUYER_ID is NULL. That should also give buyers who bought 'S8' but not 'IPHONE'.\n\nAt first glance, both seem to do the same thing. But I should check for possible differences. Let's think about the joins and conditions.\n\nIn Q1, the subquery for the NOT IN clause is selecting BUYER_IDs from 'IPHONE' sales. So any buyer who bought 'IPHONE' is excluded from the 'S8' buyers.\n\nIn Q2, the LEFT JOIN on BUYER_ID between S and I. If there's no matching BUYER_ID in I, then I.BUYER_ID is NULL, so those are included. That should be equivalent to the NOT IN condition.\n\nWait, but what if there are multiple entries for a BUYER_ID in I? The LEFT JOIN would still result in a NULL if there's no match. Even if there are multiple, the presence of any would make I.BUYER_ID not NULL. So the LEFT JOIN with I.BUYER_ID IS NULL should be equivalent to NOT IN.\n\nBut maybe there's a case where the subquery in Q1 returns duplicates, but the NOT IN would still work. Because NOT IN checks if the value is not in the list. However, if the subquery returns duplicates, it doesn't matter because the NOT IN is checking for existence, not count.\n\nSo the two queries should be equivalent. But maybe there's a case where the LEFT JOIN approach in Q2 might include some rows that shouldn't be there? Or maybe not.\n\nWait, another angle: Q1 uses DISTINCT because it's selecting from SALES and joining with PRODUCT. But the SALES table might have multiple entries per BUYER_ID for 'S8'. The DISTINCT ensures unique BUYER_IDs. Similarly, Q2 uses SELECT DISTINCT in the subqueries S and I? No, wait, Q2's subqueries S and I are not using DISTINCT. Wait, Q2's outer query has SELECT DISTINCT S.BUYER_ID. Let me check:\n\nIn Q2, the outer query is SELECT DISTINCT S.BUYER_ID. The subqueries S and I are selecting S.PRODUCT_ID, PRODUCT_NAME, BUYER_ID from SALES and PRODUCT. But since they are joining on PRODUCT_ID, and the WHERE clause is for PRODUCT_NAME, the subquery S would have entries where PRODUCT_NAME is 'S8'. So the subquery S may have multiple entries per BUYER_ID if they bought multiple 'S8's. But the outer query of Q2 uses DISTINCT, so duplicates are removed.\n\nIn Q1, the outer query is SELECT DISTINCT SALES.BUYER_ID. So both queries are ensuring that the BUYER_ID is unique in the result.\n\nSo both queries are selecting distinct BUYER_IDs who bought 'S8' but not 'IPHONE'.\n\nAnother possible difference: What if a BUYER_ID bought 'S8' and also bought 'IPHONE' in multiple entries? The NOT IN would exclude them, and the LEFT JOIN would also exclude them. So same result.\n\nWait, but what if the subquery in Q1 returns a BUYER_ID that is in the 'IPHONE' sales, but in Q2, the LEFT JOIN might not find a match? No, because the subquery I is selecting all 'IPHONE' BUYER_IDs. So the LEFT JOIN would find any BUYER_ID that exists in I, and the WHERE I.BUYER_ID IS NULL would exclude them.\n\nSo I think they are equivalent. But maybe there's a case where the subquery in Q1 is not properly correlated?\n\nWait, let's think about the joins. In Q1, the subquery for the NOT IN is joining SALES and PRODUCT where PRODUCT_NAME is 'IPHONE'. So that's correct. Similarly, in Q2, the subquery I is joining SALES and PRODUCT for 'IPHONE'.\n\nSo both are using the same condition. Therefore, the two queries should be equivalent.\n\nBut maybe there's a case where a BUYER_ID is in the 'S8' subquery and also in the 'IPHONE' subquery, but the LEFT JOIN approach might not capture that? No, because if the BUYER_ID exists in I, then the LEFT JOIN would have a non-NULL I.BUYER_ID, so it would be excluded.\n\nSo I think they are equivalent. Therefore, the answer would be \"equiv\": \"Y\".\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 548,
+    "total_tokens": 1720,
+    "completion_tokens": 1172,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1086
+    },
+    "generation_seconds": 36.844
+  },
+  "started_at": "2026-10-06T15:08:34.725868+00:00",
+  "elapsed_seconds": 0.0
+}

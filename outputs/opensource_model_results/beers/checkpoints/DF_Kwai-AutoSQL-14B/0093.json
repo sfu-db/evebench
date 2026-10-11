@@ -1,0 +1,59 @@
+{
+  "dbid": "beers",
+  "index": "93",
+  "source_index": "1539",
+  "schema_ddl": "CREATE TABLE Bar (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Beer (\n    name VARCHAR NOT NULL,\n    brewer VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Drinker (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Frequents (\n    drinker VARCHAR NOT NULL,\n    bar VARCHAR NOT NULL,\n    times_a_week SMALLINT NOT NULL,\n    PRIMARY KEY (drinker, bar),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (bar) REFERENCES Bar(name)\n);\n\nCREATE TABLE Serves (\n    bar VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    price DECIMAL(5,2) NOT NULL,\n    PRIMARY KEY (bar, beer),\n    FOREIGN KEY (bar) REFERENCES Bar(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);\n\nCREATE TABLE Likes (\n    drinker VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    PRIMARY KEY (drinker, beer),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);",
+  "q1": "SELECT beer.name, min_price, bar FROM beer LEFT OUTER JOIN (SELECT beer, MIN(price) AS min_price FROM serves GROUP BY beer) AS t ON beer.name = t.beer LEFT OUTER JOIN serves ON beer.name = serves.beer AND min_price = serves.price",
+  "q2": "SELECT DISTINCT beer.name, MIN(serves.price) AS min_price, (SELECT serves.bar FROM serves WHERE serves.beer = beer.name LIMIT 1) AS bar FROM beer LEFT JOIN serves ON serves.beer = beer.name GROUP BY beer.name",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "beers",
+  "q1_prompt_sql": "SELECT beer.name, min_price, bar FROM beer LEFT OUTER JOIN (SELECT beer, MIN(price) AS min_price FROM serves GROUP BY beer) AS t ON beer.name = t.beer LEFT OUTER JOIN serves ON beer.name = serves.beer AND min_price = serves.price",
+  "q2_prompt_sql": "SELECT DISTINCT beer.name, MIN(serves.price) AS min_price, (SELECT serves.bar FROM serves WHERE serves.beer = beer.name LIMIT 1) AS bar FROM beer LEFT JOIN serves ON serves.beer = beer.name GROUP BY beer.name",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO Beer (name, brewer) VALUES ('IPA', 'BrewCo');\nINSERT INTO Bar (name, address) VALUES ('BarA', '123 Main'), ('BarB', '456 Oak');\nINSERT INTO Serves (bar, beer, price) VALUES ('BarA', 'IPA', 3.50), ('BarB', 'IPA', 2.50);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 ensures the bar is where the minimum price occurs by joining on min_price = serves.price. Q2 uses LIMIT 1 on the bar subquery, which may return an arbitrary bar not associated with the min price.",
+  "counterexample_dsp": "A beer served at two bars with different prices. Q2's bar subquery with LIMIT 1 returns a bar not at the minimum price.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 ensures the bar is where the minimum price occurs by joining on min_price = serves.price. Q2 uses LIMIT 1 on the bar subquery, which may return an arbitrary bar not associated with the min price.\",\n\"counterexample_dsp\": \"A beer served at two bars with different prices. Q2's bar subquery with LIMIT 1 returns a bar not at the minimum price.\",\n\"counterexample\": \"INSERT INTO Beer (name, brewer) VALUES ('IPA', 'BrewCo');\\nINSERT INTO Bar (name, address) VALUES ('BarA', '123 Main'), ('BarB', '456 Oak');\\nINSERT INTO Serves (bar, beer, price) VALUES ('BarA', 'IPA', 3.50), ('BarB', 'IPA', 2.50);\"\n}",
+  "reasoning": "\nOkay, let's dive into this problem. I need to determine if Q1 and Q2 are semantically equivalent. Let's start by understanding each query's purpose.\n\nFirst, looking at Q1: It's a LEFT OUTER JOIN between Beer and a subquery that finds the minimum price per beer. Then, it joins with the Serves table again on beer name and min_price equal to serves.price. The idea is to get the beer name, the minimum price, and the corresponding bar where that minimum price occurs. Since it's a LEFT JOIN, even if a beer isn't served anywhere, it should still appear with NULLs, but the subquery on MIN(price) would handle that. However, the second join on serves.price = min_price could be problematic if multiple bars have the same min price. Wait, but the subquery gives the min_price, so joining on that would get one row per beer, but if multiple serves rows have that same min price, it might return multiple bars. Hmm, but the first join is a LEFT JOIN on the subquery, which groups by beer, so that gives one row per beer with min_price. Then joining with serves again on beer and price = min_price would get the bar(s) where that min price is served. But since it's a LEFT JOIN, if there's no serve entry, the bar would be NULL. Wait, but the subquery's MIN(price) would be NULL if there's no serve entry. So the second join would have beer.name = serves.beer and min_price = serves.price. But if min_price is NULL, then that comparison would be NULL, so no match, leading to NULL for bar. That might be correct.\n\nNow Q2: It's a SELECT DISTINCT on beer.name, MIN(price) as min_price, and a subquery that selects bar from serves where beer equals beer.name, limited to 1. Then grouped by beer.name. The MIN(price) would get the minimum price across all serves entries for that beer. The subquery for bar picks one bar (the first one, since LIMIT 1). However, LIMIT 1 could pick any arbitrary bar, which might not be the one where the min price occurs. So that's a possible issue.\n\nWait, the subquery for the bar in Q2 is (SELECT serves.bar FROM serves WHERE serves.beer = beer.name LIMIT 1). Since it's a LIMIT 1, it might not return the bar that serves the beer at the minimum price. So Q2 could return a bar that doesn't have the min price, whereas Q1 joins on min_price = serves.price, ensuring the bar is where the min price is served.\n\nSo the key difference is that Q1 ensures the bar is the one serving the beer at the minimum price, whereas Q2's bar selection is arbitrary (due to LIMIT 1) and might not correspond to the min price bar.\n\nLet me think of a counterexample. Suppose there's a beer \"IPA\" served at Bar A for $3 and at Bar B for $2. Then the min price is $2 at Bar B. Q1 would join on min_price = 2, so the bar would be B. Q2's subquery for bar would return either A or B depending on the order of the serves table. But since it's a LIMIT 1 without ORDER BY, the result could be either. However, in practice, without an ORDER BY, the database might return the first row it finds, which could be arbitrary. However, in reality, the subquery for bar in Q2 isn't correlated with the min price. So if the same beer is served at different bars with varying prices, the bar selected in Q2's subquery might not be the one with the minimum price. Therefore, Q1 and Q2 would differ in that case.\n\nSo the counterexample would be a beer that's served at two different bars with different prices. Let's create such a case. For example, Beer \"Budweiser\" is served at Bar1 for $5 and Bar2 for $3. Then Q1 would return min_price 3 and bar Bar2. Q2's subquery (without ORDER BY) could return Bar1 or Bar2. Wait, but the LIMIT 1 in Q2's subquery is selecting from serves where beer = beer.name. If the serves table has two entries for Budweiser, one at Bar1 with $5 and one at Bar2 with $3, then the subquery (SELECT bar FROM serves WHERE beer = 'Budweiser' LIMIT 1) could return either Bar1 or Bar2. However, in practice, without an ORDER BY, the database might return the first one it finds. But the problem is that Q2's bar is not guaranteed to be the one with the minimum price. So in this case, if the subquery returns Bar1 (price $5), then Q2's output would have min_price 3 (correct) but bar Bar1 (incorrect). Whereas Q1's output would have bar Bar2. Therefore, they would differ.\n\nSo the counterexample would involve a beer served at multiple bars with different prices, and the subquery in Q2 returns a bar that's not the one with the minimum price. Thus, Q1 and Q2 are not equivalent.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 597,
+    "total_tokens": 1886,
+    "completion_tokens": 1289,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1096
+    },
+    "generation_seconds": 40.672
+  },
+  "started_at": "2026-10-06T09:35:48.082410+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "IPA",
+      2.5,
+      "BarB"
+    ]
+  ],
+  "q2_output": [
+    [
+      "IPA",
+      2.5,
+      "BarA"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT beer.name, min_price, bar FROM beer LEFT OUTER JOIN (SELECT beer, MIN(price) AS min_price FROM serves GROUP BY beer) AS t ON beer.name = t.beer LEFT OUTER JOIN serves ON beer.name = serves.beer AND min_price = serves.price",
+  "q2_validation_sql": "SELECT DISTINCT beer.name, MIN(serves.price) AS min_price, (SELECT serves.bar FROM serves WHERE serves.beer = beer.name LIMIT 1) AS bar FROM beer LEFT JOIN serves ON serves.beer = beer.name GROUP BY beer.name"
+}

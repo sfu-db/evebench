@@ -1,0 +1,39 @@
+{
+  "dbid": "607",
+  "index": "366",
+  "source_index": "459",
+  "schema_ddl": "CREATE TABLE SALESPERSON (\n    SALES_ID INT,\n    NAME VARCHAR(255),\n    SALARY INT,\n    COMMISSION_RATE INT,\n    HIRE_DATE VARCHAR(255)\n);\n\nCREATE TABLE COMPANY (\n    COM_ID INT,\n    NAME VARCHAR(255),\n    CITY VARCHAR(255)\n);\n\nCREATE TABLE ORDERS (\n    ORDER_ID INT,\n    COM_ID INT,\n    SALES_ID INT,\n    ORDER_DATE VARCHAR(255),\n    AMOUNT INT\n);",
+  "q1": "SELECT NAME FROM SALESPERSON AS S WHERE 0 = ( SELECT COUNT(*) FROM ORDERS AS O JOIN COMPANY AS C ON O.COM_ID = C.COM_ID WHERE O.SALES_ID = S.SALES_ID AND C.NAME = 'RED' )",
+  "q2": "SELECT DISTINCT SALESPERSON.NAME FROM ORDERS INNER JOIN COMPANY ON (ORDERS.COM_ID = COMPANY.COM_ID AND COMPANY.NAME = 'RED') RIGHT JOIN SALESPERSON ON SALESPERSON.SALES_ID = ORDERS.SALES_ID WHERE ORDERS.SALES_ID IS NULL",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT NAME FROM SALESPERSON AS S WHERE 0 = ( SELECT COUNT(*) FROM ORDERS AS O JOIN COMPANY AS C ON O.COM_ID = C.COM_ID WHERE O.SALES_ID = S.SALES_ID AND C.NAME = 'RED' )",
+  "q2_prompt_sql": "SELECT DISTINCT SALESPERSON.NAME FROM ORDERS INNER JOIN COMPANY ON (ORDERS.COM_ID = COMPANY.COM_ID AND COMPANY.NAME = 'RED') RIGHT JOIN SALESPERSON ON SALESPERSON.SALES_ID = ORDERS.SALES_ID WHERE ORDERS.SALES_ID IS NULL",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries aim to find salespeople with no orders linked to the 'RED' company. Q1 uses a subquery to check for zero counts, while Q2 uses a RIGHT JOIN with a NULL check. They are logically equivalent.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries aim to find salespeople with no orders linked to the 'RED' company. Q1 uses a subquery to check for zero counts, while Q2 uses a RIGHT JOIN with a NULL check. They are logically equivalent.\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem. I need to determine if Q1 and Q2 are semantically equivalent. Let's start by understanding each query.\n\nQ1 selects the names of salespeople where the count of orders related to the company 'RED' is zero. The subquery joins ORDERS and COMPANY on COM_ID, filters where the salesperson's SALES_ID matches and the company name is 'RED', then checks if the count is zero. So Q1 is finding salespeople who have no orders for company 'RED'.\n\nQ2 uses a RIGHT JOIN between ORDERS (joined with COMPANY on COM_ID and name 'RED') and SALESPERSON on SALES_ID. Then it filters where ORDERS.SALES_ID is NULL. A RIGHT JOIN ensures all rows from the right table (SALESPERSON) are included, but if there's no matching row in the left (ORDERS with COMPANY 'RED'), then the ORDERS fields are NULL. So Q2 is selecting salespeople who don't have any matching orders for 'RED' company. That seems similar to Q1, but I need to check if there's a difference.\n\nWait, Q2 uses RIGHT JOIN, which includes all SALESPERSON entries. But when there's no matching ORDERS (with COMPANY 'RED'), the ORDERS.SALES_ID would be NULL. So Q2 is selecting those salespeople where there's no such order. That should be the same as Q1. But maybe there's a nuance here.\n\nWait, Q1 uses a subquery that counts the number of orders for 'RED' per salesperson. If the count is zero, the salesperson is selected. Q2 uses a RIGHT JOIN and checks for NULL in ORDERS.SALES_ID. But in a RIGHT JOIN, the SALESPERSON is on the right, so all salespeople are included. The condition ORDERS.SALES_ID IS NULL would mean that there are no matching orders for that salesperson in the joined tables. So that should be equivalent to Q1.\n\nBut wait, what if a salesperson has orders for other companies, but not for 'RED'? Then Q1 would include them, and Q2 would also include them. But maybe there's a case where the subquery in Q1 might not be correct? Let me think of a scenario.\n\nSuppose a salesperson has no orders at all. Then in Q1, the subquery would return 0 (since there are no orders for 'RED'), so they would be selected. In Q2, since there are no orders, the RIGHT JOIN would still include them, and ORDERS.SALES_ID would be NULL. So that's the same.\n\nAnother scenario: a salesperson has orders for 'RED' and other companies. Q1 would not select them because the count is not zero. Q2 would not select them because there is a matching order (for 'RED'), so ORDERS.SALES_ID is not NULL. So that's the same.\n\nWait, but what if there's a salesperson with orders for 'RED' but also other companies? Then Q1 would not include them, and Q2 would not include them. So seems same.\n\nBut what if there's a salesperson who has orders for 'RED' but the join in Q2 somehow doesn't capture that? No, the join in Q2 is ORDERS joined with COMPANY where COMPANY is 'RED', then joined with SALESPERSON. So if the salesperson has any order for 'RED', then there's a matching row, and ORDERS.SALES_ID would not be NULL. Hence, the WHERE condition in Q2 would exclude them. So Q2 would return salespeople with no orders for 'RED'.\n\nSo both queries are supposed to return the same set. But maybe there's a difference in how they handle cases where the salesperson has no orders at all. Wait, in that case, the subquery in Q1 would return 0, so they are selected. In Q2, the RIGHT JOIN would include them, and ORDERS.SALES_ID would be NULL. So that's the same. So maybe they are equivalent.\n\nBut wait, the Q2 uses a RIGHT JOIN between (ORDERS INNER JOIN COMPANY...) and SALESPERSON. The INNER JOIN between ORDERS and COMPANY would exclude any orders that don't have a matching company. But the COMPANY is filtered to 'RED', so the inner join would only include orders that have a company named 'RED'. Then, the RIGHT JOIN with SALESPERSON ensures that all SALESPERSON are included, even if they have no matching orders. Then, the WHERE ORDERS.SALES_ID IS NULL would filter those salespeople with no such orders.\n\nSo Q2 is equivalent to Q1. Therefore, the answer is Y. But I need to make sure.\n\nWait, but what about the DISTINCT in Q2? Q1 uses SELECT NAME, which would return duplicates if a salesperson has multiple entries (but SALESPERSON has SALES_ID as primary key, so NAME is unique per SALES_ID). But Q2 uses SELECT DISTINCT, which is redundant but safe. So the DISTINCT doesn't affect the result.\n\nTherefore, the two queries are equivalent. So the answer is Y.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 470,
+    "total_tokens": 1614,
+    "completion_tokens": 1144,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1080
+    },
+    "generation_seconds": 35.406
+  },
+  "started_at": "2026-10-06T15:06:15.263380+00:00",
+  "elapsed_seconds": 0.0
+}

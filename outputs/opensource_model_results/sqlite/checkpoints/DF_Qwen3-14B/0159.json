@@ -1,0 +1,39 @@
+{
+  "dbid": "toxicology",
+  "index": "159",
+  "source_index": "223",
+  "schema_ddl": "CREATE TABLE `atom` (\n  `atom_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `element` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `bond` (\n  `bond_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `bond_type` TEXT DEFAULT NULL,\n  PRIMARY KEY (`bond_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `connected` (\n  `atom_id` TEXT NOT NULL,\n  `atom_id2` TEXT NOT NULL,\n  `bond_id` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`,`atom_id2`),\n  FOREIGN KEY (`atom_id`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`atom_id2`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`bond_id`) REFERENCES `bond` (`bond_id`) ON DELETE CASCADE ON UPDATE CASCADE\n);\n\nCREATE TABLE `molecule` (\n  `molecule_id` TEXT NOT NULL,\n  `label` TEXT DEFAULT NULL,\n  PRIMARY KEY (`molecule_id`)\n);",
+  "q1": "SELECT COUNT(CASE WHEN T.label = '+' THEN T.molecule_id ELSE NULL END) - COUNT(CASE WHEN T.label = '-' THEN T.molecule_id ELSE NULL END) AS diff_car_notcar FROM molecule AS t",
+  "q2": "SELECT SUM(CASE WHEN label = '+' THEN 1 ELSE 0 END) - SUM(CASE WHEN label = '-' THEN 1 ELSE 0 END) AS DIFFERENCE FROM molecule",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT COUNT(CASE WHEN T.label = '+' THEN T.molecule_id ELSE NULL END) - COUNT(CASE WHEN T.label = '-' THEN T.molecule_id ELSE NULL END) AS diff_car_notcar FROM molecule AS t",
+  "q2_prompt_sql": "SELECT SUM(CASE WHEN label = '+' THEN 1 ELSE 0 END) - SUM(CASE WHEN label = '-' THEN 1 ELSE 0 END) AS DIFFERENCE FROM molecule",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries compute the difference between the count of molecules labeled '+' and those labeled '-'. Q1 uses COUNT with CASE to count non-NULL values, while Q2 uses SUM with CASE to sum 1s and 0s. Since molecule_id is NOT NULL and each molecule is a single row, both approaches yield the same result.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries compute the difference between the count of molecules labeled '+' and those labeled '-'. Q1 uses COUNT with CASE to count non-NULL values, while Q2 uses SUM with CASE to sum 1s and 0s. Since molecule_id is NOT NULL and each molecule is a single row, both approaches yield the same result.\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem step by step. The user wants to know if Q1 and Q2 are semantically equivalent. Let's first understand what each query does.\n\nLooking at Q1: It's selecting the count of molecules where label is '+' minus the count where label is '-'. But wait, the COUNT function here is using a CASE expression. For '+' labels, it counts the molecule_id, else NULL. Since COUNT ignores NULLs, this effectively counts the number of '+' labels. Similarly for '-', but subtracted. So Q1 is calculating (number of '+' molecules) minus (number of '-' molecules).\n\nNow Q2: It's using SUM with CASE expressions. For each row, if label is '+', add 1, else 0. Then subtract the same for '-'. So SUM(1 for '+' and 0 otherwise) is the same as COUNT of '+', and similarly for '-'. So Q2 is also (count of '+') - (count of '-'). \n\nWait, so both queries are doing the same thing? But why the difference in the CASE statements? Because COUNT(CASE WHEN ... THEN ... ELSE NULL END) is equivalent to COUNT(*) when the condition is true. But SUM(CASE WHEN ... THEN 1 ELSE 0 END) is adding 1 for each matching row. So both should give the same result. But maybe there's a catch here.\n\nWait, but in Q1, the CASE is inside the COUNT. So for each row, if the label is '+', it includes T.molecule_id (which is not NULL, assuming molecule_id is not NULL). But if the label is '-', it returns NULL, so COUNT ignores it. So COUNT(CASE...) for '+' would count all rows where label is '+', same as SUM(1 for '+'). But what about if a molecule has multiple entries? Wait, the molecule table has molecule_id as the primary key. So each molecule is a single row. So each row in the molecule table is one molecule. Therefore, the COUNT and SUM should be the same.\n\nWait, but the Q1 uses T.molecule_id in the CASE. So for each row, if label is '+', it's counting that molecule_id. But since molecule_id is unique (primary key), each row is counted once. So COUNT(CASE...) would count the number of '+' labels. Similarly for SUM(1) in Q2.\n\nTherefore, both queries should be equivalent. But why would the user think they are different? Maybe there's a scenario where molecule_id is NULL? But according to the schema, molecule_id in the molecule table is NOT NULL. Because in the molecule table's CREATE statement, molecule_id is TEXT NOT NULL. So molecule_id can't be NULL. So in Q1, when label is '+', T.molecule_id is not NULL, so COUNT includes it. When label is '-', it's NULL, so COUNT ignores. So Q1's COUNT is effectively counting the number of '+' rows. Similarly, Q2's SUM is adding 1 per '+' row. So both should give the same result.\n\nBut maybe there's a case where the molecule has a label that's neither '+' nor '-'. For example, if a molecule has label 'X', then in Q1, the CASE for '+' would return NULL, and the CASE for '-' would also return NULL. So COUNT(CASE WHEN '+' THEN ...) would not count it, and same for '-'. So in Q1, the count for '+' and '-' would be the same as Q2. \n\nWait, but Q1's first COUNT is for '+' and the second for '-'. So the difference would be (count of '+') - (count of '-'). Q2 is the same. So they should be equivalent. \n\nBut why would the user think they are not? Maybe I'm missing something. Let me think again. \n\nWait, in Q1, the CASE WHEN T.label = '+' THEN T.molecule_id ELSE NULL END. The COUNT function counts the number of non-NULL values. So for each row, if label is '+', then T.molecule_id is non-NULL (since molecule_id is a primary key and not null), so it's counted. If label is '-', then the CASE returns NULL, so not counted. For other labels, the CASE returns NULL, so not counted. So the first COUNT is the number of '+' labels. Similarly, the second COUNT is the number of '-' labels. So the difference is (count of '+') - (count of '-').\n\nIn Q2, SUM(CASE WHEN label = '+' THEN 1 ELSE 0 END) is adding 1 for each '+' row, 0 otherwise. So the sum is the count of '+', same for '-'. So difference is same as Q1.\n\nTherefore, the two queries are equivalent. So the answer should be \"Y\".\n\nBut maybe there's a case where the molecule has multiple entries? Wait, the molecule table's primary key is molecule_id, so each molecule_id is unique. So each row in molecule is a single molecule. Therefore, there's no scenario where a molecule is counted multiple times. \n\nSo I think the queries are equivalent. Therefore, the answer is Y.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 604,
+    "total_tokens": 1757,
+    "completion_tokens": 1153,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1068
+    },
+    "generation_seconds": 37.781
+  },
+  "started_at": "2026-10-06T20:22:26.138632+00:00",
+  "elapsed_seconds": 0.0
+}

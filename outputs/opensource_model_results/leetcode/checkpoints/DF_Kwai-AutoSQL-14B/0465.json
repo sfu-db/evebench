@@ -1,0 +1,39 @@
+{
+  "dbid": "596",
+  "index": "465",
+  "source_index": "166",
+  "schema_ddl": "CREATE TABLE COURSES (\n    STUDENT VARCHAR(255),\n    CLASS VARCHAR(255),\n    PRIMARY KEY (STUDENT)\n);",
+  "q1": "SELECT CLASS FROM COURSES GROUP BY CLASS HAVING COUNT(*)>=5",
+  "q2": "WITH CLASS_CT (CLASS, STUDENT_CT) AS ( SELECT CLASS, COUNT(CLASS) AS STUDENT_CT FROM COURSES GROUP BY CLASS ) SELECT CLASS FROM CLASS_CT WHERE STUDENT_CT >= 5",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT CLASS FROM COURSES GROUP BY CLASS HAVING COUNT(*)>=5",
+  "q2_prompt_sql": "WITH CLASS_CT (CLASS, STUDENT_CT) AS ( SELECT CLASS, COUNT(CLASS) AS STUDENT_CT FROM COURSES GROUP BY CLASS ) SELECT CLASS FROM CLASS_CT WHERE STUDENT_CT >= 5",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both Q1 and Q2 aim to retrieve classes that have at least 5 students enrolled. Q1 achieves this using GROUP BY and HAVING directly on the COURSES table. Q2 uses a CTE (Common Table Expression) to first compute the count of students per class and then filters based on that count in the outer query. Functionally, both queries produce identical results.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n  \"equiv\": \"Y\",\n  \"explanation\": \"Both Q1 and Q2 aim to retrieve classes that have at least 5 students enrolled. Q1 achieves this using GROUP BY and HAVING directly on the COURSES table. Q2 uses a CTE (Common Table Expression) to first compute the count of students per class and then filters based on that count in the outer query. Functionally, both queries produce identical results.\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 342,
+    "total_tokens": 439,
+    "completion_tokens": 97,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 3.125
+  },
+  "started_at": "2026-10-06T15:48:02.277842+00:00",
+  "elapsed_seconds": 0.0
+}

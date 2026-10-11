@@ -1,0 +1,55 @@
+{
+  "dbid": "toxicology",
+  "index": "157",
+  "source_index": "220",
+  "schema_ddl": "CREATE TABLE `atom` (\n  `atom_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `element` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `bond` (\n  `bond_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `bond_type` TEXT DEFAULT NULL,\n  PRIMARY KEY (`bond_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `connected` (\n  `atom_id` TEXT NOT NULL,\n  `atom_id2` TEXT NOT NULL,\n  `bond_id` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`,`atom_id2`),\n  FOREIGN KEY (`atom_id`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`atom_id2`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`bond_id`) REFERENCES `bond` (`bond_id`) ON DELETE CASCADE ON UPDATE CASCADE\n);\n\nCREATE TABLE `molecule` (\n  `molecule_id` TEXT NOT NULL,\n  `label` TEXT DEFAULT NULL,\n  PRIMARY KEY (`molecule_id`)\n);",
+  "q1": "SELECT CAST(COUNT(DISTINCT CASE WHEN T2.label = '+' THEN T2.molecule_id ELSE NULL END) AS REAL) * 100 / COUNT(DISTINCT T2.molecule_id) FROM atom AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id INNER JOIN bond AS T3 ON T2.molecule_id = T3.molecule_id WHERE T3.bond_type = '#'",
+  "q2": "SELECT CAST(SUM(CASE WHEN T2.bond_type = '#' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(T2.bond_id) FROM molecule AS T1 INNER JOIN bond AS T2 ON T1.molecule_id = T2.molecule_id WHERE T1.label = '+'",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT CAST(COUNT(DISTINCT CASE WHEN T2.label = '+' THEN T2.molecule_id ELSE NULL END) AS REAL) * 100 / COUNT(DISTINCT T2.molecule_id) FROM atom AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id INNER JOIN bond AS T3 ON T2.molecule_id = T3.molecule_id WHERE T3.bond_type = '#'",
+  "q2_prompt_sql": "SELECT CAST(SUM(CASE WHEN T2.bond_type = '#' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(T2.bond_id) FROM molecule AS T1 INNER JOIN bond AS T2 ON T1.molecule_id = T2.molecule_id WHERE T1.label = '+'",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO molecule (molecule_id, label) VALUES ('A', '+'), ('B', '-');\nINSERT INTO bond (bond_id, molecule_id, bond_type) VALUES ('b1', 'A', '#'), ('b2', 'A', '#'), ('b3', 'A', '#'), ('b4', 'B', '#');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 calculates the percentage of molecules with label '+' among all molecules having bond type '#'. Q2 calculates the percentage of bonds with type '#' among all bonds of molecules labeled '+'. These are different aggregations over different sets of rows.",
+  "counterexample_dsp": "Molecule 'A' (label '+') has 3 bonds of type '#'. Molecule 'B' (label '-') has 1 bond of type '#'. Q1 computes 1/2*100=50% while Q2 computes 3/3*100=100%.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n  \"equiv\": \"N\",\n  \"explanation\": \"Q1 calculates the percentage of molecules with label '+' among all molecules having bond type '#'. Q2 calculates the percentage of bonds with type '#' among all bonds of molecules labeled '+'. These are different aggregations over different sets of rows.\",\n  \"counterexample_dsp\": \"Molecule 'A' (label '+') has 3 bonds of type '#'. Molecule 'B' (label '-') has 1 bond of type '#'. Q1 computes 1/2*100=50% while Q2 computes 3/3*100=100%.\",\n  \"counterexample\": [\n    \"INSERT INTO molecule (molecule_id, label) VALUES ('A', '+'), ('B', '-');\",\n    \"INSERT INTO bond (bond_id, molecule_id, bond_type) VALUES ('b1', 'A', '#'), ('b2', 'A', '#'), ('b3', 'A', '#'), ('b4', 'B', '#');\"\n  ]\n}",
+  "reasoning": "\nOkay, let's try to figure out if these two SQL queries are equivalent. \n\nFirst, I need to understand what each query does. Let me start by breaking down Q1 and Q2.\n\nFor Q1: The query joins atom (T1), molecule (T2), and bond (T3) on molecule_id. The WHERE condition is T3.bond_type = '#'. The numerator is COUNT(DISTINCT CASE WHEN T2.label = '+' THEN T2.molecule_id ELSE NULL END). So that's counting distinct molecule_ids from T2 where the label is '+'. Then multiply by 100 and divide by COUNT(DISTINCT T2.molecule_id), which is the total distinct molecule_ids from T2. The denominator here counts all distinct molecules that have bonds of type '#'. The result is a percentage of molecules labeled '+' among all molecules with bond type '#'.\n\nWait, no. Wait, the denominator is COUNT(DISTINCT T2.molecule_id) from the same join. Since the join is on T1 (atom) and T2 (molecule) via T1.molecule_id = T2.molecule_id, and also T3 (bond) via T2.molecule_id = T3.molecule_id. So the denominator counts distinct molecule_ids that have at least one bond of type '#'. The numerator counts the distinct molecule_ids among those that also have label '+'.\n\nSo Q1 is calculating (number of distinct molecules with label '+' and bond type '#') divided by (number of distinct molecules with bond type '#'), multiplied by 100. That gives the percentage of molecules with label '+' among those that have a bond of type '#'.\n\nNow Q2: The query joins molecule (T1) and bond (T2) on molecule_id. The WHERE condition is T1.label = '+'. The numerator is SUM(CASE WHEN T2.bond_type = '#' THEN 1 ELSE 0 END), which counts the number of bonds of type '#' for molecules labeled '+'. The denominator is COUNT(T2.bond_id), which counts all bonds for those molecules. Multiply by 100 gives the percentage of bonds that are type '#' among all bonds for molecules labeled '+'.\n\nSo Q1 is about molecules with bond type '#', how many of them have label '+'. Q2 is about molecules labeled '+', how many of their bonds are of type '#'. These are different percentages.\n\nLet me think of a counterexample. Suppose there are two molecules:\n\nMolecule A: label '+', has 2 bonds, one of type '#' and one of type '-'.\n\nMolecule B: label '-', has 1 bond of type '#'.\n\nIn Q1: denominator is count distinct molecules with bond type '#', which is 2 (A and B). Numerator is count distinct molecules with label '+' among those, which is 1 (A). So result is 50%.\n\nIn Q2: numerator is count bonds of type '#' for molecules with label '+', which is 1. Denominator is count of bonds for those molecules, which is 2. So 1/2 *100 = 50%. Wait, same result here. Hmm.\n\nWait maybe another example. Suppose molecule A has label '+', and has 3 bonds, all type '#'. Molecule B has label '-', has 1 bond of type '#'. \n\nQ1: denominator is 2 molecules (A and B). numerator is 1 (A). 50%.\n\nQ2: numerator is 3 (all bonds of A are '#'), denominator is 3. So 100%. So here they differ. So in this case, Q1 gives 50% and Q2 gives 100%. That would be a counterexample.\n\nBut wait, let me check the actual queries again.\n\nWait Q1's denominator is COUNT(DISTINCT T2.molecule_id) from the join of T1 (atom), T2 (molecule), T3 (bond) where T3.bond_type = '#'. Since T1 is joined with T2 on molecule_id, and T3 is joined with T2 on molecule_id. So for each molecule that has at least one bond of type '#', the molecule appears once in the count (distinct). So denominator is the number of distinct molecules that have at least one bond of type '#'.\n\nThe numerator is the count of distinct molecules where T2.label is '+', among those molecules that have at least one bond of type '#'.\n\nQ2's denominator is COUNT(T2.bond_id) where T1.label = '+'. So for each bond in molecules with label '+', count all bonds. The numerator is the count of bonds where bond_type is '#'.\n\nSo Q2's percentage is (number of bonds of type '#' for '+' molecules) / (total bonds for '+' molecules) * 100.\n\nSo if a '+' molecule has multiple bonds of type '#', Q2's numerator increases, but Q1's numerator is 1 (count distinct molecule) if that molecule has at least one bond of type '#'.\n\nSo in the example where molecule A is '+' with 3 bonds of type '#', and molecule B is '-' with 1 bond of type '#':\n\nQ1: numerator is 1 (A), denominator is 2 (A and B) → 50%.\n\nQ2: numerator is 3 (each bond is '#'), denominator is 3 → 100%.\n\nSo different results. Therefore, the queries are not equivalent.\n\nSo the answer is no, and I need to create a counterexample with such data.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 681,
+    "total_tokens": 2056,
+    "completion_tokens": 1375,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1150
+    },
+    "generation_seconds": 44.594
+  },
+  "started_at": "2026-10-06T21:12:50.735737+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      null
+    ]
+  ],
+  "q2_output": [
+    [
+      100.0
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT CAST(COUNT(DISTINCT CASE WHEN T2.label = '+' THEN T2.molecule_id ELSE NULL END) AS REAL) * 100 / COUNT(DISTINCT T2.molecule_id) FROM atom AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id INNER JOIN bond AS T3 ON T2.molecule_id = T3.molecule_id WHERE T3.bond_type = '#'",
+  "q2_validation_sql": "SELECT CAST(SUM(CASE WHEN T2.bond_type = '#' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(T2.bond_id) FROM molecule AS T1 INNER JOIN bond AS T2 ON T1.molecule_id = T2.molecule_id WHERE T1.label = '+'"
+}

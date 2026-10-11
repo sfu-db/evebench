@@ -1,0 +1,55 @@
+{
+  "dbid": "1148",
+  "index": "193",
+  "source_index": "44",
+  "schema_ddl": "CREATE TABLE VIEWS (\n    ARTICLE_ID INT,\n    AUTHOR_ID INT,\n    VIEWER_ID INT,\n    VIEW_DATE DATE\n);",
+  "q1": "SELECT DISTINCT AUTHOR_ID AS ID FROM VIEWS WHERE AUTHOR_ID = VIEWER_ID ORDER BY ID",
+  "q2": "SELECT AUTHOR_ID AS ID FROM VIEWS WHERE AUTHOR_ID = VIEWER_ID GROUP BY ID ORDER BY ID ASC , COUNT(ID) DESC",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT DISTINCT AUTHOR_ID AS ID FROM VIEWS WHERE AUTHOR_ID = VIEWER_ID ORDER BY ID",
+  "q2_prompt_sql": "SELECT AUTHOR_ID AS ID FROM VIEWS WHERE AUTHOR_ID = VIEWER_ID GROUP BY ID ORDER BY ID ASC , COUNT(ID) DESC",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO VIEWS (ARTICLE_ID, AUTHOR_ID, VIEWER_ID, VIEW_DATE) VALUES (1, 101, 101, '2023-01-01');\nINSERT INTO VIEWS (ARTICLE_ID, AUTHOR_ID, VIEWER_ID, VIEW_DATE) VALUES (2, 101, 101, '2023-01-02');",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 returns distinct AUTHOR_IDs where AUTHOR_ID equals VIEWER_ID, ordered by ID. Q2 groups by AUTHOR_ID and orders by ID ascending and COUNT(ID) descending, which may return the same value multiple times if there are duplicates in the VIEWS table. Thus, they are not equivalent.",
+  "counterexample_dsp": "A scenario where AUTHOR_ID = VIEWER_ID appears multiple times for the same ID, causing Q2 to return duplicates while Q1 returns only distinct values.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n  \"equiv\": \"N\",\n  \"explanation\": \"Q1 returns distinct AUTHOR_IDs where AUTHOR_ID equals VIEWER_ID, ordered by ID. Q2 groups by AUTHOR_ID and orders by ID ascending and COUNT(ID) descending, which may return the same value multiple times if there are duplicates in the VIEWS table. Thus, they are not equivalent.\",\n  \"counterexample_dsp\": \"A scenario where AUTHOR_ID = VIEWER_ID appears multiple times for the same ID, causing Q2 to return duplicates while Q1 returns only distinct values.\",\n  \"counterexample\": \"INSERT INTO VIEWS (ARTICLE_ID, AUTHOR_ID, VIEWER_ID, VIEW_DATE) VALUES (1, 101, 101, '2023-01-01');\\nINSERT INTO VIEWS (ARTICLE_ID, AUTHOR_ID, VIEWER_ID, VIEW_DATE) VALUES (2, 101, 101, '2023-01-02');\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 329,
+    "total_tokens": 548,
+    "completion_tokens": 219,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 7.0
+  },
+  "started_at": "2026-10-06T15:33:37.031947+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      101
+    ]
+  ],
+  "q2_output": [
+    [
+      101
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DISTINCT AUTHOR_ID AS ID FROM VIEWS WHERE AUTHOR_ID = VIEWER_ID ORDER BY ID",
+  "q2_validation_sql": "SELECT AUTHOR_ID AS ID FROM VIEWS WHERE AUTHOR_ID = VIEWER_ID GROUP BY ID ORDER BY ID ASC , COUNT(ID) DESC"
+}

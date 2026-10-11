@@ -1,0 +1,39 @@
+{
+  "dbid": "1050",
+  "index": "440",
+  "source_index": "29",
+  "schema_ddl": "CREATE TABLE ACTORDIRECTOR (\n    TIMESTAMP INT,\n    ACTOR_ID INT,\n    DIRECTOR_ID INT,\n    PRIMARY KEY (TIMESTAMP)\n);",
+  "q1": "SELECT ACTOR_ID,DIRECTOR_ID FROM ACTORDIRECTOR GROUP BY ACTOR_ID,DIRECTOR_ID HAVING COUNT(*)>=3",
+  "q2": "SELECT ACTOR_ID,DIRECTOR_ID FROM ( SELECT COUNT(*) CNT,ACTOR_ID,DIRECTOR_ID FROM ACTORDIRECTOR GROUP BY ACTOR_ID,DIRECTOR_ID HAVING CNT >= 3 ) FYI",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT ACTOR_ID,DIRECTOR_ID FROM ACTORDIRECTOR GROUP BY ACTOR_ID,DIRECTOR_ID HAVING COUNT(*)>=3",
+  "q2_prompt_sql": "SELECT ACTOR_ID,DIRECTOR_ID FROM ( SELECT COUNT(*) CNT,ACTOR_ID,DIRECTOR_ID FROM ACTORDIRECTOR GROUP BY ACTOR_ID,DIRECTOR_ID HAVING CNT >= 3 ) FYI",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both Q1 and Q2 aim to retrieve pairs of (ACTOR_ID, DIRECTOR_ID) from the ACTORDIRECTOR table where the count of occurrences (grouped by ACTOR_ID, DIRECTOR_ID) is at least 3. Q1 uses HAVING COUNT(*) >= 3 directly in the outer query, while Q2 uses a subquery with an alias for the count and then filters in the outer query. Since both use the same grouping and same count condition, they are semantically equivalent.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n  \"equiv\": \"Y\",\n  \"explanation\": \"Both Q1 and Q2 aim to retrieve pairs of (ACTOR_ID, DIRECTOR_ID) from the ACTORDIRECTOR table where the count of occurrences (grouped by ACTOR_ID, DIRECTOR_ID) is at least 3. Q1 uses HAVING COUNT(*) >= 3 directly in the outer query, while Q2 uses a subquery with an alias for the count and then filters in the outer query. Since both use the same grouping and same count condition, they are semantically equivalent.\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 362,
+    "total_tokens": 486,
+    "completion_tokens": 124,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 3.875
+  },
+  "started_at": "2026-10-06T15:46:23.773309+00:00",
+  "elapsed_seconds": 0.0
+}

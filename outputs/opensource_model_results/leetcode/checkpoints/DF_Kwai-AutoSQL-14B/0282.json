@@ -1,0 +1,39 @@
+{
+  "dbid": "1148",
+  "index": "282",
+  "source_index": "141",
+  "schema_ddl": "CREATE TABLE VIEWS (\n    ARTICLE_ID INT,\n    AUTHOR_ID INT,\n    VIEWER_ID INT,\n    VIEW_DATE DATE\n);",
+  "q1": "SELECT DISTINCT AUTHOR_ID AS ID FROM VIEWS WHERE AUTHOR_ID = VIEWER_ID ORDER BY ID",
+  "q2": "SELECT DISTINCT VIEWER_ID ID FROM VIEWS WHERE AUTHOR_ID = VIEWER_ID ORDER BY ID ASC",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT DISTINCT AUTHOR_ID AS ID FROM VIEWS WHERE AUTHOR_ID = VIEWER_ID ORDER BY ID",
+  "q2_prompt_sql": "SELECT DISTINCT VIEWER_ID ID FROM VIEWS WHERE AUTHOR_ID = VIEWER_ID ORDER BY ID ASC",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are semantically equivalent. Both queries retrieve distinct IDs from the VIEWS table where AUTHOR_ID equals VIEWER_ID. Q1 selects AUTHOR_ID as ID, while Q2 selects VIEWER_ID as ID, but since AUTHOR_ID = VIEWER_ID in the WHERE clause, the result will be the same. The ORDER BY clause is also equivalent (ORDER BY ID or ORDER BY ID ASC).",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n  \"equiv\": \"Y\",\n  \"explanation\": \"Q1 and Q2 are semantically equivalent. Both queries retrieve distinct IDs from the VIEWS table where AUTHOR_ID equals VIEWER_ID. Q1 selects AUTHOR_ID as ID, while Q2 selects VIEWER_ID as ID, but since AUTHOR_ID = VIEWER_ID in the WHERE clause, the result will be the same. The ORDER BY clause is also equivalent (ORDER BY ID or ORDER BY ID ASC).\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 322,
+    "total_tokens": 426,
+    "completion_tokens": 104,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 3.563
+  },
+  "started_at": "2026-10-06T15:40:02.629612+00:00",
+  "elapsed_seconds": 0.0
+}

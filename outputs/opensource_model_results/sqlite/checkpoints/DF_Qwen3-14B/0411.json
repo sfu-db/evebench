@@ -1,0 +1,59 @@
+{
+  "dbid": "superhero",
+  "index": "411",
+  "source_index": "773",
+  "schema_ddl": "CREATE TABLE alignment\n(\n    id        INTEGER not null\n            primary key,\n    alignment TEXT default NULL\n);\n\nCREATE TABLE attribute\n(\n    id             INTEGER not null\n            primary key,\n    attribute_name TEXT default NULL\n);\n\nCREATE TABLE colour\n(\n    id     INTEGER not null\n            primary key,\n    colour TEXT default NULL\n);\n\nCREATE TABLE gender\n(\n    id     INTEGER not null\n            primary key,\n    gender TEXT default NULL\n);\n\nCREATE TABLE publisher\n(\n    id             INTEGER not null\n            primary key,\n    publisher_name TEXT default NULL\n);\n\nCREATE TABLE race\n(\n    id   INTEGER not null\n            primary key,\n    race TEXT default NULL\n);\n\nCREATE TABLE superhero\n(\n    id             INTEGER not null\n            primary key,\n    superhero_name TEXT default NULL,\n    full_name      TEXT default NULL,\n    gender_id      INTEGER          default NULL,\n    eye_colour_id  INTEGER          default NULL,\n    hair_colour_id INTEGER          default NULL,\n    skin_colour_id INTEGER          default NULL,\n    race_id        INTEGER          default NULL,\n    publisher_id   INTEGER          default NULL,\n    alignment_id   INTEGER          default NULL,\n    height_cm      INTEGER          default NULL,\n    weight_kg      INTEGER          default NULL,\n    foreign key (alignment_id) references alignment(id),\n    foreign key (eye_colour_id) references colour(id),\n    foreign key (gender_id) references gender(id),\n    foreign key (hair_colour_id) references colour(id),\n    foreign key (publisher_id) references publisher(id),\n    foreign key (race_id) references race(id),\n    foreign key (skin_colour_id) references colour(id)\n);\n\nCREATE TABLE hero_attribute\n(\n    hero_id         INTEGER default NULL,\n    attribute_id    INTEGER default NULL,\n    attribute_value INTEGER default NULL,\n    foreign key (attribute_id) references attribute(id),\n    foreign key (hero_id) references superhero(id)\n);\n\nCREATE TABLE superpower\n(\n    id         INTEGER not null\n            primary key,\n    power_name TEXT default NULL\n);\n\nCREATE TABLE hero_power\n(\n    hero_id  INTEGER default NULL,\n    power_id INTEGER default NULL,\n    foreign key (hero_id) references superhero(id),\n    foreign key (power_id) references superpower(id)\n);",
+  "q1": "SELECT T1.eye_colour_id, T1.hair_colour_id, T1.skin_colour_id FROM superhero AS T1 INNER JOIN publisher AS T2 ON T2.id = T1.publisher_id INNER JOIN gender AS T3 ON T3.id = T1.gender_id WHERE T2.publisher_name = 'Dark Horse Comics' AND T3.gender = 'Female'",
+  "q2": "SELECT T2.colour AS eye_colour, T3.colour AS hair_colour, T4.colour AS skin_colour FROM superhero AS T1 INNER JOIN colour AS T2 ON T1.eye_colour_id = T2.id INNER JOIN colour AS T3 ON T1.hair_colour_id = T3.id INNER JOIN colour AS T4 ON T1.skin_colour_id = T4.id INNER JOIN gender AS T5 ON T1.gender_id = T5.id INNER JOIN publisher AS T6 ON T1.publisher_id = T6.id WHERE T5.gender = 'Female' AND T6.publisher_name = 'Dark Horse Comics'",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT T1.eye_colour_id, T1.hair_colour_id, T1.skin_colour_id FROM superhero AS T1 INNER JOIN publisher AS T2 ON T2.id = T1.publisher_id INNER JOIN gender AS T3 ON T3.id = T1.gender_id WHERE T2.publisher_name = 'Dark Horse Comics' AND T3.gender = 'Female'",
+  "q2_prompt_sql": "SELECT T2.colour AS eye_colour, T3.colour AS hair_colour, T4.colour AS skin_colour FROM superhero AS T1 INNER JOIN colour AS T2 ON T1.eye_colour_id = T2.id INNER JOIN colour AS T3 ON T1.hair_colour_id = T3.id INNER JOIN colour AS T4 ON T1.skin_colour_id = T4.id INNER JOIN gender AS T5 ON T1.gender_id = T5.id INNER JOIN publisher AS T6 ON T1.publisher_id = T6.id WHERE T5.gender = 'Female' AND T6.publisher_name = 'Dark Horse Comics'",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO publisher (id, publisher_name) VALUES (1, 'Dark Horse Comics');\nINSERT INTO gender (id, gender) VALUES (1, 'Female');\nINSERT INTO colour (id, colour) VALUES (1, 'Blue'), (2, 'Red'), (3, 'Yellow');\nINSERT INTO superhero (id, gender_id, eye_colour_id, hair_colour_id, skin_colour_id, publisher_id) VALUES (1, 1, 1, 2, 3, 1);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent because Q1 returns color IDs (eye_colour_id, hair_colour_id, skin_colour_id) while Q2 returns actual color names (eye_colour, hair_colour, skin_colour) from the colour table. The output columns differ in both data type and value.",
+  "counterexample_dsp": "A superhero from 'Dark Horse Comics' with female gender, where color IDs map to different color names (e.g., eye_colour_id=1 maps to 'Blue', hair_colour_id=2 maps to 'Red', etc.).",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 and Q2 are not semantically equivalent because Q1 returns color IDs (eye_colour_id, hair_colour_id, skin_colour_id) while Q2 returns actual color names (eye_colour, hair_colour, skin_colour) from the colour table. The output columns differ in both data type and value.\",\n\"counterexample_dsp\": \"A superhero from 'Dark Horse Comics' with female gender, where color IDs map to different color names (e.g., eye_colour_id=1 maps to 'Blue', hair_colour_id=2 maps to 'Red', etc.).\",\n\"counterexample\": \"INSERT INTO publisher (id, publisher_name) VALUES (1, 'Dark Horse Comics');\\nINSERT INTO gender (id, gender) VALUES (1, 'Female');\\nINSERT INTO colour (id, colour) VALUES (1, 'Blue'), (2, 'Red'), (3, 'Yellow');\\nINSERT INTO superhero (id, gender_id, eye_colour_id, hair_colour_id, skin_colour_id, publisher_id) VALUES (1, 1, 1, 2, 3, 1);\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem step by step. The user wants to know if Q1 and Q2 are semantically equivalent. If not, provide a counterexample.\n\nFirst, I need to understand what each query is doing. Let's look at Q1. It selects eye_colour_id, hair_colour_id, skin_colour_id from superhero (T1) joined with publisher (T2) on publisher_id and gender (T3) on gender_id. The WHERE clause filters for 'Dark Horse Comics' publisher and 'Female' gender. So Q1 is getting the IDs of the colors for eye, hair, and skin from superheroes who are female and published by Dark Horse.\n\nNow Q2 selects the actual color names (as eye_colour, hair_colour, skin_colour) from superhero (T1) joined with colour table three times (T2 for eye, T3 for hair, T4 for skin). Also joined with gender (T5) and publisher (T6). The WHERE clause is the same: female gender and Dark Horse Comics. So Q2 is getting the color names instead of IDs.\n\nSo the main difference is that Q1 returns color IDs, while Q2 returns color names. If the color names are unique and correctly mapped, maybe they are equivalent in terms of data, but the output columns are different. However, the problem states that the output columns are different. So if the color names are different from the IDs, then the results would differ. But the question is about semantic equivalence. If the user considers that the same data is being retrieved (just different representations), maybe they are equivalent. But if the actual values are different, then they are not.\n\nWait, the columns selected are different. Q1 selects eye_colour_id, etc., which are foreign keys to the colour table. Q2 selects the actual color names from the colour table. So unless the colour.id is the same as the colour.colour, which is unlikely, the results would be different. For example, if eye_colour_id is 1 and the colour with id 1 is 'Blue', then Q1 would return 1 and Q2 would return 'Blue'. So the output columns are different in terms of data type and value. Therefore, the queries are not semantically equivalent because they return different data.\n\nBut the user might be considering if the underlying data is the same. However, since the output is different, they are not equivalent. So the answer is not equivalent. Now, to create a counterexample, we need a scenario where the colour IDs and names differ. Let's create a test database where, for example, eye_colour_id is 1, and the colour name is 'Blue'. Then Q1 would return 1, Q2 would return 'Blue'. So the results are different. \n\nThe counterexample would involve inserting a superhero with specific color IDs, and inserting the corresponding color names. Let's make sure that the publisher and gender conditions are met. So create a publisher 'Dark Horse Comics', a gender 'Female', and color entries where id and colour are different. Then insert a superhero with those IDs. Then run both queries and see the difference.\n\nSo the counterexample would have:\n\n- publisher with id 1 and name 'Dark Horse Comics'\n- gender with id 1 and 'Female'\n- colour entries: id 1 is 'Blue', id 2 is 'Red', etc.\n- superhero with eye_colour_id=1, hair_colour_id=2, skin_colour_id=3, gender_id=1, publisher_id=1.\n\nThen Q1 would return (1,2,3) and Q2 would return ('Blue', 'Red', 'SkinColourName').\n\nThus, the queries are not equivalent.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 911,
+    "total_tokens": 1922,
+    "completion_tokens": 1011,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 763
+    },
+    "generation_seconds": 33.375
+  },
+  "started_at": "2026-10-06T20:35:37.741716+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      1,
+      2,
+      3
+    ]
+  ],
+  "q2_output": [
+    [
+      "Blue",
+      "Red",
+      "Yellow"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT T1.eye_colour_id, T1.hair_colour_id, T1.skin_colour_id FROM superhero AS T1 INNER JOIN publisher AS T2 ON T2.id = T1.publisher_id INNER JOIN gender AS T3 ON T3.id = T1.gender_id WHERE T2.publisher_name = 'Dark Horse Comics' AND T3.gender = 'Female'",
+  "q2_validation_sql": "SELECT T2.colour AS eye_colour, T3.colour AS hair_colour, T4.colour AS skin_colour FROM superhero AS T1 INNER JOIN colour AS T2 ON T1.eye_colour_id = T2.id INNER JOIN colour AS T3 ON T1.hair_colour_id = T3.id INNER JOIN colour AS T4 ON T1.skin_colour_id = T4.id INNER JOIN gender AS T5 ON T1.gender_id = T5.id INNER JOIN publisher AS T6 ON T1.publisher_id = T6.id WHERE T5.gender = 'Female' AND T6.publisher_name = 'Dark Horse Comics'"
+}

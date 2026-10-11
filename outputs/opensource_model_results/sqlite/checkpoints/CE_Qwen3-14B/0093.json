@@ -1,0 +1,64 @@
+{
+  "dbid": "financial",
+  "index": "93",
+  "source_index": "120",
+  "schema_ddl": "CREATE TABLE account\n(\n    account_id  INTEGER default 0 not null\n        primary key,\n    district_id INTEGER default 0 not null,\n    frequency   TEXT   not null,\n    date        DATE          not null,\n    foreign key (district_id) references district (district_id)\n);\n\nCREATE TABLE card\n(\n    card_id INTEGER default 0 not null\n        primary key,\n    disp_id INTEGER           not null,\n    type    TEXT    not null,\n    issued  DATE          not null,\n    foreign key (disp_id) references disp (disp_id)\n);\n\nCREATE TABLE client\n(\n    client_id   INTEGER        not null\n        primary key,\n    gender      TEXT not null,\n    birth_date  DATE       not null,\n    district_id INTEGER        not null,\n    foreign key (district_id) references district (district_id)\n);\n\nCREATE TABLE disp\n(\n    disp_id    INTEGER        not null\n        primary key,\n    client_id  INTEGER        not null,\n    account_id INTEGER        not null,\n    type      TEXT not null,\n    foreign key (account_id) references account (account_id),\n    foreign key (client_id) references client (client_id)\n);\n\nCREATE TABLE district\n(\n    district_id INTEGER default 0 not null\n        primary key,\n    A2          TEXT   not null,\n    A3          TEXT   not null,\n    A4          TEXT       not null,\n    A5          TEXT           not null,\n    A6          TEXT           not null,\n    A7          TEXT           not null,\n    A8          INTEGER        not null,\n    A9          INTEGER           not null,\n    A10         REAL not null,\n    A11         INTEGER           not null,\n    A12         REAL null,\n    A13         REAL not null,\n    A14         INTEGER           not null,\n    A15         INTEGER        null,\n    A16         INTEGER          not null\n);\n\nCREATE TABLE loan\n(\n    loan_id    INTEGER default 0 not null\n        primary key,\n    account_id INTEGER           not null,\n    date       DATE          not null,\n    amount     INTEGER           not null,\n    duration   INTEGER           not null,\n    payments   REAL not null,\n    status     TEXT    not null,\n    foreign key (account_id) references account (account_id)\n);\n\nCREATE TABLE \"order\"\n(\n    order_id   INTEGER default 0 not null\n        primary key,\n    account_id INTEGER           not null,\n    bank_to    TEXT    not null,\n    account_to INTEGER           not null,\n    amount     REAL not null,\n    k_symbol   TEXT    not null,\n    foreign key (account_id) references account (account_id)\n);\n\nCREATE TABLE trans\n(\n    trans_id   INTEGER default 0    not null\n        primary key,\n    account_id INTEGER default 0    not null,\n    date       DATE             not null,\n    type       TEXT       not null,\n    operation  TEXT      null,\n    amount     INTEGER              not null,\n    balance    INTEGER             not null,\n    k_symbol   TEXT      null,\n    bank       TEXT       null,\n    account    INTEGER          null,\n    foreign key (account_id) references account (account_id)\n);",
+  "q1": "SELECT T1.account_id, T2.A2, T2.A3 FROM account AS T1 INNER JOIN district AS T2 ON T1.district_id = T2.district_id WHERE T1.frequency = 'POPLATEK PO OBRATU' AND STRFTIME('%Y', T1.date) = '1993'",
+  "q2": "SELECT T1.account_id, T3.A2 AS district_name, T3.A3 AS district_region FROM account AS T1 INNER JOIN trans AS T2 ON T1.account_id = T2.account_id INNER JOIN district AS T3 ON T1.district_id = T3.district_id WHERE T1.frequency = 'POPLATEK PO OBRATU' AND STRFTIME('%Y', T1.date) = '1993'",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT T1.account_id, T2.A2, T2.A3 FROM account AS T1 INNER JOIN district AS T2 ON T1.district_id = T2.district_id WHERE T1.frequency = 'POPLATEK PO OBRATU' AND STRFTIME('%Y', T1.date) = '1993'",
+  "q2_prompt_sql": "SELECT T1.account_id, T3.A2 AS district_name, T3.A3 AS district_region FROM account AS T1 INNER JOIN trans AS T2 ON T1.account_id = T2.account_id INNER JOIN district AS T3 ON T1.district_id = T3.district_id WHERE T1.frequency = 'POPLATEK PO OBRATU' AND STRFTIME('%Y', T1.date) = '1993'",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO district (district_id, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16) VALUES (1, 'District A', 'Region X', 'A4', 'A5', 'A6', 'A7', 8, 9, 10.0, 11, 12.0, 13.0, 14, 15, 16);\nINSERT INTO account (account_id, district_id, frequency, date) VALUES (1, 1, 'POPLATEK PO OBRATU', '1993-01-01');\nINSERT INTO account (account_id, district_id, frequency, date) VALUES (2, 1, 'POPLATEK PO OBRATU', '1993-01-01');\nINSERT INTO trans (trans_id, account_id, date, type, amount, balance) VALUES (1, 2, '1993-01-01', 'TRANSFER', 100, 500);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 differ in their JOIN conditions. Q1 joins account with district directly, while Q2 requires an additional INNER JOIN with trans on account_id. This means Q2 will exclude accounts that exist in account but have no corresponding entries in trans, whereas Q1 will include them.",
+  "counterexample_dsp": "Create an account with frequency 'POPLATEK PO OBRATU' and date in 1993 that has no entries in the trans table. This account will appear in Q1's result but not in Q2's.",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 and Q2 differ in their JOIN conditions. Q1 joins account with district directly, while Q2 requires an additional INNER JOIN with trans on account_id. This means Q2 will exclude accounts that exist in account but have no corresponding entries in trans, whereas Q1 will include them.\",\n  \"counterexample_dsp\": \"Create an account with frequency 'POPLATEK PO OBRATU' and date in 1993 that has no entries in the trans table. This account will appear in Q1's result but not in Q2's.\",\n  \"counterexample\": [\n    \"INSERT INTO district (district_id, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16) VALUES (1, 'District A', 'Region X', 'A4', 'A5', 'A6', 'A7', 8, 9, 10.0, 11, 12.0, 13.0, 14, 15, 16);\",\n    \"INSERT INTO account (account_id, district_id, frequency, date) VALUES (1, 1, 'POPLATEK PO OBRATU', '1993-01-01');\",\n    \"INSERT INTO account (account_id, district_id, frequency, date) VALUES (2, 1, 'POPLATEK PO OBRATU', '1993-01-01');\",\n    \"INSERT INTO trans (trans_id, account_id, date, type, amount, balance) VALUES (1, 2, '1993-01-01', 'TRANSFER', 100, 500);\"\n  ]\n}",
+  "reasoning": "\nOkay, let's see. I need to find a counterexample where Q1 and Q2 return different results. First, I should understand what each query is doing.\n\nQ1 is selecting account_id, A2, and A3 from account joined with district on district_id. The conditions are that frequency is 'POPLATEK PO OBRATU' and the date is in 1993. So this query is looking at accounts with that specific frequency in 1993 and joining their district info.\n\nQ2 is similar but includes an INNER JOIN with trans on account_id. Then it joins with district again (as T3). The same conditions on frequency and date. So Q2 is joining account with trans and then district. \n\nThe key difference is that Q1 doesn't involve the trans table at all, while Q2 does. So the presence of the trans table in Q2 might affect the results. But why would that be?\n\nWait, the JOIN condition in Q2 is on account_id between account and trans. So Q2 will only include accounts that have at least one transaction in the trans table. However, Q1 doesn't have that condition. So if there's an account that meets the frequency and date conditions but has no entries in trans, then Q1 would include it, but Q2 would not. That's the difference.\n\nSo to create a counterexample, I need an account that meets the criteria (frequency and date) but has no corresponding entries in the trans table. Then Q1 would return that account, but Q2 would not. \n\nLet me think about the schema. The account table has account_id, district_id, frequency, date. The trans table has account_id, date, etc. So for the counterexample, I need to insert an account with frequency 'POPLATEK PO OBRATU' and date in 1993, but no trans entries for that account_id. Then, Q1 would include it, Q2 would not.\n\nAdditionally, I need to make sure that the district information is present. So the account's district_id must exist in the district table.\n\nSo the steps are:\n\n1. Insert a district record (say district_id 1, A2='District A', A3='Region X').\n2. Insert an account with account_id 1, district_id 1, frequency 'POPLATEK PO OBRATU', date '1993-01-01'.\n3. Do not insert any trans records for account_id 1.\n4. Also, maybe insert another account that has a trans entry to ensure that Q2 includes that, but the first account is excluded. Wait, but the counterexample needs to show that Q1 returns something that Q2 doesn't. So the account in Q1 but not in Q2.\n\nSo in this case, Q1 would return account 1, but Q2 would not because there's no trans entry. Therefore, the results differ.\n\nNow, check the constraints. The district_id in account must reference district.district_id, which we have. The trans table's account_id is a foreign key to account, but since we don't insert any trans entries for account 1, that's okay. The account's date is in 1993, so STRFTIME('%Y', date) = '1993' holds.\n\nSo the counterexample would have one account that meets Q1's criteria but not Q2's because it's missing the trans join. That should make the two queries return different results.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 1027,
+    "total_tokens": 2176,
+    "completion_tokens": 1149,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 736
+    },
+    "generation_seconds": 39.36
+  },
+  "started_at": "2026-10-06T16:23:26.655983+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      1,
+      "District A",
+      "Region X"
+    ],
+    [
+      2,
+      "District A",
+      "Region X"
+    ]
+  ],
+  "q2_output": [
+    [
+      2,
+      "District A",
+      "Region X"
+    ]
+  ],
+  "q1_row_count": 2,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT T1.account_id, T2.A2, T2.A3 FROM account AS T1 INNER JOIN district AS T2 ON T1.district_id = T2.district_id WHERE T1.frequency = 'POPLATEK PO OBRATU' AND STRFTIME('%Y', T1.date) = '1993'",
+  "q2_validation_sql": "SELECT T1.account_id, T3.A2 AS district_name, T3.A3 AS district_region FROM account AS T1 INNER JOIN trans AS T2 ON T1.account_id = T2.account_id INNER JOIN district AS T3 ON T1.district_id = T3.district_id WHERE T1.frequency = 'POPLATEK PO OBRATU' AND STRFTIME('%Y', T1.date) = '1993'"
+}

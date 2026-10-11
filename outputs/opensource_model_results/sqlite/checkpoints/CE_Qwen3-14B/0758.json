@@ -1,0 +1,55 @@
+{
+  "dbid": "thrombosis_prediction",
+  "index": "758",
+  "source_index": "1305",
+  "schema_ddl": "CREATE TABLE Examination\n(\n    ID                 INTEGER          null,\n    `Examination Date` DATE         null,\n    `aCL IgG`          REAL        null,\n    `aCL IgM`          REAL        null,\n    ANA                INTEGER          null,\n    `ANA Pattern`      TEXT null,\n    `aCL IgA`          INTEGER          null,\n    Diagnosis          TEXT null,\n    KCT                TEXT null,\n    RVVT              TEXT null,\n    LAC                TEXT null,\n    Symptoms           TEXT null,\n    Thrombosis         INTEGER          null,\n    foreign key (ID) references Patient (ID)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE Patient\n(\n    ID           INTEGER default 0 not null\n        primary key,\n    SEX          TEXT  null,\n    Birthday     DATE          null,\n    Description  DATE          null,\n    `First Date` DATE          null,\n    Admission    TEXT  null,\n    Diagnosis    TEXT  null\n);\n\nCREATE TABLE Laboratory\n(\n    ID        INTEGER  default 0            not null,\n    Date      DATE default '0000-00-00' not null,\n    GOT       INTEGER                       null,\n    GPT       INTEGER                        null,\n    LDH       INTEGER                        null,\n    ALP       INTEGER                        null,\n    TP        REAL             null,\n    ALB       REAL             null,\n    UA        REAL             null,\n    UN        INTEGER                       null,\n    CRE       REAL             null,\n    `T-BIL`   REAL             null,\n    `T-CHO`   INTEGER                       null,\n    TG        INTEGER                       null,\n    CPK       INTEGER                       null,\n    GLU       INTEGER                       null,\n    WBC       REAL             null,\n    RBC       REAL             null,\n    HGB       REAL             null,\n    HCT       REAL             null,\n    PLT       INTEGER                       null,\n    PT        REAL             null,\n    APTT      INTEGER                       null,\n    FG        REAL             null,\n    PIC       INTEGER                       null,\n    TAT       INTEGER                       null,\n    TAT2      INTEGER                       null,\n    `U-PRO`   TEXT              null,\n    IGG       INTEGER                       null,\n    IGA       INTEGER                       null,\n    IGM       INTEGER                       null,\n    CRP       TEXT              null,\n    RA        TEXT              null,\n    RF        TEXT              null,\n    C3        INTEGER                       null,\n    C4        INTEGER                       null,\n    RNP       TEXT              null,\n    SM        TEXT              null,\n    SC170     TEXT              null,\n    SSA       TEXT              null,\n    SSB       TEXT              null,\n    CENTROMEA TEXT              null,\n    DNA       TEXT              null,\n    `DNA-II`  INTEGER                       null,\n    primary key (ID, Date),\n        foreign key (ID) references Patient (ID)\n            on update cascade on delete cascade\n);",
+  "q1": "SELECT COUNT(T1.ID) FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID INNER JOIN Examination AS T3 ON T1.ID = T3.ID WHERE T2.GLU < 180 AND T3.Thrombosis = 0",
+  "q2": "SELECT COUNT(DISTINCT T1.ID) FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID INNER JOIN Examination AS T3 ON T1.ID = T3.ID WHERE T2.GLU < 180 AND T3.Thrombosis = 0",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT COUNT(T1.ID) FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID INNER JOIN Examination AS T3 ON T1.ID = T3.ID WHERE T2.GLU < 180 AND T3.Thrombosis = 0",
+  "q2_prompt_sql": "SELECT COUNT(DISTINCT T1.ID) FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID INNER JOIN Examination AS T3 ON T1.ID = T3.ID WHERE T2.GLU < 180 AND T3.Thrombosis = 0",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO Patient (ID) VALUES (1);\nINSERT INTO Laboratory (ID, Date, GLU) VALUES (1, '2023-01-01', 170);\nINSERT INTO Laboratory (ID, Date, GLU) VALUES (1, '2023-01-02', 160);\nINSERT INTO Examination (ID, Thrombosis) VALUES (1, 0);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 counts all rows (including duplicates) while Q2 counts distinct patient IDs. If a patient has multiple Laboratory entries matching the criteria, Q1 will return a higher count.",
+  "counterexample_dsp": "Patient 1 has two Laboratory records (both GLU < 180) and one Examination record (Thrombosis=0). The join creates two rows for this patient, making Q1 return 2 and Q2 return 1.",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 counts all rows (including duplicates) while Q2 counts distinct patient IDs. If a patient has multiple Laboratory entries matching the criteria, Q1 will return a higher count.\",\n  \"counterexample_dsp\": \"Patient 1 has two Laboratory records (both GLU < 180) and one Examination record (Thrombosis=0). The join creates two rows for this patient, making Q1 return 2 and Q2 return 1.\",\n  \"counterexample\": [\n    \"INSERT INTO Patient (ID) VALUES (1);\",\n    \"INSERT INTO Laboratory (ID, Date, GLU) VALUES (1, '2023-01-01', 170);\",\n    \"INSERT INTO Laboratory (ID, Date, GLU) VALUES (1, '2023-01-02', 160);\",\n    \"INSERT INTO Examination (ID, Thrombosis) VALUES (1, 0);\"\n  ]\n}",
+  "reasoning": "\nOkay, I need to figure out why Q1 and Q2 are not equivalent and create a counterexample where they return different results. Let me look at the queries again.\n\nQ1 uses COUNT(T1.ID) and Q2 uses COUNT(DISTINCT T1.ID). The difference here is that COUNT(T1.ID) counts all rows, including duplicates, while COUNT(DISTINCT) counts unique IDs. So if there are multiple rows for the same patient ID in the joined tables, Q1 would count each occurrence, but Q2 would count each ID only once.\n\nThe tables involved are Patient, Laboratory, and Examination. Both joins are on Patient.ID. So, if a patient has multiple entries in Laboratory or Examination, or both, that could lead to multiple rows for the same ID in the result set.\n\nFor example, suppose a patient has two entries in Laboratory (same ID, different dates) and one in Examination. Then, joining all three tables would create multiple rows for that patient. Q1 would count each row, so if there are two rows for the same ID, Q1 would count 2, but Q2 would count 1.\n\nSo the counterexample needs a patient who meets the conditions (GLU < 180 and Thrombosis = 0) and has multiple entries in Laboratory and/or Examination. Let me create such a case.\n\nLet's say Patient ID 1. In Laboratory, two entries with ID 1 and different dates, both with GLU < 180. In Examination, one entry for ID 1 with Thrombosis = 0. Then, joining these would produce two rows (because of two Laboratory entries) for the same patient. Q1 would return 2, Q2 would return 1.\n\nWait, but the joins are on Patient.ID = Laboratory.ID and Patient.ID = Examination.ID. So for each Laboratory entry, if there's an Examination entry, they would be joined. So if Patient 1 has two Laboratory entries and one Examination entry, then each Laboratory entry would be joined with the Examination entry, resulting in two rows. Thus, COUNT(T1.ID) would be 2, COUNT(DISTINCT T1.ID) would be 1.\n\nYes, that's the scenario. So the test data needs to include this. Let's create that.\n\nNow, check the schema constraints. The Laboratory table has a composite primary key (ID, Date), so each entry must have a unique Date for the same ID. So for Patient 1, two Laboratory entries with different dates. The Examination table has a foreign key to Patient, but no primary key constraints mentioned except the foreign key. So each Examination entry can have the same ID as long as other constraints are met.\n\nSo, the INSERT statements would be:\n\nInsert into Patient (ID) values (1);\nInsert into Laboratory (ID, Date, GLU) values (1, '2023-01-01', 170);\nInsert into Laboratory (ID, Date, GLU) values (1, '2023-01-02', 160);\nInsert into Examination (ID, Thrombosis) values (1, 0);\n\nThis would create two Laboratory entries for Patient 1, both with GLU < 180, and one Examination entry with Thrombosis 0. When joined, each Laboratory entry would join with the Examination entry, resulting in two rows. Q1 counts 2, Q2 counts 1.\n\nThat's the counterexample. The explanation is that Q1 counts all rows, including duplicates, while Q2 counts distinct IDs. The test data has a patient with multiple Laboratory entries, leading to multiple rows in the join.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 925,
+    "total_tokens": 1913,
+    "completion_tokens": 988,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 769
+    },
+    "generation_seconds": 35.11
+  },
+  "started_at": "2026-10-06T17:53:52.764733+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      2
+    ]
+  ],
+  "q2_output": [
+    [
+      1
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT COUNT(T1.ID) FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID INNER JOIN Examination AS T3 ON T1.ID = T3.ID WHERE T2.GLU < 180 AND T3.Thrombosis = 0",
+  "q2_validation_sql": "SELECT COUNT(DISTINCT T1.ID) FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID INNER JOIN Examination AS T3 ON T1.ID = T3.ID WHERE T2.GLU < 180 AND T3.Thrombosis = 0"
+}

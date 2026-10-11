@@ -1,0 +1,55 @@
+{
+  "dbid": "182",
+  "index": "153",
+  "source_index": "2",
+  "schema_ddl": "CREATE TABLE PERSON (\n    ID INT,\n    EMAIL VARCHAR(255),\n    PRIMARY KEY (ID)\n);",
+  "q1": "SELECT EMAIL AS EMAIL FROM PERSON GROUP BY EMAIL HAVING COUNT(EMAIL) >1",
+  "q2": "SELECT DISTINCT EMAIL FROM PERSON GROUP BY EMAIL HAVING COUNT(EMAIL)>=2",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT EMAIL AS EMAIL FROM PERSON GROUP BY EMAIL HAVING COUNT(EMAIL) >1",
+  "q2_prompt_sql": "SELECT DISTINCT EMAIL FROM PERSON GROUP BY EMAIL HAVING COUNT(EMAIL)>=2",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO PERSON (ID, EMAIL) VALUES (1, 'a@example.com');\nINSERT INTO PERSON (ID, EMAIL) VALUES (2, 'a@example.com');",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent. Q1 returns emails that appear more than once (COUNT(EMAIL) > 1), while Q2 returns emails that appear at least twice (COUNT(EMAIL) >= 2). These conditions are not equivalent when an email appears exactly twice, which would be included by Q2 but not by Q1.",
+  "counterexample_dsp": "A test case with one email appearing exactly twice will be included by Q2 but not by Q1, showing the difference.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n  \"equiv\": \"N\",\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent. Q1 returns emails that appear more than once (COUNT(EMAIL) > 1), while Q2 returns emails that appear at least twice (COUNT(EMAIL) >= 2). These conditions are not equivalent when an email appears exactly twice, which would be included by Q2 but not by Q1.\",\n  \"counterexample_dsp\": \"A test case with one email appearing exactly twice will be included by Q2 but not by Q1, showing the difference.\",\n  \"counterexample\": \"INSERT INTO PERSON (ID, EMAIL) VALUES (1, 'a@example.com');\\nINSERT INTO PERSON (ID, EMAIL) VALUES (2, 'a@example.com');\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 311,
+    "total_tokens": 480,
+    "completion_tokens": 169,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 5.407
+  },
+  "started_at": "2026-10-06T15:33:06.712732+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "a@example.com"
+    ]
+  ],
+  "q2_output": [
+    [
+      "a@example.com"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT EMAIL AS EMAIL FROM PERSON GROUP BY EMAIL HAVING COUNT(EMAIL) >1",
+  "q2_validation_sql": "SELECT DISTINCT EMAIL FROM PERSON GROUP BY EMAIL HAVING COUNT(EMAIL)>=2"
+}

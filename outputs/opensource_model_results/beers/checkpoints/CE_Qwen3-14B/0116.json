@@ -1,0 +1,64 @@
+{
+  "dbid": "beers",
+  "index": "116",
+  "source_index": "1954",
+  "schema_ddl": "CREATE TABLE Bar (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Beer (\n    name VARCHAR NOT NULL,\n    brewer VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Drinker (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Frequents (\n    drinker VARCHAR NOT NULL,\n    bar VARCHAR NOT NULL,\n    times_a_week SMALLINT NOT NULL,\n    PRIMARY KEY (drinker, bar),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (bar) REFERENCES Bar(name)\n);\n\nCREATE TABLE Serves (\n    bar VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    price DECIMAL(5,2) NOT NULL,\n    PRIMARY KEY (bar, beer),\n    FOREIGN KEY (bar) REFERENCES Bar(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);\n\nCREATE TABLE Likes (\n    drinker VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    PRIMARY KEY (drinker, beer),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);",
+  "q1": "SELECT DISTINCT bar FROM Serves WHERE (beer = 'Amstel' OR beer = 'Corona') AND price > 2",
+  "q2": "SELECT bar FROM serves WHERE price > 2",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "beers",
+  "q1_prompt_sql": "SELECT DISTINCT bar FROM Serves WHERE (beer = 'Amstel' OR beer = 'Corona') AND price > 2",
+  "q2_prompt_sql": "SELECT bar FROM serves WHERE price > 2",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO Bar (name, address) VALUES ('A', 'Addr1'), ('B', 'Addr2'), ('C', 'Addr3');\nINSERT INTO Beer (name, brewer) VALUES ('Amstel', 'Brewer1'), ('Corona', 'Brewer2'), ('Heineken', 'Brewer3');\nINSERT INTO Serves (bar, beer, price) VALUES ('A', 'Amstel', 3), ('B', 'Corona', 2.5), ('C', 'Heineken', 3);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 filters bars serving only Amstel or Corona at price >2, while Q2 includes all bars serving any beer at price >2. A bar serving a different beer (e.g., Heineken) at price >2 would appear in Q2 but not Q1.",
+  "counterexample_dsp": "Bar 'C' serves Heineken at $3 (price >2 but not Amstel/Corona). Q2 includes it, but Q1 does not.",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 filters bars serving only Amstel or Corona at price >2, while Q2 includes all bars serving any beer at price >2. A bar serving a different beer (e.g., Heineken) at price >2 would appear in Q2 but not Q1.\",\n  \"counterexample_dsp\": \"Bar 'C' serves Heineken at $3 (price >2 but not Amstel/Corona). Q2 includes it, but Q1 does not.\",\n  \"counterexample\": [\n    \"INSERT INTO Bar (name, address) VALUES ('A', 'Addr1'), ('B', 'Addr2'), ('C', 'Addr3');\",\n    \"INSERT INTO Beer (name, brewer) VALUES ('Amstel', 'Brewer1'), ('Corona', 'Brewer2'), ('Heineken', 'Brewer3');\",\n    \"INSERT INTO Serves (bar, beer, price) VALUES ('A', 'Amstel', 3), ('B', 'Corona', 2.5), ('C', 'Heineken', 3);\"\n  ]\n}",
+  "reasoning": "\nOkay, let's see. I need to find a counterexample where Q1 and Q2 return different results. Let me first understand what each query is doing.\n\nQ1 selects distinct bars from Serves where the beer is either Amstel or Corona and the price is greater than 2. So it's filtering on both beer names and price.\n\nQ2 selects bars from Serves where the price is greater than 2, without any restriction on the beer. So it's all bars that serve any beer at a price over 2.\n\nSo the difference is that Q1 is only considering bars that serve Amstel or Corona at a price over 2, while Q2 includes any bar serving any beer over 2. Therefore, Q2 could have more bars if there are bars serving other beers at higher prices.\n\nTo make them different, I need a scenario where there's at least one bar in Q2's result that isn't in Q1's. That would happen if a bar serves a beer (not Amstel or Corona) at a price over 2. Also, there should be bars in Q1's result (serving Amstel or Corona over 2) and maybe some bars that serve both, but the key is to have some bars in Q2 that are not in Q1.\n\nLet me think of a test case. Suppose there are three bars: Bar A serves Amstel at 3, Bar B serves Corona at 2.5, and Bar C serves Heineken at 3. \n\nWait, for Q1, the price must be >2. So Bar A's Amstel at 3 would be included. Bar B's Corona is 2.5 which is over 2, so that's included. Bar C serves Heineken at 3, which is over 2 but not Amstel or Corona. So Q2 would include Bar A, B, and C. Q1 would include Bar A and B. Therefore, Q2 has an extra Bar C, making the results different.\n\nBut I need to make sure that the data adheres to the schema. Let me check the tables. The Serves table has bar, beer, price. So inserting into Serves:\n\nFor Bar A: (bar 'A', beer 'Amstel', price 3)\nBar B: (bar 'B', beer 'Corona', price 2.5)\nBar C: (bar 'C', beer 'Heineken', price 3)\n\nAlso, the Bars need to exist in the Bar table. So insert into Bar: names A, B, C with addresses. Similarly, Beers: Amstel, Corona, Heineken with their brewers. But the other tables (Drinker, Frequents, Likes) don't need data for this case, since the queries don't involve them.\n\nSo the counterexample would have Bar C in Q2's result but not in Q1's. Therefore, the two queries return different results. That should work.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 473,
+    "total_tokens": 1344,
+    "completion_tokens": 871,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 623
+    },
+    "generation_seconds": 28.734
+  },
+  "started_at": "2026-10-06T08:15:36.399486+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "A"
+    ],
+    [
+      "B"
+    ]
+  ],
+  "q2_output": [
+    [
+      "A"
+    ],
+    [
+      "B"
+    ],
+    [
+      "C"
+    ]
+  ],
+  "q1_row_count": 2,
+  "q2_row_count": 3,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DISTINCT bar FROM Serves WHERE (beer = 'Amstel' OR beer = 'Corona') AND price > 2",
+  "q2_validation_sql": "SELECT bar FROM serves WHERE price > 2"
+}

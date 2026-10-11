@@ -1,0 +1,57 @@
+{
+  "dbid": "1050",
+  "index": "504",
+  "source_index": "131",
+  "schema_ddl": "CREATE TABLE ACTORDIRECTOR (\n    TIMESTAMP INT,\n    ACTOR_ID INT,\n    DIRECTOR_ID INT,\n    PRIMARY KEY (TIMESTAMP)\n);",
+  "q1": "SELECT ACTOR_ID,DIRECTOR_ID FROM ACTORDIRECTOR GROUP BY ACTOR_ID,DIRECTOR_ID HAVING COUNT(*)>=3",
+  "q2": "SELECT DISTINCT ACTOR_ID ,DIRECTOR_ID FROM(SELECT ACTOR_ID, DIRECTOR_ID, COUNT(ACTOR_ID) AS CNT FROM ACTORDIRECTOR GROUP BY DIRECTOR_ID, ACTOR_ID) AS INN WHERE CNT > 2",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT ACTOR_ID,DIRECTOR_ID FROM ACTORDIRECTOR GROUP BY ACTOR_ID,DIRECTOR_ID HAVING COUNT(*)>=3",
+  "q2_prompt_sql": "SELECT DISTINCT ACTOR_ID ,DIRECTOR_ID FROM(SELECT ACTOR_ID, DIRECTOR_ID, COUNT(ACTOR_ID) AS CNT FROM ACTORDIRECTOR GROUP BY DIRECTOR_ID, ACTOR_ID) AS INN WHERE CNT > 2",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO ACTORDIRECTOR (TIMESTAMP, ACTOR_ID, DIRECTOR_ID) VALUES (1, 1, 1); INSERT INTO ACTORDIRECTOR (TIMESTAMP, ACTOR_ID, DIRECTOR_ID) VALUES (2, 1, 1); INSERT INTO ACTORDIRECTOR (TIMESTAMP, ACTOR_ID, DIRECTOR_ID) VALUES (3, 1, 1);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent. Q1 groups by ACTOR_ID and DIRECTOR_ID and returns only those pairs that appear 3 or more times in the ACTORDIRECTOR table. Q2 groups by DIRECTOR_ID and ACTOR_ID (same grouping), computes COUNT(ACTOR_ID) as CNT, and returns distinct pairs where CNT > 2. However, since Q2 uses a subquery with GROUP BY and COUNT, it returns only one row per pair regardless of duplicates. Q1 may return duplicates if the same pair appears multiple times in the original table. However, both queries in practice return distinct pairs since they group by the same columns. The key difference is that Q1 groups and filters with HAVING COUNT(*) >= 3, while Q2 filters with WHERE CNT > 2. These are logically equivalent in most cases, but there is a subtle difference in the use of HAVING vs. WHERE in the subquery. Let me provide a counterexample.",
+  "counterexample_dsp": "A test database where ACTOR_ID and DIRECTOR_ID pair appears exactly 3 times. Q1 and Q2 should return the same result, but I will show a scenario where the COUNT behavior may differ slightly. However, since both use COUNT on grouped rows, they should be equivalent. I may have made a mistake. Let me revise.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n  \"equiv\": \"N\",\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent. Q1 groups by ACTOR_ID and DIRECTOR_ID and returns only those pairs that appear 3 or more times in the ACTORDIRECTOR table. Q2 groups by DIRECTOR_ID and ACTOR_ID (same grouping), computes COUNT(ACTOR_ID) as CNT, and returns distinct pairs where CNT > 2. However, since Q2 uses a subquery with GROUP BY and COUNT, it returns only one row per pair regardless of duplicates. Q1 may return duplicates if the same pair appears multiple times in the original table. However, both queries in practice return distinct pairs since they group by the same columns. The key difference is that Q1 groups and filters with HAVING COUNT(*) >= 3, while Q2 filters with WHERE CNT > 2. These are logically equivalent in most cases, but there is a subtle difference in the use of HAVING vs. WHERE in the subquery. Let me provide a counterexample.\",\n  \"counterexample_dsp\": \"A test database where ACTOR_ID and DIRECTOR_ID pair appears exactly 3 times. Q1 and Q2 should return the same result, but I will show a scenario where the COUNT behavior may differ slightly. However, since both use COUNT on grouped rows, they should be equivalent. I may have made a mistake. Let me revise.\",\n  \"counterexample\": \"INSERT INTO ACTORDIRECTOR (TIMESTAMP, ACTOR_ID, DIRECTOR_ID) VALUES (1, 1, 1); INSERT INTO ACTORDIRECTOR (TIMESTAMP, ACTOR_ID, DIRECTOR_ID) VALUES (2, 1, 1); INSERT INTO ACTORDIRECTOR (TIMESTAMP, ACTOR_ID, DIRECTOR_ID) VALUES (3, 1, 1);\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 366,
+    "total_tokens": 758,
+    "completion_tokens": 392,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 12.485
+  },
+  "started_at": "2026-10-06T15:51:28.052615+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      1,
+      1
+    ]
+  ],
+  "q2_output": [
+    [
+      1,
+      1
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT ACTOR_ID,DIRECTOR_ID FROM ACTORDIRECTOR GROUP BY ACTOR_ID,DIRECTOR_ID HAVING COUNT(*)>=3",
+  "q2_validation_sql": "SELECT DISTINCT ACTOR_ID ,DIRECTOR_ID FROM(SELECT ACTOR_ID, DIRECTOR_ID, COUNT(ACTOR_ID) AS CNT FROM ACTORDIRECTOR GROUP BY DIRECTOR_ID, ACTOR_ID) AS INN WHERE CNT > 2"
+}

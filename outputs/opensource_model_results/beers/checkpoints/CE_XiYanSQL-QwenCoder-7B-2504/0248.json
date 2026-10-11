@@ -1,0 +1,55 @@
+{
+  "dbid": "beers",
+  "index": "248",
+  "source_index": "7692",
+  "schema_ddl": "CREATE TABLE Bar (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Beer (\n    name VARCHAR NOT NULL,\n    brewer VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Drinker (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Frequents (\n    drinker VARCHAR NOT NULL,\n    bar VARCHAR NOT NULL,\n    times_a_week SMALLINT NOT NULL,\n    PRIMARY KEY (drinker, bar),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (bar) REFERENCES Bar(name)\n);\n\nCREATE TABLE Serves (\n    bar VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    price DECIMAL(5,2) NOT NULL,\n    PRIMARY KEY (bar, beer),\n    FOREIGN KEY (bar) REFERENCES Bar(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);\n\nCREATE TABLE Likes (\n    drinker VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    PRIMARY KEY (drinker, beer),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);",
+  "q1": "SELECT bar FROM Serves GROUP BY bar HAVING COUNT(beer) >= 5",
+  "q2": "SELECT times_a_week FROM frequents GROUP BY times_a_week HAVING times_a_week >= MAX(times_a_week)",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "beers",
+  "q1_prompt_sql": "SELECT bar FROM Serves GROUP BY bar HAVING COUNT(beer) >= 5",
+  "q2_prompt_sql": "SELECT times_a_week FROM frequents GROUP BY times_a_week HAVING times_a_week >= MAX(times_a_week)",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO Bar (name, address) VALUES ('Bar1', 'Address1'), ('Bar2', 'Address2'), ('Bar3', 'Address3'); INSERT INTO Drinker (name, address) VALUES ('Drinker1', 'Address1'), ('Drinker2', 'Address2'), ('Drinker3', 'Address3'); INSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('Drinker1', 'Bar1', 3), ('Drinker2', 'Bar1', 5), ('Drinker3', 'Bar2', 2);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 selects bars that serve 5 or more different beers, while Q2 selects the bars that are frequented by the drinkers who visit the most times a week.",
+  "counterexample_dsp": "Q1 will return bars that serve 5 or more different beers, while Q2 will return the bars that are frequented by the drinkers who visit the most times a week. The two queries are not equivalent because they are looking for different things.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 selects bars that serve 5 or more different beers, while Q2 selects the bars that are frequented by the drinkers who visit the most times a week.\",\n  \"counterexample_dsp\": \"Q1 will return bars that serve 5 or more different beers, while Q2 will return the bars that are frequented by the drinkers who visit the most times a week. The two queries are not equivalent because they are looking for different things.\",\n  \"counterexample\": \"INSERT INTO Bar (name, address) VALUES ('Bar1', 'Address1'), ('Bar2', 'Address2'), ('Bar3', 'Address3'); INSERT INTO Drinker (name, address) VALUES ('Drinker1', 'Address1'), ('Drinker2', 'Address2'), ('Drinker3', 'Address3'); INSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('Drinker1', 'Bar1', 3), ('Drinker2', 'Bar1', 5), ('Drinker3', 'Bar2', 2);\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 497,
+    "total_tokens": 726,
+    "completion_tokens": 229,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 3.797
+  },
+  "started_at": "2026-10-06T08:01:45.552533+00:00",
+  "elapsed_seconds": 0.156,
+  "q1_output": [],
+  "q2_output": [
+    [
+      2
+    ],
+    [
+      3
+    ],
+    [
+      5
+    ]
+  ],
+  "q1_row_count": 0,
+  "q2_row_count": 3,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT bar FROM Serves GROUP BY bar HAVING COUNT(beer) >= 5",
+  "q2_validation_sql": "SELECT times_a_week FROM frequents GROUP BY times_a_week HAVING times_a_week >= MAX(times_a_week)"
+}

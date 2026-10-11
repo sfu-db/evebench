@@ -1,0 +1,55 @@
+{
+  "dbid": "beers",
+  "index": "45",
+  "source_index": "536",
+  "schema_ddl": "CREATE TABLE Bar (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Beer (\n    name VARCHAR NOT NULL,\n    brewer VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Drinker (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Frequents (\n    drinker VARCHAR NOT NULL,\n    bar VARCHAR NOT NULL,\n    times_a_week SMALLINT NOT NULL,\n    PRIMARY KEY (drinker, bar),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (bar) REFERENCES Bar(name)\n);\n\nCREATE TABLE Serves (\n    bar VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    price DECIMAL(5,2) NOT NULL,\n    PRIMARY KEY (bar, beer),\n    FOREIGN KEY (bar) REFERENCES Bar(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);\n\nCREATE TABLE Likes (\n    drinker VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    PRIMARY KEY (drinker, beer),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);",
+  "q1": "SELECT DISTINCT drinker FROM frequents NATURAL JOIN serves WHERE beer = 'Corona' AND NOT drinker IN (SELECT drinker FROM Likes WHERE beer = 'Corona')",
+  "q2": "SELECT DISTINCT drinker FROM frequents NATURAL JOIN serves WHERE beer = 'Corona' AND drinker IN (SELECT drinker FROM Likes WHERE beer = 'Corona')",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "beers",
+  "q1_prompt_sql": "SELECT DISTINCT drinker FROM frequents NATURAL JOIN serves WHERE beer = 'Corona' AND NOT drinker IN (SELECT drinker FROM Likes WHERE beer = 'Corona')",
+  "q2_prompt_sql": "SELECT DISTINCT drinker FROM frequents NATURAL JOIN serves WHERE beer = 'Corona' AND drinker IN (SELECT drinker FROM Likes WHERE beer = 'Corona')",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO Bar (name, address) VALUES ('Bar1', '123 Main St');\nINSERT INTO Beer (name, brewer) VALUES ('Corona', 'BrewCo');\nINSERT INTO Drinker (name, address) VALUES ('Alice', '456 Street'), ('Bob', '789 Road');\nINSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('Alice', 'Bar1', 2), ('Bob', 'Bar1', 3);\nINSERT INTO Serves (bar, beer, price) VALUES ('Bar1', 'Corona', 5.00);\nINSERT INTO Likes (drinker, beer) VALUES ('Bob', 'Corona');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 excludes drinkers who like 'Corona', while Q2 includes them. Thus, a drinker who frequents a bar serving 'Corona' but does not like it appears in Q1 but not Q2, and vice versa for a drinker who both frequents and likes 'Corona'.",
+  "counterexample_dsp": "Alice frequents a bar (Bar1) that serves 'Corona' but does not like it. Bob frequents the same bar and likes 'Corona'. Q1 returns Alice; Q2 returns Bob.",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 excludes drinkers who like 'Corona', while Q2 includes them. Thus, a drinker who frequents a bar serving 'Corona' but does not like it appears in Q1 but not Q2, and vice versa for a drinker who both frequents and likes 'Corona'.\",\n  \"counterexample_dsp\": \"Alice frequents a bar (Bar1) that serves 'Corona' but does not like it. Bob frequents the same bar and likes 'Corona'. Q1 returns Alice; Q2 returns Bob.\",\n  \"counterexample\": [\n    \"INSERT INTO Bar (name, address) VALUES ('Bar1', '123 Main St');\",\n    \"INSERT INTO Beer (name, brewer) VALUES ('Corona', 'BrewCo');\",\n    \"INSERT INTO Drinker (name, address) VALUES ('Alice', '456 Street'), ('Bob', '789 Road');\",\n    \"INSERT INTO Frequents (drinker, bar, times_a_week) VALUES ('Alice', 'Bar1', 2), ('Bob', 'Bar1', 3);\",\n    \"INSERT INTO Serves (bar, beer, price) VALUES ('Bar1', 'Corona', 5.00);\",\n    \"INSERT INTO Likes (drinker, beer) VALUES ('Bob', 'Corona');\"\n  ]\n}",
+  "reasoning": "\nOkay, let's tackle this problem. So, I need to find a counterexample where Q1 and Q2 return different results. Let me first understand what each query does.\n\nQ1 selects distinct drinkers from the natural join of frequents and serves where the beer is 'Corona' and the drinker is not in the Likes table where beer is 'Corona'. So, this is giving me drinkers who frequent a bar that serves Corona but don't like Corona.\n\nQ2 is similar but the NOT is removed. So it selects drinkers who are in both frequents/serves for Corona and also in Likes for Corona. That would be drinkers who both like Corona and frequent a bar that serves it.\n\nSo they are opposites in terms of the subquery condition. The difference comes from whether the drinker likes Corona or not. So to have different results, there needs to be at least one drinker who frequents a bar serving Corona but doesn't like it (appearing in Q1) and another who does like it (appearing in Q2). Or maybe one of them has a drinker in both cases? Wait, no. Wait, Q1 excludes those who like Corona, and Q2 includes them. So if a drinker is in both, then Q1 would exclude them and Q2 would include them. So if there's a drinker who both frequents a bar serving Corona and likes Corona, they would be in Q2 but not in Q1. Conversely, a drinker who frequents a bar serving Corona but doesn't like Corona would be in Q1 but not in Q2.\n\nSo to create a counterexample, I need at least one drinker in each scenario. Let me think of a simple example.\n\nLet's say there's a drinker named Alice who frequents a bar (Bar1) that serves Corona, and she does not like Corona. Then Alice would be in Q1's result. Then another drinker, Bob, frequents Bar1 and serves Corona, and he likes Corona. Bob would be in Q2's result. So Q1 would have Alice, Q2 would have Bob. So the two queries return different results.\n\nAlternatively, maybe there's a case where a drinker is in both, but that's not necessary. Let me structure the data.\n\nFirst, create the Beer table with 'Corona'. Then Serves: Bar1 serves Corona at some price. Frequents: Alice frequents Bar1 (times_a_week doesn't matter). Likes: Alice does not like Corona. Then another drinker, Bob, frequents Bar1 and likes Corona.\n\nSo for Q1: Alice is selected because she is in frequents and serves for Corona and not in Likes. Bob is excluded from Q1 because he is in Likes. For Q2: Bob is selected because he's in Likes. So Q1 returns Alice, Q2 returns Bob. Hence different results.\n\nAlternatively, if there's a drinker who is in both, but that's not required. Let me make sure that the example is correct.\n\nLet me outline the tables:\n\nBar: name, address. Let's have Bar1 with some address.\n\nBeer: name, brewer. 'Corona' with some brewer.\n\nDrinker: name, address. Alice and Bob.\n\nFrequents: (drinker, bar, times_a_week). So Alice frequents Bar1, say 2 times a week. Bob frequents Bar1, say 3 times a week.\n\nServes: (bar, beer, price). Bar1 serves Corona at, say, 5.00.\n\nLikes: (drinker, beer). Bob likes Corona. Alice does not have an entry here.\n\nSo for Q1: SELECT DISTINCT drinker FROM frequents JOIN serves ON ... WHERE beer='Corona' and drinker NOT IN (SELECT drinker FROM Likes WHERE beer='Corona'). So Alice is in the join (since she frequents Bar1 which serves Corona) and she's not in Likes for Corona, so she's in Q1's result. Bob is in the join but he is in Likes for Corona, so he's excluded from Q1.\n\nQ2: same join, but drinker IN Likes. So Bob is included. So Q1 returns Alice, Q2 returns Bob. So different results. That's a valid counterexample.\n\nAnother possibility: if a drinker is in both. Suppose Charlie frequents Bar1 (serves Corona) and also likes Corona. Then he would be in Q2 but not Q1. So if there are two drinkers, one in each case, then the queries return different results.\n\nSo the counterexample would involve at least two drinkers, one who likes Corona and one who doesn't, both frequenting a bar that serves Corona.\n\nNow, I need to write the INSERT statements for this. Let me check the schema constraints.\n\nBar: name and address. So insert into Bar (name, address) values ('Bar1', '123 Main St');\n\nBeer: insert into Beer (name, brewer) values ('Corona', 'SomeBrewer');\n\nDrinker: insert into Drinker (name, address) values ('Alice', '456 Street'), ('Bob', '789 Road');\n\nFrequents: insert into Frequents (drinker, bar, times_a_week) values ('Alice', 'Bar1', 2), ('Bob', 'Bar1', 3);\n\nServes: insert into Serves (bar, beer, price) values ('Bar1', 'Corona', 5.00);\n\nLikes: insert into Likes (drinker, beer) values ('Bob', 'Corona');\n\nThat should do it. Now, in this case, Q1 gives Alice and Q2 gives Bob. So different results. Hence, this is a valid counterexample.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 506,
+    "total_tokens": 2005,
+    "completion_tokens": 1499,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1202
+    },
+    "generation_seconds": 48.968
+  },
+  "started_at": "2026-10-06T08:41:44.311824+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "Alice"
+    ]
+  ],
+  "q2_output": [
+    [
+      "Bob"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DISTINCT drinker FROM frequents NATURAL JOIN serves WHERE beer = 'Corona' AND NOT drinker IN (SELECT drinker FROM Likes WHERE beer = 'Corona')",
+  "q2_validation_sql": "SELECT DISTINCT drinker FROM frequents NATURAL JOIN serves WHERE beer = 'Corona' AND drinker IN (SELECT drinker FROM Likes WHERE beer = 'Corona')"
+}

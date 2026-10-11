@@ -1,0 +1,55 @@
+{
+  "dbid": "619",
+  "index": "560",
+  "source_index": "312",
+  "schema_ddl": "CREATE TABLE MYNUMBERS (\n    NUM INT\n);",
+  "q1": "SELECT MAX(NUM) AS NUM FROM (SELECT NUM FROM MYNUMBERS GROUP BY NUM HAVING COUNT(NUM) = 1) AS T",
+  "q2": "WITH SINGLE AS ( SELECT CASE WHEN MAX(DISTINCT NUM) THEN NUM ELSE NULL END NUM FROM MYNUMBERS GROUP BY NUM HAVING COUNT(NUM) = 1) SELECT MAX(NUM) AS NUM FROM SINGLE",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT MAX(NUM) AS NUM FROM (SELECT NUM FROM MYNUMBERS GROUP BY NUM HAVING COUNT(NUM) = 1) AS T",
+  "q2_prompt_sql": "WITH SINGLE AS ( SELECT CASE WHEN MAX(DISTINCT NUM) THEN NUM ELSE NULL END NUM FROM MYNUMBERS GROUP BY NUM HAVING COUNT(NUM) = 1) SELECT MAX(NUM) AS NUM FROM SINGLE",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO MYNUMBERS (NUM) VALUES (1), (2), (2), (3), (4), (4), (5);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent. Q1 correctly finds the maximum number that appears exactly once in the MYNUMBERS table. Q2, however, contains a logical error in its CASE expression with MAX(DISTINCT NUM), which is not a valid syntax and renders the query incorrect or produces unexpected results.",
+  "counterexample_dsp": "A test database with multiple numbers, including one that appears once and others that appear multiple times, will show that Q2 fails or returns incorrect results due to its invalid CASE expression.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n  \"equiv\": \"N\",\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent. Q1 correctly finds the maximum number that appears exactly once in the MYNUMBERS table. Q2, however, contains a logical error in its CASE expression with MAX(DISTINCT NUM), which is not a valid syntax and renders the query incorrect or produces unexpected results.\",\n  \"counterexample_dsp\": \"A test database with multiple numbers, including one that appears once and others that appear multiple times, will show that Q2 fails or returns incorrect results due to its invalid CASE expression.\",\n  \"counterexample\": \"INSERT INTO MYNUMBERS (NUM) VALUES (1), (2), (2), (3), (4), (4), (5);\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 338,
+    "total_tokens": 504,
+    "completion_tokens": 166,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 5.484
+  },
+  "started_at": "2026-10-06T15:53:40.838402+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      5
+    ]
+  ],
+  "q2_output": [
+    [
+      5
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT MAX(NUM) AS NUM FROM (SELECT NUM FROM MYNUMBERS GROUP BY NUM HAVING COUNT(NUM) = 1) AS T",
+  "q2_validation_sql": "WITH SINGLE AS ( SELECT CASE WHEN MAX(DISTINCT NUM) THEN NUM ELSE NULL END NUM FROM MYNUMBERS GROUP BY NUM HAVING COUNT(NUM) = 1) SELECT MAX(NUM) AS NUM FROM SINGLE"
+}

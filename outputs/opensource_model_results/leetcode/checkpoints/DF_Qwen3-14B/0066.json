@@ -1,0 +1,39 @@
+{
+  "dbid": "1141",
+  "index": "66",
+  "source_index": "205",
+  "schema_ddl": "CREATE TABLE ACTIVITY (\n    USER_ID INT,\n    SESSION_ID INT,\n    ACTIVITY_DATE DATE,\n    ACTIVITY_TYPE ENUM('OPEN_SESSION', 'END_SESSION', 'SCROLL_DOWN', 'SEND_MESSAGE'),\n    CHECK (ACTIVITY_TYPE IN ('OPEN_SESSION', 'END_SESSION', 'SCROLL_DOWN', 'SEND_MESSAGE'))\n);",
+  "q1": "SELECT ACTIVITY_DATE AS DAY, COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY WHERE ACTIVITY_DATE BETWEEN '2019-06-28' AND '2019-07-27' GROUP BY ACTIVITY_DATE",
+  "q2": "SELECT ACTIVITY_DATE AS DAY, COUNT(DISTINCT USER_ID) ACTIVE_USERS FROM ACTIVITY WHERE ACTIVITY_DATE >'2019-06-27' AND ACTIVITY_DATE <='2019-07-27' GROUP BY ACTIVITY_DATE",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT ACTIVITY_DATE AS DAY, COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY WHERE ACTIVITY_DATE BETWEEN '2019-06-28' AND '2019-07-27' GROUP BY ACTIVITY_DATE",
+  "q2_prompt_sql": "SELECT ACTIVITY_DATE AS DAY, COUNT(DISTINCT USER_ID) ACTIVE_USERS FROM ACTIVITY WHERE ACTIVITY_DATE >'2019-06-27' AND ACTIVITY_DATE <='2019-07-27' GROUP BY ACTIVITY_DATE",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries select the same date range using equivalent conditions. Q1 uses BETWEEN which is inclusive, while Q2 uses > '2019-06-27' and <= '2019-07-27', which covers the same dates (June 28 to July 27). The COUNT(DISTINCT USER_ID) and GROUP BY ACTIVITY_DATE are identical in both queries.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries select the same date range using equivalent conditions. Q1 uses BETWEEN which is inclusive, while Q2 uses > '2019-06-27' and <= '2019-07-27', which covers the same dates (June 28 to July 27). The COUNT(DISTINCT USER_ID) and GROUP BY ACTIVITY_DATE are identical in both queries.\"\n}",
+  "reasoning": "\nOkay, let's see. I need to determine if Q1 and Q2 are semantically equivalent. Let me start by understanding what each query does.\n\nQ1 selects the activity date as DAY and counts distinct user IDs for each date where the activity date is between '2019-06-28' and '2019-07-27', inclusive. The BETWEEN operator in SQL is inclusive, so that includes both start and end dates.\n\nQ2 has a similar structure but the WHERE clause is ACTIVITY_DATE > '2019-06-27' and ACTIVITY_DATE <= '2019-07-27'. Let me think about the date ranges here. The first condition is greater than June 27th, so June 28th and onwards. The second condition is less than or equal to July 27th. So combining these, the dates would be from June 28th to July 27th, inclusive. Wait, that's the same as Q1's range. Because BETWEEN '2019-06-28' AND '2019-07-27' is the same as > '2019-06-27' and <= '2019-07-27'? Let me check.\n\nYes, because the BETWEEN is inclusive. So if the start date is June 28, then the first condition is equivalent to >= June 28. So Q1's WHERE is ACTIVITY_DATE >= '2019-06-28' AND ACTIVITY_DATE <= '2019-07-27'. Q2's WHERE is ACTIVITY_DATE > '2019-06-27' (which is same as >= June 28) and <= July 27. So the ranges are the same. Therefore, the WHERE clauses are equivalent. \n\nBut wait, what about dates that are exactly June 28th? Both conditions would include them. And July 27th is included in both. So the date ranges are the same. Then, the two queries would return the same results. So they are equivalent?\n\nBut maybe there's a trick here. Let me think again. Suppose there's a date that is exactly June 28th. Both conditions would include it. What about if the ACTIVITY_DATE is '2019-06-27'? Q1's WHERE would exclude it because BETWEEN starts at June 28. Q2's WHERE has ACTIVITY_DATE > '2019-06-27', so that would exclude June 27th as well. So both queries exclude June 27th. So the date ranges are the same. Therefore, the WHERE clauses are equivalent. So the two queries should be equivalent.\n\nBut wait, the GROUP BY and COUNT are the same. So the output would be the same. Therefore, the answer is equivalent. So the equiv is Y. \n\nWait, but maybe I'm missing something. Let me think of a scenario where the dates might be different. For example, if the ACTIVITY_DATE is stored as a string with different formats? But the schema says ACTIVITY_DATE is a DATE type, so the comparison should be correct. So in that case, the two queries are equivalent. \n\nSo the answer would be that they are equivalent. Therefore, the JSON would be {\"equiv\": \"Y\", \"explanation\": \"Both queries select the same date range using equivalent conditions.\"}\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 437,
+    "total_tokens": 1285,
+    "completion_tokens": 848,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 745
+    },
+    "generation_seconds": 27.047
+  },
+  "started_at": "2026-10-06T14:41:53.387926+00:00",
+  "elapsed_seconds": 0.0
+}

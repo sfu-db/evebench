@@ -1,0 +1,63 @@
+{
+  "dbid": "1113",
+  "index": "290",
+  "source_index": "59",
+  "schema_ddl": "CREATE TABLE ACTIONS (\n    USER_ID INT,\n    POST_ID INT,\n    ACTION_DATE DATE,\n    ACTION ENUM('VIEW', 'LIKE', 'REACTION', 'COMMENT', 'REPORT', 'SHARE'),\n    EXTRA VARCHAR(255),\n    CHECK (ACTION_DATE <= '2019-07-05'),\n    CHECK (ACTION IN ('VIEW', 'LIKE', 'REACTION', 'COMMENT', 'REPORT', 'SHARE'))\n);",
+  "q1": "SELECT EXTRA AS REPORT_REASON, COUNT(DISTINCT POST_ID) AS REPORT_COUNT FROM ACTIONS WHERE ACTION = 'REPORT' AND ACTION_DATE = '2019-07-04' GROUP BY EXTRA",
+  "q2": "SELECT EXTRA AS REPORT_REASON, COUNT(DISTINCT(POST_ID)) AS REPORT_COUNT FROM ACTIONS WHERE EXTRA IS NOT NULL AND ACTION_DATE = '2019-07-04' AND ACTION = 'REPORT' GROUP BY EXTRA ORDER BY REPORT_COUNT ASC",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT EXTRA AS REPORT_REASON, COUNT(DISTINCT POST_ID) AS REPORT_COUNT FROM ACTIONS WHERE ACTION = 'REPORT' AND ACTION_DATE = '2019-07-04' GROUP BY EXTRA",
+  "q2_prompt_sql": "SELECT EXTRA AS REPORT_REASON, COUNT(DISTINCT(POST_ID)) AS REPORT_COUNT FROM ACTIONS WHERE EXTRA IS NOT NULL AND ACTION_DATE = '2019-07-04' AND ACTION = 'REPORT' GROUP BY EXTRA ORDER BY REPORT_COUNT ASC",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO ACTIONS (USER_ID, POST_ID, ACTION_DATE, ACTION, EXTRA) VALUES (1, 101, '2019-07-04', 'REPORT', 'Spam'); INSERT INTO ACTIONS (USER_ID, POST_ID, ACTION_DATE, ACTION, EXTRA) VALUES (2, 102, '2019-07-04', 'REPORT', 'Spam'); INSERT INTO ACTIONS (USER_ID, POST_ID, ACTION_DATE, ACTION, EXTRA) VALUES (3, 103, '2019-07-04', 'REPORT', 'Inappropriate');",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not equivalent because Q2 includes an ORDER BY clause, which is not present in Q1. The ORDER BY clause in Q2 affects the output order but does not change the result set. Q1 and Q2 are semantically equivalent if we ignore the ORDER BY clause in Q2.",
+  "counterexample_dsp": "The difference between Q1 and Q2 is the ORDER BY clause in Q2, which does not affect the result set but changes the output order. A counterexample can be created by inserting data into the ACTIONS table where the REPORT_COUNT is the same for different REPORT_REASON values.",
+  "equiv": "N",
+  "raw_response": "{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 and Q2 are not equivalent because Q2 includes an ORDER BY clause, which is not present in Q1. The ORDER BY clause in Q2 affects the output order but does not change the result set. Q1 and Q2 are semantically equivalent if we ignore the ORDER BY clause in Q2.\",\n\"counterexample_dsp\": \"The difference between Q1 and Q2 is the ORDER BY clause in Q2, which does not affect the result set but changes the output order. A counterexample can be created by inserting data into the ACTIONS table where the REPORT_COUNT is the same for different REPORT_REASON values.\",\n\"counterexample\": \"INSERT INTO ACTIONS (USER_ID, POST_ID, ACTION_DATE, ACTION, EXTRA) VALUES (1, 101, '2019-07-04', 'REPORT', 'Spam'); INSERT INTO ACTIONS (USER_ID, POST_ID, ACTION_DATE, ACTION, EXTRA) VALUES (2, 102, '2019-07-04', 'REPORT', 'Spam'); INSERT INTO ACTIONS (USER_ID, POST_ID, ACTION_DATE, ACTION, EXTRA) VALUES (3, 103, '2019-07-04', 'REPORT', 'Inappropriate');\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 466,
+    "total_tokens": 748,
+    "completion_tokens": 282,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 4.797
+  },
+  "started_at": "2026-10-06T14:33:34.760197+00:00",
+  "elapsed_seconds": 0.5,
+  "q1_output": [
+    [
+      "Inappropriate",
+      1
+    ],
+    [
+      "Spam",
+      2
+    ]
+  ],
+  "q2_output": [
+    [
+      "Inappropriate",
+      1
+    ],
+    [
+      "Spam",
+      2
+    ]
+  ],
+  "q1_row_count": 2,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT EXTRA AS REPORT_REASON, COUNT(DISTINCT POST_ID) AS REPORT_COUNT FROM ACTIONS WHERE ACTION = 'REPORT' AND ACTION_DATE = '2019-07-04' GROUP BY EXTRA",
+  "q2_validation_sql": "SELECT EXTRA AS REPORT_REASON, COUNT(DISTINCT(POST_ID)) AS REPORT_COUNT FROM ACTIONS WHERE EXTRA IS NOT NULL AND ACTION_DATE = '2019-07-04' AND ACTION = 'REPORT' GROUP BY EXTRA ORDER BY REPORT_COUNT ASC"
+}

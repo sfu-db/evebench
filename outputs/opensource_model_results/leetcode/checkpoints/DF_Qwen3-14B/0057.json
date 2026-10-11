@@ -1,0 +1,61 @@
+{
+  "dbid": "1113",
+  "index": "57",
+  "source_index": "250",
+  "schema_ddl": "CREATE TABLE ACTIONS (\n    USER_ID INT,\n    POST_ID INT,\n    ACTION_DATE DATE,\n    ACTION ENUM('VIEW', 'LIKE', 'REACTION', 'COMMENT', 'REPORT', 'SHARE'),\n    EXTRA VARCHAR(255),\n    CHECK (ACTION_DATE <= '2019-07-05'),\n    CHECK (ACTION IN ('VIEW', 'LIKE', 'REACTION', 'COMMENT', 'REPORT', 'SHARE'))\n);",
+  "q1": "SELECT EXTRA AS REPORT_REASON, COUNT(DISTINCT POST_ID) AS REPORT_COUNT FROM ACTIONS WHERE ACTION = 'REPORT' AND ACTION_DATE = '2019-07-04' GROUP BY EXTRA",
+  "q2": "SELECT EXTRA AS REPORT_REASON, COUNT(DISTINCT(POST_ID)) AS REPORT_COUNT FROM ACTIONS WHERE EXTRA IS NOT NULL AND ACTION IN ('REPORT') AND ACTION_DATE = DATE_SUB('2019-07-05', INTERVAL 1 DAY) GROUP BY REPORT_REASON",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT EXTRA AS REPORT_REASON, COUNT(DISTINCT POST_ID) AS REPORT_COUNT FROM ACTIONS WHERE ACTION = 'REPORT' AND ACTION_DATE = '2019-07-04' GROUP BY EXTRA",
+  "q2_prompt_sql": "SELECT EXTRA AS REPORT_REASON, COUNT(DISTINCT(POST_ID)) AS REPORT_COUNT FROM ACTIONS WHERE EXTRA IS NOT NULL AND ACTION IN ('REPORT') AND ACTION_DATE = DATE_SUB('2019-07-05', INTERVAL 1 DAY) GROUP BY REPORT_REASON",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO ACTIONS (USER_ID, POST_ID, ACTION_DATE, ACTION, EXTRA) VALUES (1, 101, '2019-07-04', 'REPORT', 'Spam');\nINSERT INTO ACTIONS (USER_ID, POST_ID, ACTION_DATE, ACTION, EXTRA) VALUES (2, 102, '2019-07-04', 'REPORT', NULL);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 differ in the EXTRA IS NOT NULL condition. Q1 includes rows with NULL EXTRA, while Q2 explicitly excludes them. This leads to different counts when there are REPORT actions with NULL EXTRA values.",
+  "counterexample_dsp": "A test database with two REPORT actions on 2019-07-04: one with EXTRA='Spam' and another with EXTRA=NULL. Q1 includes both, Q2 excludes the NULL one.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 and Q2 differ in the EXTRA IS NOT NULL condition. Q1 includes rows with NULL EXTRA, while Q2 explicitly excludes them. This leads to different counts when there are REPORT actions with NULL EXTRA values.\",\n\"counterexample_dsp\": \"A test database with two REPORT actions on 2019-07-04: one with EXTRA='Spam' and another with EXTRA=NULL. Q1 includes both, Q2 excludes the NULL one.\",\n\"counterexample\": \"INSERT INTO ACTIONS (USER_ID, POST_ID, ACTION_DATE, ACTION, EXTRA) VALUES (1, 101, '2019-07-04', 'REPORT', 'Spam');\\nINSERT INTO ACTIONS (USER_ID, POST_ID, ACTION_DATE, ACTION, EXTRA) VALUES (2, 102, '2019-07-04', 'REPORT', NULL);\"\n}",
+  "reasoning": "\nOkay, let's start by analyzing the two SQL queries, Q1 and Q2, to see if they are semantically equivalent.\n\nFirst, looking at Q1: It selects the EXTRA column as REPORT_REASON and counts the distinct POST_IDs where the ACTION is 'REPORT' and the ACTION_DATE is '2019-07-04'. It groups the results by EXTRA. So, this query is specifically looking for all reports on July 4th, 2019, and grouping them by the reason given in the EXTRA field.\n\nNow, Q2: It also selects EXTRA as REPORT_REASON and counts distinct POST_IDs. The WHERE clause here has a few parts: EXTRA is not null, ACTION is in ('REPORT'), and ACTION_DATE is DATE_SUB('2019-07-05', INTERVAL 1 DAY). The DATE_SUB function subtracts one day from '2019-07-05', which would be '2019-07-04'. So, the ACTION_DATE condition here is effectively the same as in Q1. However, Q2 adds an extra condition that EXTRA is not null. \n\nWait, but Q1 doesn't have that condition. So, in Q1, if there are any rows where ACTION is 'REPORT', ACTION_DATE is '2019-07-04', but EXTRA is null, those would be included in the count. But Q2 explicitly filters out rows where EXTRA is null. That's a difference. Also, in Q2, the GROUP BY is on REPORT_REASON, which is an alias for EXTRA. But in SQL, grouping by an alias can be problematic in some databases unless it's allowed. However, the schema doesn't mention any specific SQL dialect, so assuming standard SQL where GROUP BY can use column aliases, but maybe not. However, the main issue here is the EXTRA IS NOT NULL condition in Q2 that's not present in Q1.\n\nAnother point: the ACTION IN ('REPORT') in Q2. Since the ACTION is an ENUM with 'REPORT' as one of the options, this is equivalent to ACTION = 'REPORT', so that part is the same as Q1. The DATE condition in Q2 uses DATE_SUB, which for '2019-07-05' minus one day is '2019-07-04', same as Q1's literal date. So the date condition is equivalent.\n\nSo the main differences are:\n1. Q2 has an EXTRA IS NOT NULL condition that Q1 does not.\n2. Q2 groups by REPORT_REASON (which is an alias for EXTRA), whereas Q1 groups by EXTRA. However, in standard SQL, grouping by an alias is allowed in some contexts but may not be in others. However, if the database allows it, then grouping by the alias (REPORT_REASON) is the same as grouping by EXTRA, since they are the same column.\n\nBut the key difference is the EXTRA IS NOT NULL condition. If there are any rows in the ACTIONS table where ACTION is 'REPORT', ACTION_DATE is '2019-07-04', but EXTRA is NULL, then Q1 would include those in the count, while Q2 would exclude them. Therefore, if such rows exist, the counts would differ.\n\nSo, to create a counterexample, we need a scenario where there are reports on July 4th with EXTRA being NULL. Let's say we have two entries: one with EXTRA = 'Spam' and another with EXTRA = NULL. Q1 would count both POST_IDs (assuming they are distinct), but Q2 would only count the one with 'Spam' because the other has EXTRA NULL.\n\nBut we need to ensure that the test data doesn't violate the schema constraints. The schema has a CHECK that ACTION_DATE <= '2019-07-05', which is satisfied by July 4th. Also, ACTION must be one of the allowed enums, which we are using 'REPORT' for.\n\nSo, the counterexample would involve inserting two rows: one with ACTION 'REPORT', ACTION_DATE '2019-07-04', and EXTRA 'Spam', and another with the same ACTION and date but EXTRA NULL. Then, Q1 would count both (if their POST_IDs are distinct), while Q2 would count only the first. If the POST_IDs are the same, then COUNT(DISTINCT) would still count once, but if they are different, then Q1 would have a higher count.\n\nTherefore, the queries are not equivalent because Q2 excludes rows where EXTRA is NULL, which Q1 includes. Hence, the answer should be \"N\" with a counterexample where such rows exist.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 448,
+    "total_tokens": 1643,
+    "completion_tokens": 1195,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 986
+    },
+    "generation_seconds": 38.0
+  },
+  "started_at": "2026-10-06T14:41:53.376934+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      null,
+      1
+    ],
+    [
+      "Spam",
+      1
+    ]
+  ],
+  "q2_output": [
+    [
+      "Spam",
+      1
+    ]
+  ],
+  "q1_row_count": 2,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT EXTRA AS REPORT_REASON, COUNT(DISTINCT POST_ID) AS REPORT_COUNT FROM ACTIONS WHERE ACTION = 'REPORT' AND ACTION_DATE = '2019-07-04' GROUP BY EXTRA",
+  "q2_validation_sql": "SELECT EXTRA AS REPORT_REASON, COUNT(DISTINCT(POST_ID)) AS REPORT_COUNT FROM ACTIONS WHERE EXTRA IS NOT NULL AND ACTION IN ('REPORT') AND ACTION_DATE = DATE_SUB('2019-07-05', INTERVAL 1 DAY) GROUP BY REPORT_REASON"
+}

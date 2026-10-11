@@ -1,0 +1,39 @@
+{
+  "dbid": "182",
+  "index": "274",
+  "source_index": "202",
+  "schema_ddl": "CREATE TABLE PERSON (\n    ID INT,\n    EMAIL VARCHAR(255),\n    PRIMARY KEY (ID)\n);",
+  "q1": "SELECT EMAIL AS EMAIL FROM PERSON GROUP BY EMAIL HAVING COUNT(EMAIL) >1",
+  "q2": "SELECT EMAIL FROM (SELECT EMAIL, COUNT(*) FROM PERSON GROUP BY EMAIL HAVING COUNT(*) > 1) AS A",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT EMAIL AS EMAIL FROM PERSON GROUP BY EMAIL HAVING COUNT(EMAIL) >1",
+  "q2_prompt_sql": "SELECT EMAIL FROM (SELECT EMAIL, COUNT(*) FROM PERSON GROUP BY EMAIL HAVING COUNT(*) > 1) AS A",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries return the same set of email addresses that appear more than once in the PERSON table. Q1 uses GROUP BY and HAVING directly, while Q2 uses a subquery with the same logic. They are semantically equivalent.",
+  "counterexample_dsp": "Q1 returns one email per group (one row with the email that appears more than once). Q2 also returns one row with the email that appears more than once. They actually seem equivalent. Let me confirm.",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 returns duplicate email addresses (one per group), while Q2 returns one row per email address that appears more than once. The difference arises because Q1's SELECT EMAIL in the GROUP BY context returns one email per group (i.e., one email per duplicate group), while Q2 returns one row per email (one email per group). The two queries are not semantically equivalent.\",\n\"counterexample_dsp\": \"A test case with two persons sharing the same email and one person with a unique email. Q1 returns one email (the duplicate one), while Q2 also returns one email (the duplicate one). Wait, that actually seems equivalent. Let me correct. A test case with three persons sharing the same email: Q1 returns one email, Q2 returns one email. Wait, I need to find a case where they differ. Let me think again.\",\n\"counterexample_dsp\": \"A test case with two persons sharing the same email and one person with a unique email. Both queries return the same result, so they are equivalent. Let me consider another case. Let me try with three persons sharing the same email and one person with a unique email. Both queries return the same result. Hmm, maybe they are equivalent after all. Let me reconsider the queries.\",\n\"counterexample_dsp\": \"Q1 returns one email per group (one row with the email that appears more than once). Q2 also returns one row with the email that appears more than once. They actually seem equivalent. Let me confirm.\",\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries return the same set of email addresses that appear more than once in the PERSON table. Q1 uses GROUP BY and HAVING directly, while Q2 uses a subquery with the same logic. They are semantically equivalent.\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 320,
+    "total_tokens": 705,
+    "completion_tokens": 385,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 12.734
+  },
+  "started_at": "2026-10-06T15:40:02.622101+00:00",
+  "elapsed_seconds": 0.0
+}

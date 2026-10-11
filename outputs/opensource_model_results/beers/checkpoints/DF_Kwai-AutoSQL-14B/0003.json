@@ -1,0 +1,55 @@
+{
+  "dbid": "beers",
+  "index": "3",
+  "source_index": "33",
+  "schema_ddl": "CREATE TABLE Bar (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Beer (\n    name VARCHAR NOT NULL,\n    brewer VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Drinker (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Frequents (\n    drinker VARCHAR NOT NULL,\n    bar VARCHAR NOT NULL,\n    times_a_week SMALLINT NOT NULL,\n    PRIMARY KEY (drinker, bar),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (bar) REFERENCES Bar(name)\n);\n\nCREATE TABLE Serves (\n    bar VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    price DECIMAL(5,2) NOT NULL,\n    PRIMARY KEY (bar, beer),\n    FOREIGN KEY (bar) REFERENCES Bar(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);\n\nCREATE TABLE Likes (\n    drinker VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    PRIMARY KEY (drinker, beer),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);",
+  "q1": "SELECT DISTINCT bar FROM Serves WHERE (beer = 'Amstel' OR beer = 'Corona') AND price > 2",
+  "q2": "SELECT DISTINCT bar FROM serves WHERE beer = 'Amstel' OR beer = 'Corona' AND price > 2",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "beers",
+  "q1_prompt_sql": "SELECT DISTINCT bar FROM Serves WHERE (beer = 'Amstel' OR beer = 'Corona') AND price > 2",
+  "q2_prompt_sql": "SELECT DISTINCT bar FROM serves WHERE beer = 'Amstel' OR beer = 'Corona' AND price > 2",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO Bar (name, address) VALUES ('Bar1', '123 Main St');\nINSERT INTO Beer (name, brewer) VALUES ('Amstel', 'Brewer1'), ('Corona', 'Brewer2');\nINSERT INTO Serves (bar, beer, price) VALUES ('Bar1', 'Amstel', 3), ('Bar1', 'Corona', 1);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent due to a difference in operator precedence. In Q1, the price > 2 condition applies to both beers (Amstel and Corona) because of parentheses. In Q2, the price > 2 applies only to Corona due to the lack of parentheses, leading to different results.",
+  "counterexample_dsp": "A test database with entries for 'Amstel' at price 3 and 'Corona' at price 1 in the same bar. Q1 returns the bar (both beers meet price > 2), while Q2 only returns the bar for 'Amstel' since 'Corona' has price <= 2.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n  \"equiv\": \"N\",\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent due to a difference in operator precedence. In Q1, the price > 2 condition applies to both beers (Amstel and Corona) because of parentheses. In Q2, the price > 2 applies only to Corona due to the lack of parentheses, leading to different results.\",\n  \"counterexample_dsp\": \"A test database with entries for 'Amstel' at price 3 and 'Corona' at price 1 in the same bar. Q1 returns the bar (both beers meet price > 2), while Q2 only returns the bar for 'Amstel' since 'Corona' has price <= 2.\",\n  \"counterexample\": \"INSERT INTO Bar (name, address) VALUES ('Bar1', '123 Main St');\\nINSERT INTO Beer (name, brewer) VALUES ('Amstel', 'Brewer1'), ('Corona', 'Brewer2');\\nINSERT INTO Serves (bar, beer, price) VALUES ('Bar1', 'Amstel', 3), ('Bar1', 'Corona', 1);\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 545,
+    "total_tokens": 805,
+    "completion_tokens": 260,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 8.75
+  },
+  "started_at": "2026-10-06T09:28:56.169540+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "Bar1"
+    ]
+  ],
+  "q2_output": [
+    [
+      "Bar1"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DISTINCT bar FROM Serves WHERE (beer = 'Amstel' OR beer = 'Corona') AND price > 2",
+  "q2_validation_sql": "SELECT DISTINCT bar FROM serves WHERE beer = 'Amstel' OR beer = 'Corona' AND price > 2"
+}

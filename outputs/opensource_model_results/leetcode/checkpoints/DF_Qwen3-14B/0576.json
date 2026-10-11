@@ -1,0 +1,39 @@
+{
+  "dbid": "1141",
+  "index": "576",
+  "source_index": "361",
+  "schema_ddl": "CREATE TABLE ACTIVITY (\n    USER_ID INT,\n    SESSION_ID INT,\n    ACTIVITY_DATE DATE,\n    ACTIVITY_TYPE ENUM('OPEN_SESSION', 'END_SESSION', 'SCROLL_DOWN', 'SEND_MESSAGE'),\n    CHECK (ACTIVITY_TYPE IN ('OPEN_SESSION', 'END_SESSION', 'SCROLL_DOWN', 'SEND_MESSAGE'))\n);",
+  "q1": "SELECT ACTIVITY_DATE AS DAY, COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY WHERE ACTIVITY_DATE BETWEEN '2019-06-28' AND '2019-07-27' GROUP BY ACTIVITY_DATE",
+  "q2": "WITH X AS (SELECT * FROM ACTIVITY WHERE ACTIVITY_DATE<='2019-07-27' AND ACTIVITY_DATE>'2019-06-27') SELECT ACTIVITY_DATE AS DAY,COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM X GROUP BY ACTIVITY_DATE",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT ACTIVITY_DATE AS DAY, COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM ACTIVITY WHERE ACTIVITY_DATE BETWEEN '2019-06-28' AND '2019-07-27' GROUP BY ACTIVITY_DATE",
+  "q2_prompt_sql": "WITH X AS (SELECT * FROM ACTIVITY WHERE ACTIVITY_DATE<='2019-07-27' AND ACTIVITY_DATE>'2019-06-27') SELECT ACTIVITY_DATE AS DAY,COUNT(DISTINCT USER_ID) AS ACTIVE_USERS FROM X GROUP BY ACTIVITY_DATE",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries count distinct users per day between June 28 and July 27, 2019. Q1 uses BETWEEN, Q2 uses equivalent date range conditions (<= '2019-07-27' AND > '2019-06-27'), which are logically identical for DATE types.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries count distinct users per day between June 28 and July 27, 2019. Q1 uses BETWEEN, Q2 uses equivalent date range conditions (<= '2019-07-27' AND > '2019-06-27'), which are logically identical for DATE types.\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem. So, I need to determine if Q1 and Q2 are semantically equivalent. Let me start by understanding what each query does.\n\nFirst, looking at Q1: It selects the ACTIVITY_DATE as DAY and counts the distinct USER_IDs as ACTIVE_USERS from the ACTIVITY table where the ACTIVITY_DATE is between '2019-06-28' and '2019-07-27'. Then it groups by ACTIVITY_DATE. The BETWEEN operator in SQL is inclusive, so that includes both the start and end dates. So, this query is counting active users each day from June 28th to July 27th, inclusive.\n\nNow Q2 uses a CTE named X. The CTE selects all records from ACTIVITY where ACTIVITY_DATE is less than or equal to '2019-07-27' and greater than '2019-06-27'. Then, it groups by ACTIVITY_DATE and counts distinct users. Let's break down the date condition here. The condition is ACTIVITY_DATE <= '2019-07-27' AND ACTIVITY_DATE > '2019-06-27'. That means dates from June 28th (since June 27th is excluded) up to and including July 27th. Wait, that's the same range as Q1's BETWEEN. Because BETWEEN '2019-06-28' AND '2019-07-27' includes all dates from June 28 to July 27, inclusive. So the date ranges for both queries seem the same. \n\nBut wait, is there any difference in how the dates are handled? Let me double-check. The BETWEEN operator includes both endpoints. So Q1's WHERE clause is equivalent to ACTIVITY_DATE >= '2019-06-28' AND ACTIVITY_DATE <= '2019-07-27'. Q2's condition is ACTIVITY_DATE <= '2019-07-27' AND ACTIVITY_DATE > '2019-06-27'. That would be the same as ACTIVITY_DATE >= '2019-06-28' (since > '2019-06-27' is the next day) and <= '2019-07-27'. So the date ranges are the same. Therefore, the two queries should be equivalent in terms of filtering the dates. \n\nBut wait, what about the possibility of dates that are not in the exact range? For example, if there's a date that's exactly '2019-06-28' or '2019-07-27', both queries would include them. So the date filtering seems the same. \n\nHowever, maybe there's a subtle difference. Let me think about the grouping. Both queries group by ACTIVITY_DATE, so they should group the same dates. The COUNT(DISTINCT USER_ID) is the same in both. So if the date filtering is the same, then the results should be the same. \n\nWait, but maybe there's a case where the ACTIVITY_DATE is not in the correct format? No, the schema says ACTIVITY_DATE is a DATE type, so the comparisons are straightforward. \n\nHmm, perhaps the problem is that the BETWEEN operator is inclusive, but in some SQL dialects, there's a possibility of different behavior? But according to standard SQL, BETWEEN is inclusive. So I think the date conditions are the same. \n\nSo maybe Q1 and Q2 are equivalent. But the user says to check if they are not equivalent and provide a counterexample. But according to my analysis, they should be equivalent. However, maybe there's a case where the dates are not in the correct range? Let me think again. \n\nWait, the Q2's condition is ACTIVITY_DATE > '2019-06-27', which is the same as >= '2019-06-28'. So the start date is the same as Q1's start date. And the end date is the same. So the date ranges are identical. Therefore, the two queries should produce the same results. \n\nBut why would the user present them as possibly different? Maybe I'm missing something. Let me check the schema again. The ACTIVITY table has ACTIVITY_DATE as DATE, and the constraints are okay. The CTE in Q2 is just a way to filter the data, but the conditions are equivalent. \n\nSo, unless there's a case where the date comparison is different. For example, if the dates were stored as strings, but since ACTIVITY_DATE is a DATE type, the comparisons are done correctly. \n\nTherefore, I think Q1 and Q2 are semantically equivalent. So the answer would be \"equiv\": \"Y\".\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 445,
+    "total_tokens": 1575,
+    "completion_tokens": 1130,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1041
+    },
+    "generation_seconds": 35.453
+  },
+  "started_at": "2026-10-06T15:21:55.277122+00:00",
+  "elapsed_seconds": 0.0
+}

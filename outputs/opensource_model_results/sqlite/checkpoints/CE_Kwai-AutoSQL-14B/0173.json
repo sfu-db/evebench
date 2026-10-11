@@ -1,0 +1,55 @@
+{
+  "dbid": "toxicology",
+  "index": "173",
+  "source_index": "245",
+  "schema_ddl": "CREATE TABLE `atom` (\n  `atom_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `element` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `bond` (\n  `bond_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `bond_type` TEXT DEFAULT NULL,\n  PRIMARY KEY (`bond_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `connected` (\n  `atom_id` TEXT NOT NULL,\n  `atom_id2` TEXT NOT NULL,\n  `bond_id` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`,`atom_id2`),\n  FOREIGN KEY (`atom_id`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`atom_id2`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`bond_id`) REFERENCES `bond` (`bond_id`) ON DELETE CASCADE ON UPDATE CASCADE\n);\n\nCREATE TABLE `molecule` (\n  `molecule_id` TEXT NOT NULL,\n  `label` TEXT DEFAULT NULL,\n  PRIMARY KEY (`molecule_id`)\n);",
+  "q1": "SELECT T1.label FROM molecule AS T1 INNER JOIN (SELECT T.molecule_id, COUNT(T.bond_type) FROM bond AS T WHERE T.bond_type = '=' GROUP BY T.molecule_id ORDER BY COUNT(T.bond_type) DESC LIMIT 1) AS T2 ON T1.molecule_id = T2.molecule_id",
+  "q2": "SELECT CASE WHEN (SELECT label FROM molecule WHERE molecule_id = (SELECT molecule_id FROM bond WHERE bond_type = ' = ' GROUP BY molecule_id ORDER BY COUNT(bond_id) DESC LIMIT 1)) = '+' THEN 'Yes' ELSE 'No' END AS IsCarcinogenic",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT T1.label FROM molecule AS T1 INNER JOIN (SELECT T.molecule_id, COUNT(T.bond_type) FROM bond AS T WHERE T.bond_type = '=' GROUP BY T.molecule_id ORDER BY COUNT(T.bond_type) DESC LIMIT 1) AS T2 ON T1.molecule_id = T2.molecule_id",
+  "q2_prompt_sql": "SELECT CASE WHEN (SELECT label FROM molecule WHERE molecule_id = (SELECT molecule_id FROM bond WHERE bond_type = ' = ' GROUP BY molecule_id ORDER BY COUNT(bond_id) DESC LIMIT 1)) = '+' THEN 'Yes' ELSE 'No' END AS IsCarcinogenic",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO molecule (molecule_id, label) VALUES ('m1', '+'), ('m2', 'X');\nINSERT INTO bond (bond_id, molecule_id, bond_type) VALUES ('b1', 'm1', ' = '), ('b2', 'm1', ' = '), ('b3', 'm1', ' = '), ('b4', 'm1', ' = '), ('b5', 'm1', ' = '), ('b6', 'm2', '='), ('b7', 'm2', '='), ('b8', 'm2', '='), ('b9', 'm2', '='), ('b10', 'm2', '=');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 finds the molecule with the most '=' bonds and returns its label. Q2 finds the molecule with the most ' = ' bonds and returns 'Yes' if its label is '+'. These queries differ because they filter on different bond_type values (with vs. without spaces).",
+  "counterexample_dsp": "Two molecules: m1 has label '+' and 5 bonds of type ' = ', m2 has label 'X' and 5 bonds of type '='. Q1 returns 'X' (most '=' bonds), Q2 returns 'Yes' (m1's label is '+').",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 finds the molecule with the most '=' bonds and returns its label. Q2 finds the molecule with the most ' = ' bonds and returns 'Yes' if its label is '+'. These queries differ because they filter on different bond_type values (with vs. without spaces).\",\n  \"counterexample_dsp\": \"Two molecules: m1 has label '+' and 5 bonds of type ' = ', m2 has label 'X' and 5 bonds of type '='. Q1 returns 'X' (most '=' bonds), Q2 returns 'Yes' (m1's label is '+').\",\n  \"counterexample\": \"INSERT INTO molecule (molecule_id, label) VALUES ('m1', '+'), ('m2', 'X');\\nINSERT INTO bond (bond_id, molecule_id, bond_type) VALUES ('b1', 'm1', ' = '), ('b2', 'm1', ' = '), ('b3', 'm1', ' = '), ('b4', 'm1', ' = '), ('b5', 'm1', ' = '), ('b6', 'm2', '='), ('b7', 'm2', '='), ('b8', 'm2', '='), ('b9', 'm2', '='), ('b10', 'm2', '=');\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem. The user wants a counterexample where Q1 and Q2 produce different results. First, I need to understand what each query does.\n\nLooking at Q1: It selects the label from molecule by joining with a subquery. The subquery finds the molecule_id with the maximum count of bonds where bond_type is '='. Then it returns the label of that molecule.\n\nQ2 is a CASE expression. It checks if the label of the molecule that has the most bonds of type ' = ' (probably a typo, maybe meant to be '='?) is '+', then returns 'Yes', else 'No'. Wait, the bond_type in Q2's subquery is ' = ' which has spaces around the equals sign. But in Q1, it's '='. That might be a key difference. Also, in Q2, the ORDER BY is COUNT(bond_id) DESC, while Q1 uses COUNT(T.bond_type). But since bond_type is the same in each row, counting bond_type or bond_id would give the same result.\n\nSo the main differences between Q1 and Q2 are:\n\n1. Q1 uses bond_type = '=', while Q2 uses bond_type = ' = ' (with spaces).\n2. Q1 returns the label of the molecule with the most '=' bonds.\n3. Q2 returns 'Yes' if the label of the molecule with the most ' = ' bonds is '+', else 'No'.\n\nSo if there's a molecule with the most '=' bonds (which Q1 picks) and another molecule with the most ' = ' bonds (which Q2 picks), and their labels differ, then Q1 and Q2 would return different results.\n\nBut wait, maybe the bond_type in Q2 is a typo. Let me check again. The original Q2 says WHERE bond_type = ' = ' which is a string with spaces. So if the actual bond_type values have spaces, like ' = ', then Q2 is looking for that. But Q1 is looking for '=' without spaces. So these are different conditions.\n\nSo to create a counterexample, I need a scenario where:\n\n- There's a molecule (say M1) that has the most bonds with bond_type '=', which Q1 picks, and its label is something else (like 'A').\n- There's another molecule (say M2) that has the most bonds with bond_type ' = ', which Q2 picks, and its label is '+'.\n\nIn this case, Q1 returns 'A' and Q2 returns 'Yes', so different results.\n\nAlternatively, if the molecule with the most '=' bonds has label '+', then Q1 returns '+', and Q2 checks if the molecule with most ' = ' bonds has label '+'. If that molecule's label is different, then Q2 returns 'No'.\n\nSo I need to set up two molecules. Let me think of specific data.\n\nLet me create two molecules:\n\nMolecule M1 has molecule_id 'm1', label '+', and has 5 bonds with bond_type '='.\n\nMolecule M2 has molecule_id 'm2', label 'X', and has 3 bonds with bond_type ' = '.\n\nIn this case, Q1 would select m1's label '+', and Q2 would check the molecule with most ' = ' bonds (m2, count 3), whose label is 'X'. So Q2 returns 'No'. Thus, Q1 returns '+' and Q2 returns 'No', which are different.\n\nAlternatively, if M1 has more '=' bonds, and M2 has more ' = ' bonds, but their labels differ.\n\nAnother scenario: suppose there are two molecules. One has the most '=' bonds (label 'A'), another has the most ' = ' bonds (label '+'). Then Q1 returns 'A', Q2 returns 'Yes'.\n\nSo in the counterexample, I need to have two molecules, each with bonds of different types, leading to different results.\n\nLet me structure the test data.\n\nInsert into molecule two rows: m1 with label '+', m2 with label 'A'.\n\nIn bond table, for m1, insert 5 bonds with bond_type '='. For m2, insert 5 bonds with bond_type ' = '.\n\nThen Q1's subquery counts bonds where bond_type = '=', which gives m1 with count 5. So Q1 returns '+'. Q2's subquery counts bonds where bond_type = ' = ', which gives m2 with count 5. The label is 'A', so CASE returns 'No'. Thus Q1 gives '+', Q2 gives 'No' → different results.\n\nAlternatively, if m2 has more ' = ' bonds than any other molecule. Wait, but in this case, m2 is the only one for ' = ', so that's fine.\n\nSo the counterexample would have two molecules, each with bonds of different types. Then Q1 and Q2 pick different molecules, leading to different labels.\n\nAnother possibility: what if there are multiple molecules with same counts. But the LIMIT 1 would pick one. But in the case where the bond_type in Q1 and Q2 are different, and the counts are different.\n\nSo the key is that the two queries are looking for different bond types (with and without spaces), leading to different molecules being selected, hence different labels.\n\nSo the explanation is that Q1 and Q2 are looking for different bond types (Q1 uses '=', Q2 uses ' = ') and may select different molecules, leading to different labels.\n\nThe counterexample would have two molecules: one with many '=' bonds (label 'A') and another with many ' = ' bonds (label '+'), so Q1 returns 'A' and Q2 returns 'Yes'.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 593,
+    "total_tokens": 2054,
+    "completion_tokens": 1461,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1173
+    },
+    "generation_seconds": 49.281
+  },
+  "started_at": "2026-10-06T18:30:27.029467+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "X"
+    ]
+  ],
+  "q2_output": [
+    [
+      "Yes"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT T1.label FROM molecule AS T1 INNER JOIN (SELECT T.molecule_id, COUNT(T.bond_type) FROM bond AS T WHERE T.bond_type = '=' GROUP BY T.molecule_id ORDER BY COUNT(T.bond_type) DESC LIMIT 1) AS T2 ON T1.molecule_id = T2.molecule_id",
+  "q2_validation_sql": "SELECT CASE WHEN (SELECT label FROM molecule WHERE molecule_id = (SELECT molecule_id FROM bond WHERE bond_type = ' = ' GROUP BY molecule_id ORDER BY COUNT(bond_id) DESC LIMIT 1)) = '+' THEN 'Yes' ELSE 'No' END AS IsCarcinogenic"
+}

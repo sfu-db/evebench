@@ -1,0 +1,58 @@
+{
+  "dbid": "toxicology",
+  "index": "160",
+  "source_index": "226",
+  "schema_ddl": "CREATE TABLE `atom` (\n  `atom_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `element` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `bond` (\n  `bond_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `bond_type` TEXT DEFAULT NULL,\n  PRIMARY KEY (`bond_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `connected` (\n  `atom_id` TEXT NOT NULL,\n  `atom_id2` TEXT NOT NULL,\n  `bond_id` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`,`atom_id2`),\n  FOREIGN KEY (`atom_id`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`atom_id2`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`bond_id`) REFERENCES `bond` (`bond_id`) ON DELETE CASCADE ON UPDATE CASCADE\n);\n\nCREATE TABLE `molecule` (\n  `molecule_id` TEXT NOT NULL,\n  `label` TEXT DEFAULT NULL,\n  PRIMARY KEY (`molecule_id`)\n);",
+  "q1": "SELECT DISTINCT T.molecule_id FROM bond AS T WHERE T.bond_type = '=' ORDER BY T.molecule_id LIMIT 5",
+  "q2": "SELECT T1.label FROM molecule AS T1 INNER JOIN bond AS T2 ON T1.molecule_id = T2.molecule_id WHERE T2.bond_type = ' = ' ORDER BY T1.label ASC LIMIT 5",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT DISTINCT T.molecule_id FROM bond AS T WHERE T.bond_type = '=' ORDER BY T.molecule_id LIMIT 5",
+  "q2_prompt_sql": "SELECT T1.label FROM molecule AS T1 INNER JOIN bond AS T2 ON T1.molecule_id = T2.molecule_id WHERE T2.bond_type = ' = ' ORDER BY T1.label ASC LIMIT 5",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO molecule (molecule_id, label) VALUES ('M1', 'Apple');\nINSERT INTO molecule (molecule_id, label) VALUES ('M2', 'Banana');\nINSERT INTO molecule (molecule_id, label) VALUES ('M3', 'Cherry');\nINSERT INTO bond (bond_id, molecule_id, bond_type) VALUES ('B1', 'M1', '=');\nINSERT INTO bond (bond_id, molecule_id, bond_type) VALUES ('B2', 'M2', ' = ');\nINSERT INTO bond (bond_id, molecule_id, bond_type) VALUES ('B3', 'M3', ' = ');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 filters on bond_type = '=' and returns molecule_id, while Q2 filters on bond_type = ' = ' (with spaces) and returns molecule.label. Additionally, Q2 orders by label while Q1 orders by molecule_id, leading to different results when bond_type values differ by whitespace.",
+  "counterexample_dsp": "Insert molecules with bond_type values of '=' and ' = ', ensuring Q1 returns molecule_ids from '=' bonds and Q2 returns labels from ' = ' bonds. Molecule labels are ordered differently than molecule_ids.",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 filters on bond_type = '=' and returns molecule_id, while Q2 filters on bond_type = ' = ' (with spaces) and returns molecule.label. Additionally, Q2 orders by label while Q1 orders by molecule_id, leading to different results when bond_type values differ by whitespace.\",\n  \"counterexample_dsp\": \"Insert molecules with bond_type values of '=' and ' = ', ensuring Q1 returns molecule_ids from '=' bonds and Q2 returns labels from ' = ' bonds. Molecule labels are ordered differently than molecule_ids.\",\n  \"counterexample\": [\n    \"INSERT INTO molecule (molecule_id, label) VALUES ('M1', 'Apple');\",\n    \"INSERT INTO molecule (molecule_id, label) VALUES ('M2', 'Banana');\",\n    \"INSERT INTO molecule (molecule_id, label) VALUES ('M3', 'Cherry');\",\n    \"INSERT INTO bond (bond_id, molecule_id, bond_type) VALUES ('B1', 'M1', '=');\",\n    \"INSERT INTO bond (bond_id, molecule_id, bond_type) VALUES ('B2', 'M2', ' = ');\",\n    \"INSERT INTO bond (bond_id, molecule_id, bond_type) VALUES ('B3', 'M3', ' = ');\"\n  ]\n}",
+  "reasoning": "\nOkay, let's tackle this problem. I need to find a counterexample where Q1 and Q2 return different results. Let me first understand what each query is doing.\n\nQ1 selects distinct molecule_ids from the bond table where bond_type is '=', ordered by molecule_id, and limits to 5. So it's straightforward: get unique molecule IDs from bonds that are of type '='.\n\nQ2 does an inner join between molecule (T1) and bond (T2) on molecule_id, filters where bond_type is ' = ', then orders by T1.label ascending and limits to 5. The key difference here is the bond_type condition. Wait, Q1 uses '=' and Q2 uses ' = ' (with spaces around the equals sign). That's a crucial difference. Also, Q2 returns the label from the molecule table instead of the molecule_id.\n\nWait, looking at the schema, the bond table's bond_type is stored as a TEXT field. So if in the data, some bonds have bond_type as '=', others as ' = ', then Q1 and Q2 would filter differently. Also, Q2's ORDER BY is on T1.label, while Q1's ORDER BY is on T1.molecule_id. So even if the same molecules are retrieved, the order could differ, but with LIMIT 5, maybe the top 5 could be different if the labels are ordered differently.\n\nBut the main point is that the bond_type in Q1 is '=', and in Q2 it's ' = ' (with spaces). So if there are bonds with bond_type exactly '=', then Q1 will include them, but Q2 won't because it's looking for ' = ' (with spaces). Conversely, if there are bonds with ' = ', Q2 would include them but Q1 wouldn't. Also, the output columns differ: Q1 returns molecule_id, Q2 returns label. So even if the same molecule_ids are selected, the labels could be different.\n\nWait, but the question says that the queries are not semantically equivalent. So the difference could be in the bond_type condition (space vs no space), or in the ORDER BY column (molecule_id vs label), or in the output columns (molecule_id vs label).\n\nLet me think of a scenario where the bond_type in the bond table has entries with ' = ' (with spaces) and '=' (without). Suppose there's a molecule that has a bond with '=', which would be included in Q1 but not Q2. Also, another molecule has a bond with ' = ', which would be in Q2 but not Q1. Then the results would differ. Additionally, the ORDER BY could lead to different orderings even if the same molecules are returned, but since LIMIT 5 is used, if the order is different, the top 5 might vary.\n\nBut the main difference is the bond_type comparison. Let me check the exact conditions. Q1 has WHERE T.bond_type = '='. Q2 has WHERE T2.bond_type = ' = ' (with a space before and after). So if there are entries in bond where bond_type is '=', they are included in Q1 but not Q2. If there are entries where bond_type is ' = ', they are included in Q2 but not Q1. Also, if some entries have bond_type as '=', others as ' = ', then the two queries would have different sets of molecules.\n\nAnother difference is that Q1 returns molecule_id, while Q2 returns label. So even if the same molecules are selected, the output would be different. However, the question states that the counterexample should have different results. So if the molecule_ids are the same but the labels differ, that would be a difference. But the main issue is probably the bond_type condition and the ordering.\n\nTo create a counterexample, I need to have some molecules with bonds where bond_type is '=', others where it's ' = ', and perhaps some where the label ordering affects the output.\n\nLet me think of inserting some data. Suppose:\n\n- Molecule 'M1' has a bond with bond_type '='.\n- Molecule 'M2' has a bond with bond_type ' = '.\n- Molecule 'M3' has a bond with bond_type ' = '.\n- Molecule 'M4' has a bond with bond_type '='.\n- Molecule 'M5' has a bond with bond_type '='.\n\nIn this case, Q1 would return M1, M4, M5 (distinct), ordered by molecule_id. Q2 would return M2, M3, ordered by label. But the labels need to be such that when ordered by label, the first 5 are different.\n\nWait, but the labels are from the molecule table. Let me assign labels. Suppose:\n\nM1's label is 'A', M2's label is 'B', M3's label is 'C', M4's label is 'D', M5's label is 'E'.\n\nThen Q1 would return M1, M4, M5 (assuming there are only 3, but with LIMIT 5, it's okay). Q2 would return M2 and M3 (assuming they have bond_type ' = '). So the results would differ.\n\nAlternatively, if there are multiple molecules with bond_type '=', and others with ' = ', then Q1 and Q2 would return different sets. Also, the order by molecule_id vs label could lead to different orderings even if the same molecules are returned. But the main difference is the bond_type condition.\n\nSo the key is to have some bonds with '=' and others with ' = '.\n\nAnother thing: in the schema, the bond_type is TEXT. So the actual stored values matter. So in the test data, I need to insert into bond rows with bond_type as '=' and others as ' = '.\n\nSo for the counterexample, I need:\n\n- At least one molecule with bond_type '=', which Q1 includes but Q2 doesn't.\n- At least one molecule with bond_type ' = ', which Q2 includes but Q1 doesn't.\n- Also, the labels should be such that the ordering in Q2 gives different results than the ordering in Q1 (but maybe that's not necessary if the sets are different).\n\nLet me create a simple example. Let's say:\n\nInsert into molecule: (molecule_id, label) values ('M1', 'Apple'), ('M2', 'Banana'), ('M3', 'Cherry').\n\nInsert into bond: (bond_id, molecule_id, bond_type) values ('B1', 'M1', '='), ('B2', 'M2', ' = '), ('B3', 'M3', ' = ').\n\nThen Q1 would select M1 (distinct, ordered by molecule_id, limit 5). Q2 would select M2 and M3 (since bond_type is ' = '), ordered by label (Banana, Cherry). So Q1 returns M1, Q2 returns M2, M3. Different results.\n\nYes, that's a valid counterexample. The bond_type in Q1 is '=', so only M1 is included. In Q2, the bond_type is ' = ', so M2 and M3 are included. The labels are different, so the output of Q2 is different from Q1.\n\nAnother thing to check: the bond_type in Q2 is ' = ' (with spaces). So the WHERE condition is T2.bond_type = ' = '.\n\nYes. So in this case, the two queries return different results. Therefore, this setup would be a valid counterexample.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 538,
+    "total_tokens": 2376,
+    "completion_tokens": 1838,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1560
+    },
+    "generation_seconds": 61.422
+  },
+  "started_at": "2026-10-06T18:30:10.610874+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "M1"
+    ]
+  ],
+  "q2_output": [
+    [
+      "Banana"
+    ],
+    [
+      "Cherry"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DISTINCT T.molecule_id FROM bond AS T WHERE T.bond_type = '=' ORDER BY T.molecule_id LIMIT 5",
+  "q2_validation_sql": "SELECT T1.label FROM molecule AS T1 INNER JOIN bond AS T2 ON T1.molecule_id = T2.molecule_id WHERE T2.bond_type = ' = ' ORDER BY T1.label ASC LIMIT 5"
+}

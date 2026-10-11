@@ -1,0 +1,52 @@
+{
+  "dbid": "29",
+  "index": "32",
+  "source_index": "39",
+  "schema_ddl": "CREATE TABLE COURSE (COURSE_ID INT, TITLE INT, DEPT_NAME INT, CREDITS INT);\nCREATE TABLE DEPARTMENT (DEPT_NAME INT, BUILDING INT, BUDGET INT);\nCREATE TABLE INSTRUCTOR (ID INT, NAME INT, SALARY INT, DEPT_NAME INT);\nCREATE TABLE TEACHES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, INSTRUCTOR INT);\nCREATE TABLE SECTION (COURSE_ID INT, SEC_ID INT, YEAR INT, BUILDING INT, ROOM_NUMBER INT, TIME_SLOT_ID INT);\nCREATE TABLE TAKES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, GRADE INT);\nCREATE TABLE STUDENT (ID INT, NAME INT, DEPT_NAME INT, TOT_CRED INT);",
+  "q1": "SELECT C.DEPT_NAME, AVG(I.SALARY) FROM COURSE AS C INNER JOIN DEPARTMENT AS D ON (C.DEPT_NAME = D.DEPT_NAME) INNER JOIN TEACHES AS T ON (C.COURSE_ID = T.COURSE_ID) INNER JOIN INSTRUCTOR AS I ON (D.DEPT_NAME = I.DEPT_NAME) GROUP BY C.DEPT_NAME HAVING AVG(I.SALARY) > 50000 AND COUNT(DISTINCT I.SALARY) = 4",
+  "q2": "SELECT C.DEPT_NAME, AVG(I.SALARY) FROM COURSE AS C INNER JOIN DEPARTMENT AS D ON (C.DEPT_NAME = D.DEPT_NAME) INNER JOIN TEACHES AS T ON (C.COURSE_ID = T.COURSE_ID) INNER JOIN INSTRUCTOR AS I ON (D.DEPT_NAME = I.DEPT_NAME) GROUP BY C.DEPT_NAME HAVING AVG(I.SALARY) > 50000 AND COUNT(DISTINCT I.SALARY) > 4",
+  "dialect": "sqlite",
+  "ground_truth": "EQ",
+  "source": "literature",
+  "q1_prompt_sql": "SELECT C.DEPT_NAME, AVG(I.SALARY) FROM COURSE AS C INNER JOIN DEPARTMENT AS D ON (C.DEPT_NAME = D.DEPT_NAME) INNER JOIN TEACHES AS T ON (C.COURSE_ID = T.COURSE_ID) INNER JOIN INSTRUCTOR AS I ON (D.DEPT_NAME = I.DEPT_NAME) GROUP BY C.DEPT_NAME HAVING AVG(I.SALARY) > 50000 AND COUNT(DISTINCT I.SALARY) = 4",
+  "q2_prompt_sql": "SELECT C.DEPT_NAME, AVG(I.SALARY) FROM COURSE AS C INNER JOIN DEPARTMENT AS D ON (C.DEPT_NAME = D.DEPT_NAME) INNER JOIN TEACHES AS T ON (C.COURSE_ID = T.COURSE_ID) INNER JOIN INSTRUCTOR AS I ON (D.DEPT_NAME = I.DEPT_NAME) GROUP BY C.DEPT_NAME HAVING AVG(I.SALARY) > 50000 AND COUNT(DISTINCT I.SALARY) > 4",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO DEPARTMENT (DEPT_NAME) VALUES (1);\nINSERT INTO INSTRUCTOR (ID, NAME, SALARY, DEPT_NAME) VALUES (1, 1, 50000, 1), (2, 2, 60000, 1), (3, 3, 70000, 1), (4, 4, 80000, 1);\nINSERT INTO COURSE (COURSE_ID, TITLE, DEPT_NAME, CREDITS) VALUES (101, 1, 1, 3);\nINSERT INTO TEACHES (ID, COURSE_ID, SEC_ID, YEAR, INSTRUCTOR) VALUES (1, 101, 1, 2023, 1), (2, 101, 1, 2023, 2), (3, 101, 1, 2023, 3), (4, 101, 1, 2023, 4);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 differ in the COUNT(DISTINCT I.SALARY) condition (equality vs. inequality). This leads to different results when departments have exactly 4 distinct salaries (included in Q1, excluded in Q2) or more than 4 (excluded in Q1, included in Q2).",
+  "counterexample_dsp": "A department with exactly 4 distinct instructor salaries above 50k. Q1 includes it, Q2 excludes it.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 and Q2 differ in the COUNT(DISTINCT I.SALARY) condition (equality vs. inequality). This leads to different results when departments have exactly 4 distinct salaries (included in Q1, excluded in Q2) or more than 4 (excluded in Q1, included in Q2).\",\n\"counterexample_dsp\": \"A department with exactly 4 distinct instructor salaries above 50k. Q1 includes it, Q2 excludes it.\",\n\"counterexample\": \"INSERT INTO DEPARTMENT (DEPT_NAME) VALUES (1);\\nINSERT INTO INSTRUCTOR (ID, NAME, SALARY, DEPT_NAME) VALUES (1, 1, 50000, 1), (2, 2, 60000, 1), (3, 3, 70000, 1), (4, 4, 80000, 1);\\nINSERT INTO COURSE (COURSE_ID, TITLE, DEPT_NAME, CREDITS) VALUES (101, 1, 1, 3);\\nINSERT INTO TEACHES (ID, COURSE_ID, SEC_ID, YEAR, INSTRUCTOR) VALUES (1, 101, 1, 2023, 1), (2, 101, 1, 2023, 2), (3, 101, 1, 2023, 3), (4, 101, 1, 2023, 4);\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem step by step. The user wants to know if Q1 and Q2 are semantically equivalent. If not, provide a counterexample.\n\nFirst, I need to understand what each query is doing. Let's look at Q1 and Q2.\n\nQ1 selects DEPT_NAME and the average salary from the COURSE, DEPARTMENT, TEACHES, and INSTRUCTOR tables. It joins them on the department names and course IDs. Then, it groups by DEPT_NAME and applies two conditions in the HAVING clause: the average salary must be over 50,000, and the count of distinct salaries must equal 4.\n\nQ2 is almost the same, except the second condition in HAVING is COUNT(DISTINCT I.SALARY) > 4 instead of =4. So the main difference is the comparison operator in the COUNT condition.\n\nNow, the key is to see if these two queries can ever return different results. Since Q1 requires exactly 4 distinct salaries and Q2 requires more than 4, there's a clear difference in the condition. If a department has exactly 4 distinct salaries, Q1 would include it, but Q2 would not. Conversely, if a department has 5 or more, Q2 would include it, but Q1 would not. Therefore, the queries are not equivalent.\n\nTo create a counterexample, I need a scenario where a department's average salary is over 50k, and the count of distinct salaries is exactly 4. That would make Q1 include it, but Q2 exclude it. Alternatively, a department with 5 distinct salaries would be in Q2 but not Q1. Let's pick the first case.\n\nLet's create a test database. Suppose there's a department 'CS' with instructors having salaries 50k, 60k, 70k, 80k. The average would be (50+60+70+80)/4 = 65k, which is over 50k. COUNT(DISTINCT) is 4, so Q1 includes it. Q2's condition is COUNT >4, which is false here. So Q1 would return 'CS' and Q2 would not.\n\nAnother example could be a department with 5 distinct salaries. Then Q2 would include it, but Q1 would not. Either case shows they are not equivalent.\n\nNow, I need to structure the SQL inserts. Let's use the schema provided. The tables are COURSE, DEPARTMENT, INSTRUCTOR, TEACHES, etc. Let's create a DEPARTMENT 'CS', then INSTRUCTOR entries with 4 distinct salaries. Then, COURSE and TEACHES entries to link them.\n\nMake sure all the foreign keys are respected. For example, COURSE's DEPT_NAME should match DEPARTMENT's DEPT_NAME. TEACHES has COURSE_ID and INSTRUCTOR (ID), so need to have valid IDs. Let's assign IDs and course IDs as integers. Let's say:\n\n- DEPARTMENT: DEPT_NAME=1 (CS)\n- INSTRUCTOR: ID=1,2,3,4 with DEPT_NAME=1, and salaries 50000, 60000, 70000, 80000.\n- COURSE: COURSE_ID=101, DEPT_NAME=1.\n- TEACHES: For COURSE_ID=101, each instructor (ID 1-4) teaches it.\n\nThis setup would ensure that when grouping by DEPT_NAME (CS), the average salary is 65k, count distinct is 4. So Q1 would return CS, Q2 would not.\n\nAnother test case with 5 salaries would also work. But the first case is sufficient for the counterexample.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 631,
+    "total_tokens": 1783,
+    "completion_tokens": 1152,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 799
+    },
+    "generation_seconds": 35.734
+  },
+  "started_at": "2026-10-06T07:45:50.525551+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      1,
+      65000.0
+    ]
+  ],
+  "q2_output": [],
+  "q1_row_count": 1,
+  "q2_row_count": 0,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT C.DEPT_NAME, AVG(I.SALARY) FROM COURSE AS C INNER JOIN DEPARTMENT AS D ON (C.DEPT_NAME = D.DEPT_NAME) INNER JOIN TEACHES AS T ON (C.COURSE_ID = T.COURSE_ID) INNER JOIN INSTRUCTOR AS I ON (D.DEPT_NAME = I.DEPT_NAME) GROUP BY C.DEPT_NAME HAVING AVG(I.SALARY) > 50000 AND COUNT(DISTINCT I.SALARY) = 4",
+  "q2_validation_sql": "SELECT C.DEPT_NAME, AVG(I.SALARY) FROM COURSE AS C INNER JOIN DEPARTMENT AS D ON (C.DEPT_NAME = D.DEPT_NAME) INNER JOIN TEACHES AS T ON (C.COURSE_ID = T.COURSE_ID) INNER JOIN INSTRUCTOR AS I ON (D.DEPT_NAME = I.DEPT_NAME) GROUP BY C.DEPT_NAME HAVING AVG(I.SALARY) > 50000 AND COUNT(DISTINCT I.SALARY) > 4"
+}

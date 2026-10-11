@@ -1,0 +1,39 @@
+{
+  "dbid": "182",
+  "index": "173",
+  "source_index": "178",
+  "schema_ddl": "CREATE TABLE PERSON (\n    ID INT,\n    EMAIL VARCHAR(255),\n    PRIMARY KEY (ID)\n);",
+  "q1": "SELECT EMAIL AS EMAIL FROM PERSON GROUP BY EMAIL HAVING COUNT(EMAIL) >1",
+  "q2": "SELECT EMAIL AS EMAIL FROM PERSON GROUP BY EMAIL HAVING COUNT(*) >= 2",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT EMAIL AS EMAIL FROM PERSON GROUP BY EMAIL HAVING COUNT(EMAIL) >1",
+  "q2_prompt_sql": "SELECT EMAIL AS EMAIL FROM PERSON GROUP BY EMAIL HAVING COUNT(*) >= 2",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are semantically equivalent. Both queries retrieve email addresses from the PERSON table that appear more than once. In Q1, COUNT(EMAIL) > 1 counts the number of occurrences of each email, and in Q2, COUNT(*) >= 2 counts the total number of rows per email group. Since each group consists of rows with the same email, both conditions yield the same result.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n  \"equiv\": \"Y\",\n  \"explanation\": \"Q1 and Q2 are semantically equivalent. Both queries retrieve email addresses from the PERSON table that appear more than once. In Q1, COUNT(EMAIL) > 1 counts the number of occurrences of each email, and in Q2, COUNT(*) >= 2 counts the total number of rows per email group. Since each group consists of rows with the same email, both conditions yield the same result.\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 312,
+    "total_tokens": 415,
+    "completion_tokens": 103,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 3.578
+  },
+  "started_at": "2026-10-06T15:33:06.734011+00:00",
+  "elapsed_seconds": 0.0
+}

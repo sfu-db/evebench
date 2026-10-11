@@ -1,0 +1,56 @@
+{
+  "dbid": "7",
+  "index": "9",
+  "source_index": "8",
+  "schema_ddl": "CREATE TABLE R (A INT, B INT, C INT);",
+  "q1": "SELECT X.B AS XB FROM R AS X WHERE X.A = 5 AND X.C < 1",
+  "q2": "SELECT X.B AS XB FROM R AS X WHERE X.A < 10",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "literature",
+  "q1_prompt_sql": "SELECT X.B AS XB FROM R AS X WHERE X.A = 5 AND X.C < 1",
+  "q2_prompt_sql": "SELECT X.B AS XB FROM R AS X WHERE X.A < 10",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO R (A, B, C) VALUES (5, 10, 0); INSERT INTO R (A, B, C) VALUES (7, 20, 0);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 selects rows from table R where column A is equal to 5 and column C is less than 1, and then projects column B. Q2 selects rows from table R where column A is less than 10, and then projects column B. The difference lies in the WHERE clause conditions, which means Q1 and Q2 can return different sets of results.",
+  "counterexample_dsp": "To create a counterexample, we need to have at least one row that satisfies the condition of Q1 but not Q2, and another row that satisfies the condition of Q2 but not Q1. This can be achieved by having a row where A = 5, C < 1, and another row where A < 10 but A != 5.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 selects rows from table R where column A is equal to 5 and column C is less than 1, and then projects column B. Q2 selects rows from table R where column A is less than 10, and then projects column B. The difference lies in the WHERE clause conditions, which means Q1 and Q2 can return different sets of results.\",\n  \"counterexample_dsp\": \"To create a counterexample, we need to have at least one row that satisfies the condition of Q1 but not Q2, and another row that satisfies the condition of Q2 but not Q1. This can be achieved by having a row where A = 5, C < 1, and another row where A < 10 but A != 5.\",\n  \"counterexample\": \"INSERT INTO R (A, B, C) VALUES (5, 10, 0); INSERT INTO R (A, B, C) VALUES (7, 20, 0);\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 271,
+    "total_tokens": 488,
+    "completion_tokens": 217,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 3.703
+  },
+  "started_at": "2026-10-06T07:05:01.352035+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      10
+    ]
+  ],
+  "q2_output": [
+    [
+      10
+    ],
+    [
+      20
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT X.B AS XB FROM R AS X WHERE X.A = 5 AND X.C < 1",
+  "q2_validation_sql": "SELECT X.B AS XB FROM R AS X WHERE X.A < 10"
+}

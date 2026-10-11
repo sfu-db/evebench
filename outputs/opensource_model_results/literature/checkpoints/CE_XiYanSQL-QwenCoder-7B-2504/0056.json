@@ -1,0 +1,56 @@
+{
+  "dbid": "32",
+  "index": "56",
+  "source_index": "63",
+  "schema_ddl": "CREATE TABLE COURSE (COURSE_ID INT, TITLE INT, DEPT_NAME INT, CREDITS INT);\nCREATE TABLE DEPARTMENT (DEPT_NAME INT, BUILDING INT, BUDGET INT);\nCREATE TABLE INSTRUCTOR (ID INT, NAME INT, SALARY INT, DEPT_NAME INT);\nCREATE TABLE TEACHES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, SEMESTER INT, INSTRUCTOR INT);\nCREATE TABLE SECTION (COURSE_ID INT, SEC_ID INT, YEAR INT, BUILDING INT, ROOM_NUMBER INT, TIME_SLOT_ID INT);\nCREATE TABLE TAKES (ID INT, COURSE_ID INT, SEC_ID INT, YEAR INT, GRADE INT);\nCREATE TABLE STUDENT (ID INT, NAME INT, DEPT_NAME INT, TOT_CRED INT);",
+  "q1": "SELECT DISTINCT DEPT_NAME FROM COURSE WHERE CREDITS = (SELECT MAX(CREDITS) FROM COURSE)",
+  "q2": "SELECT DISTINCT DEPT_NAME FROM COURSE AS C, (SELECT MAX(CREDITS) AS MAX_CREDITS FROM COURSE GROUP BY DEPT_NAME) AS A WHERE C.CREDITS = A.MAX_CREDITS",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "literature",
+  "q1_prompt_sql": "SELECT DISTINCT DEPT_NAME FROM COURSE WHERE CREDITS = (SELECT MAX(CREDITS) FROM COURSE)",
+  "q2_prompt_sql": "SELECT DISTINCT DEPT_NAME FROM COURSE AS C, (SELECT MAX(CREDITS) AS MAX_CREDITS FROM COURSE GROUP BY DEPT_NAME) AS A WHERE C.CREDITS = A.MAX_CREDITS",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO COURSE (COURSE_ID, DEPT_NAME, CREDITS) VALUES (1, 'CS', 5), (2, 'CS', 4), (3, 'Math', 4);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 finds the departments of courses that have the maximum number of credits among all courses, while Q2 finds the departments of courses that have the maximum number of credits within each department.",
+  "counterexample_dsp": "A department with two courses, where one course has the highest number of credits among all courses, and the other course has the highest number of credits within its department but fewer credits than the first course.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 finds the departments of courses that have the maximum number of credits among all courses, while Q2 finds the departments of courses that have the maximum number of credits within each department.\",\n  \"counterexample_dsp\": \"A department with two courses, where one course has the highest number of credits among all courses, and the other course has the highest number of credits within its department but fewer credits than the first course.\",\n  \"counterexample\": \"INSERT INTO COURSE (COURSE_ID, DEPT_NAME, CREDITS) VALUES (1, 'CS', 5), (2, 'CS', 4), (3, 'Math', 4);\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 457,
+    "total_tokens": 603,
+    "completion_tokens": 146,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 2.265
+  },
+  "started_at": "2026-10-06T07:09:01.266112+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "CS"
+    ]
+  ],
+  "q2_output": [
+    [
+      "CS"
+    ],
+    [
+      "Math"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DISTINCT DEPT_NAME FROM COURSE WHERE CREDITS = (SELECT MAX(CREDITS) FROM COURSE)",
+  "q2_validation_sql": "SELECT DISTINCT DEPT_NAME FROM COURSE AS C, (SELECT MAX(CREDITS) AS MAX_CREDITS FROM COURSE GROUP BY DEPT_NAME) AS A WHERE C.CREDITS = A.MAX_CREDITS"
+}

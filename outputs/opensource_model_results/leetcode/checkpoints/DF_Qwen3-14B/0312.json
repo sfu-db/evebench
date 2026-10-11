@@ -1,0 +1,39 @@
+{
+  "dbid": "607",
+  "index": "312",
+  "source_index": "123",
+  "schema_ddl": "CREATE TABLE SALESPERSON (\n    SALES_ID INT,\n    NAME VARCHAR(255),\n    SALARY INT,\n    COMMISSION_RATE INT,\n    HIRE_DATE VARCHAR(255)\n);\n\nCREATE TABLE COMPANY (\n    COM_ID INT,\n    NAME VARCHAR(255),\n    CITY VARCHAR(255)\n);\n\nCREATE TABLE ORDERS (\n    ORDER_ID INT,\n    COM_ID INT,\n    SALES_ID INT,\n    ORDER_DATE VARCHAR(255),\n    AMOUNT INT\n);",
+  "q1": "SELECT NAME FROM SALESPERSON AS S WHERE 0 = ( SELECT COUNT(*) FROM ORDERS AS O JOIN COMPANY AS C ON O.COM_ID = C.COM_ID WHERE O.SALES_ID = S.SALES_ID AND C.NAME = 'RED' )",
+  "q2": "WITH T AS( SELECT ORDER_ID, C.COM_ID, SALES_ID, NAME FROM COMPANY C INNER JOIN ORDERS O ON C.COM_ID=O.COM_ID) , T2 AS ( SELECT S.NAME FROM SALESPERSON S LEFT JOIN T ON S.SALES_ID=T.SALES_ID WHERE T.NAME='RED') SELECT NAME FROM SALESPERSON WHERE NAME NOT IN (SELECT NAME FROM T2)",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT NAME FROM SALESPERSON AS S WHERE 0 = ( SELECT COUNT(*) FROM ORDERS AS O JOIN COMPANY AS C ON O.COM_ID = C.COM_ID WHERE O.SALES_ID = S.SALES_ID AND C.NAME = 'RED' )",
+  "q2_prompt_sql": "WITH T AS( SELECT ORDER_ID, C.COM_ID, SALES_ID, NAME FROM COMPANY C INNER JOIN ORDERS O ON C.COM_ID=O.COM_ID) , T2 AS ( SELECT S.NAME FROM SALESPERSON S LEFT JOIN T ON S.SALES_ID=T.SALES_ID WHERE T.NAME='RED') SELECT NAME FROM SALESPERSON WHERE NAME NOT IN (SELECT NAME FROM T2)",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries aim to retrieve salespersons with no orders linked to companies named 'RED'. Q1 uses a correlated subquery to count such orders, while Q2 uses CTEs and exclusion via NOT IN. They logically produce the same result set.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries aim to retrieve salespersons with no orders linked to companies named 'RED'. Q1 uses a correlated subquery to count such orders, while Q2 uses CTEs and exclusion via NOT IN. They logically produce the same result set.\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem step by step. First, I need to understand what each query is doing and then compare them.\n\nStarting with Q1: The query selects the name of salespersons where the count of orders related to the company named 'RED' is zero. The subquery joins ORDERS with COMPANY on COM_ID, and checks where O.SALES_ID equals S.SALES_ID and C.NAME is 'RED'. The count of these rows must be zero. So, Q1 is finding salespeople who have no orders for the company named RED.\n\nNow Q2: It uses two CTEs. The first CTE T joins COMPANY and ORDERS on COM_ID, getting ORDER_ID, COM_ID, SALES_ID, and NAME. Then T2 is a left join between SALESPERSON and T on SALES_ID, filtering where T.NAME is 'RED'. Then the main query selects names from SALESPERSON where the name is not in T2. Wait, T2's select is S.NAME from SALESPERSON left join T on SALES_ID=T.SALES_ID where T.NAME='RED'. So T2 would include salespersons who have at least one order linked to a company named RED. Because even if the left join has no match, T.NAME would be null, but the WHERE clause filters T.NAME='RED', which would exclude those. So T2 is the list of salespersons who have at least one order for a company named RED. Then Q2 selects names not in T2, which would be salespersons who have no orders for RED companies.\n\nWait, but Q1 is checking for salespersons with zero orders for RED. Q2 is also selecting those not in T2, which are the salespersons who don't have any orders for RED. So they should be equivalent. But maybe there's a difference in how duplicates are handled or in the case where a salesperson has multiple orders for RED. Let me check again.\n\nQ1 uses a subquery that counts the number of orders for RED. If the count is zero, the salesperson is selected. So even if a salesperson has multiple orders for RED, the count would be more than zero, so they are excluded. For those with zero, they are included.\n\nIn Q2, T2 is created by left joining SALESPERSON with T (which is COMPANY joined with ORDERS). Then, in T2, the WHERE condition is T.NAME='RED'. That means, for each salesperson, if there's any order in T where the company is RED, then their name is in T2. The main query then selects names not in T2. So, salespersons who have no such orders are included. So, Q2 is equivalent to Q1? Because both are selecting salespersons who have zero orders for RED companies.\n\nWait, but what about if a salesperson has multiple orders for different companies, including RED. For example, if a salesperson has one order for RED and another for BLUE. Then, in Q1, the count would be 1, so they are excluded. In Q2, since T2 includes their name (because there's at least one order for RED), they are excluded. So that's the same.\n\nAnother case: a salesperson has no orders. Then, Q1's subquery would count zero, so they are included. In Q2, the left join would have no T rows, so T.NAME is NULL, and the WHERE T.NAME='RED' would exclude them. So the salesperson's name is not in T2, so they are included in Q2's result. So same as Q1.\n\nBut wait, in T2, the left join is between SALESPERSON and T. So, for a salesperson with no orders, T would have no rows. Then, in T2, the WHERE T.NAME='RED' would filter out those rows because T.NAME is NULL. Therefore, T2 would have no entry for that salesperson. So the name is not in T2, so Q2 would include them. Which matches Q1.\n\nSo in all cases, Q1 and Q2 should return the same results. Therefore, they are equivalent.\n\nBut maybe I'm missing something. Let me think again. What if a salesperson has multiple orders for RED, but in T2, the left join would have multiple entries, but the WHERE T.NAME='RED' would still include that salesperson once. So T2 would have their name once. Then, Q2 would exclude them. Which is correct.\n\nAnother edge case: a salesperson has an order for a company named RED, but in the COMPANY table, there's a typo. But according to the schema, the NAME is a VARCHAR, so it's possible. But the problem states that the test data should not violate the schema constraints, but the example here is just hypothetical.\n\nAlternatively, maybe there's a difference in how the joins are handled. For example, in Q1, the subquery is a JOIN between ORDERS and COMPANY on COM_ID. So for each order, it's linked to a company. Then, the count is for all orders where the company is RED and the salesperson is S.\n\nIn Q2, T is the join between COMPANY and ORDERS on COM_ID. Then, T2 is left join SALESPERSON with T on SALES_ID. But the WHERE clause is T.NAME='RED', which would filter the rows where T has a company named RED. So, the T2 would have salespersons who have at least one order linked to a RED company.\n\nSo both approaches are checking for the existence of any order for a RED company. Therefore, the two queries should be equivalent. Hence, the answer is Y.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 495,
+    "total_tokens": 1748,
+    "completion_tokens": 1253,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1186
+    },
+    "generation_seconds": 39.938
+  },
+  "started_at": "2026-10-06T15:02:25.998875+00:00",
+  "elapsed_seconds": 0.0
+}

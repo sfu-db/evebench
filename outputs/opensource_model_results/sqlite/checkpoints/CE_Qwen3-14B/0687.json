@@ -1,0 +1,55 @@
+{
+  "dbid": "thrombosis_prediction",
+  "index": "687",
+  "source_index": "1206",
+  "schema_ddl": "CREATE TABLE Examination\n(\n    ID                 INTEGER          null,\n    `Examination Date` DATE         null,\n    `aCL IgG`          REAL        null,\n    `aCL IgM`          REAL        null,\n    ANA                INTEGER          null,\n    `ANA Pattern`      TEXT null,\n    `aCL IgA`          INTEGER          null,\n    Diagnosis          TEXT null,\n    KCT                TEXT null,\n    RVVT              TEXT null,\n    LAC                TEXT null,\n    Symptoms           TEXT null,\n    Thrombosis         INTEGER          null,\n    foreign key (ID) references Patient (ID)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE Patient\n(\n    ID           INTEGER default 0 not null\n        primary key,\n    SEX          TEXT  null,\n    Birthday     DATE          null,\n    Description  DATE          null,\n    `First Date` DATE          null,\n    Admission    TEXT  null,\n    Diagnosis    TEXT  null\n);\n\nCREATE TABLE Laboratory\n(\n    ID        INTEGER  default 0            not null,\n    Date      DATE default '0000-00-00' not null,\n    GOT       INTEGER                       null,\n    GPT       INTEGER                        null,\n    LDH       INTEGER                        null,\n    ALP       INTEGER                        null,\n    TP        REAL             null,\n    ALB       REAL             null,\n    UA        REAL             null,\n    UN        INTEGER                       null,\n    CRE       REAL             null,\n    `T-BIL`   REAL             null,\n    `T-CHO`   INTEGER                       null,\n    TG        INTEGER                       null,\n    CPK       INTEGER                       null,\n    GLU       INTEGER                       null,\n    WBC       REAL             null,\n    RBC       REAL             null,\n    HGB       REAL             null,\n    HCT       REAL             null,\n    PLT       INTEGER                       null,\n    PT        REAL             null,\n    APTT      INTEGER                       null,\n    FG        REAL             null,\n    PIC       INTEGER                       null,\n    TAT       INTEGER                       null,\n    TAT2      INTEGER                       null,\n    `U-PRO`   TEXT              null,\n    IGG       INTEGER                       null,\n    IGA       INTEGER                       null,\n    IGM       INTEGER                       null,\n    CRP       TEXT              null,\n    RA        TEXT              null,\n    RF        TEXT              null,\n    C3        INTEGER                       null,\n    C4        INTEGER                       null,\n    RNP       TEXT              null,\n    SM        TEXT              null,\n    SC170     TEXT              null,\n    SSA       TEXT              null,\n    SSB       TEXT              null,\n    CENTROMEA TEXT              null,\n    DNA       TEXT              null,\n    `DNA-II`  INTEGER                       null,\n    primary key (ID, Date),\n        foreign key (ID) references Patient (ID)\n            on update cascade on delete cascade\n);",
+  "q1": "SELECT CASE WHEN (T1.SEX = 'F' AND T2.UA > 6.5) OR (T1.SEX = 'M' AND T2.UA < 8.0) THEN TRUE ELSE FALSE END FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T1.ID = 57266",
+  "q2": "SELECT CASE WHEN T1.SEX = 'M' AND T2.UA > 8.0 THEN 'Yes' WHEN T1.SEX = 'F' AND T2.UA > 6.5 THEN 'Yes' ELSE 'No' END AS \"Is_Uric_Acid_Normal\" FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T1.ID = 57266",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT CASE WHEN (T1.SEX = 'F' AND T2.UA > 6.5) OR (T1.SEX = 'M' AND T2.UA < 8.0) THEN TRUE ELSE FALSE END FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T1.ID = 57266",
+  "q2_prompt_sql": "SELECT CASE WHEN T1.SEX = 'M' AND T2.UA > 8.0 THEN 'Yes' WHEN T1.SEX = 'F' AND T2.UA > 6.5 THEN 'Yes' ELSE 'No' END AS \"Is_Uric_Acid_Normal\" FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T1.ID = 57266",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO Patient (ID, SEX) VALUES (57266, 'M');\nINSERT INTO Laboratory (ID, Date, UA) VALUES (57266, '2023-01-01', 7.0);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 returns TRUE for males with UA <8.0, while Q2 returns 'No' for the same case. Q2 only returns 'Yes' when males have UA >8.0 or females have UA >6.5. Q1's logic includes males with UA <8.0 as TRUE, which Q2 does not.",
+  "counterexample_dsp": "A male patient (SEX='M') with ID=57266 and UA=7.0 in Laboratory. Q1 returns TRUE (male UA <8.0), Q2 returns 'No' (neither condition met).",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 returns TRUE for males with UA <8.0, while Q2 returns 'No' for the same case. Q2 only returns 'Yes' when males have UA >8.0 or females have UA >6.5. Q1's logic includes males with UA <8.0 as TRUE, which Q2 does not.\",\n  \"counterexample_dsp\": \"A male patient (SEX='M') with ID=57266 and UA=7.0 in Laboratory. Q1 returns TRUE (male UA <8.0), Q2 returns 'No' (neither condition met).\",\n  \"counterexample\": [\n    \"INSERT INTO Patient (ID, SEX) VALUES (57266, 'M');\",\n    \"INSERT INTO Laboratory (ID, Date, UA) VALUES (57266, '2023-01-01', 7.0);\"\n  ]\n}",
+  "reasoning": "\nOkay, let's see. I need to find a counterexample where Q1 and Q2 return different results. Let me first understand what each query does.\n\nLooking at Q1: It selects a CASE statement that returns TRUE if either (SEX is 'F' and UA > 6.5) OR (SEX is 'M' and UA < 8.0). Otherwise, it returns FALSE. The WHERE clause is T1.ID = 57266, so we're looking at a specific patient.\n\nQ2: It has a CASE statement with two conditions. If SEX is 'M' and UA > 8.0, it returns 'Yes'. If SEX is 'F' and UA > 6.5, also 'Yes'. Else 'No'. So the 'Yes' conditions are when for males, UA is above 8.0, and for females, above 6.5. The 'No' is everything else.\n\nWait, so Q1's TRUE condition is for females with UA >6.5 OR males with UA <8.0. So if a male has UA <8.0, Q1 returns TRUE, but Q2 would check if the male's UA is >8.0 (which it's not), so then check if female condition (which is not the case here). So for a male with UA <8.0, Q1 returns TRUE, but Q2 returns 'No' because neither condition is met. That's a difference.\n\nAlternatively, if a male has UA exactly 8.0, then Q1's condition (UA <8.0) is false, so Q1 returns FALSE. Q2 would check if male and UA>8.0 (no), then check female condition (no), so returns 'No'. So same result here.\n\nWait, but for a male with UA <8.0, Q1 returns TRUE, but Q2 returns 'No'. That's a case where they differ.\n\nSimilarly, for a female with UA <=6.5, Q1 returns FALSE (since the first part of the OR is false, and the second part (male) is not applicable). Q2 would check if female and UA>6.5 (no), so returns 'No'. So same here.\n\nBut if a female has UA >6.5, then Q1 returns TRUE, and Q2 returns 'Yes'. So same result here.\n\nWait, but what about a male with UA between 8.0 and something higher? Let's say a male with UA = 9.0. Then Q1 checks (male and UA <8.0) which is false. So Q1 returns FALSE. Q2 checks if male and UA>8.0 (yes), so returns 'Yes'. So here, Q1 returns FALSE, Q2 returns 'Yes'—different results.\n\nSo the difference arises in two scenarios:\n\n1. Male with UA <8.0: Q1 returns TRUE, Q2 returns 'No'.\n2. Male with UA >8.0: Q1 returns FALSE, Q2 returns 'Yes'.\n\nSimilarly, for females, if UA is >6.5, both return TRUE/Yes. If UA is <=6.5, both return FALSE/No. So the only differing cases are for males.\n\nSo to create a counterexample, I need a male patient (SEX = 'M') with ID 57266, and in the Laboratory table, UA value that is either less than 8.0 or greater than 8.0.\n\nLet me pick a male patient with UA = 7.0 (which is less than 8.0). Then Q1 would return TRUE, and Q2 returns 'No'.\n\nAlternatively, if UA is 9.0, Q1 returns FALSE, Q2 returns 'Yes'.\n\nSo either scenario would work. Let's create a test case where ID 57266 is a male with UA = 7.0.\n\nSo in the Patient table, insert a record with ID 57266, SEX 'M'. Then in the Laboratory table, insert a record with ID 57266 and UA = 7.0. Also, ensure that the other constraints are met (like the Date in Laboratory is not null, etc.)\n\nWait, the Laboratory table has a composite primary key (ID, Date). So when inserting into Laboratory, I need to provide a Date. Let's pick a date, say '2023-01-01'.\n\nSo the counterexample would have:\n\nPatient table: ID 57266, SEX 'M'.\n\nLaboratory table: ID 57266, Date '2023-01-01', UA 7.0.\n\nThen Q1 would return TRUE (since male and UA <8.0), and Q2 would return 'No' (since the male's UA is not >8.0, and not female, so else 'No').\n\nYes, that's a difference. So this setup would make the two queries return different results.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 975,
+    "total_tokens": 2239,
+    "completion_tokens": 1264,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1056
+    },
+    "generation_seconds": 43.829
+  },
+  "started_at": "2026-10-06T17:41:53.075854+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      1
+    ]
+  ],
+  "q2_output": [
+    [
+      "No"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT CASE WHEN (T1.SEX = 'F' AND T2.UA > 6.5) OR (T1.SEX = 'M' AND T2.UA < 8.0) THEN TRUE ELSE FALSE END FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T1.ID = 57266",
+  "q2_validation_sql": "SELECT CASE WHEN T1.SEX = 'M' AND T2.UA > 8.0 THEN 'Yes' WHEN T1.SEX = 'F' AND T2.UA > 6.5 THEN 'Yes' ELSE 'No' END AS \"Is_Uric_Acid_Normal\" FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T1.ID = 57266"
+}

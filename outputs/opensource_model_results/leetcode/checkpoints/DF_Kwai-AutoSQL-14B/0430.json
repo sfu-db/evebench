@@ -1,0 +1,65 @@
+{
+  "dbid": "614",
+  "index": "430",
+  "source_index": "461",
+  "schema_ddl": "CREATE TABLE FOLLOW (\n    FOLLOWEE VARCHAR(255),\n    FOLLOWER VARCHAR(255),\n    PRIMARY KEY (FOLLOWEE, FOLLOWER),\n    CHECK (FOLLOWEE <> FOLLOWER)\n);",
+  "q1": "SELECT FOLLOWEE AS FOLLOWER, COUNT(FOLLOWEE) AS NUM FROM FOLLOW WHERE FOLLOWEE IN (SELECT FOLLOWER FROM FOLLOW) GROUP BY 1 ORDER BY 1",
+  "q2": "SELECT FOLLOWEE AS FOLLOWER , COUNT(FOLLOWER) NUM FROM FOLLOW WHERE FOLLOWEE IN ( SELECT DISTINCT FOLLOWEE FROM FOLLOW WHERE FOLLOWEE IN (SELECT FOLLOWEE FROM FOLLOW) AND FOLLOWEE IN (SELECT FOLLOWER FROM FOLLOW)) GROUP BY 1 ORDER BY 1",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT FOLLOWEE AS FOLLOWER, COUNT(FOLLOWEE) AS NUM FROM FOLLOW WHERE FOLLOWEE IN (SELECT FOLLOWER FROM FOLLOW) GROUP BY 1 ORDER BY 1",
+  "q2_prompt_sql": "SELECT FOLLOWEE AS FOLLOWER , COUNT(FOLLOWER) NUM FROM FOLLOW WHERE FOLLOWEE IN ( SELECT DISTINCT FOLLOWEE FROM FOLLOW WHERE FOLLOWEE IN (SELECT FOLLOWEE FROM FOLLOW) AND FOLLOWEE IN (SELECT FOLLOWER FROM FOLLOW)) GROUP BY 1 ORDER BY 1",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO FOLLOW (FOLLOWEE, FOLLOWER) VALUES ('B', 'A');\nINSERT INTO FOLLOW (FOLLOWEE, FOLLOWER) VALUES ('A', 'B');\nINSERT INTO FOLLOW (FOLLOWEE, FOLLOWER) VALUES ('B', 'C');",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent. Q1 counts the number of times each FOLLOWEE appears as a FOLLOWEE in the FOLLOW table, provided that the FOLLOWEE also appears as a FOLLOWER in the FOLLOW table. Q2 has a more restrictive condition on FOLLOWEE due to nested subqueries with DISTINCT, which may reduce the number of rows considered for counting, thus producing different results.",
+  "counterexample_dsp": "A test case where FOLLOWER 'A' follows 'B', and FOLLOWER 'B' follows 'A'. Q1 will count 'B' once, Q2 will count 'B' once. Add a third row where 'C' follows 'B', and 'B' follows 'C'. Q1 will count 'B' twice, Q2 may still count 'B' twice. However, with more complex data, Q2's nested subquery may not count all occurrences.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n  \"equiv\": \"N\",\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent. Q1 counts the number of times each FOLLOWEE appears as a FOLLOWEE in the FOLLOW table, provided that the FOLLOWEE also appears as a FOLLOWER in the FOLLOW table. Q2 has a more restrictive condition on FOLLOWEE due to nested subqueries with DISTINCT, which may reduce the number of rows considered for counting, thus producing different results.\",\n  \"counterexample_dsp\": \"A test case where FOLLOWER 'A' follows 'B', and FOLLOWER 'B' follows 'A'. Q1 will count 'B' once, Q2 will count 'B' once. Add a third row where 'C' follows 'B', and 'B' follows 'C'. Q1 will count 'B' twice, Q2 may still count 'B' twice. However, with more complex data, Q2's nested subquery may not count all occurrences.\",\n  \"counterexample\": \"INSERT INTO FOLLOW (FOLLOWEE, FOLLOWER) VALUES ('B', 'A');\\nINSERT INTO FOLLOW (FOLLOWEE, FOLLOWER) VALUES ('A', 'B');\\nINSERT INTO FOLLOW (FOLLOWEE, FOLLOWER) VALUES ('B', 'C');\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 391,
+    "total_tokens": 664,
+    "completion_tokens": 273,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 8.719
+  },
+  "started_at": "2026-10-06T15:45:35.779856+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "A",
+      1
+    ],
+    [
+      "B",
+      2
+    ]
+  ],
+  "q2_output": [
+    [
+      "A",
+      1
+    ],
+    [
+      "B",
+      2
+    ]
+  ],
+  "q1_row_count": 2,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT FOLLOWEE AS FOLLOWER, COUNT(FOLLOWEE) AS NUM FROM FOLLOW WHERE FOLLOWEE IN (SELECT FOLLOWER FROM FOLLOW) GROUP BY 1 ORDER BY 1",
+  "q2_validation_sql": "SELECT FOLLOWEE AS FOLLOWER , COUNT(FOLLOWER) NUM FROM FOLLOW WHERE FOLLOWEE IN ( SELECT DISTINCT FOLLOWEE FROM FOLLOW WHERE FOLLOWEE IN (SELECT FOLLOWEE FROM FOLLOW) AND FOLLOWEE IN (SELECT FOLLOWER FROM FOLLOW)) GROUP BY 1 ORDER BY 1"
+}

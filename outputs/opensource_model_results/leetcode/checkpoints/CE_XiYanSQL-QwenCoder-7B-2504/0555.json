@@ -1,0 +1,67 @@
+{
+  "dbid": "1097",
+  "index": "555",
+  "source_index": "220",
+  "schema_ddl": "CREATE TABLE ACTIVITY (\n    PLAYER_ID INT,\n    EVENT_DATE DATE,\n    DEVICE_ID INT,\n    GAMES_PLAYED INT,\n    PRIMARY KEY (PLAYER_ID, EVENT_DATE),\n    CHECK (GAMES_PLAYED >= 0)\n);",
+  "q1": "SELECT A1.FIRST_LOGIN AS INSTALL_DT, COUNT(DISTINCT A1.PLAYER_ID) AS INSTALLS, ROUND((SUM(CASE WHEN (A1.FIRST_LOGIN + 1) = A2.EVENT_DATE THEN 1 ELSE 0 END)/ COUNT(DISTINCT A1.PLAYER_ID)), 2) AS DAY1_RETENTION FROM (SELECT PLAYER_ID, MIN(EVENT_DATE) AS FIRST_LOGIN FROM ACTIVITY GROUP BY PLAYER_ID) AS A1 JOIN ACTIVITY AS A2 ON A1.PLAYER_ID = A2.PLAYER_ID GROUP BY A1.FIRST_LOGIN",
+  "q2": "WITH T1 AS (SELECT PLAYER_ID, MIN(EVENT_DATE) AS INSTALL_DT FROM ACTIVITY GROUP BY PLAYER_ID), T2 AS (SELECT INSTALL_DT, COUNT(PLAYER_ID) AS INSTALLS FROM T1 GROUP BY INSTALL_DT), T3 AS (SELECT INSTALL_DT, COUNT(*) AS NEXT_DAY_LOGIN FROM T1 WHERE (PLAYER_ID, DATE_ADD(INSTALL_DT, INTERVAL 1 DAY)) IN (SELECT PLAYER_ID, EVENT_DATE FROM ACTIVITY) GROUP BY 1) SELECT T2.INSTALL_DT, INSTALLS, ROUND(IFNULL(NEXT_DAY_LOGIN/INSTALLS, 0), 2) AS DAY1_RETENTION FROM T2 LEFT JOIN T3 ON T2.INSTALL_DT = T3.INSTALL_DT",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT A1.FIRST_LOGIN AS INSTALL_DT, COUNT(DISTINCT A1.PLAYER_ID) AS INSTALLS, ROUND((SUM(CASE WHEN (A1.FIRST_LOGIN + 1) = A2.EVENT_DATE THEN 1 ELSE 0 END)/ COUNT(DISTINCT A1.PLAYER_ID)), 2) AS DAY1_RETENTION FROM (SELECT PLAYER_ID, MIN(EVENT_DATE) AS FIRST_LOGIN FROM ACTIVITY GROUP BY PLAYER_ID) AS A1 JOIN ACTIVITY AS A2 ON A1.PLAYER_ID = A2.PLAYER_ID GROUP BY A1.FIRST_LOGIN",
+  "q2_prompt_sql": "WITH T1 AS (SELECT PLAYER_ID, MIN(EVENT_DATE) AS INSTALL_DT FROM ACTIVITY GROUP BY PLAYER_ID), T2 AS (SELECT INSTALL_DT, COUNT(PLAYER_ID) AS INSTALLS FROM T1 GROUP BY INSTALL_DT), T3 AS (SELECT INSTALL_DT, COUNT(*) AS NEXT_DAY_LOGIN FROM T1 WHERE (PLAYER_ID, DATE_ADD(INSTALL_DT, INTERVAL 1 DAY)) IN (SELECT PLAYER_ID, EVENT_DATE FROM ACTIVITY) GROUP BY 1) SELECT T2.INSTALL_DT, INSTALLS, ROUND(IFNULL(NEXT_DAY_LOGIN/INSTALLS, 0), 2) AS DAY1_RETENTION FROM T2 LEFT JOIN T3 ON T2.INSTALL_DT = T3.INSTALL_DT",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO ACTIVITY (PLAYER_ID, EVENT_DATE, DEVICE_ID, GAMES_PLAYED) VALUES (1, '2023-01-01', 101, 1), (1, '2023-01-02', 101, 0), (2, '2023-01-02', 102, 1), (2, '2023-01-03', 102, 1);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not equivalent because Q1 uses a subquery to find the first login date for each player and then joins it with the ACTIVITY table to count the number of players who logged in the day after their first login. Q2, on the other hand, uses a CTE to find the first login date for each player, another CTE to count the number of players who logged in on the first login date, and a third CTE to count the number of players who logged in the day after their first login. The difference lies in how Q2 handles the join between the CTEs, which can result in a different count of players who logged in the day after their first login.",
+  "counterexample_dsp": "The test data should have at least two players, where the first player logs in on day 1 and the second player logs in on day 2. The first player should not log in again on day 2, while the second player should log in on day 3.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 and Q2 are not equivalent because Q1 uses a subquery to find the first login date for each player and then joins it with the ACTIVITY table to count the number of players who logged in the day after their first login. Q2, on the other hand, uses a CTE to find the first login date for each player, another CTE to count the number of players who logged in on the first login date, and a third CTE to count the number of players who logged in the day after their first login. The difference lies in how Q2 handles the join between the CTEs, which can result in a different count of players who logged in the day after their first login.\",\n  \"counterexample_dsp\": \"The test data should have at least two players, where the first player logs in on day 1 and the second player logs in on day 2. The first player should not log in again on day 2, while the second player should log in on day 3.\",\n  \"counterexample\": \"INSERT INTO ACTIVITY (PLAYER_ID, EVENT_DATE, DEVICE_ID, GAMES_PLAYED) VALUES (1, '2023-01-01', 101, 1), (1, '2023-01-02', 101, 0), (2, '2023-01-02', 102, 1), (2, '2023-01-03', 102, 1);\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 539,
+    "total_tokens": 876,
+    "completion_tokens": 337,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 5.656
+  },
+  "started_at": "2026-10-06T09:55:37.160816+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "2023-01-01",
+      1,
+      "1.00"
+    ],
+    [
+      "2023-01-02",
+      1,
+      "1.00"
+    ]
+  ],
+  "q2_output": [
+    [
+      "2023-01-01",
+      1,
+      "1.00"
+    ],
+    [
+      "2023-01-02",
+      1,
+      "1.00"
+    ]
+  ],
+  "q1_row_count": 2,
+  "q2_row_count": 2,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT A1.FIRST_LOGIN AS INSTALL_DT, COUNT(DISTINCT A1.PLAYER_ID) AS INSTALLS, ROUND((SUM(CASE WHEN (A1.FIRST_LOGIN + 1) = A2.EVENT_DATE THEN 1 ELSE 0 END)/ COUNT(DISTINCT A1.PLAYER_ID)), 2) AS DAY1_RETENTION FROM (SELECT PLAYER_ID, MIN(EVENT_DATE) AS FIRST_LOGIN FROM ACTIVITY GROUP BY PLAYER_ID) AS A1 JOIN ACTIVITY AS A2 ON A1.PLAYER_ID = A2.PLAYER_ID GROUP BY A1.FIRST_LOGIN",
+  "q2_validation_sql": "WITH T1 AS (SELECT PLAYER_ID, MIN(EVENT_DATE) AS INSTALL_DT FROM ACTIVITY GROUP BY PLAYER_ID), T2 AS (SELECT INSTALL_DT, COUNT(PLAYER_ID) AS INSTALLS FROM T1 GROUP BY INSTALL_DT), T3 AS (SELECT INSTALL_DT, COUNT(*) AS NEXT_DAY_LOGIN FROM T1 WHERE (PLAYER_ID, DATE_ADD(INSTALL_DT, INTERVAL 1 DAY)) IN (SELECT PLAYER_ID, EVENT_DATE FROM ACTIVITY) GROUP BY 1) SELECT T2.INSTALL_DT, INSTALLS, ROUND(IFNULL(NEXT_DAY_LOGIN/INSTALLS, 0), 2) AS DAY1_RETENTION FROM T2 LEFT JOIN T3 ON T2.INSTALL_DT = T3.INSTALL_DT"
+}

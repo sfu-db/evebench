@@ -1,0 +1,39 @@
+{
+  "dbid": "512",
+  "index": "496",
+  "source_index": "337",
+  "schema_ddl": "CREATE TABLE ACTIVITY (\n    PLAYER_ID INT,\n    EVENT_DATE DATE,\n    DEVICE_ID INT,\n    GAMES_PLAYED INT,\n    PRIMARY KEY (PLAYER_ID, EVENT_DATE),\n    CHECK (GAMES_PLAYED >= 0)\n);",
+  "q1": "SELECT PLAYER_ID, DEVICE_ID FROM ACTIVITY WHERE (PLAYER_ID, EVENT_DATE) IN ( SELECT PLAYER_ID, MIN(EVENT_DATE) FROM ACTIVITY GROUP BY PLAYER_ID )",
+  "q2": "WITH CTE AS ( SELECT PLAYER_ID, MIN(EVENT_DATE) AS FIRST_LOGIN FROM ACTIVITY GROUP BY 1 ) SELECT PLAYER_ID, DEVICE_ID FROM ACTIVITY WHERE (PLAYER_ID, EVENT_DATE) IN (SELECT PLAYER_ID, FIRST_LOGIN FROM CTE)",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT PLAYER_ID, DEVICE_ID FROM ACTIVITY WHERE (PLAYER_ID, EVENT_DATE) IN ( SELECT PLAYER_ID, MIN(EVENT_DATE) FROM ACTIVITY GROUP BY PLAYER_ID )",
+  "q2_prompt_sql": "WITH CTE AS ( SELECT PLAYER_ID, MIN(EVENT_DATE) AS FIRST_LOGIN FROM ACTIVITY GROUP BY 1 ) SELECT PLAYER_ID, DEVICE_ID FROM ACTIVITY WHERE (PLAYER_ID, EVENT_DATE) IN (SELECT PLAYER_ID, FIRST_LOGIN FROM CTE)",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Both queries aim to retrieve the first login event (PLAYER_ID, EVENT_DATE) for each player along with their DEVICE_ID. Q1 uses a subquery directly in the IN clause, while Q2 uses a CTE to achieve the same logic. Since the CTE in Q2 is functionally identical to the subquery in Q1, the results are semantically equivalent.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Both queries aim to retrieve the first login event (PLAYER_ID, EVENT_DATE) for each player along with their DEVICE_ID. Q1 uses a subquery directly in the IN clause, while Q2 uses a CTE to achieve the same logic. Since the CTE in Q2 is functionally identical to the subquery in Q1, the results are semantically equivalent.\"\n}",
+  "reasoning": "\nOkay, let's try to figure out if Q1 and Q2 are equivalent. \n\nFirst, I need to understand what each query does. \n\nStarting with Q1: It selects PLAYER_ID and DEVICE_ID from the ACTIVITY table where the (PLAYER_ID, EVENT_DATE) pair is in the result of a subquery. The subquery groups ACTIVITY by PLAYER_ID and selects the minimum EVENT_DATE for each. So, this subquery gives the earliest event date for each player. Then, Q1 is getting all the records from ACTIVITY where the player's event date is their first login date. But since the primary key is (PLAYER_ID, EVENT_DATE), each player can have only one entry with their first login date. So Q1 should return the first login event for each player, including their device ID.\n\nNow Q2 uses a CTE called CTE. The CTE groups ACTIVITY by PLAYER_ID and selects the minimum EVENT_DATE as FIRST_LOGIN. Then, the main query selects from ACTIVITY where (PLAYER_ID, EVENT_DATE) is in the CTE's (PLAYER_ID, FIRST_LOGIN). That seems similar to Q1. But wait, the CTE's FIRST_LOGIN is the minimum event date per player, so the main query is again selecting the rows where the event date is the first login for each player. So, the logic seems the same as Q1.\n\nBut wait, are there any differences in how the subqueries are structured? In Q1, the subquery is (SELECT PLAYER_ID, MIN(EVENT_DATE) FROM ACTIVITY GROUP BY PLAYER_ID). In Q2, the CTE is grouping by 1 (PLAYER_ID) and selecting PLAYER_ID and FIRST_LOGIN. Then the main query uses (PLAYER_ID, FIRST_LOGIN) from CTE. \n\nSo, both queries are trying to find the first login date for each player and then get the corresponding rows from ACTIVITY. The only difference might be in how the subquery is structured. But since the CTE is just a named subquery, the logic should be the same. \n\nWait, but maybe there's an issue with the IN clause. For example, in Q1, the subquery returns PLAYER_ID and MIN(EVENT_DATE). In Q2, the CTE returns PLAYER_ID and FIRST_LOGIN, which is the same as MIN(EVENT_DATE). So the IN clause in both cases is checking for (PLAYER_ID, EVENT_DATE) pairs that match the (PLAYER_ID, first login date) pairs. \n\nBut wait, what if a player has multiple entries on their first login date? Wait, the primary key is (PLAYER_ID, EVENT_DATE), so each player can have only one event on a given date. So the first login date for a player is unique. Therefore, the subquery in Q1 and the CTE in Q2 each return exactly one row per player. So the IN clause in both cases would match exactly one row per player. Therefore, the result of both queries should be the same.\n\nBut maybe I'm missing something. Let me think of a test case. Suppose a player has multiple entries on the same first login date. Wait, no, the primary key constraint prevents that. So each player has exactly one event on their first login date. Therefore, both queries would return the same rows.\n\nWait, but what if the subquery in Q1 returns the same (PLAYER_ID, EVENT_DATE) as in the main table. So Q1 is correct. Q2 is using the CTE which is the same as the subquery in Q1. Therefore, the two queries should be equivalent. \n\nHmm, but maybe there's a difference in the way the subqueries are handled. For example, in Q1, the subquery is in the IN clause. In Q2, the CTE is used. But logically, they are the same. \n\nTherefore, the answer should be that they are equivalent. But I need to make sure. Let me think again.\n\nAnother angle: Are there any cases where the CTE might not have the same data as the subquery in Q1? No, because the CTE is exactly the same as the subquery in Q1. The CTE groups by PLAYER_ID and selects PLAYER_ID and MIN(EVENT_DATE). The subquery in Q1 does the same. Therefore, the IN clauses are comparing against the same set of (PLAYER_ID, EVENT_DATE) pairs. Therefore, the two queries are equivalent.\n\nSo the answer is that they are equivalent. Hence, the equiv is Y.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 391,
+    "total_tokens": 1408,
+    "completion_tokens": 1017,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 924
+    },
+    "generation_seconds": 32.0
+  },
+  "started_at": "2026-10-06T15:14:29.456942+00:00",
+  "elapsed_seconds": 0.0
+}

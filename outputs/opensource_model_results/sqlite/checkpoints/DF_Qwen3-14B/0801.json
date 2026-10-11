@@ -1,0 +1,55 @@
+{
+  "dbid": "student_club",
+  "index": "801",
+  "source_index": "1401",
+  "schema_ddl": "CREATE TABLE event\n(\n    event_id   TEXT\n        constraint event_pk\n            primary key,\n    event_name TEXT,\n    event_date TEXT,\n    type       TEXT,\n    notes      TEXT,\n    location   TEXT,\n    status     TEXT\n);\n\nCREATE TABLE major\n(\n    major_id   TEXT\n        constraint major_pk\n            primary key,\n    major_name TEXT,\n    department TEXT,\n    college    TEXT\n);\n\nCREATE TABLE zip_code\n(\n    zip_code    INTEGER\n        constraint zip_code_pk\n            primary key,\n    type        TEXT,\n    city        TEXT,\n    county      TEXT,\n    state       TEXT,\n    short_state TEXT\n);\n\nCREATE TABLE \"attendance\"\n(\n    link_to_event  TEXT,\n    link_to_member TEXT,\n    primary key (link_to_event, link_to_member),\n    foreign key (link_to_event) references event(event_id),\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"budget\"\n(\n    budget_id     TEXT\n            primary key,\n    category      TEXT,\n    spent         REAL,\n    remaining     REAL,\n    amount        INTEGER,\n    event_status  TEXT,\n    link_to_event TEXT,\n    foreign key (link_to_event) references event(event_id)\n);\n\nCREATE TABLE \"expense\"\n(\n    expense_id          TEXT\n            primary key,\n    expense_description TEXT,\n    expense_date        TEXT,\n    cost                REAL,\n    approved            TEXT,\n    link_to_member      TEXT,\n    link_to_budget      TEXT,\n    foreign key (link_to_budget) references budget(budget_id),\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"income\"\n(\n    income_id      TEXT\n        constraint income_pk\n            primary key,\n    date_received  TEXT,\n    amount         INTEGER,\n    source         TEXT,\n    notes          TEXT,\n    link_to_member TEXT,\n    foreign key (link_to_member) references member(member_id)\n);\n\nCREATE TABLE \"member\"\n(\n    member_id     TEXT\n        constraint member_pk\n            primary key,\n    first_name    TEXT,\n    last_name     TEXT,\n    email         TEXT,\n    position      TEXT,\n    t_shirt_size  TEXT,\n    phone         TEXT,\n    zip           INTEGER,\n    link_to_major TEXT,\n    foreign key (link_to_major) references major(major_id),\n    foreign key (zip) references zip_code(zip_code)\n);",
+  "q1": "SELECT CAST(SUM(CASE WHEN type = 'Community Service' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(type) FROM event WHERE SUBSTR(event_date, 1, 4) = '2019'",
+  "q2": "SELECT CAST(SUM(CASE WHEN type = 'Community Service' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(event_id) FROM event WHERE event_date BETWEEN '2019-01-01' AND '2019-12-31'",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT CAST(SUM(CASE WHEN type = 'Community Service' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(type) FROM event WHERE SUBSTR(event_date, 1, 4) = '2019'",
+  "q2_prompt_sql": "SELECT CAST(SUM(CASE WHEN type = 'Community Service' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(event_id) FROM event WHERE event_date BETWEEN '2019-01-01' AND '2019-12-31'",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO event (event_id, event_date, type) VALUES ('E1', '2019-05-15', 'Community Service');\nINSERT INTO event (event_id, event_date, type) VALUES ('E2', '2019-06-20', NULL);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 differ in their denominator calculations. Q1 uses COUNT(type) which excludes rows with NULL type, while Q2 uses COUNT(event_id) which counts all rows. If there are events in 2019 with NULL type, the results will differ.",
+  "counterexample_dsp": "Two events in 2019: one 'Community Service' and one with NULL type. Q1 counts 1/1 (100%), Q2 counts 1/2 (50%).",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 and Q2 differ in their denominator calculations. Q1 uses COUNT(type) which excludes rows with NULL type, while Q2 uses COUNT(event_id) which counts all rows. If there are events in 2019 with NULL type, the results will differ.\",\n\"counterexample_dsp\": \"Two events in 2019: one 'Community Service' and one with NULL type. Q1 counts 1/1 (100%), Q2 counts 1/2 (50%).\",\n\"counterexample\": \"INSERT INTO event (event_id, event_date, type) VALUES ('E1', '2019-05-15', 'Community Service');\\nINSERT INTO event (event_id, event_date, type) VALUES ('E2', '2019-06-20', NULL);\"\n}",
+  "reasoning": "\nOkay, let's start by looking at the two queries, Q1 and Q2. \n\nFirst, both are calculating a percentage of events that are of type 'Community Service' in the year 2019. The main difference seems to be in the WHERE clause and the denominator used in the division.\n\nQ1 uses SUBSTR(event_date, 1, 4) = '2019' to filter events from 2019. The denominator here is COUNT(type), which counts the number of events in 2019 where type is not null. But wait, since the WHERE clause already filters events from 2019, the COUNT(type) would count all those events, assuming type is not null. However, if there are events in 2019 where type is null, they would be excluded from the count. But the WHERE clause doesn't check for type, only the date.\n\nQ2 uses event_date BETWEEN '2019-01-01' AND '2019-12-31'. This should also filter events in 2019. The denominator here is COUNT(event_id), which counts all events in that date range, regardless of the type. But since event_id is the primary key, it's guaranteed to be unique and non-null. So COUNT(event_id) would count all events in 2019, even if their type is null. \n\nWait, the WHERE clause in Q1 is filtering events where the date is 2019. But the COUNT(type) in Q1 would count the number of events in that date range where type is not null. Because if type is null, then COUNT(type) would not count it. However, the SUM(CASE...) would also not count those, since type = 'Community Service' would be false. So the numerator is the same in both queries, but the denominator might differ if there are events in 2019 with type NULL. \n\nSo in Q1, the denominator is COUNT(type), which is the number of events in 2019 with type not null. In Q2, the denominator is COUNT(event_id), which is the number of events in 2019 (since event_id is a primary key, it's always not null). Therefore, if there are events in 2019 where type is NULL, then Q1's denominator would be less than Q2's denominator. That would make the two queries different.\n\nSo to create a counterexample, I need a scenario where there are events in 2019 with type NULL. For example, two events: one with type 'Community Service' and another with type NULL. Then Q1 would count 1 in the numerator and 1 in the denominator (since COUNT(type) would be 1), resulting in 100% (1/1 * 100). Q2 would have numerator 1 and denominator 2 (COUNT(event_id) is 2), resulting in 50%. That would show they are not equivalent.\n\nNow, I need to make sure that the test data adheres to the schema. The event table has event_id as a primary key, so each must be unique. The event_date is a TEXT field, so using '2019-01-01' etc. should be okay. The type can be NULL. So inserting two events: one with type 'Community Service' and another with type NULL. The dates should be in 2019.\n\nSo the counterexample would involve inserting these two events. Then, when Q1 runs, it counts 1 in the numerator and 1 in the denominator (since the second event's type is NULL, it's excluded from COUNT(type)). Q2 counts 1 in the numerator and 2 in the denominator (since COUNT(event_id) counts all events, even those with NULL type).\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 862,
+    "total_tokens": 1873,
+    "completion_tokens": 1011,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 815
+    },
+    "generation_seconds": 33.25
+  },
+  "started_at": "2026-10-06T20:59:13.772087+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      100.0
+    ]
+  ],
+  "q2_output": [
+    [
+      50.0
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT CAST(SUM(CASE WHEN type = 'Community Service' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(type) FROM event WHERE SUBSTR(event_date, 1, 4) = '2019'",
+  "q2_validation_sql": "SELECT CAST(SUM(CASE WHEN type = 'Community Service' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(event_id) FROM event WHERE event_date BETWEEN '2019-01-01' AND '2019-12-31'"
+}

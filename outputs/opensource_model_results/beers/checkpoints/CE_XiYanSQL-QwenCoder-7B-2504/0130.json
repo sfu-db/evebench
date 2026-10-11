@@ -1,0 +1,72 @@
+{
+  "dbid": "beers",
+  "index": "130",
+  "source_index": "2254",
+  "schema_ddl": "CREATE TABLE Bar (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Beer (\n    name VARCHAR NOT NULL,\n    brewer VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Drinker (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Frequents (\n    drinker VARCHAR NOT NULL,\n    bar VARCHAR NOT NULL,\n    times_a_week SMALLINT NOT NULL,\n    PRIMARY KEY (drinker, bar),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (bar) REFERENCES Bar(name)\n);\n\nCREATE TABLE Serves (\n    bar VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    price DECIMAL(5,2) NOT NULL,\n    PRIMARY KEY (bar, beer),\n    FOREIGN KEY (bar) REFERENCES Bar(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);\n\nCREATE TABLE Likes (\n    drinker VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    PRIMARY KEY (drinker, beer),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);",
+  "q1": "SELECT beer.name, min_price, bar FROM beer LEFT OUTER JOIN (SELECT beer, MIN(price) AS min_price FROM serves GROUP BY beer) AS t ON beer.name = t.beer LEFT OUTER JOIN serves ON beer.name = serves.beer AND min_price = serves.price",
+  "q2": "SELECT b.name AS beer, MIN(s.price) AS price, s.bar FROM beer AS b LEFT JOIN serves AS s ON b.name = s.beer LEFT JOIN (SELECT beer, MIN(price) AS lowest_price FROM serves GROUP BY beer) AS lp ON b.name = lp.beer AND s.price = lp.lowest_price GROUP BY b.name, s.bar ORDER BY b.name, s.bar",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "beers",
+  "q1_prompt_sql": "SELECT beer.name, min_price, bar FROM beer LEFT OUTER JOIN (SELECT beer, MIN(price) AS min_price FROM serves GROUP BY beer) AS t ON beer.name = t.beer LEFT OUTER JOIN serves ON beer.name = serves.beer AND min_price = serves.price",
+  "q2_prompt_sql": "SELECT b.name AS beer, MIN(s.price) AS price, s.bar FROM beer AS b LEFT JOIN serves AS s ON b.name = s.beer LEFT JOIN (SELECT beer, MIN(price) AS lowest_price FROM serves GROUP BY beer) AS lp ON b.name = lp.beer AND s.price = lp.lowest_price GROUP BY b.name, s.bar ORDER BY b.name, s.bar",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO beer (name, brewer) VALUES ('BeerA', 'BrewerX'); INSERT INTO bar (name, address) VALUES ('Bar1', 'Address1'), ('Bar2', 'Address2'), ('Bar3', 'Address3'); INSERT INTO serves (bar, beer, price) VALUES ('Bar1', 'BeerA', 10.00), ('Bar2', 'BeerA', 12.00), ('Bar3', 'BeerA', 10.00);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent because they handle the join conditions differently. Q1 joins the 'serves' table twice, while Q2 joins it only once with a subquery. This difference can lead to different results, especially when there are multiple rows in the 'serves' table for the same beer and bar.",
+  "counterexample_dsp": "The test data should have a beer served by multiple bars at different prices. The difference in join conditions between Q1 and Q2 should cause Q1 to return more results than Q2.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent because they handle the join conditions differently. Q1 joins the 'serves' table twice, while Q2 joins it only once with a subquery. This difference can lead to different results, especially when there are multiple rows in the 'serves' table for the same beer and bar.\",\n  \"counterexample_dsp\": \"The test data should have a beer served by multiple bars at different prices. The difference in join conditions between Q1 and Q2 should cause Q1 to return more results than Q2.\",\n  \"counterexample\": \"INSERT INTO beer (name, brewer) VALUES ('BeerA', 'BrewerX'); INSERT INTO bar (name, address) VALUES ('Bar1', 'Address1'), ('Bar2', 'Address2'), ('Bar3', 'Address3'); INSERT INTO serves (bar, beer, price) VALUES ('Bar1', 'BeerA', 10.00), ('Bar2', 'BeerA', 12.00), ('Bar3', 'BeerA', 10.00);\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 593,
+    "total_tokens": 833,
+    "completion_tokens": 240,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 4.219
+  },
+  "started_at": "2026-10-06T08:01:11.121756+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "BeerA",
+      10,
+      "Bar1"
+    ],
+    [
+      "BeerA",
+      10,
+      "Bar3"
+    ]
+  ],
+  "q2_output": [
+    [
+      "BeerA",
+      10,
+      "Bar1"
+    ],
+    [
+      "BeerA",
+      12,
+      "Bar2"
+    ],
+    [
+      "BeerA",
+      10,
+      "Bar3"
+    ]
+  ],
+  "q1_row_count": 2,
+  "q2_row_count": 3,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT beer.name, min_price, bar FROM beer LEFT OUTER JOIN (SELECT beer, MIN(price) AS min_price FROM serves GROUP BY beer) AS t ON beer.name = t.beer LEFT OUTER JOIN serves ON beer.name = serves.beer AND min_price = serves.price",
+  "q2_validation_sql": "SELECT b.name AS beer, MIN(s.price) AS price, s.bar FROM beer AS b LEFT JOIN serves AS s ON b.name = s.beer LEFT JOIN (SELECT beer, MIN(price) AS lowest_price FROM serves GROUP BY beer) AS lp ON b.name = lp.beer AND s.price = lp.lowest_price GROUP BY b.name, s.bar ORDER BY b.name, s.bar"
+}

@@ -1,0 +1,53 @@
+{
+  "dbid": "596",
+  "index": "320",
+  "source_index": "93",
+  "schema_ddl": "CREATE TABLE COURSES (\n    STUDENT VARCHAR(255),\n    CLASS VARCHAR(255),\n    PRIMARY KEY (STUDENT)\n);",
+  "q1": "SELECT CLASS FROM COURSES GROUP BY CLASS HAVING COUNT(*)>=5",
+  "q2": "SELECT CLASS FROM COURSES GROUP BY CLASS HAVING COUNT(2)>=5",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT CLASS FROM COURSES GROUP BY CLASS HAVING COUNT(*)>=5",
+  "q2_prompt_sql": "SELECT CLASS FROM COURSES GROUP BY CLASS HAVING COUNT(2)>=5",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO COURSES (STUDENT, CLASS) VALUES ('student1', 'classA'), ('student2', 'classA'), ('student3', 'classA'), ('student4', 'classA'), ('student5', 'classA'), ('student6', 'classA'), ('student7', 'classB'), ('student8', 'classB'), ('student9', 'classB');",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not semantically equivalent because Q1 uses COUNT(*) to count the number of rows in each class, while Q2 uses COUNT(2), which is equivalent to COUNT(*), but the syntax is incorrect and can lead to different results depending on the SQL dialect. In this case, Q2 will not work as intended in most SQL dialects.",
+  "counterexample_dsp": "The test data should have at least one class with fewer than 5 students to show that Q1 and Q2 return different results. The difference arises because Q2's COUNT(2) syntax is incorrect and may not be handled as expected by the SQL engine, potentially leading to an error or unexpected behavior.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent because Q1 uses COUNT(*) to count the number of rows in each class, while Q2 uses COUNT(2), which is equivalent to COUNT(*), but the syntax is incorrect and can lead to different results depending on the SQL dialect. In this case, Q2 will not work as intended in most SQL dialects.\",\n  \"counterexample_dsp\": \"The test data should have at least one class with fewer than 5 students to show that Q1 and Q2 return different results. The difference arises because Q2's COUNT(2) syntax is incorrect and may not be handled as expected by the SQL engine, potentially leading to an error or unexpected behavior.\",\n  \"counterexample\": \"INSERT INTO COURSES (STUDENT, CLASS) VALUES ('student1', 'classA'), ('student2', 'classA'), ('student3', 'classA'), ('student4', 'classA'), ('student5', 'classA'), ('student6', 'classA'), ('student7', 'classB'), ('student8', 'classB'), ('student9', 'classB');\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 280,
+    "total_tokens": 524,
+    "completion_tokens": 244,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 4.031
+  },
+  "started_at": "2026-10-06T09:51:01.799474+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "classA"
+    ]
+  ],
+  "q2_output": [
+    [
+      "classA"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT CLASS FROM COURSES GROUP BY CLASS HAVING COUNT(*)>=5",
+  "q2_validation_sql": "SELECT CLASS FROM COURSES GROUP BY CLASS HAVING COUNT(2)>=5"
+}

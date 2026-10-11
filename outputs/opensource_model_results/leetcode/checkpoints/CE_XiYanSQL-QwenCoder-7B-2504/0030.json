@@ -1,0 +1,53 @@
+{
+  "dbid": "550",
+  "index": "30",
+  "source_index": "281",
+  "schema_ddl": "CREATE TABLE ACTIVITY (\n    PLAYER_ID INT,\n    EVENT_DATE DATE,\n    DEVICE_ID INT,\n    GAMES_PLAYED INT,\n    PRIMARY KEY (PLAYER_ID, EVENT_DATE),\n    CHECK (GAMES_PLAYED >= 0)\n);",
+  "q1": "SELECT ROUND((SUM(CASE WHEN (TEMP.MIN_DATE + 1) = A.EVENT_DATE THEN 1 ELSE 0 END) / COUNT(DISTINCT TEMP.PLAYER_ID)), 2) AS FRACTION FROM (SELECT PLAYER_ID, MIN(EVENT_DATE) AS MIN_DATE FROM ACTIVITY GROUP BY PLAYER_ID) AS TEMP JOIN ACTIVITY AS A ON TEMP.PLAYER_ID = A.PLAYER_ID",
+  "q2": "WITH FIRST_LOGIN AS ( SELECT PLAYER_ID, MIN(EVENT_DATE) AS FIRST_LOGIN, MIN(EVENT_DATE) + 1 AS TARGET_DATE FROM ACTIVITY GROUP BY PLAYER_ID ), SECOND_LOGINS AS ( SELECT ACTIVITY.PLAYER_ID, ACTIVITY.EVENT_DATE, CASE WHEN FIRST_LOGIN.PLAYER_ID IS NULL THEN 0 ELSE 1 END AS TARGET_LOGIN FROM ACTIVITY LEFT JOIN FIRST_LOGIN ON ACTIVITY.PLAYER_ID = FIRST_LOGIN.PLAYER_ID AND ACTIVITY.EVENT_DATE = FIRST_LOGIN.TARGET_DATE ) SELECT ROUND(SUM(TARGET_LOGIN)/COUNT(DISTINCT PLAYER_ID),2) AS FRACTION FROM SECOND_LOGINS",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT ROUND((SUM(CASE WHEN (TEMP.MIN_DATE + 1) = A.EVENT_DATE THEN 1 ELSE 0 END) / COUNT(DISTINCT TEMP.PLAYER_ID)), 2) AS FRACTION FROM (SELECT PLAYER_ID, MIN(EVENT_DATE) AS MIN_DATE FROM ACTIVITY GROUP BY PLAYER_ID) AS TEMP JOIN ACTIVITY AS A ON TEMP.PLAYER_ID = A.PLAYER_ID",
+  "q2_prompt_sql": "WITH FIRST_LOGIN AS ( SELECT PLAYER_ID, MIN(EVENT_DATE) AS FIRST_LOGIN, MIN(EVENT_DATE) + 1 AS TARGET_DATE FROM ACTIVITY GROUP BY PLAYER_ID ), SECOND_LOGINS AS ( SELECT ACTIVITY.PLAYER_ID, ACTIVITY.EVENT_DATE, CASE WHEN FIRST_LOGIN.PLAYER_ID IS NULL THEN 0 ELSE 1 END AS TARGET_LOGIN FROM ACTIVITY LEFT JOIN FIRST_LOGIN ON ACTIVITY.PLAYER_ID = FIRST_LOGIN.PLAYER_ID AND ACTIVITY.EVENT_DATE = FIRST_LOGIN.TARGET_DATE ) SELECT ROUND(SUM(TARGET_LOGIN)/COUNT(DISTINCT PLAYER_ID),2) AS FRACTION FROM SECOND_LOGINS",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO ACTIVITY (PLAYER_ID, EVENT_DATE, DEVICE_ID, GAMES_PLAYED) VALUES (1, '2023-01-01', 101, 5);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not equivalent because Q1 considers all players, including those who do not have a second login, while Q2 only considers players who have a first login.",
+  "counterexample_dsp": "A player with a first login but no second login will trigger the difference.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 and Q2 are not equivalent because Q1 considers all players, including those who do not have a second login, while Q2 only considers players who have a first login.\",\n  \"counterexample_dsp\": \"A player with a first login but no second login will trigger the difference.\",\n  \"counterexample\": \"INSERT INTO ACTIVITY (PLAYER_ID, EVENT_DATE, DEVICE_ID, GAMES_PLAYED) VALUES (1, '2023-01-01', 101, 5);\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 479,
+    "total_tokens": 598,
+    "completion_tokens": 119,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 2.015
+  },
+  "started_at": "2026-10-06T09:49:59.719804+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "0.00"
+    ]
+  ],
+  "q2_output": [
+    [
+      "0.00"
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT ROUND((SUM(CASE WHEN (TEMP.MIN_DATE + 1) = A.EVENT_DATE THEN 1 ELSE 0 END) / COUNT(DISTINCT TEMP.PLAYER_ID)), 2) AS FRACTION FROM (SELECT PLAYER_ID, MIN(EVENT_DATE) AS MIN_DATE FROM ACTIVITY GROUP BY PLAYER_ID) AS TEMP JOIN ACTIVITY AS A ON TEMP.PLAYER_ID = A.PLAYER_ID",
+  "q2_validation_sql": "WITH FIRST_LOGIN AS ( SELECT PLAYER_ID, MIN(EVENT_DATE) AS FIRST_LOGIN, MIN(EVENT_DATE) + 1 AS TARGET_DATE FROM ACTIVITY GROUP BY PLAYER_ID ), SECOND_LOGINS AS ( SELECT ACTIVITY.PLAYER_ID, ACTIVITY.EVENT_DATE, CASE WHEN FIRST_LOGIN.PLAYER_ID IS NULL THEN 0 ELSE 1 END AS TARGET_LOGIN FROM ACTIVITY LEFT JOIN FIRST_LOGIN ON ACTIVITY.PLAYER_ID = FIRST_LOGIN.PLAYER_ID AND ACTIVITY.EVENT_DATE = FIRST_LOGIN.TARGET_DATE ) SELECT ROUND(SUM(TARGET_LOGIN)/COUNT(DISTINCT PLAYER_ID),2) AS FRACTION FROM SECOND_LOGINS"
+}

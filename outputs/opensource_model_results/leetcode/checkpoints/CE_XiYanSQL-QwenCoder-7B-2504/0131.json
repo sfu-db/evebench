@@ -1,0 +1,53 @@
+{
+  "dbid": "1149",
+  "index": "131",
+  "source_index": "179",
+  "schema_ddl": "CREATE TABLE VIEWS (\n    ARTICLE_ID INT,\n    AUTHOR_ID INT,\n    VIEWER_ID INT,\n    VIEW_DATE DATE\n);",
+  "q1": "SELECT DISTINCT VIEWER_ID AS ID FROM VIEWS GROUP BY VIEW_DATE, VIEWER_ID HAVING COUNT(DISTINCT ARTICLE_ID) > 1 ORDER BY ID",
+  "q2": "SELECT DISTINCT VIEWER_ID AS ID FROM ( SELECT VIEW_DATE, VIEWER_ID, COUNT(DISTINCT ARTICLE_ID) AS TOTAL_VIEWS FROM VIEWS GROUP BY 1, 2 ) X WHERE TOTAL_VIEWS > 1 ORDER BY 1",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT DISTINCT VIEWER_ID AS ID FROM VIEWS GROUP BY VIEW_DATE, VIEWER_ID HAVING COUNT(DISTINCT ARTICLE_ID) > 1 ORDER BY ID",
+  "q2_prompt_sql": "SELECT DISTINCT VIEWER_ID AS ID FROM ( SELECT VIEW_DATE, VIEWER_ID, COUNT(DISTINCT ARTICLE_ID) AS TOTAL_VIEWS FROM VIEWS GROUP BY 1, 2 ) X WHERE TOTAL_VIEWS > 1 ORDER BY 1",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO VIEWS (ARTICLE_ID, AUTHOR_ID, VIEWER_ID, VIEW_DATE) VALUES (1, 101, 201, '2023-01-01'); INSERT INTO VIEWS (ARTICLE_ID, AUTHOR_ID, VIEWER_ID, VIEW_DATE) VALUES (2, 102, 201, '2023-01-01');",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 groups by VIEW_DATE and VIEWER_ID, which means it treats each view on a specific date as a separate group. Q2, on the other hand, groups by VIEW_DATE and VIEWER_ID first, and then counts the distinct ARTICLE_IDs for each group, which is the same as Q1. The difference arises when we consider the ORDER BY clause in Q1, which orders the results by VIEWER_ID, while Q2 orders by the alias 1, which is also VIEWER_ID. However, the difference in results is due to the HAVING clause in Q1, which filters groups with more than one distinct ARTICLE_ID, while Q2 does not have this filter. The counterexample demonstrates a scenario where Q1 and Q2 return different results.",
+  "counterexample_dsp": "The test data should have multiple views by the same viewer on the same date, but with different articles. Q1 should return this viewer, while Q2 should not, because it does not have the HAVING clause to filter groups with more than one distinct ARTICLE_ID.",
+  "equiv": "",
+  "raw_response": "{\n  \"explanation\": \"Q1 groups by VIEW_DATE and VIEWER_ID, which means it treats each view on a specific date as a separate group. Q2, on the other hand, groups by VIEW_DATE and VIEWER_ID first, and then counts the distinct ARTICLE_IDs for each group, which is the same as Q1. The difference arises when we consider the ORDER BY clause in Q1, which orders the results by VIEWER_ID, while Q2 orders by the alias 1, which is also VIEWER_ID. However, the difference in results is due to the HAVING clause in Q1, which filters groups with more than one distinct ARTICLE_ID, while Q2 does not have this filter. The counterexample demonstrates a scenario where Q1 and Q2 return different results.\",\n  \"counterexample_dsp\": \"The test data should have multiple views by the same viewer on the same date, but with different articles. Q1 should return this viewer, while Q2 should not, because it does not have the HAVING clause to filter groups with more than one distinct ARTICLE_ID.\",\n  \"counterexample\": \"INSERT INTO VIEWS (ARTICLE_ID, AUTHOR_ID, VIEWER_ID, VIEW_DATE) VALUES (1, 101, 201, '2023-01-01'); INSERT INTO VIEWS (ARTICLE_ID, AUTHOR_ID, VIEWER_ID, VIEW_DATE) VALUES (2, 102, 201, '2023-01-01');\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 332,
+    "total_tokens": 657,
+    "completion_tokens": 325,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 5.329
+  },
+  "started_at": "2026-10-06T09:50:20.347934+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      201
+    ]
+  ],
+  "q2_output": [
+    [
+      201
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DISTINCT VIEWER_ID AS ID FROM VIEWS GROUP BY VIEW_DATE, VIEWER_ID HAVING COUNT(DISTINCT ARTICLE_ID) > 1 ORDER BY ID",
+  "q2_validation_sql": "SELECT DISTINCT VIEWER_ID AS ID FROM ( SELECT VIEW_DATE, VIEWER_ID, COUNT(DISTINCT ARTICLE_ID) AS TOTAL_VIEWS FROM VIEWS GROUP BY 1, 2 ) X WHERE TOTAL_VIEWS > 1 ORDER BY 1"
+}

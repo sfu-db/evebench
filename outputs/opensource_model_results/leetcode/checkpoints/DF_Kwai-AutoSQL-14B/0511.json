@@ -1,0 +1,39 @@
+{
+  "dbid": "1084",
+  "index": "511",
+  "source_index": "663",
+  "schema_ddl": "CREATE TABLE PRODUCT (\n    PRODUCT_ID INT,\n    PRODUCT_NAME VARCHAR(255),\n    UNIT_PRICE INT,\n    PRIMARY KEY (PRODUCT_ID),\n    CHECK (UNIT_PRICE > 0)\n);\n\nCREATE TABLE SALES (\n    PRODUCT_ID INT,\n    SELLER_ID INT,\n    BUYER_ID INT,\n    SALE_DATE DATE,\n    QUANTITY INT,\n    PRICE INT,\n    FOREIGN KEY (PRODUCT_ID) REFERENCES PRODUCT(PRODUCT_ID),\n    CHECK (QUANTITY > 0),\n    CHECK (PRICE > 0)\n);",
+  "q1": "SELECT P.PRODUCT_ID, P.PRODUCT_NAME FROM PRODUCT P INNER JOIN ( SELECT PRODUCT_ID FROM SALES GROUP BY PRODUCT_ID HAVING MIN(SALE_DATE) >= '2019-01-01' AND MAX(SALE_DATE) <= '2019-03-31' ) S ON (P.PRODUCT_ID = S.PRODUCT_ID)",
+  "q2": "SELECT DISTINCT P.PRODUCT_ID, P.PRODUCT_NAME FROM PRODUCT P JOIN SALES S ON P.PRODUCT_ID = S.PRODUCT_ID WHERE SALE_DATE BETWEEN '2019-01-01' AND '2019-03-31' AND P.PRODUCT_ID NOT IN ( SELECT PRODUCT_ID FROM SALES WHERE SALE_DATE > '2019-03-31' OR SALE_DATE < '2019-01-01')",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT P.PRODUCT_ID, P.PRODUCT_NAME FROM PRODUCT P INNER JOIN ( SELECT PRODUCT_ID FROM SALES GROUP BY PRODUCT_ID HAVING MIN(SALE_DATE) >= '2019-01-01' AND MAX(SALE_DATE) <= '2019-03-31' ) S ON (P.PRODUCT_ID = S.PRODUCT_ID)",
+  "q2_prompt_sql": "SELECT DISTINCT P.PRODUCT_ID, P.PRODUCT_NAME FROM PRODUCT P JOIN SALES S ON P.PRODUCT_ID = S.PRODUCT_ID WHERE SALE_DATE BETWEEN '2019-01-01' AND '2019-03-31' AND P.PRODUCT_ID NOT IN ( SELECT PRODUCT_ID FROM SALES WHERE SALE_DATE > '2019-03-31' OR SALE_DATE < '2019-01-01')",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are semantically equivalent. Both ensure that only products with all sales occurring between '2019-01-01' and '2019-03-31' are returned. Q1 uses HAVING to enforce that the minimum and maximum sale dates fall within the range. Q2 uses NOT IN to exclude any product that has a sale outside of the range.",
+  "counterexample_dsp": "Actually, after careful re-evaluation, Q1 and Q2 are semantically equivalent. Both ensure that all sales for a product fall within the range '2019-01-01' to '2019-03-31'. Q1 uses aggregate functions with HAVING to enforce this. Q2 uses NOT IN to exclude any product that has a sale outside the range. Therefore, Q1 and Q2 are equivalent.",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n  \"equiv\": \"N\",\n  \"explanation\": \"Q1 and Q2 are not semantically equivalent. Q1 selects products whose all sales occurred strictly between '2019-01-01' and '2019-03-31'. Q2 selects products that have at least one sale in that range and no sales outside of it. Q1 uses HAVING to enforce that all sales for a product fall within the range, while Q2 uses NOT IN to exclude any product that has a sale outside the range. These can produce different results when a product has multiple sales, some within and some outside the range.\",\n  \"counterexample_dsp\": \"A product has one sale within the range and one sale outside the range. Q1 will exclude it, while Q2 will also exclude it. Wait, let me rephrase for clarity: A product has one sale within the range and one sale outside the range. Q1 will exclude it (MIN and MAX span outside the range), while Q2 will also exclude it (NOT IN excludes it). Hmm, need a better example. Let me think of a product with sales only outside the range, but no sales inside. Q1 will exclude it (no sales in range), while Q2 will also exclude it (no sales in range). Wait, the correct example is a product that has at least one sale inside the range but also one sale outside the range. Q1 will exclude it (MAX(SALE_DATE) > '2019-03-31'). Q2 will exclude it (NOT IN clause excludes it due to sale outside the range). So they actually behave the same in this case. Let me think again. Actually, Q1 and Q2 are equivalent. Wait, no. Let me double-check.\",\n  \"counterexample_dsp\": \"A product has no sales in the range '2019-01-01' to '2019-03-31'. Q1 will not select it because the subquery in the inner join returns no rows. Q2 will not select it because the WHERE clause has no matching rows. So same result. A product has sales both inside and outside the range. Q1 will not select it (MAX(SALE_DATE) > '2019-03-31'). Q2 will not select it (NOT IN clause excludes it due to sale outside the range). Same result. A product has only sales inside the range. Q1 will select it (MIN and MAX within range). Q2 will select it (has at least one sale in range and no sales outside). Same result. So actually, Q1 and Q2 are equivalent. I must have made a mistake earlier.\",\n  \"counterexample_dsp\": \"Actually, after careful re-evaluation, Q1 and Q2 are semantically equivalent. Both ensure that all sales for a product fall within the range '2019-01-01' to '2019-03-31'. Q1 uses aggregate functions with HAVING to enforce this. Q2 uses NOT IN to exclude any product that has a sale outside the range. Therefore, Q1 and Q2 are equivalent.\",\n  \"equiv\": \"Y\",\n  \"explanation\": \"Q1 and Q2 are semantically equivalent. Both ensure that only products with all sales occurring between '2019-01-01' and '2019-03-31' are returned. Q1 uses HAVING to enforce that the minimum and maximum sale dates fall within the range. Q2 uses NOT IN to exclude any product that has a sale outside of the range.\"\n}",
+  "reasoning": "\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 544,
+    "total_tokens": 1321,
+    "completion_tokens": 777,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1
+    },
+    "generation_seconds": 25.578
+  },
+  "started_at": "2026-10-06T15:51:28.059608+00:00",
+  "elapsed_seconds": 0.0
+}

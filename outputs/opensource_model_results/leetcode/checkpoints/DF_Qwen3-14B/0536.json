@@ -1,0 +1,39 @@
+{
+  "dbid": "1045",
+  "index": "536",
+  "source_index": "256",
+  "schema_ddl": "CREATE TABLE PRODUCT (\n    PRODUCT_KEY INT,\n    PRIMARY KEY (PRODUCT_KEY)\n);\nCREATE TABLE CUSTOMER (\n    CUSTOMER_ID INT,\n    PRODUCT_KEY INT,\n    PRIMARY KEY (CUSTOMER_ID),\n    FOREIGN KEY (PRODUCT_KEY) REFERENCES PRODUCT(PRODUCT_KEY)\n);",
+  "q1": "SELECT CUSTOMER_ID FROM CUSTOMER GROUP BY 1 HAVING COUNT(DISTINCT PRODUCT_KEY) = (SELECT COUNT(DISTINCT PRODUCT_KEY) FROM PRODUCT)",
+  "q2": "SELECT CUSTOMER_ID FROM CUSTOMER GROUP BY 1 HAVING COUNT(DISTINCT PRODUCT_KEY) = (SELECT COUNT(DISTINCT PRODUCT_KEY) FROM PRODUCT) ORDER BY 1",
+  "dialect": "mysql",
+  "ground_truth": "EQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT CUSTOMER_ID FROM CUSTOMER GROUP BY 1 HAVING COUNT(DISTINCT PRODUCT_KEY) = (SELECT COUNT(DISTINCT PRODUCT_KEY) FROM PRODUCT)",
+  "q2_prompt_sql": "SELECT CUSTOMER_ID FROM CUSTOMER GROUP BY 1 HAVING COUNT(DISTINCT PRODUCT_KEY) = (SELECT COUNT(DISTINCT PRODUCT_KEY) FROM PRODUCT) ORDER BY 1",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "",
+  "counterexample_valid": "N",
+  "validation_status": "declared_equivalent",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are semantically equivalent. The ORDER BY clause in Q2 only affects the presentation order of the results, not the selection criteria. Both queries select customers who have purchased all distinct products, and the ORDER BY does not alter the set of qualifying rows.",
+  "counterexample_dsp": "",
+  "equiv": "Y",
+  "raw_response": "\n\n{\n\"equiv\": \"Y\",\n\"explanation\": \"Q1 and Q2 are semantically equivalent. The ORDER BY clause in Q2 only affects the presentation order of the results, not the selection criteria. Both queries select customers who have purchased all distinct products, and the ORDER BY does not alter the set of qualifying rows.\"\n}",
+  "reasoning": "\nOkay, let's tackle this problem. So, I need to determine if the two SQL queries Q1 and Q2 are semantically equivalent. Let me start by understanding what each query does.\n\nFirst, looking at the schema: there's a PRODUCT table with a primary key PRODUCT_KEY, and a CUSTOMER table with CUSTOMER_ID as the primary key and a foreign key to PRODUCT's PRODUCT_KEY. Each customer can have a product key, which references a product.\n\nNow, Q1 is selecting CUSTOMER_ID from CUSTOMER, grouping by 1 (which is CUSTOMER_ID), and having the count of distinct PRODUCT_KEY equal to the count of distinct PRODUCT_KEY in the PRODUCT table. So, for each customer, it's checking if they have all the distinct products. The subquery gets the total number of distinct products, and the HAVING clause ensures that the customer has that many distinct products.\n\nQ2 is almost the same as Q1, except it adds an ORDER BY 1, which sorts the results by CUSTOMER_ID. The question is whether adding the ORDER BY changes the result set.\n\nSemantically, the ORDER BY clause doesn't change the data returned; it just changes the order in which the rows are presented. So, if the queries are otherwise identical, the results should be the same, just ordered differently. However, the problem might be about whether the presence of ORDER BY affects the grouping or HAVING clause. But in standard SQL, the ORDER BY is applied after the GROUP BY and HAVING, so it shouldn't affect the selection of rows, only their order.\n\nBut wait, maybe there's a case where the ORDER BY could influence the result? For example, if there's a tie in the ordering and some database-specific behavior? But no, the ORDER BY doesn't filter rows. It just sorts them. So, the actual rows selected by Q1 and Q2 should be the same. Therefore, they are equivalent.\n\nBut wait, maybe the user is thinking about the possibility that in some SQL implementations, if the ORDER BY is present, it might affect the grouping? No, that doesn't make sense. The GROUP BY and HAVING are processed before the ORDER BY. The ORDER BY is just for presentation. So the result sets should be the same, just ordered. Therefore, the queries are equivalent. So the answer should be Y.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 380,
+    "total_tokens": 933,
+    "completion_tokens": 553,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 481
+    },
+    "generation_seconds": 16.907
+  },
+  "started_at": "2026-10-06T15:16:25.151777+00:00",
+  "elapsed_seconds": 0.0
+}

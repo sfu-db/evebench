@@ -1,0 +1,55 @@
+{
+  "dbid": "thrombosis_prediction",
+  "index": "675",
+  "source_index": "1190",
+  "schema_ddl": "CREATE TABLE Examination\n(\n    ID                 INTEGER          null,\n    `Examination Date` DATE         null,\n    `aCL IgG`          REAL        null,\n    `aCL IgM`          REAL        null,\n    ANA                INTEGER          null,\n    `ANA Pattern`      TEXT null,\n    `aCL IgA`          INTEGER          null,\n    Diagnosis          TEXT null,\n    KCT                TEXT null,\n    RVVT              TEXT null,\n    LAC                TEXT null,\n    Symptoms           TEXT null,\n    Thrombosis         INTEGER          null,\n    foreign key (ID) references Patient (ID)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE Patient\n(\n    ID           INTEGER default 0 not null\n        primary key,\n    SEX          TEXT  null,\n    Birthday     DATE          null,\n    Description  DATE          null,\n    `First Date` DATE          null,\n    Admission    TEXT  null,\n    Diagnosis    TEXT  null\n);\n\nCREATE TABLE Laboratory\n(\n    ID        INTEGER  default 0            not null,\n    Date      DATE default '0000-00-00' not null,\n    GOT       INTEGER                       null,\n    GPT       INTEGER                        null,\n    LDH       INTEGER                        null,\n    ALP       INTEGER                        null,\n    TP        REAL             null,\n    ALB       REAL             null,\n    UA        REAL             null,\n    UN        INTEGER                       null,\n    CRE       REAL             null,\n    `T-BIL`   REAL             null,\n    `T-CHO`   INTEGER                       null,\n    TG        INTEGER                       null,\n    CPK       INTEGER                       null,\n    GLU       INTEGER                       null,\n    WBC       REAL             null,\n    RBC       REAL             null,\n    HGB       REAL             null,\n    HCT       REAL             null,\n    PLT       INTEGER                       null,\n    PT        REAL             null,\n    APTT      INTEGER                       null,\n    FG        REAL             null,\n    PIC       INTEGER                       null,\n    TAT       INTEGER                       null,\n    TAT2      INTEGER                       null,\n    `U-PRO`   TEXT              null,\n    IGG       INTEGER                       null,\n    IGA       INTEGER                       null,\n    IGM       INTEGER                       null,\n    CRP       TEXT              null,\n    RA        TEXT              null,\n    RF        TEXT              null,\n    C3        INTEGER                       null,\n    C4        INTEGER                       null,\n    RNP       TEXT              null,\n    SM        TEXT              null,\n    SC170     TEXT              null,\n    SSA       TEXT              null,\n    SSB       TEXT              null,\n    CENTROMEA TEXT              null,\n    DNA       TEXT              null,\n    `DNA-II`  INTEGER                       null,\n    primary key (ID, Date),\n        foreign key (ID) references Patient (ID)\n            on update cascade on delete cascade\n);",
+  "q1": "SELECT COUNT(*) FROM Examination WHERE Thrombosis = 2 AND \"ANA Pattern\" = 'S' AND \"aCL IgM\" > (SELECT AVG(\"aCL IgM\") * 1.2 FROM Examination WHERE Thrombosis = 2 AND \"ANA Pattern\" = 'S')",
+  "q2": "SELECT COUNT(DISTINCT T1.ID) FROM Examination AS T1 INNER JOIN Patient AS T2 ON T1.ID = T2.ID WHERE T1.Thrombosis = 2 AND T1.\"ANA Pattern\" = 'S' AND T1.\"aCL IgM\" > (SELECT AVG(\"aCL IgM\") FROM Examination) * 1.2",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT COUNT(*) FROM Examination WHERE Thrombosis = 2 AND \"ANA Pattern\" = 'S' AND \"aCL IgM\" > (SELECT AVG(\"aCL IgM\") * 1.2 FROM Examination WHERE Thrombosis = 2 AND \"ANA Pattern\" = 'S')",
+  "q2_prompt_sql": "SELECT COUNT(DISTINCT T1.ID) FROM Examination AS T1 INNER JOIN Patient AS T2 ON T1.ID = T2.ID WHERE T1.Thrombosis = 2 AND T1.\"ANA Pattern\" = 'S' AND T1.\"aCL IgM\" > (SELECT AVG(\"aCL IgM\") FROM Examination) * 1.2",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO Patient (ID) VALUES (1), (2);\nINSERT INTO Examination (ID, Thrombosis, \"ANA Pattern\", \"aCL IgM\") VALUES (1, 2, 'S', 10), (2, 1, 'S', 5);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not equivalent because Q1 calculates the average 'aCL IgM' only for rows where Thrombosis=2 and 'ANA Pattern'='S', while Q2 calculates the average over all Examination rows. This leads to different thresholds for the 'aCL IgM' comparison, resulting in different counts.",
+  "counterexample_dsp": "A scenario with two Examination entries: one matching Thrombosis=2 and 'ANA Pattern'='S' (value 10), and another not matching (value 5). Q1's threshold is 12 (1.2*10), but Q2's threshold is 9 (1.2*7.5), leading to different counts.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 and Q2 are not equivalent because Q1 calculates the average 'aCL IgM' only for rows where Thrombosis=2 and 'ANA Pattern'='S', while Q2 calculates the average over all Examination rows. This leads to different thresholds for the 'aCL IgM' comparison, resulting in different counts.\",\n\"counterexample_dsp\": \"A scenario with two Examination entries: one matching Thrombosis=2 and 'ANA Pattern'='S' (value 10), and another not matching (value 5). Q1's threshold is 12 (1.2*10), but Q2's threshold is 9 (1.2*7.5), leading to different counts.\",\n\"counterexample\": \"INSERT INTO Patient (ID) VALUES (1), (2);\\nINSERT INTO Examination (ID, Thrombosis, \\\"ANA Pattern\\\", \\\"aCL IgM\\\") VALUES (1, 2, 'S', 10), (2, 1, 'S', 5);\"\n}",
+  "reasoning": "\nOkay, let's try to figure out if these two SQL queries are equivalent. \n\nFirst, I need to understand what each query does. Let's start with Q1. \n\nQ1 is selecting the count of all rows from the Examination table where Thrombosis is 2, \"ANA Pattern\" is 'S', and \"aCL IgM\" is greater than 1.2 times the average \"aCL IgM\" of those same conditions. So the subquery for the average is filtered by Thrombosis=2 and \"ANA Pattern\"='S'. That makes sense. It's counting how many entries meet those criteria and have an \"aCL IgM\" above 1.2 times the average of that specific subset.\n\nNow Q2 is a bit different. It's using a JOIN between Examination (T1) and Patient (T2) on ID. Then it's applying the same conditions on T1.Thrombosis and T1.\"ANA Pattern\". But the subquery for the average is just (SELECT AVG(\"aCL IgM\") FROM Examination) * 1.2. Wait, that subquery isn't filtered at all. It's taking the average of all \"aCL IgM\" values in the entire Examination table, not just those with Thrombosis=2 and \"ANA Pattern\"='S'. Also, Q2 uses COUNT(DISTINCT T1.ID), which might be redundant if there are no duplicates in ID, but since Examination has a foreign key to Patient, and Patient's ID is primary key, each ID in Examination should be unique. So COUNT(DISTINCT T1.ID) would be same as COUNT(*), but maybe the JOIN is introducing duplicates? Or maybe not. But the main difference is the subquery for the average.\n\nSo the key differences are:\n\n1. Q1's subquery for average is filtered by Thrombosis=2 and \"ANA Pattern\"='S', while Q2's subquery is not filtered. That would mean the average used in Q2's condition is different from Q1's. \n\n2. Q2 has a JOIN with Patient, but the WHERE clause only uses T1's columns. However, since the JOIN is on ID, and the WHERE conditions are on T1, the JOIN might not affect the result if all T1.IDs exist in Patient. But if there are some Examination records where ID doesn't exist in Patient, then the JOIN would exclude them. However, the schema says that Examination has a foreign key to Patient, so the ID in Examination must exist in Patient. Therefore, the JOIN in Q2 is a INNER JOIN, but since all T1.IDs are in Patient, the JOIN doesn't exclude any rows. So the JOIN in Q2 is effectively a no-op in terms of filtering, but it's possible that the COUNT(DISTINCT T1.ID) is redundant here. However, the main issue is the average calculation.\n\nTherefore, the two queries are not equivalent because the average used in the condition is different. Let's think of a counterexample. Suppose there are some entries in Examination with Thrombosis=2 and \"ANA Pattern\"='S', and others without. The average in Q1 is based only on the subset, while Q2's average is based on all entries. \n\nFor example, imagine a scenario where the average of all \"aCL IgM\" is lower than the average of the subset. Then, the threshold for \"aCL IgM\" in Q1 would be higher than in Q2. So, the number of entries that meet the condition would be different.\n\nLet me create a small test case. Let's say there are two entries in Examination:\n\n- Entry A: Thrombosis=2, \"ANA Pattern\"='S', aCL IgM=10\n- Entry B: Thrombosis=1, \"ANA Pattern\"='S', aCL IgM=5\n\nIn Q1, the average for the subset (Thrombosis=2 and ANA Pattern=S) is 10. So 1.2 * 10 = 12. So Entry A's aCL IgM is 10, which is less than 12. So Q1 would count 0.\n\nIn Q2, the average of all Examination entries is (10 + 5)/2 = 7.5. 1.2 * 7.5 = 9. Entry A's aCL IgM is 10, which is greater than 9. So Q2 would count 1. Thus, the results differ.\n\nBut wait, Q2's JOIN with Patient might not affect this. Also, the Patient table's ID must exist. So, I need to create entries in Examination with those values, and corresponding Patient entries.\n\nSo the counterexample would have Examination entries where the average for the subset is different from the overall average, leading to different counts.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 998,
+    "total_tokens": 2258,
+    "completion_tokens": 1260,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1024
+    },
+    "generation_seconds": 42.047
+  },
+  "started_at": "2026-10-06T20:51:29.747481+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      0
+    ]
+  ],
+  "q2_output": [
+    [
+      1
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT COUNT(*) FROM Examination WHERE Thrombosis = 2 AND \"ANA Pattern\" = 'S' AND \"aCL IgM\" > (SELECT AVG(\"aCL IgM\") * 1.2 FROM Examination WHERE Thrombosis = 2 AND \"ANA Pattern\" = 'S')",
+  "q2_validation_sql": "SELECT COUNT(DISTINCT T1.ID) FROM Examination AS T1 INNER JOIN Patient AS T2 ON T1.ID = T2.ID WHERE T1.Thrombosis = 2 AND T1.\"ANA Pattern\" = 'S' AND T1.\"aCL IgM\" > (SELECT AVG(\"aCL IgM\") FROM Examination) * 1.2"
+}

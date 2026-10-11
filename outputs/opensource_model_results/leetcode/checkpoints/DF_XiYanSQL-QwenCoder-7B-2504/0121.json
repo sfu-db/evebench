@@ -1,0 +1,71 @@
+{
+  "dbid": "1075",
+  "index": "121",
+  "source_index": "370",
+  "schema_ddl": "CREATE TABLE EMPLOYEE (\n    EMPLOYEE_ID INT,\n    NAME VARCHAR(255),\n    EXPERIENCE_YEARS INT,\n    PRIMARY KEY (EMPLOYEE_ID),\n    CHECK (EXPERIENCE_YEARS >= 0)\n);\nCREATE TABLE PROJECT (\n    PROJECT_ID INT,\n    EMPLOYEE_ID INT,\n    PRIMARY KEY (PROJECT_ID, EMPLOYEE_ID),\n    FOREIGN KEY (EMPLOYEE_ID) REFERENCES EMPLOYEE(EMPLOYEE_ID)\n);",
+  "q1": "SELECT A.PROJECT_ID, ROUND(AVG(B.EXPERIENCE_YEARS), 2) AS AVERAGE_YEARS FROM PROJECT AS A INNER JOIN EMPLOYEE AS B ON A.EMPLOYEE_ID = B.EMPLOYEE_ID GROUP BY A.PROJECT_ID",
+  "q2": "SELECT A.PID AS PROJECT_ID, ROUND(SUM(A.YEARS) / COUNT(A.PID), 2) AS AVERAGE_YEARS FROM ( SELECT P.PROJECT_ID AS PID, E.EXPERIENCE_YEARS AS YEARS FROM PROJECT P LEFT JOIN EMPLOYEE E ON P.EMPLOYEE_ID = E.EMPLOYEE_ID ) A GROUP BY 1",
+  "dialect": "mysql",
+  "ground_truth": "NEQ",
+  "source": "leetcode",
+  "q1_prompt_sql": "SELECT A.PROJECT_ID, ROUND(AVG(B.EXPERIENCE_YEARS), 2) AS AVERAGE_YEARS FROM PROJECT AS A INNER JOIN EMPLOYEE AS B ON A.EMPLOYEE_ID = B.EMPLOYEE_ID GROUP BY A.PROJECT_ID",
+  "q2_prompt_sql": "SELECT A.PID AS PROJECT_ID, ROUND(SUM(A.YEARS) / COUNT(A.PID), 2) AS AVERAGE_YEARS FROM ( SELECT P.PROJECT_ID AS PID, E.EXPERIENCE_YEARS AS YEARS FROM PROJECT P LEFT JOIN EMPLOYEE E ON P.EMPLOYEE_ID = E.EMPLOYEE_ID ) A GROUP BY 1",
+  "shared_limit_removed": "",
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO EMPLOYEE (EMPLOYEE_ID, NAME, EXPERIENCE_YEARS) VALUES (1, 'Employee1', 5); INSERT INTO EMPLOYEE (EMPLOYEE_ID, NAME, EXPERIENCE_YEARS) VALUES (2, 'Employee2', 10); INSERT INTO PROJECT (PROJECT_ID, EMPLOYEE_ID) VALUES (1, 1); INSERT INTO PROJECT (PROJECT_ID, EMPLOYEE_ID) VALUES (2, 1); INSERT INTO PROJECT (PROJECT_ID, EMPLOYEE_ID) VALUES (3, 2);",
+  "counterexample_valid": "N",
+  "validation_status": "same_output",
+  "validation_error": "",
+  "explanation": "Q1 and Q2 are not equivalent because Q1 calculates the average experience years of employees for each project, while Q2 calculates the average of the sum of experience years divided by the number of projects for each employee.",
+  "counterexample_dsp": "The difference is triggered when an employee is assigned to multiple projects. In this case, Q1 will correctly calculate the average experience years for each project, while Q2 will incorrectly calculate the average of the sum of experience years divided by the number of projects for each employee.",
+  "equiv": "N",
+  "raw_response": "{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 and Q2 are not equivalent because Q1 calculates the average experience years of employees for each project, while Q2 calculates the average of the sum of experience years divided by the number of projects for each employee.\",\n\"counterexample_dsp\": \"The difference is triggered when an employee is assigned to multiple projects. In this case, Q1 will correctly calculate the average experience years for each project, while Q2 will incorrectly calculate the average of the sum of experience years divided by the number of projects for each employee.\",\n\"counterexample\": \"INSERT INTO EMPLOYEE (EMPLOYEE_ID, NAME, EXPERIENCE_YEARS) VALUES (1, 'Employee1', 5); INSERT INTO EMPLOYEE (EMPLOYEE_ID, NAME, EXPERIENCE_YEARS) VALUES (2, 'Employee2', 10); INSERT INTO PROJECT (PROJECT_ID, EMPLOYEE_ID) VALUES (1, 1); INSERT INTO PROJECT (PROJECT_ID, EMPLOYEE_ID) VALUES (2, 1); INSERT INTO PROJECT (PROJECT_ID, EMPLOYEE_ID) VALUES (3, 2);\"\n}",
+  "reasoning": "",
+  "api_model": "XiYanSQL-QwenCoder-7B-2504",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 499,
+    "total_tokens": 735,
+    "completion_tokens": 236,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": null,
+    "generation_seconds": 4.156
+  },
+  "started_at": "2026-10-06T14:33:01.176488+00:00",
+  "elapsed_seconds": 1.156,
+  "q1_output": [
+    [
+      2,
+      "5.00"
+    ],
+    [
+      1,
+      "5.00"
+    ],
+    [
+      3,
+      "10.00"
+    ]
+  ],
+  "q2_output": [
+    [
+      1,
+      "5.00"
+    ],
+    [
+      2,
+      "5.00"
+    ],
+    [
+      3,
+      "10.00"
+    ]
+  ],
+  "q1_row_count": 3,
+  "q2_row_count": 3,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT A.PROJECT_ID, ROUND(AVG(B.EXPERIENCE_YEARS), 2) AS AVERAGE_YEARS FROM PROJECT AS A INNER JOIN EMPLOYEE AS B ON A.EMPLOYEE_ID = B.EMPLOYEE_ID GROUP BY A.PROJECT_ID",
+  "q2_validation_sql": "SELECT A.PID AS PROJECT_ID, ROUND(SUM(A.YEARS) / COUNT(A.PID), 2) AS AVERAGE_YEARS FROM ( SELECT P.PROJECT_ID AS PID, E.EXPERIENCE_YEARS AS YEARS FROM PROJECT P LEFT JOIN EMPLOYEE E ON P.EMPLOYEE_ID = E.EMPLOYEE_ID ) A GROUP BY 1"
+}

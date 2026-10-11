@@ -1,0 +1,58 @@
+{
+  "dbid": "codebase_community",
+  "index": "374",
+  "source_index": "675",
+  "schema_ddl": "CREATE TABLE badges\n(\n    Id     INTEGER          not null\n        primary key,\n    UserId INTEGER          null,\n    Name   TEXT null,\n    Date   DATETIME     null,\n        foreign key (UserId) references users (Id)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE comments\n(\n    Id              INTEGER          not null\n        primary key,\n    PostId          INTEGER          null,\n    Score           INTEGER          null,\n    Text            TEXT     null,\n    CreationDate    DATETIME     null,\n    UserId          INTEGER          null,\n    UserDisplayName TEXT null,\n        foreign key (PostId) references posts (Id)\n            on update cascade on delete cascade,\n        foreign key (UserId) references users (Id)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE postHistory\n(\n    Id                INTEGER          not null UNIQUE\n        primary key,\n    PostHistoryTypeId INTEGER          null,\n    PostId            INTEGER          null,\n    RevisionGUID      TEXT null,\n    CreationDate      DATETIME     null,\n    UserId            INTEGER          null,\n    Text              TEXT     null,\n    Comment           TEXT         null,\n    UserDisplayName   TEXT null,\n        foreign key (PostId) references posts (Id)\n            on update cascade on delete cascade,\n        foreign key (UserId) references users (Id)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE postLinks\n(\n    Id            INTEGER      not null\n        primary key,\n    CreationDate  DATETIME null,\n    PostId        INTEGER      null,\n    RelatedPostId INTEGER      null,\n    LinkTypeId    INTEGER      null,\n        foreign key (PostId) references posts (Id)\n            on update cascade on delete cascade,\n        foreign key (RelatedPostId) references posts (Id)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE posts\n(\n    Id                    INTEGER          not null UNIQUE\n        primary key,\n    PostTypeId            INTEGER          null,\n    AcceptedAnswerId      INTEGER          null,\n    CreaionDate           DATETIME     null,\n    Score                 INTEGER          null,\n    ViewCount             INTEGER          null,\n    Body                  TEXT     null,\n    OwnerUserId           INTEGER          null,\n    LasActivityDate       DATETIME     null,\n    Title                 TEXT null,\n    Tags                  TEXT null,\n    AnswerCount           INTEGER          null,\n    CommentCount          INTEGER          null,\n    FavoriteCount         INTEGER          null,\n    LastEditorUserId      INTEGER          null,\n    LastEditDate          DATETIME     null,\n    CommunityOwnedDate    DATETIME    null,\n    ParentId              INTEGER          null,\n    ClosedDate            DATETIME     null,\n    OwnerDisplayName      TEXT null,\n    LastEditorDisplayName TEXT null,\n        foreign key (LastEditorUserId) references users (Id)\n            on update cascade on delete cascade,\n        foreign key (OwnerUserId) references users (Id)\n            on update cascade on delete cascade\n);\n\nCREATE TABLE tags\n(\n    Id            INTEGER          not null\n        primary key,\n    TagName       TEXT null,\n    Count         INTEGER          null,\n    ExcerptPostId INTEGER          null,\n    WikiPostId    INTEGER          null,\n    foreign key (ExcerptPostId) references posts (Id)\n        on update cascade on delete cascade\n);\n\nCREATE TABLE users\n(\n    Id              INTEGER          not null UNIQUE\n        primary key,\n    Reputation      INTEGER          null,\n    CreationDate    DATETIME     null,\n    DisplayName     TEXT null,\n    LastAccessDate  DATETIME     null,\n    WebsiteUrl      TEXT null,\n    Location        TEXT null,\n    AboutMe         TEXT     null,\n    Views           INTEGER          null,\n    UpVotes         INTEGER          null,\n    DownVotes       INTEGER          null,\n    AccountId       INTEGER          null,\n    Age             INTEGER          null,\n    ProfileImageUrl TEXT null\n);\n\nCREATE TABLE votes\n(\n    Id           INTEGER  not null\n        primary key,\n    PostId       INTEGER  null,\n    VoteTypeId   INTEGER  null,\n    CreationDate DATE null,\n    UserId       INTEGER  null,\n    BountyAmount INTEGER  null,\n        foreign key (PostId) references posts (Id)\n            on update cascade on delete cascade,\n        foreign key (UserId) references users (Id)\n            on update cascade on delete cascade\n);",
+  "q1": "SELECT DisplayName FROM users WHERE Reputation = (SELECT MAX(Reputation) FROM users)",
+  "q2": "SELECT DisplayName FROM users ORDER BY Reputation DESC LIMIT 1",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT DisplayName FROM users WHERE Reputation = (SELECT MAX(Reputation) FROM users)",
+  "q2_prompt_sql": "SELECT DisplayName FROM users ORDER BY Reputation DESC LIMIT 1",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO users (Id, Reputation, DisplayName) VALUES (1, 100, 'Alice');\nINSERT INTO users (Id, Reputation, DisplayName) VALUES (2, 100, 'Bob');\nINSERT INTO users (Id, Reputation, DisplayName) VALUES (3, 50, 'Charlie');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 returns all users with the maximum Reputation, while Q2 returns only one user (the first in the ordered list). When multiple users share the maximum Reputation, Q1 will return all of them, but Q2 will return only one due to the LIMIT 1 clause.",
+  "counterexample_dsp": "Three users: two with Reputation 100 (Alice and Bob) and one with Reputation 50 (Charlie). Q1 returns both Alice and Bob, while Q2 returns only one (e.g., Alice based on primary key ordering).",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 returns all users with the maximum Reputation, while Q2 returns only one user (the first in the ordered list). When multiple users share the maximum Reputation, Q1 will return all of them, but Q2 will return only one due to the LIMIT 1 clause.\",\n  \"counterexample_dsp\": \"Three users: two with Reputation 100 (Alice and Bob) and one with Reputation 50 (Charlie). Q1 returns both Alice and Bob, while Q2 returns only one (e.g., Alice based on primary key ordering).\",\n  \"counterexample\": [\n    \"INSERT INTO users (Id, Reputation, DisplayName) VALUES (1, 100, 'Alice');\",\n    \"INSERT INTO users (Id, Reputation, DisplayName) VALUES (2, 100, 'Bob');\",\n    \"INSERT INTO users (Id, Reputation, DisplayName) VALUES (3, 50, 'Charlie');\"\n  ]\n}",
+  "reasoning": "\nOkay, let's tackle this problem. The user wants a counterexample where Q1 and Q2 return different results. First, I need to understand the difference between the two queries.\n\nQ1 selects DisplayName from users where Reputation equals the maximum Reputation. Q2 orders users by Reputation descending and takes the top one. At first glance, they seem similar, but there's a catch. What if there are multiple users with the same maximum Reputation?\n\nFor example, if two users have the highest Reputation, Q1 would return both, while Q2 would only return one (the first one in the ordered list). So the key is having multiple users with the same max Reputation. That's the scenario where they differ.\n\nNow, I need to create a test database with such a case. Let's say two users, Alice and Bob, both have Reputation 100, which is the highest. Then Q1 would return both, and Q2 would return just one (depending on the order, maybe Alice if ordered by DisplayName or whatever the default is, but since the ORDER BY is only on Reputation, if they are the same, the LIMIT 1 would pick one arbitrarily).\n\nBut wait, in SQL, when you order by Reputation DESC and there are ties, the LIMIT 1 would pick one of them, but which one? It depends on the database's sorting. However, the problem is that Q1 returns all users with max Reputation, while Q2 returns only one. So the difference is in the number of rows returned when there's a tie.\n\nSo the counterexample needs two users with the same max Reputation. Let's create two users with Reputation 100, and another user with lower Reputation. Then Q1 will return both, Q2 will return one.\n\nNow, making sure that the schema constraints are met. The users table has Id as primary key, and Reputation is nullable. So inserting users with Ids 1, 2, 3, etc., with Reputation values. Let's do that.\n\nInsert three users: User1 (Id 1, Reputation 100, DisplayName 'Alice'), User2 (Id 2, Reputation 100, DisplayName 'Bob'), and User3 (Id 3, Reputation 50, DisplayName 'Charlie'). \n\nIn this case, Q1 would return Alice and Bob, while Q2 would return either Alice or Bob, depending on the database's ordering when there's a tie. However, the problem is that in some SQL implementations, when ordering by a column and there are ties, the order is not guaranteed unless there's a secondary sort column. So if the database uses the primary key (Id) as a tiebreaker, then the LIMIT 1 would pick the one with the lower Id. For example, if the database sorts by Reputation DESC and then by Id ASC (as a default), then User1 (Id 1) would come first. So Q2 would return Alice, while Q1 returns both. That's the difference.\n\nTherefore, the counterexample would have two users with the same max Reputation, and the third with lower. The explanation is that Q1 returns all users with max Reputation, while Q2 returns only one (the first in the ordered list). The test data should include two users with the same max and another with less.\n\nNow, I need to write the INSERT statements for the users table. The other tables can be left empty since they don't affect the queries. So the counterexample would have three users as described.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 1101,
+    "total_tokens": 2029,
+    "completion_tokens": 928,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 719
+    },
+    "generation_seconds": 32.828
+  },
+  "started_at": "2026-10-06T16:58:13.018769+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "Alice"
+    ],
+    [
+      "Bob"
+    ]
+  ],
+  "q2_output": [
+    [
+      "Alice"
+    ]
+  ],
+  "q1_row_count": 2,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DisplayName FROM users WHERE Reputation = (SELECT MAX(Reputation) FROM users)",
+  "q2_validation_sql": "SELECT DisplayName FROM users ORDER BY Reputation DESC LIMIT 1"
+}

@@ -1,0 +1,51 @@
+{
+  "dbid": "toxicology",
+  "index": "154",
+  "source_index": "215",
+  "schema_ddl": "CREATE TABLE `atom` (\n  `atom_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `element` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `bond` (\n  `bond_id` TEXT NOT NULL,\n  `molecule_id` TEXT DEFAULT NULL,\n  `bond_type` TEXT DEFAULT NULL,\n  PRIMARY KEY (`bond_id`),\n  FOREIGN KEY (`molecule_id`) REFERENCES `molecule` (`molecule_id`)\n);\n\nCREATE TABLE `connected` (\n  `atom_id` TEXT NOT NULL,\n  `atom_id2` TEXT NOT NULL,\n  `bond_id` TEXT DEFAULT NULL,\n  PRIMARY KEY (`atom_id`,`atom_id2`),\n  FOREIGN KEY (`atom_id`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`atom_id2`) REFERENCES `atom` (`atom_id`) ON DELETE CASCADE ON UPDATE CASCADE,\n  FOREIGN KEY (`bond_id`) REFERENCES `bond` (`bond_id`) ON DELETE CASCADE ON UPDATE CASCADE\n);\n\nCREATE TABLE `molecule` (\n  `molecule_id` TEXT NOT NULL,\n  `label` TEXT DEFAULT NULL,\n  PRIMARY KEY (`molecule_id`)\n);",
+  "q1": "SELECT DISTINCT T2.label FROM atom AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id WHERE T1.element <> 'sn'",
+  "q2": "SELECT label FROM molecule WHERE NOT molecule_id IN (SELECT molecule_id FROM atom WHERE element = 'sn')",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "bird",
+  "q1_prompt_sql": "SELECT DISTINCT T2.label FROM atom AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id WHERE T1.element <> 'sn'",
+  "q2_prompt_sql": "SELECT label FROM molecule WHERE NOT molecule_id IN (SELECT molecule_id FROM atom WHERE element = 'sn')",
+  "shared_limit_removed": "",
+  "model": "Qwen3-14B",
+  "prompt": "CE",
+  "counterexample": "INSERT INTO molecule (molecule_id, label) VALUES ('m1', 'X');\nINSERT INTO atom (atom_id, molecule_id, element) VALUES ('a1', 'm1', 'sn');\nINSERT INTO atom (atom_id, molecule_id, element) VALUES ('a2', 'm1', 'o');",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 includes molecules with at least one non-'sn' atom (even if they also have 'sn' atoms), while Q2 excludes any molecule that has even one 'sn' atom. The difference arises when a molecule contains both 'sn' and non-'sn' atoms.",
+  "counterexample_dsp": "A molecule with both 'sn' and non-'sn' atoms. Q1 includes it (due to non-'sn' atoms), but Q2 excludes it (due to 'sn' atoms).",
+  "equiv": "",
+  "raw_response": "\n\n{\n  \"explanation\": \"Q1 includes molecules with at least one non-'sn' atom (even if they also have 'sn' atoms), while Q2 excludes any molecule that has even one 'sn' atom. The difference arises when a molecule contains both 'sn' and non-'sn' atoms.\",\n  \"counterexample_dsp\": \"A molecule with both 'sn' and non-'sn' atoms. Q1 includes it (due to non-'sn' atoms), but Q2 excludes it (due to 'sn' atoms).\",\n  \"counterexample\": [\n    \"INSERT INTO molecule (molecule_id, label) VALUES ('m1', 'X');\",\n    \"INSERT INTO atom (atom_id, molecule_id, element) VALUES ('a1', 'm1', 'sn');\",\n    \"INSERT INTO atom (atom_id, molecule_id, element) VALUES ('a2', 'm1', 'o');\"\n  ]\n}",
+  "reasoning": "\nOkay, let's tackle this problem. The user wants me to find a counterexample where Q1 and Q2 return different results. First, I need to understand what each query does.\n\nLooking at Q1: It selects distinct labels from molecule where there's an atom in the same molecule that's not 'sn'. The join is between atom (T1) and molecule (T2) on molecule_id. The condition is T1.element <> 'sn'. So, for each molecule that has at least one atom that's not 'sn', the label is included. But since it's DISTINCT, duplicates are removed.\n\nNow Q2: It selects labels from molecule where the molecule_id is not in the list of molecule_ids that have atoms with element 'sn'. So, this is molecules that don't have any 'sn' atoms at all. Because the NOT IN clause excludes any molecule that has at least one 'sn' atom.\n\nWait, so Q1 includes molecules that have at least one non-'sn' atom. But Q2 includes molecules that have no 'sn' atoms. So the difference is that Q1 includes molecules that have some non-'sn' atoms (even if they have 'sn' atoms as well), whereas Q2 excludes any molecule that has even one 'sn' atom.\n\nSo, if there's a molecule that has both 'sn' and other elements, Q1 would include it (since there's a non-'sn' atom), but Q2 would exclude it (because it has an 'sn' atom). That's the key difference.\n\nSo to create a counterexample, I need a molecule that has both 'sn' and other elements. Let's say molecule A has atoms with element 'sn' and 'o'. Then Q1 would include A's label because there's a non-'sn' atom. But Q2 would exclude A because it has an 'sn' atom. So in this case, Q1 would return A's label, but Q2 would not.\n\nAnother scenario: a molecule with only 'sn' atoms. Then Q1 would not include it because all atoms are 'sn', so the WHERE T1.element <> 'sn' would not find any. But Q2 would exclude it as well because it has 'sn' atoms. Wait, no. Wait Q2 is selecting molecules where molecule_id is not in the list of those with 'sn' atoms. So if a molecule has 'sn' atoms, it's excluded. So if a molecule has only 'sn' atoms, then Q1 would not include it (since all T1.element are 'sn'), but Q2 would also exclude it. So that's not a counterexample.\n\nBut if there's a molecule with at least one non-'sn' atom and at least one 'sn' atom, then Q1 would include it (since there's a non-'sn'), but Q2 would exclude it (since it has 'sn').\n\nSo the counterexample needs a molecule that has both 'sn' and other elements. Let's create such a case.\n\nLet me think about the data. Let's have molecule 'm1' with two atoms: one 'sn' and one 'o'. Then:\n\nFor Q1: The join would find the 'o' atom (since element is not 'sn'), so T2.label is included. So Q1 would return the label of m1.\n\nFor Q2: The subquery (SELECT molecule_id FROM atom WHERE element = 'sn') would include m1. So the NOT IN would exclude m1. Therefore, Q2 does not return m1's label.\n\nSo in this case, Q1 returns the label, Q2 does not. That's the difference.\n\nSo the test data would be:\n\n- molecule m1 with label 'X'.\n- atom a1 with molecule_id m1, element 'sn'.\n- atom a2 with molecule_id m1, element 'o'.\n\nAnother possible case is a molecule with only non-'sn' atoms. Then both Q1 and Q2 would include it. But that's not a counterexample. The key is to have a molecule that has at least one 'sn' and at least one non-'sn' atom.\n\nSo the counterexample is when there's a molecule with both. Then Q1 includes it, Q2 excludes it.\n\nTherefore, the explanation is that Q1 includes molecules that have at least one non-'sn' atom (even if they have 'sn' atoms), while Q2 includes only molecules that have no 'sn' atoms at all. The difference arises when a molecule has both 'sn' and non-'sn' atoms.\n\nNow, the SQL inserts. Need to create molecule m1 with label 'X', and two atoms in it: one 'sn', one 'o'. Also, check that the molecule_id is set correctly. Also, other tables (bond, connected) can be empty since they are not referenced in the queries.\n\nSo the INSERT statements would be:\n\nINSERT INTO molecule (molecule_id, label) VALUES ('m1', 'X');\n\nINSERT INTO atom (atom_id, molecule_id, element) VALUES ('a1', 'm1', 'sn');\n\nINSERT INTO atom (atom_id, molecule_id, element) VALUES ('a2', 'm1', 'o');\n\nThat's the minimal data. Now, Q1 would return 'X' because there's a non-'sn' atom (a2). Q2 would not return 'X' because m1 is in the subquery (due to a1).\n\nAnother possible case: if there's a molecule with no 'sn' atoms. Then Q1 would include it (since all atoms are non-'sn'), and Q2 would include it as well. So that's not a counterexample. But the example above is correct.\n\nSo the counterexample is the molecule with both 'sn' and non-'sn' atoms. The explanation is that Q1 includes molecules with any non-'sn' atoms, while Q2 excludes those with any 'sn' atoms.\n",
+  "api_model": "Qwen3-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 521,
+    "total_tokens": 1962,
+    "completion_tokens": 1441,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1240
+    },
+    "generation_seconds": 48.016
+  },
+  "started_at": "2026-10-06T16:32:33.433594+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "X"
+    ]
+  ],
+  "q2_output": [],
+  "q1_row_count": 1,
+  "q2_row_count": 0,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT DISTINCT T2.label FROM atom AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id WHERE T1.element <> 'sn'",
+  "q2_validation_sql": "SELECT label FROM molecule WHERE NOT molecule_id IN (SELECT molecule_id FROM atom WHERE element = 'sn')"
+}

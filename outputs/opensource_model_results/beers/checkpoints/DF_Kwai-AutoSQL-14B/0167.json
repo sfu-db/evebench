@@ -1,0 +1,59 @@
+{
+  "dbid": "beers",
+  "index": "167",
+  "source_index": "3306",
+  "schema_ddl": "CREATE TABLE Bar (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Beer (\n    name VARCHAR NOT NULL,\n    brewer VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Drinker (\n    name VARCHAR NOT NULL,\n    address VARCHAR NOT NULL,\n    PRIMARY KEY (name)\n);\n\nCREATE TABLE Frequents (\n    drinker VARCHAR NOT NULL,\n    bar VARCHAR NOT NULL,\n    times_a_week SMALLINT NOT NULL,\n    PRIMARY KEY (drinker, bar),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (bar) REFERENCES Bar(name)\n);\n\nCREATE TABLE Serves (\n    bar VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    price DECIMAL(5,2) NOT NULL,\n    PRIMARY KEY (bar, beer),\n    FOREIGN KEY (bar) REFERENCES Bar(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);\n\nCREATE TABLE Likes (\n    drinker VARCHAR NOT NULL,\n    beer VARCHAR NOT NULL,\n    PRIMARY KEY (drinker, beer),\n    FOREIGN KEY (drinker) REFERENCES Drinker(name),\n    FOREIGN KEY (beer) REFERENCES Beer(name)\n);",
+  "q1": "SELECT beer.name, min_price, bar FROM beer LEFT OUTER JOIN (SELECT beer, MIN(price) AS min_price FROM serves GROUP BY beer) AS t ON beer.name = t.beer LEFT OUTER JOIN serves ON beer.name = serves.beer AND min_price = serves.price",
+  "q2": "SELECT b.name AS beer, COALESCE(MIN(s.price), NULL) AS price, COALESCE(ba.name, NULL) AS bar FROM beer AS b LEFT JOIN serves AS s ON b.name = s.beer LEFT JOIN bar AS ba ON ba.name = s.bar AND s.price < (SELECT MIN(price) FROM serves WHERE beer = b.name) GROUP BY b.name, ba.name ORDER BY b.name",
+  "dialect": "sqlite",
+  "ground_truth": "NEQ",
+  "source": "beers",
+  "q1_prompt_sql": "SELECT beer.name, min_price, bar FROM beer LEFT OUTER JOIN (SELECT beer, MIN(price) AS min_price FROM serves GROUP BY beer) AS t ON beer.name = t.beer LEFT OUTER JOIN serves ON beer.name = serves.beer AND min_price = serves.price",
+  "q2_prompt_sql": "SELECT b.name AS beer, COALESCE(MIN(s.price), NULL) AS price, COALESCE(ba.name, NULL) AS bar FROM beer AS b LEFT JOIN serves AS s ON b.name = s.beer LEFT JOIN bar AS ba ON ba.name = s.bar AND s.price < (SELECT MIN(price) FROM serves WHERE beer = b.name) GROUP BY b.name, ba.name ORDER BY b.name",
+  "shared_limit_removed": "",
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "counterexample": "INSERT INTO Bar (name, address) VALUES ('Bar1', 'addr1'), ('Bar2', 'addr2');\nINSERT INTO Beer (name, brewer) VALUES ('Bud', 'Brewer');\nINSERT INTO Serves (bar, beer, price) VALUES ('Bar1', 'Bud', 2), ('Bar2', 'Bud', 3);",
+  "counterexample_valid": "Y",
+  "validation_status": "valid",
+  "validation_error": "",
+  "explanation": "Q1 finds the bar serving a beer at its minimum price. Q2's JOIN condition (s.price < MIN(price)) is impossible, leading to NULL bars. They produce different results.",
+  "counterexample_dsp": "A beer 'Bud' served at $2 by 'Bar1' and $3 by 'Bar2'. Q1 returns Bar1, Q2 returns NULL for bar.",
+  "equiv": "N",
+  "raw_response": "\n\n{\n\"equiv\": \"N\",\n\"explanation\": \"Q1 finds the bar serving a beer at its minimum price. Q2's JOIN condition (s.price < MIN(price)) is impossible, leading to NULL bars. They produce different results.\",\n\"counterexample_dsp\": \"A beer 'Bud' served at $2 by 'Bar1' and $3 by 'Bar2'. Q1 returns Bar1, Q2 returns NULL for bar.\",\n\"counterexample\": \"INSERT INTO Bar (name, address) VALUES ('Bar1', 'addr1'), ('Bar2', 'addr2');\\nINSERT INTO Beer (name, brewer) VALUES ('Bud', 'Brewer');\\nINSERT INTO Serves (bar, beer, price) VALUES ('Bar1', 'Bud', 2), ('Bar2', 'Bud', 3);\"\n}",
+  "reasoning": "\nOkay, let me try to figure out whether Q1 and Q2 are equivalent. First, I need to understand what each query is doing.\n\nStarting with Q1. The query does a LEFT OUTER JOIN on a subquery that finds the minimum price per beer. Then it joins that with the serves table again to get the bar that serves the beer at that minimum price. So for each beer, it gives the beer name, the minimum price, and the bar where that minimum price occurs. The LEFT JOINs mean that even if there's no matching row in the subquery or serves, it should still return the beer. But since the subquery groups by beer, each beer should have a min_price. The second join with serves would find a bar where that min_price is achieved.\n\nNow Q2: It does a LEFT JOIN from beer to serves on beer name, then another LEFT JOIN to bar on s.bar and a condition that s.price is less than the minimum price for that beer. Then groups by beer name and bar name, ordering by beer name. The COALESCE on MIN(price) and bar name. Wait, but the MIN in the SELECT is over the joined serves rows. Wait, the GROUP BY is on b.name and ba.name, so each group has one beer and one bar. But the MIN(s.price) here would be redundant if there's one row per group. Maybe the MIN is not necessary here. Also, the subquery in the AND condition of the second JOIN is selecting MIN(price) from serves where beer equals b.name. So the condition is s.price < MIN(price) which would always be false because the minimum price is the smallest. That seems odd. Wait, that would mean the JOIN condition is s.price < the minimum price of that beer, which can't happen. So that would result in no matches for the second join, making ba.name NULL. But then why is there a GROUP BY on ba.name?\n\nWait, that seems like a mistake in Q2. Because if the subquery returns the MIN(price), then the condition s.price < MIN(price) would never be true, so the second join would not find any rows, and ba.name would be NULL. Then the GROUP BY would have beer name and bar name (which is NULL), but how does that work? Maybe I'm misunderstanding the query.\n\nWait, looking again at Q2's structure:\n\nSELECT b.name AS beer, COALESCE(MIN(s.price), NULL) AS price, COALESCE(ba.name, NULL) AS bar FROM beer AS b LEFT JOIN serves AS s ON b.name = s.beer LEFT JOIN bar AS ba ON ba.name = s.bar AND s.price < (SELECT MIN(price) FROM serves WHERE beer = b.name) GROUP BY b.name, ba.name ORDER BY b.name\n\nWait, the LEFT JOIN to bar AS ba has a condition that s.price < the minimum price for that beer. Since the minimum price is the smallest possible price, s.price can't be less than that. Therefore, this join condition would never be satisfied. So the LEFT JOIN to ba would not find any rows, so ba.name would be NULL. Then the GROUP BY on b.name and ba.name (which is NULL) would group each beer once. But the MIN(s.price) is over the joined serves rows. Wait, but the LEFT JOIN to serves is on b.name = s.beer, so for each beer, we have all serves entries. Then the MIN(s.price) would be the minimum price for that beer. But why is that necessary? Also, the COALESCE(MIN(...), NULL) is redundant since MIN returns NULL only if there are no rows, but since we have a LEFT JOIN, there might be rows.\n\nBut the problem is the second join condition. If the subquery returns the minimum price, then s.price < min_price would never be true. So the LEFT JOIN to bar would not match any rows, making ba.name NULL. Then the output would be beer name, MIN(s.price) (which is the same as the subquery in Q1), and NULL for bar. That seems different from Q1, which would find the bar where the minimum price occurs.\n\nWait, but in Q1, after getting the min_price from the subquery, the second join with serves is on beer.name = serves.beer AND min_price = serves.price. So that would get the bar(s) that serve that beer at the minimum price. So Q1 returns one row per beer (assuming one bar serves it at min price) with the beer name, min_price, and bar name. Q2, on the other hand, seems to be trying to find a bar where s.price is less than the minimum price, which is impossible. Therefore, Q2's bar name would be NULL. But that can't be right. Maybe I made a mistake in interpreting the query.\n\nWait, looking again at Q2's JOIN condition for the bar table. The ON clause is ba.name = s.bar AND s.price < (SELECT MIN(price) FROM serves WHERE beer = b.name). Wait, the subquery is MIN(price) for the same beer. So s.price < that minimum price. Since the minimum is the smallest, this condition can't be true. Therefore, the join to bar would not match any rows, so ba.name is NULL. Then the GROUP BY on b.name and ba.name (which is NULL) would group all rows for each beer into one group (since ba.name is NULL for all). The MIN(s.price) would be the minimum price of that beer, as the LEFT JOIN to serves gives all serves entries. Then the result would be beer name, min price, NULL. But Q1 gives the beer name, min price, and the bar name where that price is achieved. So Q2's output would have NULL for bar, whereas Q1 would have the bar name. That's a difference.\n\nWait, but that would mean that Q2 is incorrect in its logic. But why would Q2 have that condition? Maybe there's a typo. Alternatively, maybe the subquery in the JOIN condition is actually supposed to be the minimum price, and the condition is s.price = min_price. That would make sense. But as written, it's s.price < min_price, which can't be true. That seems like a mistake in the query. However, given that the user provided Q2 as written, I need to analyze it as is.\n\nSo, the conclusion is that Q1 and Q2 are not equivalent. Q1 finds the bar that serves the beer at the minimum price, while Q2's JOIN condition is impossible, leading to NULL for bar. Therefore, their outputs differ. To create a counterexample, I can set up a simple database where a beer has multiple serves at different prices, and show that Q1 returns the bar with the minimum price, while Q2 returns NULL for bar.\n\nFor example, create one beer 'Bud' served at $2 by bar 'Bar1' and at $3 by bar 'Bar2'. Q1 would join the subquery min_price (2) with serves where price=2, giving bar 'Bar1'. Q2's join condition s.price < 2 would not match any rows, so bar is NULL. Hence, the outputs differ.\n",
+  "api_model": "Kwai-AutoSQL-14B",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 633,
+    "total_tokens": 2322,
+    "completion_tokens": 1689,
+    "prompt_tokens_details": null,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1503
+    },
+    "generation_seconds": 53.844
+  },
+  "started_at": "2026-10-06T09:41:20.217057+00:00",
+  "elapsed_seconds": 0.0,
+  "q1_output": [
+    [
+      "Bud",
+      2,
+      "Bar1"
+    ]
+  ],
+  "q2_output": [
+    [
+      "Bud",
+      2,
+      null
+    ]
+  ],
+  "q1_row_count": 1,
+  "q2_row_count": 1,
+  "result_comparison": "bag",
+  "validation_policy": "bag_original_queries_v1",
+  "q1_validation_sql": "SELECT beer.name, min_price, bar FROM beer LEFT OUTER JOIN (SELECT beer, MIN(price) AS min_price FROM serves GROUP BY beer) AS t ON beer.name = t.beer LEFT OUTER JOIN serves ON beer.name = serves.beer AND min_price = serves.price",
+  "q2_validation_sql": "SELECT b.name AS beer, COALESCE(MIN(s.price), NULL) AS price, COALESCE(ba.name, NULL) AS bar FROM beer AS b LEFT JOIN serves AS s ON b.name = s.beer LEFT JOIN bar AS ba ON ba.name = s.bar AND s.price < (SELECT MIN(price) FROM serves WHERE beer = b.name) GROUP BY b.name, ba.name ORDER BY b.name"
+}
