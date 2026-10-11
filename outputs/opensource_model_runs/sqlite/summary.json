@@ -1,0 +1,102 @@
+[
+  {
+    "model": "Kwai-AutoSQL-14B",
+    "prompt": "CE",
+    "pairs": 878,
+    "validation_policy": "bag_original_queries_v1",
+    "generated_counterexamples": 873,
+    "declared_equivalent": 0,
+    "valid": 330,
+    "valid_rate_all_pairs": 0.37585421412300685,
+    "status_counts": {
+      "error": 399,
+      "valid": 330,
+      "same_output": 144,
+      "generation_error": 5
+    }
+  },
+  {
+    "model": "Qwen3-14B",
+    "prompt": "CE",
+    "pairs": 878,
+    "validation_policy": "bag_original_queries_v1",
+    "generated_counterexamples": 874,
+    "declared_equivalent": 0,
+    "valid": 358,
+    "valid_rate_all_pairs": 0.40774487471526194,
+    "status_counts": {
+      "error": 363,
+      "valid": 358,
+      "same_output": 153,
+      "generation_error": 4
+    }
+  },
+  {
+    "model": "XiYanSQL-QwenCoder-7B-2504",
+    "prompt": "CE",
+    "pairs": 878,
+    "validation_policy": "bag_original_queries_v1",
+    "generated_counterexamples": 866,
+    "declared_equivalent": 0,
+    "valid": 148,
+    "valid_rate_all_pairs": 0.16856492027334852,
+    "status_counts": {
+      "error": 493,
+      "no_counterexample": 5,
+      "valid": 148,
+      "same_output": 225,
+      "generation_error": 7
+    }
+  },
+  {
+    "model": "Kwai-AutoSQL-14B",
+    "prompt": "DF",
+    "pairs": 878,
+    "validation_policy": "bag_original_queries_v1",
+    "generated_counterexamples": 627,
+    "declared_equivalent": 247,
+    "valid": 233,
+    "valid_rate_all_pairs": 0.265375854214123,
+    "status_counts": {
+      "declared_equivalent": 247,
+      "error": 322,
+      "valid": 233,
+      "same_output": 72,
+      "generation_error": 4
+    }
+  },
+  {
+    "model": "Qwen3-14B",
+    "prompt": "DF",
+    "pairs": 878,
+    "validation_policy": "bag_original_queries_v1",
+    "generated_counterexamples": 632,
+    "declared_equivalent": 243,
+    "valid": 285,
+    "valid_rate_all_pairs": 0.3246013667425968,
+    "status_counts": {
+      "error": 315,
+      "declared_equivalent": 243,
+      "valid": 285,
+      "same_output": 32,
+      "generation_error": 3
+    }
+  },
+  {
+    "model": "XiYanSQL-QwenCoder-7B-2504",
+    "prompt": "DF",
+    "pairs": 878,
+    "validation_policy": "bag_original_queries_v1",
+    "generated_counterexamples": 722,
+    "declared_equivalent": 149,
+    "valid": 131,
+    "valid_rate_all_pairs": 0.1492027334851936,
+    "status_counts": {
+      "declared_equivalent": 149,
+      "error": 432,
+      "same_output": 159,
+      "valid": 131,
+      "generation_error": 7
+    }
+  }
+]

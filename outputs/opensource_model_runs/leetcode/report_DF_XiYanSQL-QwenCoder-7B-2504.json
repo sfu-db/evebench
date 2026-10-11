@@ -1,0 +1,17 @@
+{
+  "model": "XiYanSQL-QwenCoder-7B-2504",
+  "prompt": "DF",
+  "pairs": 595,
+  "validation_policy": "bag_original_queries_v1",
+  "generated_counterexamples": 444,
+  "declared_equivalent": 149,
+  "valid": 12,
+  "valid_rate_all_pairs": 0.020168067226890758,
+  "status_counts": {
+    "declared_equivalent": 149,
+    "same_output": 378,
+    "error": 54,
+    "valid": 12,
+    "generation_error": 2
+  }
+}

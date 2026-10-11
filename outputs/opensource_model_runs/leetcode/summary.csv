@@ -1,0 +1,7 @@
+model,prompt,pairs,validation_policy,generated_counterexamples,declared_equivalent,valid,valid_rate_all_pairs,status_counts
+Kwai-AutoSQL-14B,CE,595,bag_original_queries_v1,593,0,86,0.14453781512605043,"{'error': 75, 'same_output': 432, 'valid': 86, 'generation_error': 2}"
+Qwen3-14B,CE,595,bag_original_queries_v1,590,0,95,0.15966386554621848,"{'error': 102, 'same_output': 393, 'valid': 95, 'generation_error': 5}"
+XiYanSQL-QwenCoder-7B-2504,CE,595,bag_original_queries_v1,590,0,20,0.03361344537815126,"{'same_output': 475, 'error': 95, 'no_counterexample': 4, 'valid': 20, 'generation_error': 1}"
+Kwai-AutoSQL-14B,DF,595,bag_original_queries_v1,274,318,42,0.07058823529411765,"{'declared_equivalent': 318, 'error': 72, 'same_output': 160, 'valid': 42, 'generation_error': 3}"
+Qwen3-14B,DF,595,bag_original_queries_v1,131,454,57,0.0957983193277311,"{'declared_equivalent': 454, 'error': 46, 'valid': 57, 'generation_error': 10, 'same_output': 28}"
+XiYanSQL-QwenCoder-7B-2504,DF,595,bag_original_queries_v1,444,149,12,0.020168067226890758,"{'declared_equivalent': 149, 'same_output': 378, 'error': 54, 'valid': 12, 'generation_error': 2}"

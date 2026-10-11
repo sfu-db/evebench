@@ -1,0 +1,15 @@
+{
+  "model": "Qwen3-14B",
+  "prompt": "CE",
+  "pairs": 56,
+  "validation_policy": "bag_original_queries_v1",
+  "generated_counterexamples": 56,
+  "declared_equivalent": 0,
+  "valid": 27,
+  "valid_rate_all_pairs": 0.48214285714285715,
+  "status_counts": {
+    "error": 3,
+    "same_output": 26,
+    "valid": 27
+  }
+}

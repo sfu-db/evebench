@@ -1,0 +1,17 @@
+{
+  "model": "Kwai-AutoSQL-14B",
+  "prompt": "DF",
+  "pairs": 56,
+  "validation_policy": "bag_original_queries_v1",
+  "generated_counterexamples": 41,
+  "declared_equivalent": 14,
+  "valid": 19,
+  "valid_rate_all_pairs": 0.3392857142857143,
+  "status_counts": {
+    "declared_equivalent": 14,
+    "same_output": 21,
+    "valid": 19,
+    "error": 1,
+    "generation_error": 1
+  }
+}

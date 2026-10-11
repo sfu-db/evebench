@@ -1,0 +1,344 @@
+{
+  "input_sha256": "a871a39764b9a0bf6d58e0f8be6c20553899e1235047c8212ed4a3d1aa4a51ad",
+  "rows": [
+    {
+      "dbid": "0",
+      "index": "1",
+      "source_index": "0"
+    },
+    {
+      "dbid": "1",
+      "index": "2",
+      "source_index": "1"
+    },
+    {
+      "dbid": "2",
+      "index": "3",
+      "source_index": "2"
+    },
+    {
+      "dbid": "2",
+      "index": "4",
+      "source_index": "3"
+    },
+    {
+      "dbid": "3",
+      "index": "5",
+      "source_index": "4"
+    },
+    {
+      "dbid": "4",
+      "index": "6",
+      "source_index": "5"
+    },
+    {
+      "dbid": "5",
+      "index": "7",
+      "source_index": "6"
+    },
+    {
+      "dbid": "6",
+      "index": "8",
+      "source_index": "7"
+    },
+    {
+      "dbid": "7",
+      "index": "9",
+      "source_index": "8"
+    },
+    {
+      "dbid": "8",
+      "index": "10",
+      "source_index": "9"
+    },
+    {
+      "dbid": "10",
+      "index": "11",
+      "source_index": "12"
+    },
+    {
+      "dbid": "6",
+      "index": "12",
+      "source_index": "13"
+    },
+    {
+      "dbid": "11",
+      "index": "13",
+      "source_index": "14"
+    },
+    {
+      "dbid": "12",
+      "index": "14",
+      "source_index": "15"
+    },
+    {
+      "dbid": "13",
+      "index": "15",
+      "source_index": "16"
+    },
+    {
+      "dbid": "14",
+      "index": "16",
+      "source_index": "17"
+    },
+    {
+      "dbid": "15",
+      "index": "17",
+      "source_index": "18"
+    },
+    {
+      "dbid": "16",
+      "index": "18",
+      "source_index": "19"
+    },
+    {
+      "dbid": "17",
+      "index": "19",
+      "source_index": "20"
+    },
+    {
+      "dbid": "18",
+      "index": "20",
+      "source_index": "21"
+    },
+    {
+      "dbid": "18",
+      "index": "21",
+      "source_index": "24"
+    },
+    {
+      "dbid": "19",
+      "index": "22",
+      "source_index": "26"
+    },
+    {
+      "dbid": "20",
+      "index": "23",
+      "source_index": "28"
+    },
+    {
+      "dbid": "21",
+      "index": "24",
+      "source_index": "29"
+    },
+    {
+      "dbid": "22",
+      "index": "25",
+      "source_index": "30"
+    },
+    {
+      "dbid": "23",
+      "index": "26",
+      "source_index": "31"
+    },
+    {
+      "dbid": "24",
+      "index": "27",
+      "source_index": "32"
+    },
+    {
+      "dbid": "26",
+      "index": "28",
+      "source_index": "34"
+    },
+    {
+      "dbid": "18",
+      "index": "29",
+      "source_index": "36"
+    },
+    {
+      "dbid": "28",
+      "index": "30",
+      "source_index": "37"
+    },
+    {
+      "dbid": "29",
+      "index": "31",
+      "source_index": "38"
+    },
+    {
+      "dbid": "29",
+      "index": "32",
+      "source_index": "39"
+    },
+    {
+      "dbid": "29",
+      "index": "33",
+      "source_index": "40"
+    },
+    {
+      "dbid": "29",
+      "index": "34",
+      "source_index": "41"
+    },
+    {
+      "dbid": "29",
+      "index": "35",
+      "source_index": "42"
+    },
+    {
+      "dbid": "29",
+      "index": "36",
+      "source_index": "43"
+    },
+    {
+      "dbid": "29",
+      "index": "37",
+      "source_index": "44"
+    },
+    {
+      "dbid": "29",
+      "index": "38",
+      "source_index": "45"
+    },
+    {
+      "dbid": "30",
+      "index": "39",
+      "source_index": "46"
+    },
+    {
+      "dbid": "30",
+      "index": "40",
+      "source_index": "47"
+    },
+    {
+      "dbid": "31",
+      "index": "41",
+      "source_index": "48"
+    },
+    {
+      "dbid": "31",
+      "index": "42",
+      "source_index": "49"
+    },
+    {
+      "dbid": "32",
+      "index": "43",
+      "source_index": "50"
+    },
+    {
+      "dbid": "32",
+      "index": "44",
+      "source_index": "51"
+    },
+    {
+      "dbid": "32",
+      "index": "45",
+      "source_index": "52"
+    },
+    {
+      "dbid": "32",
+      "index": "46",
+      "source_index": "53"
+    },
+    {
+      "dbid": "32",
+      "index": "47",
+      "source_index": "54"
+    },
+    {
+      "dbid": "32",
+      "index": "48",
+      "source_index": "55"
+    },
+    {
+      "dbid": "32",
+      "index": "49",
+      "source_index": "56"
+    },
+    {
+      "dbid": "32",
+      "index": "50",
+      "source_index": "57"
+    },
+    {
+      "dbid": "32",
+      "index": "51",
+      "source_index": "58"
+    },
+    {
+      "dbid": "32",
+      "index": "52",
+      "source_index": "59"
+    },
+    {
+      "dbid": "32",
+      "index": "53",
+      "source_index": "60"
+    },
+    {
+      "dbid": "32",
+      "index": "54",
+      "source_index": "61"
+    },
+    {
+      "dbid": "32",
+      "index": "55",
+      "source_index": "62"
+    },
+    {
+      "dbid": "32",
+      "index": "56",
+      "source_index": "63"
+    }
+  ],
+  "models": [
+    "XiYanSQL-QwenCoder-7B-2504",
+    "Qwen3-14B",
+    "Kwai-AutoSQL-14B"
+  ],
+  "prompts": [
+    "CE",
+    "DF"
+  ],
+  "model_repos": {
+    "XiYanSQL-QwenCoder-7B-2504": {
+      "repo": "XGenerationLab/XiYanSQL-QwenCoder-7B-2504",
+      "revision": "681ba8b35480da7fd297b40fd3bb1e709148df2b"
+    },
+    "Qwen3-14B": {
+      "repo": "Qwen/Qwen3-14B",
+      "revision": "40c069824f4251a91eefaf281ebe4c544efd3e18"
+    },
+    "Kwai-AutoSQL-14B": {
+      "repo": "Kwai-AutoSQL/Kwai-AutoSQL-14B",
+      "revision": "c04f1815e4e38a871a890f0bdfe15de07c40b931"
+    }
+  },
+  "generation": {
+    "backend": "vLLM 0.30.0 in WSL Ubuntu",
+    "dtype": "bfloat16",
+    "gpu": "RTX PRO 5000",
+    "gpu_memory_utilization": 0.95,
+    "in_flight_requests": 16,
+    "sampler": "PyTorch top-k/top-p (FlashInfer sampler disabled)",
+    "thinking": "enabled; reasoning parsers: {\"Qwen3-14B\": \"qwen3\", \"Kwai-AutoSQL-14B\": \"qwen3\"}",
+    "sampling": {
+      "XiYanSQL-QwenCoder-7B-2504": {
+        "temperature": 0.1,
+        "top_p": 0.8,
+        "top_k": 50
+      },
+      "Qwen3-14B": {
+        "temperature": 0.6,
+        "top_p": 0.95,
+        "top_k": 20
+      },
+      "Kwai-AutoSQL-14B": {
+        "temperature": 0.6,
+        "top_p": 0.95,
+        "top_k": 20
+      }
+    }
+  },
+  "max_tokens": 16384,
+  "sql_timeout_ms": 15000,
+  "prompt_sha256": {
+    "CE": "d979ca8163ed1ce53d6dd2d9f731e85eb63917013df68403366c3c673c09e39c",
+    "DF": "aaca4a0387e023ab4b1f4667db861e1eaad48429bea5d217b929d3f2766af19f"
+  },
+  "comparison": "none (generation only)",
+  "query_policy": "q1/q2 sent to the model unchanged; validate_counterexample.py not used",
+  "schema_policy": "CSV schema_ddl used only in the prompt; no test databases; where rows of one dbid disagree, all use the most common schema",
+  "schema_majority_replaced_rows": {}
+}
