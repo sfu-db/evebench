@@ -1,0 +1,26 @@
+You are an expert in SQL. Your task is to analyze two SQL queries and determine whether they are semantically equivalent. If they are not equivalent, generate a counterexample (as a small test database, where Q1 and Q2 output different results).
+
+Given the following two SQL queries:
+Q1: {q1}
+Q2: {q2}
+
+And the following database schema:
+{schema}
+
+Please analyze:
+1. Explain Q1 and Q2 and understand their objective high-levely.
+2. Do Q1 and Q2 share aligned logic or Q1 and Q2 have significant differences? 
+3. If they are inequivalent, analyze why, and provide a counterexample (small test databases). You MUST make sure it doesn't violate any constraint of the schema.
+
+Response format (strict JSON):
+{
+"equiv": "Y",
+"explanation": "<short explanation>",
+}
+or
+{
+"equiv": "N",
+"explanation": "<short explanation of whether and why Q1 and Q2 are or are not equivalent>",
+"counterexample_dsp": "<short description of the test data and which conditions trigger the difference>",
+"counterexample": "<executable SQL statements (only INSERTs) that create the test data under the given schema and constraints>"
+}
